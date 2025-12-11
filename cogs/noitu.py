@@ -27,16 +27,20 @@ class GameNoiTu(commands.Cog):
         self.all_words = set()
         # Cached list for faster random selection (avoid O(n) conversion)
         self.all_words_list = []
+        # Flag to track if dictionary is loaded
+        self.dict_loaded = False
+        # Lock for dictionary loading to prevent race conditions
+        self.dict_load_lock = asyncio.Lock()
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        """Auto-initialize games for all configured servers on bot startup"""
-        log("Bot started - Loading words dictionary")
-        
-        # Load words dictionary from file
+    async def _load_dictionary(self):
+        """Load words dictionary from file"""
         try:
             with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
                 self.words_dict = json.load(f)
+            
+            # Clear old lists
+            self.all_words.clear()
+            self.all_words_list.clear()
             
             # Build set of all words for random selection
             for first, seconds in self.words_dict.items():
@@ -45,28 +49,48 @@ class GameNoiTu(commands.Cog):
                     self.all_words.add(word)
                     self.all_words_list.append(word)
             
-            log(f"Loaded words dict: {len(self.words_dict)} starting syllables, {len(self.all_words)} total words")
+            self.dict_loaded = True
+            log(f"✅ Loaded words dict: {len(self.words_dict)} starting syllables, {len(self.all_words)} total words")
+            return True
         except FileNotFoundError:
-            log(f"ERROR: {WORDS_DICT_PATH} not found. Run: python build_words_dict.py")
-            return
+            log(f"❌ ERROR: {WORDS_DICT_PATH} not found. Run: python build_words_dict.py")
+            self.dict_loaded = False
+            return False
         except Exception as e:
-            log(f"ERROR loading words dict: {e}")
-            return
+            log(f"❌ ERROR loading words dict: {e}")
+            self.dict_loaded = False
+            return False
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Auto-initialize games for all configured servers on bot startup"""
+        log("Bot ready - Loading/reloading words dictionary")
+        
+        # Use lock to prevent multiple concurrent loads
+        async with self.dict_load_lock:
+            await self._load_dictionary()
         
         # Auto-initialize games for configured servers
-        log("Auto-initializing games for configured servers")
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL") as cursor:
-                rows = await cursor.fetchall()
+        if not self.dict_loaded:
+            log("⚠️  Dictionary not loaded, skipping game initialization")
+            return
         
-        for guild_id, channel_id in rows:
-            channel = self.bot.get_channel(channel_id)
-            if channel and guild_id not in self.games:
-                try:
-                    await self.start_new_round(guild_id, channel)
-                    log(f"Game initialized for guild {guild_id}")
-                except Exception as e:
-                    log(f"Failed to initialize game for guild {guild_id}: {e}")
+        log("Auto-initializing games for configured servers")
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL") as cursor:
+                    rows = await cursor.fetchall()
+            
+            for guild_id, channel_id in rows:
+                channel = self.bot.get_channel(channel_id)
+                if channel and guild_id not in self.games:
+                    try:
+                        await self.start_new_round(guild_id, channel)
+                        log(f"Game initialized for guild {guild_id}")
+                    except Exception as e:
+                        log(f"Failed to initialize game for guild {guild_id}: {e}")
+        except Exception as e:
+            log(f"ERROR initializing games: {e}")
 
     # --- Helper Functions ---
     async def get_config_channel(self, guild_id):
@@ -256,9 +280,22 @@ class GameNoiTu(commands.Cog):
 
     async def start_new_round(self, guild_id, channel):
         """Initialize new round"""
+        # Ensure dictionary is loaded
+        if not self.dict_loaded or not self.all_words_list:
+            log(f"❌ ERROR: Dictionary empty for guild {guild_id} (loaded={self.dict_loaded}, words={len(self.all_words_list)})")
+            # Try to reload dictionary
+            async with self.dict_load_lock:
+                await self._load_dictionary()
+            
+            # If still empty, can't start game
+            if not self.all_words_list:
+                await channel.send("❌ Lỗi: Từ điển chưa được load. Vui lòng thử lại sau!")
+                return
+        
         word = await self.get_valid_start_word()
         if not word:
-            log(f"ERROR: Dictionary empty for guild {guild_id}")
+            log(f"❌ ERROR: Could not get start word for guild {guild_id}")
+            await channel.send("❌ Lỗi: Không tìm được từ bắt đầu. Vui lòng thử lại sau!")
             return
 
         self.games[guild_id] = {
@@ -434,7 +471,7 @@ class GameNoiTu(commands.Cog):
                 if message.author.id == game['last_author_id']:
                     log(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
                     try:
-                            await message.add_reaction("🛑")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     await message.reply("Ko được tự reply, chờ người khác nhé", delete_after=5)
@@ -448,7 +485,7 @@ class GameNoiTu(commands.Cog):
                 if first_syllable != last_syllable:
                     log(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
                     try:
-                            await message.add_reaction("❗")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     await message.reply(f"Từ phải bắt đầu bằng **{last_syllable}**", delete_after=3)
@@ -458,7 +495,7 @@ class GameNoiTu(commands.Cog):
                 if content in game['used_words']:
                     log(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
                     try:
-                            await message.add_reaction("⛔")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     await message.reply("Từ này dùng rồi, tìm từ khác đi", delete_after=3)
@@ -468,7 +505,7 @@ class GameNoiTu(commands.Cog):
                 if not await self.check_word_in_db(content):
                     log(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
                     try:
-                            await message.add_reaction("❓")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     
@@ -479,7 +516,7 @@ class GameNoiTu(commands.Cog):
                         await message.reply(
                             f"Từ **{content}** không có trong từ điển. Bạn muốn gửi admin thêm từ này?",
                             view=view,
-                            delete_after=5
+                            delete_after=10
                         )
                     except Exception as e:
                         await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)

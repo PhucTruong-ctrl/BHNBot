@@ -119,13 +119,15 @@ class ConfigCog(commands.Cog):
     @app_commands.describe(
         kenh_noitu="Kenh choi noi tu (Game Channel)",
         kenh_admin="Kenh thong bao duyet tu (Admin Channel)",
-        kenh_giveaway="Kenh thong bao Giveaway"
+        kenh_giveaway="Kenh thong bao Giveaway",
+        kenh_soi="Kenh hop soi (Wolf Meeting Channel)"
     )
     @app_commands.checks.has_permissions(administrator=True)
     async def config_set(self, interaction: discord.Interaction, 
                          kenh_noitu: discord.TextChannel = None, 
                          kenh_admin: discord.TextChannel = None,
-                         kenh_giveaway: discord.TextChannel = None):
+                         kenh_giveaway: discord.TextChannel = None,
+                         kenh_soi: discord.TextChannel = None):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
@@ -135,7 +137,7 @@ class ConfigCog(commands.Cog):
         # 2. Defer ngay lập tức để tránh timeout 3s
         await interaction.response.defer(ephemeral=True)
 
-        if not any([kenh_noitu, kenh_admin, kenh_giveaway]):
+        if not any([kenh_noitu, kenh_admin, kenh_giveaway, kenh_soi]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -144,24 +146,27 @@ class ConfigCog(commands.Cog):
             print(f"CONFIG [Guild {guild_id}] Setting channels")
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get old config
-                async with db.execute("SELECT admin_channel_id, noitu_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT admin_channel_id, noitu_channel_id, wolf_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
                 old_admin = row[0] if row else None
                 old_noitu = row[1] if row else None
+                old_wolf = row[2] if row else None
 
                 # Merge
                 new_admin = kenh_admin.id if kenh_admin else old_admin
                 new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
+                new_wolf = kenh_soi.id if kenh_soi else old_wolf
                 
                 # Save
-                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, admin_channel_id, noitu_channel_id) VALUES (?, ?, ?)", 
-                                 (guild_id, new_admin, new_noitu))
+                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, admin_channel_id, noitu_channel_id, wolf_channel_id) VALUES (?, ?, ?, ?)", 
+                                 (guild_id, new_admin, new_noitu, new_wolf))
                 await db.commit()
                 print(f"CONFIG_SAVED [Guild {guild_id}]")
 
             msg = "Setup ok:\n"
             if kenh_noitu: msg += f"- Noi Tu: {kenh_noitu.mention}\n"
             if kenh_admin: msg += f"- Admin: {kenh_admin.mention}\n"
+            if kenh_soi: msg += f"- Wolf Meeting: {kenh_soi.mention}\n"
             
             await interaction.followup.send(msg)
 

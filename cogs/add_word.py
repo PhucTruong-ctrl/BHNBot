@@ -9,6 +9,16 @@ import os
 
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
+TU_DIEN_PATH = "./data/tu_dien.txt"
+
+def add_word_to_tu_dien(word: str):
+    """Add word to tu_dien.txt file for persistence"""
+    try:
+        with open(TU_DIEN_PATH, "a", encoding="utf-8") as f:
+            f.write(f'{{"text": "{word}", "source": ["user_added"]}}\n')
+        print(f"[ADD_WORD] Added to tu_dien.txt: {word}")
+    except Exception as e:
+        print(f"[ADD_WORD] Error adding to tu_dien.txt: {e}")
 
 class QuickAddWordView(discord.ui.View):
     """Quick add word view for game players - 25s timeout"""
@@ -48,7 +58,7 @@ class QuickAddWordView(discord.ui.View):
                 if second not in words_dict[first]:
                     words_dict[first].append(second)
                     
-                    # Atomic write
+                    # Atomic write to words_dict.json
                     try:
                         with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=os.path.dirname(WORDS_DICT_PATH)) as tmp:
                             json.dump(words_dict, tmp, ensure_ascii=False, indent=2)
@@ -59,6 +69,19 @@ class QuickAddWordView(discord.ui.View):
                         if os.path.exists(tmp_path):
                             os.unlink(tmp_path)
                         raise
+                    
+                    # Also add to tu_dien.txt for persistence
+                    add_word_to_tu_dien(self.word)
+                    
+                    # Reload dictionary in NoiTu cog
+                    try:
+                        from cogs.noitu import GameNoiTu
+                        noitu_cog = interaction.client.get_cog("GameNoiTu")
+                        if noitu_cog:
+                            await noitu_cog.reload_words_dict()
+                            print(f"[ADD_WORD] Dictionary reloaded in NoiTu cog")
+                    except Exception as e:
+                        print(f"[ADD_WORD] Warning: Could not reload dictionary: {e}")
                     
                     await interaction.followup.send(f"Từ `{self.word}` đã được thêm vào từ điển (admin auto-approve)", ephemeral=True)
                     print(f"[ADD_WORD] Admin {interaction.user.name} auto-approved word: {self.word}")
@@ -144,6 +167,19 @@ class PendingWordView(discord.ui.View):
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
                     raise
+                
+                # Also add to tu_dien.txt for persistence
+                add_word_to_tu_dien(self.word)
+                
+                # Reload dictionary in NoiTu cog
+                try:
+                    from cogs.noitu import GameNoiTu
+                    noitu_cog = interaction.client.get_cog("GameNoiTu")
+                    if noitu_cog:
+                        await noitu_cog.reload_words_dict()
+                        print(f"[ADD_WORD] Dictionary reloaded in NoiTu cog")
+                except Exception as e:
+                    print(f"[ADD_WORD] Warning: Could not reload dictionary: {e}")
                 
                 # Disable button
                 for item in self.children:
