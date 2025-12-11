@@ -11,9 +11,9 @@ DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
 
 class QuickAddWordView(discord.ui.View):
-    """Quick add word view for game players - 10s timeout"""
+    """Quick add word view for game players - 25s timeout"""
     def __init__(self, word, proposer_user, bot):
-        super().__init__(timeout=10)
+        super().__init__(timeout=25)
         self.word = word
         self.proposer_user = proposer_user
         self.bot = bot
@@ -37,6 +37,33 @@ class QuickAddWordView(discord.ui.View):
             # Check if word already exists
             if first in words_dict and second in words_dict[first]:
                 await interaction.followup.send(f"Từ `{self.word}` đã có sẵn trong từ điển", ephemeral=True)
+                return
+            
+            # Check if user is admin - if so, add directly without approval
+            if interaction.user.guild_permissions.administrator:
+                # Add word directly
+                if first not in words_dict:
+                    words_dict[first] = []
+                
+                if second not in words_dict[first]:
+                    words_dict[first].append(second)
+                    
+                    # Atomic write
+                    try:
+                        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=os.path.dirname(WORDS_DICT_PATH)) as tmp:
+                            json.dump(words_dict, tmp, ensure_ascii=False, indent=2)
+                            tmp_path = tmp.name
+                        shutil.move(tmp_path, WORDS_DICT_PATH)
+                    except Exception as e:
+                        print(f"[ADD_WORD] Error writing to file: {e}")
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
+                        raise
+                    
+                    await interaction.followup.send(f"Từ `{self.word}` đã được thêm vào từ điển (admin auto-approve)", ephemeral=True)
+                    print(f"[ADD_WORD] Admin {interaction.user.name} auto-approved word: {self.word}")
+                else:
+                    await interaction.followup.send(f"Từ `{self.word}` đã tồn tại", ephemeral=True)
                 return
             
             # Get admin channel from config
@@ -130,12 +157,6 @@ class PendingWordView(discord.ui.View):
                     color=discord.Color.green()
                 )
                 await self.admin_channel.send(embed=embed)
-                
-                # Reload dictionary in game cog
-                game_cog = self.admin_channel.guild._bot.get_cog("GameNoiTu") if hasattr(self.admin_channel.guild, '_bot') else None
-                if not game_cog:
-                    # Fallback: try to get from self.bot
-                    game_cog = self.admin_channel.guild._bot.get_cog("GameNoiTu") if hasattr(self.admin_channel, 'guild') else None
                 
                 print(f"[ADD_WORD] Added word '{self.word}' from {self.proposer_mention}")
             else:

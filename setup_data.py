@@ -11,6 +11,7 @@ def setup_folder():
         print(f"Created directory {DATA_DIR}")
 
 def init_database():
+    """Initialize SQLite database with server_config and player_stats tables."""
     print("Initializing SQLite Database...")
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -22,9 +23,18 @@ def init_database():
                     noitu_channel_id INTEGER
                 )''')
     
+    # Player Stats: Track wins and correct words per user
+    c.execute('''CREATE TABLE IF NOT EXISTS player_stats (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    wins INTEGER DEFAULT 0,
+                    correct_words INTEGER DEFAULT 0,
+                    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+    
     conn.commit()
     conn.close()
-    print("Done! Database initialized (server_config table ready).")
+    print("Done! Database initialized (server_config and player_stats tables ready).")
 
 if __name__ == "__main__":
     setup_folder()
