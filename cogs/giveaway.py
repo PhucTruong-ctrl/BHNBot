@@ -7,7 +7,7 @@ class Giveaway(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print('-> Module Giveaway đã sẵn sàng!')
+        print('-> Module Giveaway!')
 
 # Hàm setup bắt buộc phải có
 async def setup(bot):

@@ -7,7 +7,7 @@ class General(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print('-> Module General đã sẵn sàng!')
+        print('-> Module General!')
 
     @commands.command()
     async def ping(self, ctx):

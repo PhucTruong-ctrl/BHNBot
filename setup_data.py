@@ -45,7 +45,8 @@ def init_database(word_list):
     # 3. Server Config (NEW: To store admin channel ID)
     c.execute('''CREATE TABLE IF NOT EXISTS server_config (
                     guild_id INTEGER PRIMARY KEY,
-                    admin_channel_id INTEGER
+                    admin_channel_id INTEGER,
+                    noitu_channel_id INTEGER
                 )''')
 
     # Load data
