@@ -51,40 +51,69 @@ class ConfigCog(commands.Cog):
 
     config_group = app_commands.Group(name="config", description="Cài đặt hệ thống Bot")
 
-    reset_group = app_commands.Group(name="reset", description="Reset các trò chơi")
-
-    @reset_group.command(name="noitu", description="Reset game noi tu sang tu khac")
-    async def reset_noitu(self, interaction: discord.Interaction):
-        """Reset word chain game - no admin required"""
+    # Slash command: /reset
+    @app_commands.command(name="reset", description="Reset game trong kênh hiện tại")
+    async def reset_slash(self, interaction: discord.Interaction):
+        """Reset game in current channel"""
         await interaction.response.defer(ephemeral=True)
-        
+        await self._handle_reset(interaction.guild_id, interaction.channel_id, interaction)
+
+    # Prefix command: !reset
+    @commands.command(name="reset", description="Reset game trong kênh hiện tại")
+    async def reset_prefix(self, ctx):
+        """Reset game in current channel"""
+        await self._handle_reset(ctx.guild.id, ctx.channel.id, ctx)
+
+    async def _handle_reset(self, guild_id, channel_id, response_obj):
+        """Handle reset logic for both slash and prefix commands"""
         try:
-            guild_id = interaction.guild.id
-            
-            # Get current game config
+            # Get all configured channels for this guild
             async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute(
+                    "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
+                    (guild_id,)
+                ) as cursor:
                     row = await cursor.fetchone()
             
             if not row or not row[0]:
-                return await interaction.followup.send("Chưa setup kênh nối từ, dùng /config set trước")
-            
-            channel = self.bot.get_channel(row[0])
-            if not channel:
-                return await interaction.followup.send("Ko tìm thấy kênh nối từ")
-            
-            # Reset game
-            game_cog = self.bot.get_cog("GameNoiTu")
-            if game_cog:
-                await game_cog.start_new_round(guild_id, channel)
-                await interaction.followup.send(f"Reset game ok, check {channel.mention}")
+                if isinstance(response_obj, commands.Context):
+                    await response_obj.send("Ko có game nào setup ở server này")
+                else:
+                    await response_obj.followup.send("Ko có game nào setup ở server này")
+                return
+
+            noitu_channel_id = row[0]
+
+            # Check if current channel matches any game channel
+            if channel_id == noitu_channel_id:
+                # Reset nối từ game
+                game_cog = self.bot.get_cog("GameNoiTu")
+                if game_cog:
+                    channel = self.bot.get_channel(channel_id)
+                    if channel:
+                        await game_cog.start_new_round(guild_id, channel)
+                        msg = "Reset game nối từ ok"
+                    else:
+                        msg = "Ko tìm thấy kênh"
+                else:
+                    msg = "Ko tìm thấy game cog"
             else:
-                await interaction.followup.send("Lỗi: Ko tìm thấy game cog")
-                
+                msg = "Kênh này ko có game nào"
+
+            # Send response
+            if isinstance(response_obj, commands.Context):
+                await response_obj.send(msg)
+            else:
+                await response_obj.followup.send(msg)
+
         except Exception as e:
             import traceback
             traceback.print_exc()
-            await interaction.followup.send(f"Lỗi: {str(e)}")
+            error_msg = f"Lỗi: {str(e)}"
+            if isinstance(response_obj, commands.Context):
+                await response_obj.send(error_msg)
+            else:
+                await response_obj.followup.send(error_msg)
 
     @config_group.command(name="set", description="Thiet lap cac kenh chuc nang (Admin Only)")
     @app_commands.describe(
