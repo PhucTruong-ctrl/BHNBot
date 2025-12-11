@@ -3,9 +3,11 @@ from discord.ext import commands
 import aiosqlite
 import asyncio
 import random
+import json
 from datetime import datetime
 
 DB_PATH = "./data/database.db"
+WORDS_DICT_PATH = "./data/words_dict.json"
 
 def log(message):
     """Log with timestamp"""
@@ -19,11 +21,40 @@ class GameNoiTu(commands.Cog):
         self.games = {}
         # Lock to prevent race condition (Guild ID -> asyncio.Lock)
         self.game_locks = {}
+        # Words dictionary (memory-based): {first_syllable: [possible_second_syllables]}
+        self.words_dict = {}
+        # All words for random selection
+        self.all_words = set()
+        # Cached list for faster random selection (avoid O(n) conversion)
+        self.all_words_list = []
 
     @commands.Cog.listener()
     async def on_ready(self):
         """Auto-initialize games for all configured servers on bot startup"""
-        log("Bot started - Auto-initializing games for configured servers")
+        log("Bot started - Loading words dictionary")
+        
+        # Load words dictionary from file
+        try:
+            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                self.words_dict = json.load(f)
+            
+            # Build set of all words for random selection
+            for first, seconds in self.words_dict.items():
+                for second in seconds:
+                    word = f"{first} {second}"
+                    self.all_words.add(word)
+                    self.all_words_list.append(word)
+            
+            log(f"Loaded words dict: {len(self.words_dict)} starting syllables, {len(self.all_words)} total words")
+        except FileNotFoundError:
+            log(f"ERROR: {WORDS_DICT_PATH} not found. Run: python build_words_dict.py")
+            return
+        except Exception as e:
+            log(f"ERROR loading words dict: {e}")
+            return
+        
+        # Auto-initialize games for configured servers
+        log("Auto-initializing games for configured servers")
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL") as cursor:
                 rows = await cursor.fetchall()
@@ -45,25 +76,44 @@ class GameNoiTu(commands.Cog):
                 return row[0] if row else None
 
     async def get_random_word(self):
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute("SELECT word FROM dictionary WHERE word LIKE '% %' AND word NOT LIKE '% % %' ORDER BY RANDOM() LIMIT 1") as cursor:
-                row = await cursor.fetchone()
-                return row[0] if row else None
+        """Get random 2-syllable word from memory dictionary"""
+        if not self.all_words_list:
+            return None
+        return random.choice(self.all_words_list)
+
+    async def get_valid_start_word(self):
+        """Get random start word that has at least one continuation (no dead-end)"""
+        max_attempts = 50
+        for _ in range(max_attempts):
+            word = await self.get_random_word()
+            if not word:
+                return None
+            
+            # Check if this word has a possible next word
+            if await self.check_if_word_has_next(word, {word}):
+                return word
+        
+        # Fallback: return any random word
+        return await self.get_random_word()
 
     async def check_word_in_db(self, word):
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute("SELECT 1 FROM dictionary WHERE word = ?", (word.lower(),)) as cursor:
-                return await cursor.fetchone() is not None
+        """Check if word exists in dictionary (memory-based)"""
+        return word in self.all_words
 
     async def check_if_word_has_next(self, current_word, used_words):
+        """Check if there's any valid next word (memory-based lookup)"""
         last_syllable = current_word.split()[-1]
-        search_pattern = f"{last_syllable} %"
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute("SELECT word FROM dictionary WHERE word LIKE ? AND word NOT LIKE '% % %'", (search_pattern,)) as cursor:
-                rows = await cursor.fetchall()
-                for row in rows:
-                    if row[0] not in used_words:
-                        return True
+        
+        # Check if last syllable exists in dictionary
+        if last_syllable not in self.words_dict:
+            return False
+        
+        # Check if any next word hasn't been used
+        for next_second in self.words_dict[last_syllable]:
+            next_full_word = f"{last_syllable} {next_second}"
+            if next_full_word not in used_words:
+                return True
+        
         return False
 
     def get_game_lock(self, guild_id):
@@ -71,10 +121,35 @@ class GameNoiTu(commands.Cog):
         if guild_id not in self.game_locks:
             self.game_locks[guild_id] = asyncio.Lock()
         return self.game_locks[guild_id]
+    
+    async def reload_words_dict(self):
+        """Reload dictionary from file (after new words added)"""
+        try:
+            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                self.words_dict = json.load(f)
+            
+            # Rebuild set and list
+            self.all_words.clear()
+            self.all_words_list.clear()
+            
+            for first, seconds in self.words_dict.items():
+                for second in seconds:
+                    word = f"{first} {second}"
+                    self.all_words.add(word)
+                    self.all_words_list.append(word)
+            
+            log(f"Reloaded words dict: {len(self.all_words)} total words")
+        except Exception as e:
+            log(f"ERROR reloading words dict: {e}")
+    
+    def cleanup_game_lock(self, guild_id):
+        """Clean up lock after game ends (prevent memory leak)"""
+        if guild_id in self.game_locks:
+            del self.game_locks[guild_id]
 
     async def start_new_round(self, guild_id, channel):
         """Initialize new round"""
-        word = await self.get_random_word()
+        word = await self.get_valid_start_word()
         if not word:
             log(f"ERROR: Dictionary empty for guild {guild_id}")
             return
@@ -85,29 +160,86 @@ class GameNoiTu(commands.Cog):
             "used_words": {word},
             "last_author_id": None,
             "timer_task": None,
-            "player_count": 0
+            "timer_message": None,
+            "player_count": 0,
+            "last_message_time": None
         }
         
         log(f"GAME_START [Guild {guild_id}] Starting word: '{word}'")
         await channel.send(f"Từ khởi đầu: **{word}**\nChờ người chơi nhập vào...")
 
-    async def game_timer(self, guild_id, channel):
-        """Timer 15s"""
+    async def game_timer(self, guild_id, channel, start_time):
+        """Timer 25s từ tin nhắn cuối cùng với visual countdown"""
         try:
-            await asyncio.sleep(15)
+            import time
             
+            # Record the time when timer starts
+            timer_start_time = time.time()
+            
+            # Send initial 25 second countdown message
+            game_data = self.games.get(guild_id)
+            if not game_data:
+                return
+            
+            timer_msg = await channel.send("25 giây...")
+            game_data['timer_message'] = timer_msg
+            
+            # Countdown loop
+            for countdown in range(29, -1, -1):
+                await asyncio.sleep(1)
+                
+                game_data = self.games.get(guild_id)
+                if not game_data:
+                    return
+                
+                # Check nếu có tin nhắn mới TRONG khoảng thời gian timer đang chạy
+                # Nếu last_message_time được cập nhật SAU khi timer bắt đầu, nghĩa là có move mới
+                if game_data['last_message_time'] and game_data['last_message_time'] > timer_start_time:
+                    # Có tin nhắn mới, hủy timer
+                    try:
+                        await timer_msg.delete()
+                    except:
+                        pass
+                    log(f"TIMER_SKIP [Guild {guild_id}] New message received, timer cancelled")
+                    return
+                
+                # Edit message with countdown
+                try:
+                    if countdown > 0:
+                        await timer_msg.edit(content=f"{countdown} giây...")
+                    else:
+                        await timer_msg.edit(content="Hết giờ!")
+                except:
+                    pass
+            
+            # Timer ended - calculate winner
             game_data = self.games.get(guild_id)
             if game_data and game_data['last_author_id']:
                 winner_id = game_data['last_author_id']
                 word = game_data['current_word']
                 
                 log(f"TIMEOUT [Guild {guild_id}] Winner: {winner_id} with word '{word}'")
+                
+                # Edit timer message to show timeout
+                try:
+                    await timer_msg.edit(content="Hết giờ!")
+                except:
+                    pass
+                
+                # Send new message with winner info
                 await channel.send(f"Hết giờ! <@{winner_id}> win với từ **{word}**")
                 
                 await self.start_new_round(guild_id, channel)
             
         except asyncio.CancelledError:
             log(f"TIMER_CANCEL [Guild {guild_id}] Next player made move")
+            # Clean up timer message
+            try:
+                game_data = self.games.get(guild_id)
+                if game_data and game_data.get('timer_message'):
+                    await game_data['timer_message'].delete()
+            except:
+                pass
             pass
 
     # --- Events (Core Logic) ---
@@ -153,7 +285,7 @@ class GameNoiTu(commands.Cog):
                 if len(content.split()) != 2:
                     log(f"INVALID_FORMAT [Guild {guild_id}] {message.author.name}: '{content}'")
                     try:
-                        await message.add_reaction("❌")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     return 
@@ -162,7 +294,7 @@ class GameNoiTu(commands.Cog):
                 if message.author.id == game['last_author_id']:
                     log(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
                     try:
-                        await message.add_reaction("❌")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     await message.reply("Ko được tự reply, chờ người khác nhé", delete_after=5)
@@ -176,16 +308,17 @@ class GameNoiTu(commands.Cog):
                 if first_syllable != last_syllable:
                     log(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
                     try:
-                        await message.add_reaction("❌")
+                            await message.add_reaction("❌")
                     except:
                         pass
+                    await message.reply(f"Từ phải bắt đầu bằng **{last_syllable}**", delete_after=3)
                     return
 
                 # Check used
                 if content in game['used_words']:
                     log(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
                     try:
-                        await message.add_reaction("❌")
+                            await message.add_reaction("❌")
                     except:
                         pass
                     await message.reply("Từ này dùng rồi, tìm từ khác đi", delete_after=3)
@@ -195,44 +328,82 @@ class GameNoiTu(commands.Cog):
                 if not await self.check_word_in_db(content):
                     log(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
                     try:
-                        await message.add_reaction("❌")
+                            await message.add_reaction("❌")
                     except:
                         pass
-                    await message.reply("Từ này ko có trong từ điển, sorry", delete_after=3)
+                    
+                    # Import QuickAddWordView from add_word cog
+                    try:
+                        from cogs.add_word import QuickAddWordView
+                        view = QuickAddWordView(content, message.author, self.bot)
+                        await message.reply(
+                            f"Từ **{content}** không có trong từ điển. Bạn muốn gửi admin thêm từ này?",
+                            view=view,
+                            delete_after=5
+                        )
+                    except Exception as e:
+                        await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)
                     return
 
                 # === VALID MOVE ===
                 try:
-                    await message.add_reaction("✅")
+                        await message.add_reaction("✅")
                 except:
                     pass
                 log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (player #{game['player_count'] + 1})")
                 
-                # 1. Cancel old timer
+                # 1. Cancel old timer and delete timer message
                 if game['timer_task']:
                     game['timer_task'].cancel()
+                    # Delete timer message
+                    try:
+                        if game.get('timer_message'):
+                            await game['timer_message'].delete()
+                            game['timer_message'] = None
+                    except:
+                        pass
+                    log(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
                 
                 # 2. Update player count
                 game['player_count'] += 1
                 
-                # 3. Check Dead End
-                has_next = await self.check_if_word_has_next(content, game['used_words'])
+                # Notify when Player 2 joins
+                if game['player_count'] == 2:
+                    try:
+                        await message.channel.send("Nối từ bắt đầu!")
+                    except:
+                        pass
                 
-                if not has_next:
-                    log(f"DEAD_END [Guild {guild_id}] No words starting with '{content.split()[-1]}' - Winner: {message.author.name}")
-                    await message.channel.send(f"Bí từ! Ko có từ nào bắt đầu bằng **{content.split()[-1]}**. {message.author.mention} win")
-                    await self.start_new_round(guild_id, message.channel)
-                    return
-
-                # 4. Update State
+                # 3. Update State trước (add từ vào used_words)
                 game['current_word'] = content
                 game['used_words'].add(content)
                 game['last_author_id'] = message.author.id
                 
-                # 5. Start timer only after 2nd player joins
+                # 4. Update last_message_time
+                import time
+                game['last_message_time'] = time.time()
+                
+                # 5. Check Dead End (kiểm tra với từ mới đã thêm vào used_words)
+                has_next = await self.check_if_word_has_next(content, game['used_words'])
+                
+                if not has_next:
+                    log(f"DEAD_END [Guild {guild_id}] No words starting with '{content.split()[-1]}' - Winner: {message.author.name}")
+                    
+                    # Special message if player count is 1 (first player)
+                    if game['player_count'] == 1:
+                        await message.channel.send(f"Chơi 1 mình luôn đi ba! {message.author.mention} win")
+                    else:
+                        await message.channel.send(f"Bí từ! Ko có từ nào bắt đầu bằng **{content.split()[-1]}**. {message.author.mention} win")
+                    
+                    # Cleanup lock before starting new round
+                    self.cleanup_game_lock(guild_id)
+                    await self.start_new_round(guild_id, message.channel)
+                    return
+                
+                # 6. Start timer only after 2nd player joins
                 if game['player_count'] >= 2:
-                    log(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players)")
-                    game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel))
+                    log(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
+                    game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, game['last_message_time']))
                 else:
                     log(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
                     await message.channel.send(f"Chờ người chơi thứ 2 vào nha ({game['player_count']}/2)")

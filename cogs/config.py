@@ -102,9 +102,9 @@ class ConfigCog(commands.Cog):
 
             # Send response
             if isinstance(response_obj, commands.Context):
-                await response_obj.send(msg)
+                await response_obj.send(msg, delete_after=3)
             else:
-                await response_obj.followup.send(msg)
+                await response_obj.followup.send(msg, delete_after=3)
 
         except Exception as e:
             import traceback

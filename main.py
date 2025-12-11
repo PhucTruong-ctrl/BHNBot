@@ -1,6 +1,7 @@
 import discord
 import os
 import asyncio
+import subprocess
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -52,6 +53,16 @@ async def load_cogs():
 # Chạy bot
 async def main():
     async with bot:
+        # Rebuild words dictionary before loading cogs
+        print("\n[REBUILDING WORDS DICT]")
+        try:
+            result = subprocess.run(['python', 'build_words_dict.py'], capture_output=True, text=True)
+            print(result.stdout)
+            if result.returncode != 0:
+                print(f"Error: {result.stderr}")
+        except Exception as e:
+            print(f"Error building words dict: {e}")
+        
         await load_cogs()
         await bot.start(os.getenv('DISCORD_TOKEN'))
 
