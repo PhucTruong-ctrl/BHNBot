@@ -107,8 +107,7 @@ class VoteSession:
             target_id,
             self.title,
         )
-        if all(choice is not None for choice in self._votes.values()):
-            self.end()
+        # Don't end early - wait for full duration to show all actions
 
     async def _refresh_message(self) -> None:
         if not self._message:

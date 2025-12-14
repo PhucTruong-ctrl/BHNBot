@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .. import register_role
 from ..base import Alignment, Expansion, Role, RoleMetadata
+
+if TYPE_CHECKING:
+    from ...engine.game import WerewolfGame
+    from ...engine.state import PlayerState
 
 
 @register_role
@@ -12,20 +18,50 @@ class Hunter(Role):
         name="Thợ Săn",
         alignment=Alignment.VILLAGE,
         expansion=Expansion.BASIC,
-        description="Nếu bạn chết, bạn được quyền kéo theo một người khác cùng chết.",
+        description="Mỗi đêm chọn 1 người. Nếu bị giết, người đó chết theo. Nếu bị treo cổ, chọn 1 người để bắn.",
+        night_order=75,
         card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/hunter.png",
     )
 
-    async def on_death(self, game, player, cause: str) -> None:  # type: ignore[override]
+    def __init__(self) -> None:
+        super().__init__()
+        self.marked_target: int | None = None
+
+    async def on_night(self, game: WerewolfGame, player: PlayerState, night_number: int) -> None:  # type: ignore[override]
+        """Each night, Hunter chooses someone to mark."""
         choices = {p.user_id: p.display_name() for p in game.alive_players() if p.user_id != player.user_id}
         if not choices:
             return
+        
         target_id = await game._prompt_dm_choice(  # pylint: disable=protected-access
             player,
-            title="Thợ săn trả thù",
-            description="Chọn một người để bắn trước khi gục ngã.",
+            title="Thợ Săn - Đánh Dấu Mục Tiêu",
+            description="Chọn 1 người để đánh dấu. Nếu bạn chết đêm nay, người này sẽ chết theo.",
             options=choices,
-            allow_skip=True,
+            allow_skip=False,
         )
         if target_id and target_id in choices:
-            game._pending_deaths.append((target_id, "hunter"))  # pylint: disable=protected-access
+            self.marked_target = target_id
+
+    async def on_death(self, game: WerewolfGame, player: PlayerState, cause: str) -> None:  # type: ignore[override]
+        """When Hunter dies, take someone with them."""
+        if cause == "lynch":
+            # Voted out - choose who to shoot
+            choices = {p.user_id: p.display_name() for p in game.alive_players() if p.user_id != player.user_id}
+            if not choices:
+                return
+            target_id = await game._prompt_dm_choice(  # pylint: disable=protected-access
+                player,
+                title="Thợ Săn Trả Thù",
+                description="Bạn bị treo cổ! Chọn 1 người để bắn trước khi gục ngã.",
+                options=choices,
+                allow_skip=True,
+            )
+            if target_id and target_id in choices:
+                game._pending_deaths.append((target_id, "hunter"))  # pylint: disable=protected-access
+        else:
+            # Killed by other means (wolves, witch, etc) - use marked target
+            if self.marked_target and self.marked_target in game.players:
+                target_player = game.players.get(self.marked_target)
+                if target_player and target_player.alive:
+                    game._pending_deaths.append((self.marked_target, "hunter"))  # pylint: disable=protected-access
