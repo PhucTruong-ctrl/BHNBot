@@ -130,6 +130,10 @@ class WerewolfGame:
     def alive_players(self) -> List[PlayerState]:
         return [p for p in self.players.values() if p.alive and not p.death_pending]
 
+    def _is_player_eligible_for_action(self, player: PlayerState) -> bool:
+        """Check if player can take night/day actions (alive and not pending death)."""
+        return player.alive and not player.death_pending
+
     def alive_by_alignment(self, alignment: Alignment) -> List[PlayerState]:
         result = [p for p in self.alive_players() if any(r.alignment == alignment for r in p.roles)]
         logger.info(">>> alive_by_alignment | guild=%s alignment=%s count=%s", 
@@ -287,20 +291,49 @@ class WerewolfGame:
         for pid, cause in self._pending_deaths:
             if pid not in unique:
                 unique[pid] = cause
-        self._pending_deaths.clear()
         
-        # Store the list of died player IDs for wild child check
+        # Store the list of died player IDs for wild child check BEFORE clearing
         died_players = list(unique.keys())
         
-        for pid, cause in unique.items():
-            player = self.players.get(pid)
-            if player and player.alive:
+        # SECURITY: Only clear after we have copied the list
+        self._pending_deaths.clear()
+        
+        try:
+            for pid, cause in unique.items():
+                player = self.players.get(pid)
+                if not player:
+                    logger.warning("Player not found for death resolution | guild=%s pid=%s", 
+                                   self.guild.id, pid)
+                    continue
+                # SECURITY: Double-check player is alive and not already marked dead
+                if not player.alive or player.death_pending:
+                    logger.warning("Skipping death resolution for already-dead player | guild=%s player=%s", 
+                                   self.guild.id, pid)
+                    continue
                 player.alive = False
                 player.death_pending = True
-                await self._handle_death(player, cause=cause)
+                try:
+                    await self._handle_death(player, cause=cause)
+                except Exception as e:
+                    logger.error(
+                        "Error in _handle_death | guild=%s player=%s cause=%s error=%s",
+                        self.guild.id, pid, cause, str(e), exc_info=True
+                    )
+                    # Continue processing other deaths even if one fails
+        except Exception as e:
+            logger.error(
+                "Error in _resolve_pending_deaths | guild=%s error=%s",
+                self.guild.id, str(e), exc_info=True
+            )
         
         # Check if any wild children should transform
-        await self._check_wild_child_transformation(died_players)
+        try:
+            await self._check_wild_child_transformation(died_players)
+        except Exception as e:
+            logger.error(
+                "Error in _check_wild_child_transformation | guild=%s error=%s",
+                self.guild.id, str(e), exc_info=True
+            )
 
     async def _check_wild_child_transformation(self, died_player_ids: List[int]) -> None:
         """Check if any Wild Child should transform into werewolf."""
@@ -549,10 +582,8 @@ class WerewolfGame:
             embed.add_field(name="Phe", value=player.faction_view(), inline=True)
             embed.add_field(name="Đồng đội", value=wolf_names if any(r.alignment == Alignment.WEREWOLF for r in roles) else "Ẩn danh", inline=True)
             embed.set_thumbnail(url=role.metadata.card_image_url)
-            try:
-                await player.member.send(embed=embed)
-            except discord.HTTPException:
-                await self.channel.send(f"Không thể gửi DM cho {player.display_name()}. Hãy bật DM để chơi.")
+            # SECURITY: Use safe DM with error handling
+            await self._safe_send_dm(player.member, embed=embed)
 
     async def _announce_role_composition(self) -> None:
         """Announce all roles in the game at the start."""
@@ -835,42 +866,48 @@ class WerewolfGame:
         pyro = self._find_role_holder("Kẻ Phóng Hỏa")
         if pyro and not getattr(pyro.role, "ignited", False):
             duration += 60
-        return max(duration, 30)  # Minimum 30s
+        # Night intro duration
+        duration += self.settings.night_intro_duration
+        return max(duration, 60)  # Minimum 60s
 
     async def _resolve_role_sequence(self, *, first_night: bool) -> None:
         try:
+            announce_task = None
             thief = self._find_role_holder("Tên Trộm")
-            if first_night and thief:
+            if first_night and thief and self._is_player_eligible_for_action(thief):
                 announce_task = self._announce_role_action(thief.role)
                 await self._handle_thief(thief)
-                await announce_task
+                if announce_task:
+                    await announce_task
                 logger.info("Thief resolved | guild=%s player=%s", self.guild.id, thief.user_id)
             cupid = self._find_role_holder("Thần Tình Yêu")
-            if first_night and cupid:
+            if first_night and cupid and self._is_player_eligible_for_action(cupid):
                 announce_task = self._announce_role_action(cupid.role)
                 await self._handle_cupid(cupid)
-                await announce_task
+                if announce_task:
+                    await announce_task
                 logger.info("Cupid resolved | guild=%s player=%s", self.guild.id, cupid.user_id)
             
             wolves = [p for p in self.alive_players() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
+            announce_task = None
             if wolves:
                 announce_task = self._announce_role_action(wolves[0].roles[0])
             
             # Handle little girl peeking before wolf vote (so wolves can see the discovery message)
             little_girl = self._find_role_holder("Cô Bé")
-            if little_girl:
+            if little_girl and self._is_player_eligible_for_action(little_girl):
                 await self._handle_little_girl(little_girl)
             
             # Run wolf vote - if little girl was discovered, wolves can choose to kill her instead
             target_id = await self._run_wolf_vote()
-            if wolves:
+            if announce_task:
                 await announce_task
             logger.info("Wolf vote target | guild=%s night=%s target=%s", self.guild.id, self.night_number, target_id)
             
             # If little girl was discovered, ask wolves quickly if they want to switch kill to her
             if self._little_girl_peeking:
                 try:
-                    # Run a quick yes/no vote in wolf thread
+                    # Run a quick yes/no vote in wolf thread - NO COUNTDOWN, IMMEDIATE
                     channel = self._wolf_thread or self.channel
                     options = {
                         self._little_girl_peeking: "Giết người hé mắt (Cô Bé)",
@@ -895,10 +932,11 @@ class WerewolfGame:
                     self._little_girl_peeking = None
             
             guard = self._find_role_holder("Bảo Vệ")
-            if guard:
+            announce_task = None
+            if guard and self._is_player_eligible_for_action(guard):
                 announce_task = self._announce_role_action(guard.role)
-            protected_id = await self._handle_guard(guard) if guard else None
-            if guard:
+            protected_id = await self._handle_guard(guard) if guard and self._is_player_eligible_for_action(guard) else None
+            if announce_task:
                 await announce_task
             logger.info("Guard protected | guild=%s night=%s target=%s", self.guild.id, self.night_number, protected_id)
             killed_id = target_id if target_id != protected_id else None
@@ -906,41 +944,47 @@ class WerewolfGame:
                 killed_id = None
             
             white_wolf = self._find_role_holder("Sói Trắng")
+            announce_task = None
             if white_wolf and self.night_number % 2 == 0:
                 announce_task = self._announce_role_action(white_wolf.role)
             betrayer_kill = await self._handle_white_wolf(white_wolf) if white_wolf else None
-            if white_wolf and self.night_number % 2 == 0:
+            if announce_task:
                 await announce_task
             
             seer = self._find_role_holder("Tiên Tri")
             if seer:
                 announce_task = self._announce_role_action(seer.role)
                 await self._handle_seer(seer)
-                await announce_task
+                if announce_task:
+                    await announce_task
             
             witch = self._find_role_holder("Phù Thủy")
             if witch:
                 announce_task = self._announce_role_action(witch.role)
                 killed_id = await self._handle_witch(witch, killed_id)
-                await announce_task
+                if announce_task:
+                    await announce_task
             
             raven = self._find_role_holder("Con Quạ")
             if raven:
                 announce_task = self._announce_role_action(raven.role)
                 await self._handle_raven(raven)
-                await announce_task
+                if announce_task:
+                    await announce_task
             
             piper = self._find_role_holder("Thổi Sáo")
             if piper:
                 announce_task = self._announce_role_action(piper.role)
                 await self._handle_piper(piper)
-                await announce_task
+                if announce_task:
+                    await announce_task
             
             pyro = self._find_role_holder("Kẻ Phóng Hỏa")
             if pyro and not getattr(pyro.role, "ignited", False):
                 announce_task = self._announce_role_action(pyro.role)
                 await self._handle_pyromaniac(pyro)
-                await announce_task
+                if announce_task:
+                    await announce_task
             
             if killed_id:
                 self._pending_deaths.append((killed_id, "wolves"))
@@ -1459,6 +1503,12 @@ class WerewolfGame:
             logger.info("Win condition met: Village wins | guild=%s (no wolves left)", self.guild.id)
             return True
         
+        # Wolves win if equal to or greater than villagers
+        if len(wolves) >= len(villagers) and villagers:
+            self._winner = Alignment.WEREWOLF
+            logger.info("Win condition met: Werewolf wins | guild=%s (wolves=%s >= villagers=%s)", self.guild.id, len(wolves), len(villagers))
+            return True
+        
         # Special case: 1 wolf vs 1 elder - wolf wins if elder has been hit once already
         if len(wolves) == 1 and len(villagers) == 1 and not neutrals:
             elder_role = None
@@ -1733,6 +1783,47 @@ class WerewolfGame:
             return
         with contextlib.suppress(discord.HTTPException):
             await message.edit(content=f"{label}: hết giờ")
+
+    async def _safe_send_dm(self, member: discord.Member, content: Optional[str] = None, embed: Optional[discord.Embed] = None, max_retries: int = 2) -> bool:
+        """Send DM to player with retry logic and fallback notification. Returns True if sent successfully."""
+        if not member:
+            return False
+        
+        for attempt in range(max_retries):
+            try:
+                await member.send(content=content, embed=embed)
+                return True
+            except discord.Forbidden:
+                # User has DMs disabled - notify in game channel if possible
+                try:
+                    fallback_msg = embed.title if embed else content
+                    await self.channel.send(
+                        f"⚠️ Không thể gửi DM cho {member.mention} - họ đã tắt DMs. "
+                        f"Thông tin: {fallback_msg}"
+                    )
+                except discord.HTTPException:
+                    pass
+                logger.warning(
+                    "User has DMs disabled | guild=%s member=%s",
+                    self.guild.id, member.id
+                )
+                return False
+            except discord.HTTPException as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1)  # Retry after 1 second
+                    continue
+                logger.error(
+                    "Failed to send DM after %d attempts | guild=%s member=%s error=%s",
+                    max_retries, self.guild.id, member.id, str(e)
+                )
+                return False
+            except Exception as e:
+                logger.error(
+                    "Unexpected error sending DM | guild=%s member=%s error=%s",
+                    self.guild.id, member.id, str(e), exc_info=True
+                )
+                return False
+        return False
 
 
 class _LobbyView(discord.ui.View):

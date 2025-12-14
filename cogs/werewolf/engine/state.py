@@ -27,10 +27,10 @@ class GameSettings:
     expansions: Set[Expansion] = field(default_factory=set)
     wolf_thread_name: str = "Hội Sói"
     lobby_timeout: int = 180
-    night_intro_duration: int = 15
-    night_vote_duration: int = 45
-    day_discussion_duration: int = 30
-    day_vote_duration: int = 60
+    night_intro_duration: int = 30
+    night_vote_duration: int = 90
+    day_discussion_duration: int = 60
+    day_vote_duration: int = 120
     allow_self_target_roles: Set[str] = field(default_factory=set)
 
 

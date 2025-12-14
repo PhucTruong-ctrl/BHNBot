@@ -44,11 +44,19 @@ class VoteSession:
         self.description = description
         self.options = options
         self.eligible_voters = set(eligible_voters)
+        # SECURITY: Ensure duration is positive
+        if duration <= 0:
+            duration = 60
         self.duration = duration
         self.allow_skip = allow_skip
 
         self._votes: Dict[int, Optional[int]] = {voter: None for voter in self.eligible_voters}
-        self.vote_weights = vote_weights or {}
+        # SECURITY: Filter vote_weights to only include eligible voters with positive values
+        self.vote_weights = {}
+        if vote_weights:
+            for voter, weight in vote_weights.items():
+                if voter in self.eligible_voters and isinstance(weight, int) and weight > 0:
+                    self.vote_weights[voter] = weight
         self._message: Optional[discord.Message] = None
         self._finished = asyncio.Event()
         self._timeout_task: Optional[asyncio.Task] = None
@@ -97,8 +105,22 @@ class VoteSession:
             self._finished.set()
 
     async def handle_vote(self, voter_id: int, target_id: Optional[int]) -> None:
+        # SECURITY: Validate voter exists and target is valid
         if voter_id not in self._votes:
+            logging.getLogger("werewolf").warning(
+                "Attempted vote from ineligible voter | voter=%s title=%s",
+                voter_id, self.title
+            )
             return
+        
+        # SECURITY: Validate target_id is None or in options
+        if target_id is not None and target_id not in self.options:
+            logging.getLogger("werewolf").warning(
+                "Attempted vote for invalid target | voter=%s target=%s title=%s",
+                voter_id, target_id, self.title
+            )
+            return
+        
         self._votes[voter_id] = target_id
         await self._refresh_message()
         logging.getLogger("werewolf").info(
@@ -152,7 +174,17 @@ class VoteSession:
         for voter, target in self._votes.items():
             if target is None:
                 continue
+            # SECURITY: Only count votes from eligible voters
+            if voter not in self.eligible_voters:
+                logging.getLogger("werewolf").warning(
+                    "Discarding vote from ineligible voter in result | voter=%s",
+                    voter
+                )
+                continue
             weight = self.vote_weights.get(voter, 1)
+            # SECURITY: Validate weight is positive integer
+            if not isinstance(weight, int) or weight < 1:
+                weight = 1
             counts[target] += weight
         if not counts:
             return VoteResult(winning_target_id=None, tally=counts, is_tie=True, votes_by_voter=dict(self._votes))

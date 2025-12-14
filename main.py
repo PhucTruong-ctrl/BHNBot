@@ -31,7 +31,7 @@ async def on_ready():
     print(f'Login successfully as: {bot.user} (ID: {bot.user.id})')
     print('------')
     # Set trạng thái cho bot
-    await bot.change_presence(activity=discord.Game(name="Chức năng khả dụng: Nối từ, Ma Sói."))
+    await bot.change_presence(activity=discord.Game(name="Cuộn len bên hiên nhà 🧶"))
     
     # Load cogs on first ready only
     if not bot.cogs_loaded:
