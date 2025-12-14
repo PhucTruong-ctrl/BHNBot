@@ -128,7 +128,10 @@ class WerewolfGame:
         return [p for p in self.players.values() if p.alive and not p.death_pending]
 
     def alive_by_alignment(self, alignment: Alignment) -> List[PlayerState]:
-        return [p for p in self.alive_players() if p.role and p.role.alignment == alignment]
+        result = [p for p in self.alive_players() if p.role and p.role.alignment == alignment]
+        logger.info(">>> alive_by_alignment | guild=%s alignment=%s count=%s", 
+                     self.guild.id, alignment.value, len(result))
+        return result
 
     async def add_player(self, member: discord_abc.User) -> None:
         if self.phase != Phase.LOBBY:
@@ -157,8 +160,10 @@ class WerewolfGame:
             return
         if expansion in self.settings.expansions:
             self.settings.expansions.remove(expansion)
+            logger.info("Expansion disabled | guild=%s expansion=%s", self.guild.id, expansion.value)
         else:
             self.settings.expansions.add(expansion)
+            logger.info("Expansion enabled | guild=%s expansion=%s", self.guild.id, expansion.value)
         await self._refresh_lobby()
 
     async def start(self) -> None:
@@ -184,12 +189,32 @@ class WerewolfGame:
         try:
             while not self.is_finished and not self._stop_event.is_set():
                 await self._run_night()
-                if self._check_win_condition():
-                    break
+                logger.info("After night: checking win condition | guild=%s night=%s", 
+                            self.guild.id, self.night_number)
+                try:
+                    if self._check_win_condition():
+                        logger.info("Game ending after night | guild=%s winner=%s", 
+                                    self.guild.id, self._winner.value if self._winner else None)
+                        break
+                except Exception as e:
+                    logger.error("Exception in _check_win_condition after night | guild=%s error=%s", 
+                                self.guild.id, str(e), exc_info=True)
+                    raise
                 await self._run_day()
-                if self._check_win_condition():
-                    break
+                logger.info("After day: checking win condition | guild=%s day=%s", 
+                            self.guild.id, self.day_number)
+                try:
+                    if self._check_win_condition():
+                        logger.info("Game ending after day | guild=%s winner=%s", 
+                                    self.guild.id, self._winner.value if self._winner else None)
+                        break
+                except Exception as e:
+                    logger.error("Exception in _check_win_condition after day | guild=%s error=%s", 
+                                self.guild.id, str(e), exc_info=True)
+                    raise
         finally:
+            # Unmute all players before announcing winner
+            await self._force_unmute_all()
             await self._announce_winner()
             self.is_finished = True
             if self._wolf_thread:
@@ -552,40 +577,54 @@ class WerewolfGame:
         await self._wolf_thread.send(f"{wolf_mentions} đây là nơi bàn kế hoạch. Hãy dùng menu để chọn mục tiêu mỗi đêm.")
 
     async def _mute_voice(self) -> None:
-        """Mute voice channel during night phase using permission overwrites."""
+        """Mute all players in voice channel during night phase."""
         if not self.voice_channel_id:
             return
         try:
             voice_channel = self.bot.get_channel(self.voice_channel_id)
-            if not voice_channel:
-                logger.warning("Voice channel not found | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
+            if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
+                logger.warning("Voice channel not found or invalid | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
                 return
-            # Set @everyone role to cannot speak
-            everyone_role = self.guild.default_role
-            await voice_channel.set_permissions(
-                everyone_role,
-                speak=False,
-                reason="Werewolf: Night phase - mute"
-            )
-            logger.info("Voice muted | guild=%s voice_channel=%s", self.guild.id, self.voice_channel_id)
-        except discord.HTTPException as e:
-            logger.error("Failed to mute voice channel | guild=%s error=%s", self.guild.id, str(e))
+            
+            # Mute all players currently in the voice channel
+            muted_count = 0
+            for member in voice_channel.members:
+                try:
+                    await member.edit(mute=True, reason="Werewolf: Night phase - mute")
+                    muted_count += 1
+                except discord.HTTPException as e:
+                    logger.warning("Failed to mute member | guild=%s member=%s error=%s", 
+                                 self.guild.id, member.id, str(e))
+            
+            logger.info("Voice muted | guild=%s voice_channel=%s muted_count=%s", 
+                       self.guild.id, self.voice_channel_id, muted_count)
+        except Exception as e:
+            logger.error("Failed to mute voice channel | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _unmute_voice(self) -> None:
-        """Unmute voice channel during day phase."""
+        """Unmute all players in voice channel during day phase."""
         if not self.voice_channel_id:
             return
         try:
             voice_channel = self.bot.get_channel(self.voice_channel_id)
-            if not voice_channel:
-                logger.warning("Voice channel not found | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
+            if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
+                logger.warning("Voice channel not found or invalid | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
                 return
-            # Reset @everyone role permissions to default
-            everyone_role = self.guild.default_role
-            await voice_channel.delete_permissions(everyone_role, reason="Werewolf: Day phase - unmute")
-            logger.info("Voice unmuted | guild=%s voice_channel=%s", self.guild.id, self.voice_channel_id)
-        except discord.HTTPException as e:
-            logger.error("Failed to unmute voice channel | guild=%s error=%s", self.guild.id, str(e))
+            
+            # Unmute all players currently in the voice channel
+            unmuted_count = 0
+            for member in voice_channel.members:
+                try:
+                    await member.edit(mute=False, reason="Werewolf: Day phase - unmute")
+                    unmuted_count += 1
+                except discord.HTTPException as e:
+                    logger.warning("Failed to unmute member | guild=%s member=%s error=%s", 
+                                 self.guild.id, member.id, str(e))
+            
+            logger.info("Voice unmuted | guild=%s voice_channel=%s unmuted_count=%s", 
+                       self.guild.id, self.voice_channel_id, unmuted_count)
+        except Exception as e:
+            logger.error("Failed to unmute voice channel | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _run_wolf_vote(self) -> Optional[int]:
         wolves = [p for p in self.alive_players() if p.role and p.role.alignment == Alignment.WEREWOLF]
@@ -808,9 +847,12 @@ class WerewolfGame:
                 allow_skip=False,
             )
             if choice is None or choice not in available:
+                logger.info("Cupid skipped lover selection | guild=%s cupid=%s lovers_count=%s night=%s", 
+                            self.guild.id, cupid.user_id, len(lovers), self.night_number)
                 break
             lovers.append(choice)
             available.pop(choice, None)
+        
         if len(lovers) == 2:
             a = self.players[lovers[0]]
             b = self.players[lovers[1]]
@@ -823,6 +865,9 @@ class WerewolfGame:
             except discord.HTTPException:
                 pass
             logger.info("Cupid linked lovers | guild=%s cupid=%s lovers=%s", self.guild.id, cupid.user_id, self._lovers)
+        else:
+            logger.info("Cupid incomplete lovers | guild=%s cupid=%s lovers_count=%s", 
+                        self.guild.id, cupid.user_id, len(lovers))
 
     async def _handle_guard(self, guard: PlayerState) -> Optional[int]:
         options = {p.user_id: p.display_name() for p in self.alive_players()}
@@ -856,7 +901,10 @@ class WerewolfGame:
     async def _handle_seer(self, seer: PlayerState) -> None:
         options = {p.user_id: p.display_name() for p in self.alive_players() if p.user_id != seer.user_id}
         if not options:
+            logger.info("Seer has no targets | guild=%s seer=%s night=%s", 
+                        self.guild.id, seer.user_id, self.night_number)
             return
+        
         choice = await self._prompt_dm_choice(
             seer,
             title="Tiên tri soi",
@@ -865,13 +913,23 @@ class WerewolfGame:
             allow_skip=True,
         )
         if choice is None:
+            logger.info("Seer skipped peeking | guild=%s seer=%s night=%s", 
+                        self.guild.id, seer.user_id, self.night_number)
             return
+        
         target_id = choice
         target = self.players.get(target_id)
         if not target or not target.role:
+            logger.warning("Seer target not found | guild=%s seer=%s target=%s", 
+                           self.guild.id, seer.user_id, target_id)
             return
+        
         faction = target.role.alignment
         message = "Người đó thuộc phe Dân Làng." if faction == Alignment.VILLAGE else "Người đó thuộc phe Ma Sói." if faction == Alignment.WEREWOLF else "Người đó thuộc phe Trung Lập."
+        
+        logger.info("Seer peek | guild=%s seer=%s target=%s faction=%s night=%s", 
+                    self.guild.id, seer.user_id, target_id, faction.value, self.night_number)
+        
         try:
             await seer.member.send(message)
         except discord.HTTPException:
@@ -883,6 +941,10 @@ class WerewolfGame:
         heal_available = getattr(role, "heal_available", True)
         kill_available = getattr(role, "kill_available", True)
         saved = False
+        
+        logger.info("Witch action start | guild=%s witch=%s night=%s heal_available=%s kill_available=%s killed_id=%s", 
+                    self.guild.id, witch.user_id, self.night_number, heal_available, kill_available, killed_id)
+        
         if killed_id and heal_available:
             choice = await self._prompt_dm_choice(
                 witch,
@@ -895,6 +957,15 @@ class WerewolfGame:
                 saved = True
                 role.heal_available = False  # type: ignore[attr-defined]
                 await witch.member.send("Bạn đã dùng bình hồi sinh.")
+                logger.info("Witch used heal potion | guild=%s witch=%s target=%s night=%s", 
+                            self.guild.id, witch.user_id, killed_id, self.night_number)
+            else:
+                logger.info("Witch skipped healing | guild=%s witch=%s night=%s", 
+                            self.guild.id, witch.user_id, self.night_number)
+        else:
+            logger.info("Witch no heal needed | guild=%s witch=%s heal_available=%s killed_id=%s", 
+                        self.guild.id, witch.user_id, heal_available, killed_id)
+        
         kill_target = None
         if kill_available:
             options = {p.user_id: p.display_name() for p in self.alive_players() if p.user_id != witch.user_id}
@@ -907,15 +978,29 @@ class WerewolfGame:
             )
             if choice is not None and choice in options:
                 if choice == witch.user_id and not witch.role.can_self_target():
+                    logger.info("Witch tried self-target without permission | guild=%s witch=%s", 
+                                self.guild.id, witch.user_id)
                     return None if saved else killed_id
                 kill_target = choice
                 role.kill_available = False  # type: ignore[attr-defined]
                 if kill_target == witch.user_id:
                     witch.role.mark_self_target()
                     await witch.member.send("Bạn đã tự kết liễu chính mình.")
+                    logger.info("Witch self-targeted with poison | guild=%s witch=%s night=%s", 
+                                self.guild.id, witch.user_id, self.night_number)
+                logger.info("Witch poison target chosen | guild=%s witch=%s target=%s night=%s", 
+                            self.guild.id, witch.user_id, kill_target, self.night_number)
+            else:
+                logger.info("Witch skipped poison | guild=%s witch=%s night=%s", 
+                            self.guild.id, witch.user_id, self.night_number)
+        else:
+            logger.info("Witch no poison available | guild=%s witch=%s night=%s", 
+                        self.guild.id, witch.user_id, self.night_number)
+        
         if kill_target:
             self._pending_deaths.append((kill_target, "witch"))
             logger.info("Witch used poison | guild=%s witch=%s target=%s", self.guild.id, witch.user_id, kill_target)
+        
         return None if saved else killed_id
 
     async def _handle_little_girl(self, little: PlayerState) -> Optional[bool]:
@@ -1148,28 +1233,88 @@ class WerewolfGame:
         return view.selected
 
     def _check_win_condition(self) -> bool:
+        # CRITICAL: Log entry point
+        logger.info(">>> _check_win_condition called | guild=%s", self.guild.id)
+        
         villagers = self.alive_by_alignment(Alignment.VILLAGE)
         wolves = self.alive_by_alignment(Alignment.WEREWOLF)
         neutrals = self.alive_by_alignment(Alignment.NEUTRAL)
+        
+        # Debug: check for death_pending players not included
+        all_alive = len(self.alive_players())
+        pending_deaths = sum(1 for p in self.players.values() if p.death_pending and not p.alive)
+        all_players_count = len([p for p in self.players.values() if not p.death_pending])
+        
+        logger.info(">>> Win condition check | guild=%s villagers=%s wolves=%s neutrals=%s alive=%s pending_deaths=%s", 
+                     self.guild.id, len(villagers), len(wolves), len(neutrals), all_alive, pending_deaths)
+        
+        # Info: list all players and their status
+        for player in self.players.values():
+            logger.info(">>> Player status | guild=%s player=%s alive=%s death_pending=%s role=%s alignment=%s",
+                        self.guild.id, player.user_id, player.alive, player.death_pending, 
+                        player.role.metadata.name if player.role else None,
+                        player.role.alignment.value if player.role else None)
+        
         if not wolves and villagers:
             self._winner = Alignment.VILLAGE
+            logger.info("Win condition met: Village wins | guild=%s (no wolves left)", self.guild.id)
             return True
+        
         if not villagers and wolves:
             self._winner = Alignment.WEREWOLF
+            logger.info("Win condition met: Werewolf wins | guild=%s (no villagers left)", self.guild.id)
             return True
+        
         if len(self._lovers) == 2:
             alive_lovers = [pid for pid in self._lovers if self.players.get(pid, None) and self.players[pid].alive]
             if len(alive_lovers) == 2 and len(self.alive_players()) == 2:
                 self._winner = Alignment.NEUTRAL
+                logger.info("Win condition met: Lovers win | guild=%s lovers=%s", 
+                            self.guild.id, alive_lovers)
                 return True
+        
         if self._piper_id:
             piper = self.players.get(self._piper_id)
             if piper and piper.alive:
+                # Pied Piper wins if all other players are charmed (must have at least 1 charmed)
                 others = {p.user_id for p in self.alive_players() if p.user_id != piper.user_id}
-                if not others or others.issubset(self._charmed):
+                if len(self._charmed) > 0 and others.issubset(self._charmed):
                     self._winner = Alignment.NEUTRAL
+                    logger.info("Win condition met: Pied Piper wins | guild=%s piper=%s charmed=%s", 
+                                self.guild.id, piper.user_id, len(self._charmed))
                     return True
+                else:
+                    logger.info(">>> Pied Piper not winning | guild=%s charmed=%s others=%s", 
+                                 self.guild.id, len(self._charmed), len(others))
+        
+        logger.info(">>> No win condition met - returning False | guild=%s", self.guild.id)
         return False
+
+    async def _force_unmute_all(self) -> None:
+        """Force unmute all players in voice channel when game ends."""
+        if not self.voice_channel_id:
+            return
+        try:
+            voice_channel = self.bot.get_channel(self.voice_channel_id)
+            if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
+                return
+            
+            # Unmute all players currently in the voice channel
+            unmuted_count = 0
+            for member in voice_channel.members:
+                try:
+                    if member.voice and member.voice.mute:  # Only unmute if currently muted
+                        await member.edit(mute=False, reason="Werewolf: Game ended - force unmute")
+                        unmuted_count += 1
+                except discord.HTTPException as e:
+                    logger.warning("Failed to unmute member on game end | guild=%s member=%s error=%s", 
+                                 self.guild.id, member.id, str(e))
+            
+            if unmuted_count > 0:
+                logger.info("Force unmuted all players | guild=%s voice_channel=%s unmuted_count=%s", 
+                           self.guild.id, self.voice_channel_id, unmuted_count)
+        except Exception as e:
+            logger.error("Failed to force unmute all players | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _announce_winner(self) -> None:
         if self._winner is None:
@@ -1188,12 +1333,12 @@ class WerewolfGame:
         }
         faction_name, faction_colour = mapping[self._winner]
         
-        # Compose brief reason based on last recorded death events
+        # Compose detailed death summary grouped by phase
         survivors = ", ".join(p.display_name() for p in self.alive_players()) or "Không còn ai sống"
-        last_night: List[str] = []
-        last_day: List[str] = []
-        # Find last occurrences for night/day
-        for pid, cause, phase in reversed(self._death_log):
+        
+        # Group deaths by phase (preserves insertion order in Python 3.7+)
+        deaths_by_phase: Dict[str, List[str]] = {}
+        for pid, cause, phase in self._death_log:
             player = self.players.get(pid)
             name = player.display_name() if player else str(pid)
             text = name
@@ -1215,16 +1360,10 @@ class WerewolfGame:
                 text = f"Kẻ thế thân bị hiến tế ({name})"
             else:
                 text += f" chết ({cause})"
-            if phase == "Đêm":
-                if not last_night or (last_day and last_night):
-                    # If we already collected day events after, stop when phase switches
-                    last_day = last_day
-                last_night.append(text)
-            else:
-                last_day.append(text)
-            # Stop after we collected both sections with at least one item
-            if last_night and last_day:
-                break
+            
+            if phase not in deaths_by_phase:
+                deaths_by_phase[phase] = []
+            deaths_by_phase[phase].append(text)
         
         embed = discord.Embed(
             title="🏆 Trò Chơi Kết Thúc",
@@ -1232,16 +1371,20 @@ class WerewolfGame:
             colour=faction_colour,
         )
         embed.add_field(name="Người Sống Sót", value=survivors, inline=False)
-        if last_night:
-            embed.add_field(name="Đêm Hôm Trước", value="; ".join(reversed(last_night)), inline=False)
-        if last_day:
-            embed.add_field(name="Sáng Hôm Sau", value="; ".join(reversed(last_day)), inline=False)
+        
+        # Add death summary for each phase in order
+        for phase, deaths in deaths_by_phase.items():
+            if deaths:
+                embed.add_field(name=phase, value="; ".join(deaths), inline=False)
         embed.set_image(url=CARD_BACK_URL)
         await self.channel.send(embed=embed)
 
     async def _handle_death(self, player: PlayerState, *, cause: str) -> None:
-        # Record death for end-of-game summary with phase label
-        phase_label = "Đêm" if self.phase == Phase.NIGHT else "Ngày"
+        # Record death for end-of-game summary with phase label and number
+        if self.phase == Phase.NIGHT:
+            phase_label = f"Đêm {self.night_number}"
+        else:
+            phase_label = f"Ngày {self.day_number}"
         self._death_log.append((player.user_id, cause, phase_label))
         await player.role.on_death(self, player, cause)  # type: ignore[union-attr]
         if player.lover_id:

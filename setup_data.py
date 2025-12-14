@@ -33,6 +33,16 @@ def init_database():
                     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
                 )''')
     
+    # Migration: Add werewolf_voice_channel_id column if it doesn't exist
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN werewolf_voice_channel_id INTEGER")
+        print("✓ Added werewolf_voice_channel_id column to server_config")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print("✓ werewolf_voice_channel_id column already exists")
+        else:
+            raise
+    
     conn.commit()
     conn.close()
     print("Done! Database initialized (server_config and player_stats tables ready).")

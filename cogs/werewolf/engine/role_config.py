@@ -25,36 +25,36 @@ class RoleConfig:
     # Base game roles (expansion == BASIC)
     BASE_ROLES = [
         # Werewolves (4 fixed)
-        RoleSlot("Werewolf", Alignment.WEREWOLF, Expansion.BASIC, count=4),
+        RoleSlot("Ma Sói", Alignment.WEREWOLF, Expansion.BASIC, count=4),
         # Villagers (13 fixed in base)
-        RoleSlot("Villager", Alignment.VILLAGE, Expansion.BASIC, count=13),
-        RoleSlot("Seer", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Little Girl", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Witch", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Hunter", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Cupid", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Thief", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Mayor", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Scapegoat", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Guard", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Raven", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Dân Làng", Alignment.VILLAGE, Expansion.BASIC, count=13),
+        RoleSlot("Tiên Tri", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Cô Bé", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Phù Thủy", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Thợ Săn", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Thần Tình Yêu", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Tên Trộm", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Trưởng Làng", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Kẻ Thế Thân", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Bảo Vệ", Alignment.VILLAGE, Expansion.BASIC, count=1),
+        RoleSlot("Con Quạ", Alignment.VILLAGE, Expansion.BASIC, count=1),
     ]
 
     # New Moon expansion roles
     NEWMOON_ROLES = [
-        RoleSlot("Idiot", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
-        RoleSlot("Elder", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
-        RoleSlot("Scapegoat", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),  # Thế thân
-        RoleSlot("Guard", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),  # Bảo vệ
-        RoleSlot("Pied Piper", Alignment.NEUTRAL, Expansion.NEW_MOON, count=1),
-        RoleSlot("Two Sisters", Alignment.VILLAGE, Expansion.NEW_MOON, count=2),
+        RoleSlot("Thằng Ngốc", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
+        RoleSlot("Già Làng", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
+        RoleSlot("Kẻ Thế Thân", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
+        RoleSlot("Bảo Vệ", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
+        RoleSlot("Thổi Sáo", Alignment.NEUTRAL, Expansion.NEW_MOON, count=1),
+        RoleSlot("Hai Chị Em", Alignment.VILLAGE, Expansion.NEW_MOON, count=2),
     ]
 
     # The Village expansion roles
     THEVILLAGE_ROLES = [
-        RoleSlot("Raven", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("White Werewolf", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Pyromaniac", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Con Quạ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Sói Trắng", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Kẻ Phóng Hỏa", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
     ]
 
     @staticmethod
@@ -116,33 +116,53 @@ class RoleConfig:
         werewolf_count = cls.calculate_werewolves(player_count)
         neutral_count = cls.get_neutral_count(player_count) if cls.should_have_neutral(player_count) else 0
 
-        # Add base roles
-        for role in cls.BASE_ROLES:
-            if role.name == "Werewolf":
-                # Override with calculated count
-                distribution[role.name] = werewolf_count
-            else:
-                distribution[role.name] = role.count
+        # Start with werewolves (dynamic)
+        distribution["Ma Sói"] = werewolf_count
 
-        # Add expansion roles
-        if Expansion.NEW_MOON in expansions:
-            for role in cls.NEWMOON_ROLES:
-                distribution[role.name] = distribution.get(role.name, 0) + role.count
+        # Add essential village roles (only 1 of each)
+        essential_roles = [
+            "Tiên Tri", "Phù Thủy", "Thợ Săn", "Thần Tình Yêu",
+            "Cô Bé", "Tên Trộm", "Trưởng Làng"
+        ]
+        for role_name in essential_roles:
+            distribution[role_name] = 1
 
-        if Expansion.THE_VILLAGE in expansions:
-            for role in cls.THEVILLAGE_ROLES:
-                if role.alignment == Alignment.NEUTRAL:
-                    # Only add neutral roles if allowed
-                    if neutral_count > 0:
-                        distribution[role.name] = distribution.get(role.name, 0) + min(role.count, neutral_count)
-                        neutral_count -= min(role.count, neutral_count)
-                else:
-                    distribution[role.name] = distribution.get(role.name, 0) + role.count
+        # Add optional expansion roles (if available and enabled)
+        optional_expansion_roles = {
+            Expansion.NEW_MOON: ["Thằng Ngốc", "Già Làng", "Kẻ Thế Thân", "Bảo Vệ", "Hai Chị Em"],
+            Expansion.THE_VILLAGE: ["Con Quạ", "Kẻ Phóng Hỏa"],
+        }
 
-        # Adjust villager count to balance total
+        for exp, roles in optional_expansion_roles.items():
+            if exp in expansions:
+                for role_name in roles:
+                    # Special case for Two Sisters (2 slots) and Hai Chị Em
+                    if role_name in ["Hai Chị Em"]:
+                        distribution[role_name] = 2
+                    else:
+                        distribution[role_name] = 1
+
+        # Add neutral roles (limited)
+        neutral_roles = {
+            Expansion.NEW_MOON: "Thổi Sáo",
+            Expansion.THE_VILLAGE: ["Sói Trắng", "Kẻ Phóng Hỏa"],
+        }
+
+        if neutral_count > 0:
+            if Expansion.NEW_MOON in expansions and neutral_count > 0:
+                distribution["Thổi Sáo"] = 1
+                neutral_count -= 1
+
+            if Expansion.THE_VILLAGE in expansions and neutral_count > 0:
+                for neutral_role in ["Sói Trắng", "Kẻ Phóng Hỏa"]:
+                    if neutral_count > 0 and neutral_role not in distribution:
+                        distribution[neutral_role] = 1
+                        neutral_count -= 1
+
+        # Calculate total and fill with villagers
         total_assigned = sum(distribution.values())
         villagers_needed = max(0, player_count - total_assigned)
-        distribution["Villager"] = distribution.get("Villager", 0) + villagers_needed
+        distribution["Dân Làng"] = villagers_needed
 
         return distribution
 
@@ -178,10 +198,10 @@ class RoleConfig:
         
         # Map role names to alignments (simplified)
         alignment_map = {
-            "Werewolf": Alignment.WEREWOLF,
-            "White Werewolf": Alignment.NEUTRAL,
-            "Pied Piper": Alignment.NEUTRAL,
-            "Pyromaniac": Alignment.NEUTRAL,
+            "Ma Sói": Alignment.WEREWOLF,
+            "Sói Trắng": Alignment.NEUTRAL,
+            "Thổi Sáo": Alignment.NEUTRAL,
+            "Kẻ Phóng Hỏa": Alignment.NEUTRAL,
         }
 
         info = {
