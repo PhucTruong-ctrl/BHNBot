@@ -77,6 +77,8 @@ class WerewolfGame:
         self._hypnotist_charm_target: Optional[int] = None  # Player charmed by Hypnotist this night
         self._pharmacist_antidote_target: Optional[int] = None  # Player targeted by Pharmacist's antidote this night
         self._pharmacist_slept_target: Optional[int] = None  # Player targeted by Pharmacist's sleeping potion this night
+        self._assassin_votes_day1: Dict[int, int] = {}  # Track votes day 1 of assassin cycle
+        self._assassin_votes_day2: Dict[int, int] = {}  # Track votes day 2 of assassin cycle
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -434,6 +436,14 @@ class WerewolfGame:
         result = await vote.start()
         tally = Counter(result.tally)
         
+        # Track votes for Assassin (2-day cycle: day 1 & day 2)
+        if self.day_number % 2 == 1:  # Odd days: 1, 3, 5...
+            self._assassin_votes_day1 = dict(tally)
+            logger.info("Assassin votes day 1 tracked | guild=%s day=%s votes=%s", self.guild.id, self.day_number, self._assassin_votes_day1)
+        else:  # Even days: 2, 4, 6...
+            self._assassin_votes_day2 = dict(tally)
+            logger.info("Assassin votes day 2 tracked | guild=%s day=%s votes=%s", self.guild.id, self.day_number, self._assassin_votes_day2)
+        
         # Apply Raven bonus (+2 phiếu)
         for player in alive:
             if player.marked_by_raven:
@@ -502,6 +512,28 @@ class WerewolfGame:
             return
         
         await self.channel.send(f"{target_player.display_name()} bị dân làng treo cổ.")
+        
+        # Check if Assassin should be activated (on even days after 2-day cycle)
+        if self.day_number % 2 == 0:  # Even days: 2, 4, 6... (end of 2-day cycle)
+            # Calculate total votes from both days
+            assassin_votes_day1 = self._assassin_votes_day1.get(target_player.user_id, 0)
+            assassin_votes_day2 = self._assassin_votes_day2.get(target_player.user_id, 0)
+            total_assassin_votes = assassin_votes_day1 + assassin_votes_day2
+            
+            if total_assassin_votes >= 4:
+                assassin = self._find_role_holder("Thích Khách")
+                if assassin and assassin.alive:
+                    assassin_role = assassin.role
+                    if hasattr(assassin_role, 'can_act_this_night'):
+                        assassin_role.can_act_this_night = True  # type: ignore[attr-defined]
+                        assassin_role.votes_day1 = assassin_votes_day1  # type: ignore[attr-defined]
+                        assassin_role.votes_day2 = assassin_votes_day2  # type: ignore[attr-defined]
+                        await assassin.member.send(
+                            f"💀 **Bạn nhận được {total_assassin_votes} phiếu trong 2 ngày ({assassin_votes_day1}+{assassin_votes_day2})!** Bạn có thể lặng lẽ giết 1 người vào buổi tối."
+                        )
+                        logger.info("Assassin notified | guild=%s assassin=%s total_votes=%s day1=%s day2=%s night=%s", 
+                                    self.guild.id, assassin.user_id, total_assassin_votes, assassin_votes_day1, assassin_votes_day2, self.night_number + 1)
+        
         if target_player.alive:
             target_player.alive = False
             await self._handle_death(target_player, cause="lynch")
@@ -888,6 +920,11 @@ class WerewolfGame:
             # Reset Pharmacist targets each night
             self._pharmacist_antidote_target = None
             self._pharmacist_slept_target = None
+            # Reset Assassin votes on even nights (after 2-day cycle ends)
+            if self.night_number % 2 == 0:
+                self._assassin_votes_day1 = {}
+                self._assassin_votes_day2 = {}
+                logger.info("Assassin votes reset for new cycle | guild=%s night=%s", self.guild.id, self.night_number)
             
             announce_task = None
             thief = self._find_role_holder("Tên Trộm")

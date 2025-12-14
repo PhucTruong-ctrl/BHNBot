@@ -64,6 +64,7 @@ class RoleConfig:
         RoleSlot("Nguyệt Nữ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Cổ Hoặc Sư", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Dược Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Thích Khách", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
     ]
 
     @staticmethod
@@ -127,51 +128,66 @@ class RoleConfig:
 
         # Start with werewolves (dynamic)
         distribution["Ma Sói"] = werewolf_count
+        
+        # Remaining slots after werewolves
+        remaining_slots = player_count - werewolf_count
 
-        # Add essential village roles (only 1 of each)
+        # Add essential village roles (only 1 of each) - but only if there's room
         essential_roles = [
             "Tiên Tri", "Phù Thủy", "Thợ Săn", "Thần Tình Yêu",
             "Cô Bé", "Tên Trộm", "Trưởng Làng"
         ]
+        
         for role_name in essential_roles:
-            distribution[role_name] = 1
+            if remaining_slots > 0:
+                distribution[role_name] = 1
+                remaining_slots -= 1
 
-        # Add optional expansion roles (if available and enabled)
-        optional_expansion_roles = {
-            Expansion.NEW_MOON: ["Thằng Ngốc", "Già Làng", "Kẻ Thế Thân", "Bảo Vệ", "Hai Chị Em"],
-            Expansion.THE_VILLAGE: ["Con Quạ", "Kẻ Phóng Hỏa"],
-        }
+        # Add expansion special roles (NOT duplicates from base game)
+        if Expansion.THE_VILLAGE in expansions and remaining_slots > 0:
+            # THE_VILLAGE unique roles (excluding Raven/Pyromaniac which are handled separately)
+            the_village_special = ["Sói Lai", "Đứa Con Hoang", "Hiệp Sĩ", "Ảnh Tử", "Nguyệt Nữ", 
+                                   "Cổ Hoặc Sư", "Dược Sĩ", "Thích Khách"]
+            for role_name in the_village_special:
+                if remaining_slots > 0:
+                    distribution[role_name] = 1
+                    remaining_slots -= 1
 
-        for exp, roles in optional_expansion_roles.items():
-            if exp in expansions:
-                for role_name in roles:
-                    # Special case for Two Sisters (2 slots) and Hai Chị Em
-                    if role_name in ["Hai Chị Em"]:
-                        distribution[role_name] = 2
+        if Expansion.NEW_MOON in expansions and remaining_slots > 0:
+            # NEW_MOON unique roles (excluding duplicates)
+            new_moon_special = ["Thằng Ngốc", "Già Làng", "Hai Chị Em"]
+            for role_name in new_moon_special:
+                if remaining_slots > 0:
+                    if role_name == "Hai Chị Em":
+                        # Two Sisters takes 2 slots
+                        if remaining_slots >= 2:
+                            distribution[role_name] = 2
+                            remaining_slots -= 2
                     else:
                         distribution[role_name] = 1
+                        remaining_slots -= 1
 
-        # Add neutral roles (limited)
-        neutral_roles = {
-            Expansion.NEW_MOON: "Thổi Sáo",
-            Expansion.THE_VILLAGE: ["Sói Trắng", "Kẻ Phóng Hỏa"],
-        }
+        # Add neutral roles (limited and without duplicates)
+        neutral_roles_pool = []
+        
+        if Expansion.NEW_MOON in expansions:
+            neutral_roles_pool.append("Thổi Sáo")
+            
+        if Expansion.THE_VILLAGE in expansions:
+            neutral_roles_pool.extend(["Sói Trắng", "Kẻ Phóng Hỏa"])
 
-        if neutral_count > 0:
-            if Expansion.NEW_MOON in expansions and neutral_count > 0:
-                distribution["Thổi Sáo"] = 1
+        # Add neutral roles up to neutral_count
+        for neutral_role in neutral_roles_pool:
+            if neutral_count > 0 and neutral_role not in distribution and remaining_slots > 0:
+                distribution[neutral_role] = 1
                 neutral_count -= 1
+                remaining_slots -= 1
 
-            if Expansion.THE_VILLAGE in expansions and neutral_count > 0:
-                for neutral_role in ["Sói Trắng", "Kẻ Phóng Hỏa"]:
-                    if neutral_count > 0 and neutral_role not in distribution:
-                        distribution[neutral_role] = 1
-                        neutral_count -= 1
-
-        # Calculate total and fill with villagers
-        total_assigned = sum(distribution.values())
-        villagers_needed = max(0, player_count - total_assigned)
-        distribution["Dân Làng"] = villagers_needed
+        # Fill remaining slots with Dân Làng
+        if remaining_slots > 0:
+            distribution["Dân Làng"] = remaining_slots
+        elif "Dân Làng" not in distribution:
+            distribution["Dân Làng"] = 0
 
         return distribution
 
@@ -208,6 +224,8 @@ class RoleConfig:
         # Map role names to alignments (simplified)
         alignment_map = {
             "Ma Sói": Alignment.WEREWOLF,
+            "Sói To Xấu Xa": Alignment.WEREWOLF,
+            "Sói Quỷ": Alignment.WEREWOLF,
             "Sói Trắng": Alignment.NEUTRAL,
             "Thổi Sáo": Alignment.NEUTRAL,
             "Kẻ Phóng Hỏa": Alignment.NEUTRAL,
