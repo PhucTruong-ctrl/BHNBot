@@ -24,8 +24,6 @@ MIN_PLAYERS = 4
 load_all_roles()
 
 logger = logging.getLogger("werewolf")
-if not logger.handlers:
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(message)s")
 
 
 class WerewolfGame:
@@ -270,16 +268,48 @@ class WerewolfGame:
             return
         top = tally.most_common()
         if len(top) > 1 and top[0][1] == top[1][1]:
-            scapegoat = self._find_role_holder("Kẻ Thế Thân")
-            if scapegoat:
-                await self.channel.send("Lá phiếu bế tắc. Kẻ thế thân phải ra đi thay làng.")
-                scapegoat.alive = False
-                await self._handle_death(scapegoat, cause="scapegoat")
-                logger.info("Scapegoat executed due to tie | guild=%s player=%s", self.guild.id, scapegoat.user_id)
+            # Check if Mayor/Captain is alive to break tie
+            mayor = next((p for p in alive if p.mayor), None)
+            if mayor:
+                # Mayor breaks the tie
+                tied = [pid for pid, count in top if count == top[0][1]]
+                tie_options = {pid: self.players[pid].display_name() for pid in tied if pid in self.players}
+                
+                await self.channel.send(f"⚖️ Hòa phiếu! Trưởng Làng {mayor.display_name()} sẽ quyết định.")
+                choice = await self._prompt_dm_choice(
+                    mayor,
+                    title="Trưởng Làng - Phá vỡ hòa phiếu",
+                    description="Hòa phiếu xảy ra. Bạn quyết định ai sẽ bị treo cổ.",
+                    options=tie_options,
+                    allow_skip=False,
+                    timeout=30,
+                )
+                
+                if choice and choice in tie_options:
+                    target_player = self.players.get(choice)
+                    if target_player:
+                        await self.channel.send(f"🎖️ Trưởng Làng đã quyết định: {target_player.display_name()} bị treo cổ.")
+                        logger.info("Mayor broke tie | guild=%s mayor=%s target=%s", self.guild.id, mayor.user_id, choice)
+                    else:
+                        await self.channel.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
+                        logger.info("Day vote tie no execution | guild=%s day=%s", self.guild.id, self.day_number)
+                        return
+                else:
+                    await self.channel.send("Trưởng Làng không quyết định được, không ai bị treo cổ.")
+                    logger.info("Mayor failed to break tie | guild=%s day=%s", self.guild.id, self.day_number)
+                    return
+            else:
+                # No mayor, check scapegoat
+                scapegoat = self._find_role_holder("Kẻ Thế Thân")
+                if scapegoat:
+                    await self.channel.send("Lá phiếu bế tắc. Kẻ thế thân phải ra đi thay làng.")
+                    scapegoat.alive = False
+                    await self._handle_death(scapegoat, cause="scapegoat")
+                    logger.info("Scapegoat executed due to tie | guild=%s player=%s", self.guild.id, scapegoat.user_id)
+                    return
+                await self.channel.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
+                logger.info("Day vote tie no execution | guild=%s day=%s", self.guild.id, self.day_number)
                 return
-            await self.channel.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
-            logger.info("Day vote tie no execution | guild=%s day=%s", self.guild.id, self.day_number)
-            return
         target_player = self.players.get(top[0][0])
         if not target_player:
             await self.channel.send("Không có kết quả rõ ràng.")
@@ -513,15 +543,32 @@ class WerewolfGame:
         target_id = await self._run_wolf_vote()
         logger.info("Wolf vote target | guild=%s night=%s target=%s", self.guild.id, self.night_number, target_id)
         
-        # Check if wolves chose to replace the original target with the discovered little girl
-        if self._little_girl_peeking and target_id == self._little_girl_peeking:
-            # Little girl becomes the victim instead of the original choice
-            logger.info("Little girl killed while discovered peeking | guild=%s night=%s", self.guild.id, self.night_number)
-        elif self._little_girl_peeking:
-            # Original target remains, but reset the peeking flag
-            self._little_girl_peeking = None
-        else:
-            self._little_girl_peeking = None
+        # If little girl was discovered, ask wolves quickly if they want to switch kill to her
+        if self._little_girl_peeking:
+            try:
+                # Run a quick yes/no vote in wolf thread
+                channel = self._wolf_thread or self.channel
+                options = {
+                    self._little_girl_peeking: "Giết người hé mắt (Cô Bé)",
+                    target_id if target_id is not None else -1: "Giữ mục tiêu cũ",
+                }
+                vote = VoteSession(
+                    self.bot,
+                    channel,
+                    title=f"Ma Sói xác nhận mục tiêu (Đêm {self.night_number})",
+                    description="Bạn có muốn đổi sang giết người hé mắt không?",
+                    options=options,
+                    eligible_voters=[w.user_id for w in wolves],
+                    duration=15,
+                    allow_skip=False,
+                )
+                confirm = await vote.start()
+                if not confirm.is_tie and confirm.winning_target_id in options:
+                    target_id = confirm.winning_target_id if confirm.winning_target_id != -1 else target_id
+                    logger.info("Wolves confirmation applied | guild=%s night=%s target=%s", self.guild.id, self.night_number, target_id)
+            finally:
+                # Reset peeking flag regardless
+                self._little_girl_peeking = None
         
         guard = self._find_role_holder("Bảo Vệ")
         if guard:
@@ -860,8 +907,8 @@ class WerewolfGame:
             return None
         if choice == white_wolf.user_id:
             white_wolf.role.mark_self_target()
-        return choice
         logger.info("White wolf acted | guild=%s player=%s target=%s", self.guild.id, white_wolf.user_id, choice)
+        return choice
 
     async def _handle_pyromaniac(self, pyro: PlayerState) -> None:
         role = pyro.role
@@ -936,8 +983,9 @@ class WerewolfGame:
         if Expansion.THE_VILLAGE in self.settings.expansions:
             neutral_priority.append("Kẻ Phóng Hỏa")  # Pyromaniac
         
-        # Add neutral roles first (if expansion enabled)
-        for name in neutral_priority:
+        # Cap neutral count for small lobbies (avoid overloading village)
+        max_neutral = 1 if player_count < 10 else len(neutral_priority)
+        for name in neutral_priority[:max_neutral]:
             if len(layout) < target_count:
                 layout.append(get_role_class(name))
         

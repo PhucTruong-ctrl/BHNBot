@@ -15,7 +15,7 @@ class Thief(Role):
         description="Đêm đầu tiên bạn chọn một trong hai lá bài thừa để thay thế vai trò hiện tại.",
         first_night_only=True,
         night_order=5,
-        card_image_url="https://static.wikia.nocookie.net/allthetropes/images/b/b6/Voleur_5192.jpg/revision/latest?cb=20240928215129",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/thief.png",
     )
 
     def __init__(self) -> None:

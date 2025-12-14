@@ -13,7 +13,7 @@ class Hunter(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.BASIC,
         description="Nếu bạn chết, bạn được quyền kéo theo một người khác cùng chết.",
-        card_image_url="https://static.wikia.nocookie.net/allthetropes/images/5/5c/Chasseur_1773.jpg/revision/latest?cb=20240925085527",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/hunter.png",
     )
 
     async def on_death(self, game, player, cause: str) -> None:  # type: ignore[override]

@@ -14,5 +14,5 @@ class Seer(Role):
         expansion=Expansion.BASIC,
         description="Mỗi đêm bạn có thể soi danh tính của một người chơi.",
         night_order=50,
-        card_image_url="https://static.wikia.nocookie.net/allthetropes/images/6/69/Voyante_1512.jpg/revision/latest?cb=20240928215718",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/seer.png",
     )

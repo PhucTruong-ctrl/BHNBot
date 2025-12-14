@@ -13,7 +13,7 @@ class Idiot(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.NEW_MOON,
         description="Nếu bị dân làng treo cổ, bạn lộ bài và sống sót nhưng mất quyền bỏ phiếu.",
-        card_image_url="https://via.placeholder.com/250x350?text=Idiot",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/idiot.png",
     )
 
     def __init__(self) -> None:

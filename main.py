@@ -2,11 +2,19 @@ import discord
 import os
 import asyncio
 import subprocess
+import logging
 from discord.ext import commands
 from dotenv import load_dotenv
 
 # Load biến môi trường từ file .env
 load_dotenv()
+
+# Configure logging centrally (used by werewolf and other modules)
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 
 # Cấu hình Intent (Quyền hạn)
 intents = discord.Intents.default()

@@ -12,6 +12,6 @@ class Scapegoat(Role):
         name="Kẻ Thế Thân",
         alignment=Alignment.VILLAGE,
         expansion=Expansion.NEW_MOON,
-        description="Nếu dân làng hòa phiếu, bạn sẽ bị xử tử thay. Bạn có thể quyết định ai được bỏ phiếu vào sáng hôm sau (chức năng giản lược).",
-        card_image_url="https://via.placeholder.com/250x350?text=Scapegoat",
+        description="Nếu dân làng hòa phiếu, bạn sẽ bị xử tử thay. Bạn có thể quyết định ai được bỏ phiếu vào sáng hôm sau.",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/scaperoat.png",
     )
