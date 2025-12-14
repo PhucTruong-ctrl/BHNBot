@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from .. import register_role
@@ -10,6 +11,8 @@ from ..base import Alignment, Expansion, Role, RoleMetadata
 if TYPE_CHECKING:
     from ...engine.game import WerewolfGame
     from ...engine.state import PlayerState
+
+logger = logging.getLogger("werewolf")
 
 
 @register_role
@@ -29,6 +32,7 @@ class MoonMaiden(Role):
 
     async def on_night(self, game: WerewolfGame, player: PlayerState, night_number: int) -> None:  # type: ignore[override]
         """Each night, Moon Maiden chooses someone to disable."""
+        logger.info("Moon Maiden on_night start | guild=%s maiden=%s night=%s last_target=%s", game.guild.id, player.user_id, night_number, self.last_target_id)
         if night_number < 1:
             return
         
@@ -40,6 +44,7 @@ class MoonMaiden(Role):
                 options[p.user_id] = p.display_name()
         
         if not options:
+            logger.debug("No valid options for Moon Maiden | guild=%s maiden=%s", game.guild.id, player.user_id)
             # If only one person available (last target), can skip
             return
         
@@ -55,6 +60,19 @@ class MoonMaiden(Role):
         if choice and choice in options:
             self.last_target_id = choice
             target = game.players.get(choice)
+            logger.info("Moon Maiden disabled target | guild=%s maiden=%s target=%s", game.guild.id, player.user_id, choice)
+            game._moon_maiden_disabled = choice
+            if target:
+                await game._safe_send_dm(
+                    player.member,
+                    content=f"Bạn đã vô hiệu hóa kĩ năng của {target.display_name()} trong đêm này."
+                )
+                await game._safe_send_dm(
+                    target.member,
+                    content="Nguyệt Nữ đã vô hiệu hóa kĩ năng của bạn trong đêm này!"
+                )
+        else:
+            logger.debug("Moon Maiden skipped disable | guild=%s maiden=%s", game.guild.id, player.user_id)
             if target:
                 # Store disabled player in game
                 game._moon_maiden_disabled = choice

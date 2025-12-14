@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from .. import register_role
@@ -10,6 +11,8 @@ from ..base import Alignment, Expansion, Role, RoleMetadata
 if TYPE_CHECKING:
     from ...engine.game import WerewolfGame
     from ...engine.state import PlayerState
+
+logger = logging.getLogger("werewolf")
 
 
 @register_role

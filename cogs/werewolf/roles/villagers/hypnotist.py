@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from .. import register_role
@@ -10,6 +11,8 @@ from ..base import Alignment, Expansion, Role, RoleMetadata
 if TYPE_CHECKING:
     from ...engine.game import WerewolfGame
     from ...engine.state import PlayerState
+
+logger = logging.getLogger("werewolf")
 
 
 @register_role
@@ -30,6 +33,7 @@ class Hypnotist(Role):
 
     async def on_night(self, game: WerewolfGame, player: PlayerState, night_number: int) -> None:  # type: ignore[override]
         """Each night, Hypnotist chooses someone to charm."""
+        logger.info("Hypnotist on_night start | guild=%s hypnotist=%s night=%s last_target=%s", game.guild.id, player.user_id, night_number, self.last_target_id)
         if night_number < 1:
             return
         
@@ -41,6 +45,7 @@ class Hypnotist(Role):
                 options[p.user_id] = p.display_name()
         
         if not options:
+            logger.debug("No valid options for Hypnotist | guild=%s hypnotist=%s", game.guild.id, player.user_id)
             # If only one person available (last target), can skip
             return
         
@@ -60,6 +65,7 @@ class Hypnotist(Role):
             if target:
                 # Store charmed player in game
                 game._hypnotist_charm_target = choice
+                logger.info("Hypnotist charmed target | guild=%s hypnotist=%s charmed=%s", game.guild.id, player.user_id, choice)
                 await game._safe_send_dm(
                     player.member,
                     content=f"Bạn đã mê hoặc {target.display_name()}. Nếu bạn chết đêm nay, họ sẽ chết thay bạn."
@@ -68,3 +74,5 @@ class Hypnotist(Role):
                     target.member,
                     content=f"Bạn đã bị Cổ Hoặc Sư mê hoặc! Nếu Cổ Hoặc Sư chết đêm nay, bạn sẽ chết thay họ."
                 )
+        else:
+            logger.debug("Hypnotist skipped charm | guild=%s hypnotist=%s", game.guild.id, player.user_id)
