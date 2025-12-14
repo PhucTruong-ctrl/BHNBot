@@ -73,6 +73,8 @@ class WerewolfGame:
         self._angel_won = False  # Track if Angel won on Day 1
         self._scapegoat_target: Optional[int] = None  # Target chosen by Scapegoat on tie vote
         self._demon_wolf_curse_target: Optional[int] = None  # Target cursed by Demon Wolf
+        self._moon_maiden_disabled: Optional[int] = None  # Player disabled by Moon Maiden this night
+        self._hypnotist_charm_target: Optional[int] = None  # Player charmed by Hypnotist this night
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -89,7 +91,7 @@ class WerewolfGame:
         }
         expansions = ", ".join(expansion_labels[exp] for exp in self.settings.expansions) if self.settings.expansions else "Bản cơ bản"
         embed = discord.Embed(
-            title="Ma Sói – Thiercelieux",
+            title="Ma Sói – Werewolves of Miller's Hollow",
             description="Sử dụng nút bên dưới để tham gia. Chủ bàn có thể bật mở rộng.",
             colour=discord.Colour.dark_red(),
         )
@@ -872,6 +874,11 @@ class WerewolfGame:
 
     async def _resolve_role_sequence(self, *, first_night: bool) -> None:
         try:
+            # Reset Moon Maiden disabled flag each night
+            self._moon_maiden_disabled = None
+            # Reset Hypnotist charm target each night
+            self._hypnotist_charm_target = None
+            
             announce_task = None
             thief = self._find_role_holder("Tên Trộm")
             if first_night and thief and self._is_player_eligible_for_action(thief):
@@ -966,14 +973,14 @@ class WerewolfGame:
                     await announce_task
             
             raven = self._find_role_holder("Con Quạ")
-            if raven:
+            if raven and self._moon_maiden_disabled != raven.user_id:
                 announce_task = self._announce_role_action(raven.role)
                 await self._handle_raven(raven)
                 if announce_task:
                     await announce_task
             
             piper = self._find_role_holder("Thổi Sáo")
-            if piper:
+            if piper and self._moon_maiden_disabled != piper.user_id:
                 announce_task = self._announce_role_action(piper.role)
                 await self._handle_piper(piper)
                 if announce_task:
@@ -983,6 +990,20 @@ class WerewolfGame:
             if pyro and not getattr(pyro.role, "ignited", False):
                 announce_task = self._announce_role_action(pyro.role)
                 await self._handle_pyromaniac(pyro)
+                if announce_task:
+                    await announce_task
+            
+            hypnotist = self._find_role_holder("Cổ Hoặc Sư")
+            if hypnotist and self._is_player_eligible_for_action(hypnotist):
+                announce_task = self._announce_role_action(hypnotist.role)
+                await self._handle_hypnotist(hypnotist)
+                if announce_task:
+                    await announce_task
+            
+            moon_maiden = self._find_role_holder("Nguyệt Nữ")
+            if moon_maiden and self._is_player_eligible_for_action(moon_maiden):
+                announce_task = self._announce_role_action(moon_maiden.role)
+                await self._handle_moon_maiden(moon_maiden)
                 if announce_task:
                     await announce_task
             
@@ -1370,6 +1391,93 @@ class WerewolfGame:
         self._pending_deaths.append((choice, "pyro"))
         logger.info("Pyromaniac ignited | guild=%s pyro=%s target=%s", self.guild.id, pyro.user_id, choice)
 
+    async def _handle_moon_maiden(self, moon_maiden: PlayerState) -> None:
+        """Handle Moon Maiden's ability to disable a target's night abilities."""
+        role = moon_maiden.role
+        if not role:
+            return
+        
+        # Get alive players, excluding self and last target
+        alive = self.alive_players()
+        options = {
+            p.user_id: p.display_name() 
+            for p in alive 
+            if p.user_id != moon_maiden.user_id 
+            and p.user_id != getattr(role, "last_target_id", None)
+        }
+        
+        if not options:
+            return
+        
+        choice = await self._prompt_dm_choice(
+            moon_maiden,
+            title="Nguyệt Nữ",
+            description="Đêm nay, bạn muốn vô hiệu hóa kĩ năng ban đêm của ai?",
+            options=options,
+            allow_skip=True,
+        )
+        
+        if choice is None or choice not in options:
+            return
+        
+        role.last_target_id = choice  # type: ignore[attr-defined]
+        self._moon_maiden_disabled = choice
+        
+        target = self.players.get(choice)
+        if target:
+            await self._safe_send_dm(
+                target.member,
+                f"Nguyệt Nữ đã chọn bạn làm mục tiêu. Kĩ năng ban đêm của bạn sẽ bị vô hiệu hóa!"
+            )
+        
+        logger.info("Moon Maiden disabled | guild=%s maiden=%s target=%s", self.guild.id, moon_maiden.user_id, choice)
+
+    async def _handle_hypnotist(self, hypnotist: PlayerState) -> None:
+        """Handle Hypnotist's ability to charm a target. If Hypnotist dies, charmed target dies instead."""
+        role = hypnotist.role
+        if not role:
+            return
+        
+        # Get alive players, excluding self and last target
+        alive = self.alive_players()
+        options = {
+            p.user_id: p.display_name() 
+            for p in alive 
+            if p.user_id != hypnotist.user_id 
+            and p.user_id != getattr(role, "last_target_id", None)
+        }
+        
+        if not options:
+            return
+        
+        choice = await self._prompt_dm_choice(
+            hypnotist,
+            title="Cổ Hoặc Sư",
+            description="Hãy chọn 1 người để mê hoặc. Nếu bạn chết đêm nay, họ sẽ chết thay bạn.",
+            options=options,
+            allow_skip=True,
+        )
+        
+        if choice is None or choice not in options:
+            return
+        
+        role.last_target_id = choice  # type: ignore[attr-defined]
+        role.charmed_target_id = choice  # type: ignore[attr-defined]
+        self._hypnotist_charm_target = choice
+        
+        target = self.players.get(choice)
+        if target:
+            await self._safe_send_dm(
+                hypnotist.member,
+                f"Bạn đã mê hoặc {target.display_name()}. Nếu bạn chết đêm nay, họ sẽ chết thay bạn."
+            )
+            await self._safe_send_dm(
+                target.member,
+                "Bạn đã bị Cổ Hoặc Sư mê hoặc! Nếu Cổ Hoặc Sư chết đêm nay, bạn sẽ chết thay họ."
+            )
+        
+        logger.info("Hypnotist charmed | guild=%s hypnotist=%s target=%s", self.guild.id, hypnotist.user_id, choice)
+
     def _handle_elder_resistance(self, target_id: int) -> bool:
         target = self.players.get(target_id)
         if not target:
@@ -1732,6 +1840,44 @@ class WerewolfGame:
 
     async def _handle_death(self, player: PlayerState, *, cause: str) -> None:
         """Handle player death: mark as dead, disable permissions, trigger role death effects."""
+        # Check if Hypnotist has charmed someone - if so, swap deaths
+        from ..roles.villagers.hypnotist import Hypnotist
+        
+        hypnotist_role = None
+        for role in player.roles:
+            if isinstance(role, Hypnotist):
+                hypnotist_role = role
+                break
+        
+        # If this Hypnotist has a charmed target, the charmed target dies instead
+        if hypnotist_role and hasattr(hypnotist_role, 'charmed_target_id') and hypnotist_role.charmed_target_id:
+            charmed_id = hypnotist_role.charmed_target_id
+            charmed_player = self.players.get(charmed_id)
+            
+            # Only swap if charmed player is alive and not already dead
+            if charmed_player and charmed_player.alive and not charmed_player.death_pending:
+                # Kill the charmed player instead of the Hypnotist
+                charmed_player.alive = False
+                charmed_player.death_pending = True
+                
+                # Notify the Hypnotist that charm protected them
+                await self._safe_send_dm(
+                    player.member,
+                    f"Nước cờ mê hoặc của bạn đã hoạt động! {charmed_player.display_name()} chết thay bạn."
+                )
+                
+                # Trigger death effects for charmed player
+                try:
+                    await self._handle_death(charmed_player, cause="hypnotist_charm")
+                except Exception as e:
+                    logger.error(
+                        "Error in charmed target death | guild=%s hypnotist=%s target=%s error=%s",
+                        self.guild.id, player.user_id, charmed_id, str(e), exc_info=True
+                    )
+                
+                # Hypnotist survives this death, return without marking them dead
+                return
+        
         # Record death for end-of-game summary with phase label and number
         if self.phase == Phase.NIGHT:
             phase_label = f"Đêm {self.night_number}"

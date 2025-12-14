@@ -28,6 +28,8 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.villagers.two_sisters",
 	"cogs.werewolf.roles.villagers.knight",
 	"cogs.werewolf.roles.villagers.angel_of_death",
+	"cogs.werewolf.roles.villagers.moon_maiden",
+	"cogs.werewolf.roles.villagers.hypnotist",
 	"cogs.werewolf.roles.werewolves.werewolf",
 	"cogs.werewolf.roles.werewolves.big_bad_wolf",
 	"cogs.werewolf.roles.werewolves.demon_wolf",

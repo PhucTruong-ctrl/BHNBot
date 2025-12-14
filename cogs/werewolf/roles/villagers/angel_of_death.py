@@ -18,10 +18,10 @@ class AngelOfDeath(Role):
         name="Ảnh Tử",
         alignment=Alignment.VILLAGE,
         expansion=Expansion.THE_VILLAGE,
-        description="Đêm đầu tiên bạn chọn 1 người. Khi người đó chết, bạn sẽ lấy lá bài của họ và trở thành nhân vật đó, kế thừa tất cả khả năng của họ.",
+        description="Đêm đầu tiên bạn chọn 1 người. Khi người đó chết, bạn sẽ lấy lá bài của họ và kế thừa tất cả khả năng của họ.",
         first_night_only=True,
         night_order=25,
-        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A8n%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/angel.png",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/angel-of-death.png",
     )
 
     def __init__(self) -> None:
