@@ -60,6 +60,8 @@ class WerewolfGame:
         self._stop_event = asyncio.Event()
         self._death_log: List[Tuple[int, str, str]] = []
         self._little_girl_peeking: Optional[int] = None  # Little girl user_id if peeking this night
+        self._sisters_ids: List[int] = []  # Two Sisters player IDs
+        self._sisters_thread: Optional[discord.Thread] = None
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -185,6 +187,9 @@ class WerewolfGame:
             if self._wolf_thread:
                 with contextlib.suppress(discord.HTTPException):
                     await self._wolf_thread.delete()
+            if self._sisters_thread:
+                with contextlib.suppress(discord.HTTPException):
+                    await self._sisters_thread.delete()
 
     async def _run_night(self) -> None:
         self.phase = Phase.NIGHT
@@ -200,6 +205,10 @@ class WerewolfGame:
         await self.channel.send(embed=embed)
         await self._run_countdown(self.channel, f"Đêm {self.night_number}", self.settings.night_intro_duration)
         logger.info("Night start | guild=%s channel=%s night=%s", self.guild.id, self.channel.id, self.night_number)
+        
+        # Wake Two Sisters on even nights (2, 4, 6...) for coordination
+        if self.night_number % 2 == 0 and len(self._sisters_ids) == 2:
+            await self._wake_sisters()
 
         await self._resolve_role_sequence(first_night=self.night_number == 1)
         await self._resolve_pending_deaths("night")
@@ -260,9 +269,22 @@ class WerewolfGame:
         )
         result = await vote.start()
         tally = Counter(result.tally)
+        
+        # Apply Raven bonus (+2 phiếu)
         for player in alive:
             if player.marked_by_raven:
                 tally[player.user_id] += 2
+        
+        # Apply Two Sisters bonus (+1 phiếu nếu cùng vote)
+        if len(self._sisters_ids) == 2 and result.votes_by_voter:
+            votes_by_voter = result.votes_by_voter
+            sister1_vote = votes_by_voter.get(self._sisters_ids[0])
+            sister2_vote = votes_by_voter.get(self._sisters_ids[1])
+            
+            if sister1_vote is not None and sister1_vote == sister2_vote:
+                tally[sister1_vote] += 1
+                logger.info("Sisters bonus vote applied | guild=%s day=%s target=%s", self.guild.id, self.day_number, sister1_vote)
+        
         if not tally:
             await self.channel.send("Không có ai bị trưng cầu đủ phiếu.")
             return
@@ -376,6 +398,17 @@ class WerewolfGame:
         for player in self.players.values():
             if player.role:
                 await player.role.on_assign(self, player)
+        
+        # Detect Two Sisters and notify them of each other
+        sisters = [p for p in self.players.values() if getattr(p, "is_sister", False)]
+        if len(sisters) == 2:
+            self._sisters_ids = [s.user_id for s in sisters]
+            try:
+                await sisters[0].member.send(f"👯 Bạn là Hai Chị Em cùng với: {sisters[1].display_name()}")
+                await sisters[1].member.send(f"👯 Bạn là Hai Chị Em cùng với: {sisters[0].display_name()}")
+            except discord.HTTPException:
+                pass
+            logger.info("Two Sisters identified | guild=%s sisters=%s", self.guild.id, self._sisters_ids)
 
     async def _notify_roles(self) -> None:
         wolf_players = [p for p in self.players.values() if p.role and p.role.alignment == Alignment.WEREWOLF]
@@ -437,6 +470,46 @@ class WerewolfGame:
         embed.set_footer(text="Vai trò của bạn đã được gửi qua DM")
         embed.set_image(url=CARD_BACK_URL)
         await self.channel.send(embed=embed)
+
+    async def _wake_sisters(self) -> None:
+        """Wake Two Sisters on even nights for coordination via thread."""
+        if not self._sisters_ids or len(self._sisters_ids) != 2:
+            return
+        
+        sisters_alive = [self.players[sid] for sid in self._sisters_ids if sid in self.players and self.players[sid].alive]
+        if len(sisters_alive) != 2:
+            return
+        
+        # Create or reuse thread
+        if not self._sisters_thread:
+            try:
+                self._sisters_thread = await self.channel.create_thread(
+                    name=f"Hai Chị Em - Đêm {self.night_number}",
+                    auto_archive_duration=60
+                )
+            except discord.HTTPException:
+                logger.warning("Failed to create sisters thread | guild=%s", self.guild.id)
+                return
+        
+        # Add both sisters to thread
+        for sister in sisters_alive:
+            try:
+                await self._sisters_thread.add_user(sister.member)
+            except discord.HTTPException:
+                pass
+        
+        # Notify them
+        try:
+            await self._sisters_thread.send(
+                f"👯 **Hai Chị Em thức dậy!**\n"
+                f"{sisters_alive[0].display_name()} và {sisters_alive[1].display_name()}\n\n"
+                f"Các bạn có thể bàn luận để quyết định chiến lược cứu làng trong ngày hôm sau. "
+                f"Nếu cùng bỏ phiếu cho một người, sẽ được cộng thêm 1 phiếu!"
+            )
+        except discord.HTTPException:
+            pass
+        
+        logger.info("Sisters woken up | guild=%s night=%s sisters=%s", self.guild.id, self.night_number, self._sisters_ids)
 
     async def _announce_role_action(self, role: Role) -> None:
         """Announce a specific role is taking action."""

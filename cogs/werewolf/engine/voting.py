@@ -19,6 +19,7 @@ class VoteResult:
     winning_target_id: Optional[int]
     tally: Counter
     is_tie: bool
+    votes_by_voter: Dict[int, Optional[int]] = None  # New: map of voter -> target for bonus checks
 
 
 class VoteSession:
@@ -155,18 +156,18 @@ class VoteSession:
             weight = self.vote_weights.get(voter, 1)
             counts[target] += weight
         if not counts:
-            return VoteResult(winning_target_id=None, tally=counts, is_tie=True)
+            return VoteResult(winning_target_id=None, tally=counts, is_tie=True, votes_by_voter=dict(self._votes))
         top = counts.most_common()
         if len(top) > 1 and top[0][1] == top[1][1]:
             logging.getLogger("werewolf").info("Vote result tie | title=%s", self.title)
-            return VoteResult(winning_target_id=None, tally=counts, is_tie=True)
+            return VoteResult(winning_target_id=None, tally=counts, is_tie=True, votes_by_voter=dict(self._votes))
         logging.getLogger("werewolf").info(
             "Vote result | title=%s winner=%s votes=%s",
             self.title,
             top[0][0],
             counts,
         )
-        return VoteResult(winning_target_id=top[0][0], tally=counts, is_tie=False)
+        return VoteResult(winning_target_id=top[0][0], tally=counts, is_tie=False, votes_by_voter=dict(self._votes))
 
 
 class _VoteView(discord.ui.View):

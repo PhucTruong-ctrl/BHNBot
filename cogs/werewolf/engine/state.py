@@ -48,6 +48,7 @@ class PlayerState:
     vote_weight: int = 1
     house_token: Optional[str] = None
     protected_last_night: bool = False
+    is_sister: bool = False
     marked_by_raven: bool = False
     death_pending: bool = False
 
