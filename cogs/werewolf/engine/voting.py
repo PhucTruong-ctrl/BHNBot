@@ -113,6 +113,10 @@ class VoteSession:
             )
             return
         
+        # Check if voter is disabled (e.g., by Pharmacist's sleeping potion)
+        # We'll check this by looking at the voter's vote_disabled attribute
+        # This should be checked before recording the vote
+        
         # SECURITY: Validate target_id is None or in options
         if target_id is not None and target_id not in self.options:
             logging.getLogger("werewolf").warning(

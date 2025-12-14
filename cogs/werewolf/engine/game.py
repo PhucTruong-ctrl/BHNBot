@@ -75,6 +75,8 @@ class WerewolfGame:
         self._demon_wolf_curse_target: Optional[int] = None  # Target cursed by Demon Wolf
         self._moon_maiden_disabled: Optional[int] = None  # Player disabled by Moon Maiden this night
         self._hypnotist_charm_target: Optional[int] = None  # Player charmed by Hypnotist this night
+        self._pharmacist_antidote_target: Optional[int] = None  # Player targeted by Pharmacist's antidote this night
+        self._pharmacist_slept_target: Optional[int] = None  # Player targeted by Pharmacist's sleeping potion this night
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -285,6 +287,9 @@ class WerewolfGame:
             player.death_pending = False
         await self._run_countdown(self.channel, f"Thảo luận ngày {self.day_number}", self.settings.day_discussion_duration)
         await self._run_day_vote()
+        # Reset vote_disabled from Pharmacist's sleeping potion after day voting is complete
+        for player in self.alive_players():
+            player.vote_disabled = False
         logger.info("Day start | guild=%s channel=%s day=%s deaths=%s", self.guild.id, self.channel.id, self.day_number, [p.user_id for p in new_deaths])
 
     async def _resolve_pending_deaths(self, phase_label: str) -> None:
@@ -880,6 +885,9 @@ class WerewolfGame:
             self._moon_maiden_disabled = None
             # Reset Hypnotist charm target each night
             self._hypnotist_charm_target = None
+            # Reset Pharmacist targets each night
+            self._pharmacist_antidote_target = None
+            self._pharmacist_slept_target = None
             
             announce_task = None
             thief = self._find_role_holder("Tên Trộm")
@@ -1247,8 +1255,14 @@ class WerewolfGame:
                         self.guild.id, witch.user_id, self.night_number)
         
         if kill_target:
-            self._pending_deaths.append((kill_target, "witch"))
-            logger.info("Witch used poison | guild=%s witch=%s target=%s", self.guild.id, witch.user_id, kill_target)
+            # Check if Pharmacist's antidote saves this target
+            if kill_target == self._pharmacist_antidote_target:
+                await self.channel.send(f"💊 Bình hồi phục của Dược Sĩ đã cứu sống <@{kill_target}> khỏi bình độc của Phù thủy!")
+                logger.info("Pharmacist antidote saved target | guild=%s witch=%s target=%s pharmacist_antidote=%s", 
+                            self.guild.id, witch.user_id, kill_target, self._pharmacist_antidote_target)
+            else:
+                self._pending_deaths.append((kill_target, "witch"))
+                logger.info("Witch used poison | guild=%s witch=%s target=%s", self.guild.id, witch.user_id, kill_target)
         
         return None if saved else killed_id
 
