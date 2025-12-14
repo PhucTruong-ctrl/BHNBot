@@ -36,6 +36,10 @@ class Scapegoat(Role):
         if not choices:
             return
         
+        # CRITICAL FIX: Verify alive before prompting dead player
+        if not player.alive:
+            return
+        
         target_id = await game._prompt_dm_choice(  # pylint: disable=protected-access
             player,
             title="Oan Nhân - Chọn Nạn Nhân",

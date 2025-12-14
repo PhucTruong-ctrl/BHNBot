@@ -226,6 +226,8 @@ class WerewolfGame:
             await self._force_unmute_all()
             await self._enable_text_chat()
             await self._announce_winner()
+            # Clear all channel permissions to reset for next game
+            await self._clear_channel_permissions()
             self.is_finished = True
             if self._wolf_thread:
                 with contextlib.suppress(discord.HTTPException):
@@ -572,7 +574,7 @@ class WerewolfGame:
             # Notify for primary (first) role
             role = roles[0]
             embed = discord.Embed(
-                title=f"🃏 Vai của bạn: {role.metadata.name}",
+                title=f"Bạn là: {role.metadata.name}",
                 description=role.format_private_information(),
                 colour=discord.Colour.dark_gold(),
             )
@@ -583,7 +585,7 @@ class WerewolfGame:
             
             embed.add_field(name="Phe", value=player.faction_view(), inline=True)
             embed.add_field(name="Đồng đội", value=wolf_names if any(r.alignment == Alignment.WEREWOLF for r in roles) else "Ẩn danh", inline=True)
-            embed.set_thumbnail(url=role.metadata.card_image_url)
+            embed.set_image(url=role.metadata.card_image_url)
             # SECURITY: Use safe DM with error handling
             await self._safe_send_dm(player.member, embed=embed)
 
@@ -1687,6 +1689,32 @@ class WerewolfGame:
                            self.guild.id, self.voice_channel_id, unmuted_count)
         except Exception as e:
             logger.error("Failed to force unmute all players | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
+
+    async def _clear_channel_permissions(self) -> None:
+        """Clear all individual player permissions in game channel when game ends."""
+        try:
+            # Get all permission overwrites in the channel
+            overwrites = dict(self.channel.overwrites)
+            
+            cleared_count = 0
+            for target, permission_overwrite in overwrites.items():
+                # Skip if target is a role (we only want to clear player permissions)
+                if isinstance(target, discord.Role):
+                    continue
+                
+                try:
+                    # Delete individual player's permission overwrite
+                    await self.channel.set_permissions(target, overwrite=None, reason="Werewolf: Game ended - reset permissions")
+                    cleared_count += 1
+                except discord.HTTPException as e:
+                    logger.warning("Failed to clear permissions for player in game channel | guild=%s player=%s error=%s",
+                                 self.guild.id, target.id if hasattr(target, 'id') else target, str(e))
+            
+            if cleared_count > 0:
+                logger.info("Cleared channel permissions for all players | guild=%s channel=%s cleared_count=%s",
+                           self.guild.id, self.channel.id, cleared_count)
+        except Exception as e:
+            logger.error("Failed to clear channel permissions | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _announce_winner(self) -> None:
         if self._winner is None:

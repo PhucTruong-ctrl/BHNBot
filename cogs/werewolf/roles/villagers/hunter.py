@@ -50,6 +50,9 @@ class Hunter(Role):
             choices = {p.user_id: p.display_name() for p in game.alive_players() if p.user_id != player.user_id}
             if not choices:
                 return
+            # CRITICAL FIX: Verify alive before prompting dead player
+            if not player.alive:
+                return
             target_id = await game._prompt_dm_choice(  # pylint: disable=protected-access
                 player,
                 title="Thợ Săn Trả Thù",

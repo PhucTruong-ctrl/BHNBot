@@ -35,7 +35,8 @@ class Knight(Role):
         
         # Mark the first wolf (leftmost) to die next night
         target_wolf = wolves[0]
-        target_wolf.death_pending = True
+        # CRITICAL FIX: Add wolf to pending deaths so they actually die
+        game._pending_deaths.append((target_wolf.user_id, "knight"))
         
         # Notify the wolf that they will die
         await target_wolf.member.send(

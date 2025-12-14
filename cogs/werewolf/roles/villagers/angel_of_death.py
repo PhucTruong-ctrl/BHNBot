@@ -74,15 +74,25 @@ class AngelOfDeath(Role):
         
         # Target is dead - Angel inherits their roles
         if target.roles:
+            # CRITICAL FIX: Use deep copy to avoid sharing mutable state
+            import copy
+            
             # Copy all roles from target to Angel
             for target_role in target.roles:
-                # Deep copy the role to preserve its state
-                role_copy = target_role.__class__()
-                # Copy any mutable state from the original role
-                if hasattr(target_role, '__dict__'):
-                    for attr, value in target_role.__dict__.items():
-                        if not attr.startswith('_'):
-                            setattr(role_copy, attr, value)
+                # Deep copy the role to avoid shared mutable state (sets, lists, etc)
+                try:
+                    role_copy = copy.deepcopy(target_role)
+                except Exception:
+                    # Fallback to manual copy if deepcopy fails
+                    role_copy = target_role.__class__()
+                    if hasattr(target_role, '__dict__'):
+                        for attr, value in target_role.__dict__.items():
+                            if not attr.startswith('_'):
+                                # For mutable objects, attempt deep copy
+                                if isinstance(value, (list, set, dict)):
+                                    setattr(role_copy, attr, copy.deepcopy(value))
+                                else:
+                                    setattr(role_copy, attr, value)
                 
                 player.roles.append(role_copy)
             
