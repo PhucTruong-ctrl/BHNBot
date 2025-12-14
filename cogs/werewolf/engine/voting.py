@@ -138,7 +138,7 @@ class VoteSession:
             details.append(f"Bỏ phiếu: {skipped} chưa chọn")
         embed.add_field(name="Kết quả tạm thời", value="\n".join(details) or "Chưa có phiếu", inline=False)
         remaining = self._remaining_seconds()
-        embed.set_footer(text=f"Số phiếu đã ghi nhận: {total}/{len(self._votes)} | Còn {remaining}s")
+        embed.set_footer(text=f"Số phiếu đã ghi nhận: {total}/{len(self._votes)} | **Còn {remaining}s**")
         return embed
 
     def _remaining_seconds(self) -> int:

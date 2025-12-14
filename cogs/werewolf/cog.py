@@ -37,7 +37,12 @@ class WerewolfCog(commands.Cog):
         await ctx.send("Các lệnh: !werewolf create, !werewolf cancel")
 
     @werewolf_group.command(name="create")
-    async def create(self, ctx: commands.Context, *expansion_flags: str) -> None:
+    async def create(self, ctx: commands.Context, game_mode: str = "text", *expansion_flags: str) -> None:
+        game_mode = game_mode.lower()
+        if game_mode not in ("text", "voice"):
+            await ctx.send("Mode phải là 'text' hoặc 'voice'", delete_after=6)
+            return
+        
         existing = self.manager.get_game(ctx.guild.id) if ctx.guild else None
         if existing and not existing.is_finished:
             await ctx.send("Đang có một bàn Ma Sói khác hoạt động.", delete_after=8)
@@ -48,13 +53,14 @@ class WerewolfCog(commands.Cog):
             if exp:
                 expansions.add(exp)
         try:
-            game = await self.manager.create_game(ctx.guild, ctx.channel, ctx.author, expansions)  # type: ignore[arg-type]
+            game = await self.manager.create_game(ctx.guild, ctx.channel, ctx.author, expansions, game_mode=game_mode)  # type: ignore[arg-type]
         except RuntimeError as exc:
             await ctx.send(str(exc), delete_after=8)
             return
         await game.open_lobby()
         await game.add_player(ctx.author)
-        await ctx.send("Đã tạo bàn Ma Sói. Dùng nút để tham gia!", delete_after=10)
+        mode_text = "Voice" if game_mode == "voice" else "Text"
+        await ctx.send(f"Đã tạo bàn Ma Sói [{mode_text}]. Dùng nút để tham gia!", delete_after=10)
 
     @werewolf_group.command(name="cancel")
     async def cancel(self, ctx: commands.Context) -> None:

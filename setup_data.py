@@ -20,7 +20,8 @@ def init_database():
     c.execute('''CREATE TABLE IF NOT EXISTS server_config (
                     guild_id INTEGER PRIMARY KEY,
                     admin_channel_id INTEGER,
-                    noitu_channel_id INTEGER
+                    noitu_channel_id INTEGER,
+                    werewolf_voice_channel_id INTEGER
                 )''')
     
     # Player Stats: Track wins and correct words per user

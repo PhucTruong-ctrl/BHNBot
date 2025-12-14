@@ -2,6 +2,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
+import aiosqlite
+
+DB_PATH = "./data/database.db"
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
@@ -165,6 +168,47 @@ class AdminCog(commands.Cog):
         cogs = list(self.bot.cogs.keys())
         msg = "Loaded cogs:\n" + "\n".join([f"- {c}" for c in cogs])
         await ctx.send(msg)
+
+    # --- Werewolf Config ---
+    @commands.group(name="wconfig", description="Werewolf configuration", invoke_without_command=True)
+    @commands.has_permissions(manage_guild=True)
+    async def werewolf_config(self, ctx):
+        """Werewolf configuration commands"""
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Dùng: !wconfig voice <channel>")
+
+    @werewolf_config.command(name="voice", description="Set werewolf voice channel")
+    async def set_werewolf_voice(self, ctx, channel: discord.VoiceChannel):
+        """Set the voice channel for werewolf night/day mute control"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Insert or update the voice channel ID
+                await db.execute(
+                    """
+                    INSERT INTO server_config (guild_id, werewolf_voice_channel_id) 
+                    VALUES (?, ?)
+                    ON CONFLICT(guild_id) DO UPDATE SET 
+                    werewolf_voice_channel_id = excluded.werewolf_voice_channel_id
+                    """,
+                    (ctx.guild.id, channel.id)
+                )
+                await db.commit()
+            
+            embed = discord.Embed(
+                title="✅ Cấu hình Werewolf",
+                description=f"Voice channel được đặt: {channel.mention}",
+                color=discord.Color.green()
+            )
+            await ctx.send(embed=embed)
+            print(f"[WEREWOLF CONFIG] Guild {ctx.guild.id} ({ctx.guild.name}): Voice channel set to {channel.name} ({channel.id})")
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Lỗi",
+                description=f"Không thể cập nhật: {str(e)}",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            print(f"[WEREWOLF CONFIG ERROR] Guild {ctx.guild.id}: {e}")
 
     # --- Helper: List all commands ---
     @commands.command(name="commands", description="List all available commands")

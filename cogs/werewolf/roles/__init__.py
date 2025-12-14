@@ -24,9 +24,9 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.villagers.guard",
 	"cogs.werewolf.roles.villagers.raven",
 	"cogs.werewolf.roles.werewolves.werewolf",
-	"cogs.werewolf.roles.werewolves.white_werewolf",
 	"cogs.werewolf.roles.neutrals.pied_piper",
 	"cogs.werewolf.roles.neutrals.pyromaniac",
+	"cogs.werewolf.roles.neutrals.white_werewolf",
 )
 
 

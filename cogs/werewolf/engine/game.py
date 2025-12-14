@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 import discord
 from discord import abc as discord_abc
 
+from .role_config import RoleConfig
 from ..roles import get_role_class, load_all_roles
 from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
@@ -36,11 +37,15 @@ class WerewolfGame:
         channel: discord.TextChannel,
         host: discord.Member,
         expansions: Set[Expansion],
+        voice_channel_id: Optional[int] = None,
+        game_mode: str = "text",
     ) -> None:
         self.bot = bot
         self.guild = guild
         self.channel = channel
         self.host = host
+        self.voice_channel_id = voice_channel_id
+        self.game_mode = game_mode  # "text" or "voice"
         self.settings = GameSettings(expansions=set(expansions))
         self.players: Dict[int, PlayerState] = {}
         self.phase = Phase.LOBBY
@@ -62,6 +67,9 @@ class WerewolfGame:
         self._little_girl_peeking: Optional[int] = None  # Little girl user_id if peeking this night
         self._sisters_ids: List[int] = []  # Two Sisters player IDs
         self._sisters_thread: Optional[discord.Thread] = None
+        # Pyromaniac state: set of player IDs soaked in oil (max 6)
+        self._pyro_soaked: Set[int] = set()
+        self._pyro_id: Optional[int] = None  # Pyromaniac player ID
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -206,6 +214,10 @@ class WerewolfGame:
         await self._run_countdown(self.channel, f"Đêm {self.night_number}", self.settings.night_intro_duration)
         logger.info("Night start | guild=%s channel=%s night=%s", self.guild.id, self.channel.id, self.night_number)
         
+        # Mute voice channel for night phase (only in voice mode)
+        if self.game_mode == "voice":
+            await self._mute_voice()
+        
         # Wake Two Sisters on even nights (2, 4, 6...) for coordination
         if self.night_number % 2 == 0 and len(self._sisters_ids) == 2:
             await self._wake_sisters()
@@ -217,6 +229,11 @@ class WerewolfGame:
     async def _run_day(self) -> None:
         self.phase = Phase.DAY
         self.day_number += 1
+        
+        # Unmute voice channel for day phase (only in voice mode)
+        if self.game_mode == "voice":
+            await self._unmute_voice()
+        
         announcements = []
         new_deaths = [p for p in self.list_players() if not p.alive and p.death_pending]
         if new_deaths:
@@ -514,7 +531,7 @@ class WerewolfGame:
     async def _announce_role_action(self, role: Role) -> None:
         """Announce a specific role is taking action."""
         embed = discord.Embed(
-            title=f"🌟 {role.metadata.name}",
+            title=f"{role.metadata.name}",
             description="Đang hành động...",
             colour=discord.Colour.purple(),
         )
@@ -533,6 +550,42 @@ class WerewolfGame:
             return
         wolf_mentions = " ".join(p.member.mention for p in wolves)
         await self._wolf_thread.send(f"{wolf_mentions} đây là nơi bàn kế hoạch. Hãy dùng menu để chọn mục tiêu mỗi đêm.")
+
+    async def _mute_voice(self) -> None:
+        """Mute voice channel during night phase using permission overwrites."""
+        if not self.voice_channel_id:
+            return
+        try:
+            voice_channel = self.bot.get_channel(self.voice_channel_id)
+            if not voice_channel:
+                logger.warning("Voice channel not found | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
+                return
+            # Set @everyone role to cannot speak
+            everyone_role = self.guild.default_role
+            await voice_channel.set_permissions(
+                everyone_role,
+                speak=False,
+                reason="Werewolf: Night phase - mute"
+            )
+            logger.info("Voice muted | guild=%s voice_channel=%s", self.guild.id, self.voice_channel_id)
+        except discord.HTTPException as e:
+            logger.error("Failed to mute voice channel | guild=%s error=%s", self.guild.id, str(e))
+
+    async def _unmute_voice(self) -> None:
+        """Unmute voice channel during day phase."""
+        if not self.voice_channel_id:
+            return
+        try:
+            voice_channel = self.bot.get_channel(self.voice_channel_id)
+            if not voice_channel:
+                logger.warning("Voice channel not found | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
+                return
+            # Reset @everyone role permissions to default
+            everyone_role = self.guild.default_role
+            await voice_channel.delete_permissions(everyone_role, reason="Werewolf: Day phase - unmute")
+            logger.info("Voice unmuted | guild=%s voice_channel=%s", self.guild.id, self.voice_channel_id)
+        except discord.HTTPException as e:
+            logger.error("Failed to unmute voice channel | guild=%s error=%s", self.guild.id, str(e))
 
     async def _run_wolf_vote(self) -> Optional[int]:
         wolves = [p for p in self.alive_players() if p.role and p.role.alignment == Alignment.WEREWOLF]
@@ -1030,60 +1083,41 @@ class WerewolfGame:
         return None
 
     def _build_role_layout(self, player_count: int, has_thief: bool = False) -> List[type[Role]]:
+        """Build role layout using RoleConfig's dynamic distribution."""
         # If thief is present, we need player_count + 2 roles (2 extra for thief to choose from)
         target_count = player_count + 2 if has_thief else player_count
         
+        # Get role distribution from RoleConfig
+        role_names = RoleConfig.get_role_list(player_count, self.settings.expansions)
+        
+        # Add extra cards for thief if needed
+        if has_thief:
+            villager_cls = get_role_class("Dân Làng")
+            role_names.extend(["Dân Làng", "Dân Làng"])  # Add 2 extra villagers
+        
+        # Convert role names to role classes
         layout: List[type[Role]] = []
-        wolves = max(1, player_count // 4)
-        wolf_cls = get_role_class("Ma Sói")
-        for _ in range(wolves):
-            layout.append(wolf_cls)
+        for role_name in role_names[:target_count]:
+            try:
+                role_cls = get_role_class(role_name)
+                layout.append(role_cls)
+            except KeyError:
+                logger.warning("Role not found in registry: %s", role_name)
+                # Fallback to villager
+                layout.append(get_role_class("Dân Làng"))
         
-        essentials = [
-            "Tiên Tri",
-            "Phù Thủy",
-            "Thợ Săn",
-            "Thần Tình Yêu",
-        ]
-        for name in essentials:
-            cls = get_role_class(name)
-            layout.append(cls)
+        # Log balance info
+        balance = RoleConfig.get_balance_info(player_count, self.settings.expansions)
+        logger.info(
+            "Role layout | guild=%s player_count=%s werewolves=%s village=%s neutral=%s",
+            self.guild.id,
+            player_count,
+            balance.get(Alignment.WEREWOLF, 0),
+            balance.get(Alignment.VILLAGE, 0),
+            balance.get(Alignment.NEUTRAL, 0),
+        )
         
-        # Prioritize neutral roles when expansions are enabled
-        neutral_priority = []
-        if Expansion.NEW_MOON in self.settings.expansions:
-            neutral_priority.append("Thổi Sáo")  # Pied Piper
-        if Expansion.THE_VILLAGE in self.settings.expansions:
-            neutral_priority.append("Kẻ Phóng Hỏa")  # Pyromaniac
-        
-        # Cap neutral count for small lobbies (avoid overloading village)
-        max_neutral = 1 if player_count < 10 else len(neutral_priority)
-        for name in neutral_priority[:max_neutral]:
-            if len(layout) < target_count:
-                layout.append(get_role_class(name))
-        
-        # Then add optional village roles
-        optional = ["Cô Bé", "Tên Trộm", "Trưởng Làng"]
-        for name in optional:
-            if len(layout) < target_count:
-                layout.append(get_role_class(name))
-        
-        # Then add other expansion roles (non-neutral)
-        if Expansion.NEW_MOON in self.settings.expansions:
-            for name in ["Thằng Ngốc", "Già Làng", "Kẻ Thế Thân", "Bảo Vệ"]:
-                if len(layout) < target_count:
-                    layout.append(get_role_class(name))
-        
-        if Expansion.THE_VILLAGE in self.settings.expansions:
-            for name in ["Sói Trắng", "Con Quạ"]:
-                if len(layout) < target_count:
-                    layout.append(get_role_class(name))
-        
-        # Fill remaining with villagers
-        villager_cls = get_role_class("Dân Làng")
-        while len(layout) < target_count:
-            layout.append(villager_cls)
-        return layout[:target_count]
+        return layout
 
     async def _prompt_dm_choice(
         self,
