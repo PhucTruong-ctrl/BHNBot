@@ -14,4 +14,5 @@ class PiedPiper(Role):
         expansion=Expansion.NEW_MOON,
         description="Mỗi đêm bạn thôi miên tối đa hai người. Khi tất cả những người còn sống đều bị thôi miên, bạn thắng.",
         night_order=120,
+        card_image_url="https://via.placeholder.com/250x350?text=Piper",
     )

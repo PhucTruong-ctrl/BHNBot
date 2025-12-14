@@ -12,6 +12,7 @@ class LittleGirl(Role):
         name="Cô Bé",
         alignment=Alignment.VILLAGE,
         expansion=Expansion.BASIC,
-        description="Bạn có thể hé mắt khi ma sói thức dậy để đoán ra danh tính của chúng.",
+        description="Từ đêm thứ 2, bạn có thể hé mắt nhìn khi ma sói thức giấc (20% bị phát hiện). Nếu bị phát hiện, sói có thể chọn giết bạn thay thế.",
         night_order=30,
+        card_image_url="https://static.wikia.nocookie.net/allthetropes/images/7/72/PetiteFille_2646.jpg/revision/latest?cb=20240927192722",
     )

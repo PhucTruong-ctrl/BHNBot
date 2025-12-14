@@ -31,6 +31,7 @@ class RoleMetadata:
     alignment: Alignment
     expansion: Expansion
     description: str
+    card_image_url: str = "https://via.placeholder.com/250x350?text=Card"
     max_count: Optional[int] = None
     first_night_only: bool = False
     night_order: int = 100

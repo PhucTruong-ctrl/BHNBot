@@ -13,6 +13,7 @@ class Mayor(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.BASIC,
         description="Lá phiếu của bạn được tính gấp đôi khi treo cổ.",
+        card_image_url="https://via.placeholder.com/250x350?text=Mayor",
     )
 
     async def on_assign(self, game, player) -> None:  # type: ignore[override]

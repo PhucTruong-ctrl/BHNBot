@@ -13,4 +13,5 @@ class Scapegoat(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.NEW_MOON,
         description="Nếu dân làng hòa phiếu, bạn sẽ bị xử tử thay. Bạn có thể quyết định ai được bỏ phiếu vào sáng hôm sau (chức năng giản lược).",
+        card_image_url="https://via.placeholder.com/250x350?text=Scapegoat",
     )

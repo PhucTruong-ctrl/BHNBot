@@ -13,6 +13,7 @@ class Guard(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.NEW_MOON,
         description="Mỗi đêm bạn chọn một người để bảo vệ khỏi Ma Sói. Không được bảo vệ cùng một người hai đêm liên tiếp.",
+        card_image_url="https://via.placeholder.com/250x350?text=Guard",
         tags=("self_target",),
     )
 

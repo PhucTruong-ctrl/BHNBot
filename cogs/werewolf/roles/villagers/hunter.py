@@ -13,6 +13,7 @@ class Hunter(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.BASIC,
         description="Nếu bạn chết, bạn được quyền kéo theo một người khác cùng chết.",
+        card_image_url="https://static.wikia.nocookie.net/allthetropes/images/5/5c/Chasseur_1773.jpg/revision/latest?cb=20240925085527",
     )
 
     async def on_death(self, game, player, cause: str) -> None:  # type: ignore[override]
@@ -27,4 +28,4 @@ class Hunter(Role):
             allow_skip=True,
         )
         if target_id and target_id in choices:
-            game._pending_deaths.append(target_id)  # pylint: disable=protected-access
+            game._pending_deaths.append((target_id, "hunter"))  # pylint: disable=protected-access

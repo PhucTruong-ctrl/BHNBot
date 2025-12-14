@@ -13,6 +13,7 @@ class Pyromaniac(Role):
         alignment=Alignment.NEUTRAL,
         expansion=Expansion.THE_VILLAGE,
         description="Một lần trong ván chơi bạn có thể thiêu rụi một ngôi nhà, hạ gục chủ nhân của nó.",
+        card_image_url="https://via.placeholder.com/250x350?text=Pyromaniac",
         tags=("self_target",),
     )
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Dict, Iterable, Optional
 
 import discord
@@ -49,17 +51,23 @@ class VoteSession:
         self._message: Optional[discord.Message] = None
         self._finished = asyncio.Event()
         self._timeout_task: Optional[asyncio.Task] = None
+        self._ticker_task: Optional[asyncio.Task] = None
+        self._start_time: Optional[datetime] = None
 
     async def start(self) -> VoteResult:
         """Start the vote and wait for the result."""
 
         view = _VoteView(self)
+        self._start_time = datetime.utcnow()
         embed = self._build_embed()
         self._message = await self.channel.send(embed=embed, view=view)
         self._timeout_task = asyncio.create_task(self._auto_finish())
+        self._ticker_task = asyncio.create_task(self._ticker())
         await self._finished.wait()
         if self._timeout_task:
             self._timeout_task.cancel()
+        if self._ticker_task:
+            self._ticker_task.cancel()
         view.stop()
         if self._message:
             try:
@@ -75,6 +83,14 @@ class VoteSession:
             return
         self.end()
 
+    async def _ticker(self) -> None:
+        try:
+            while not self._finished.is_set():
+                await asyncio.sleep(3)
+                await self._refresh_message()
+        except asyncio.CancelledError:
+            return
+
     def end(self) -> None:
         if not self._finished.is_set():
             self._finished.set()
@@ -84,6 +100,12 @@ class VoteSession:
             return
         self._votes[voter_id] = target_id
         await self._refresh_message()
+        logging.getLogger("werewolf").info(
+            "Vote recorded | voter=%s target=%s title=%s",
+            voter_id,
+            target_id,
+            self.title,
+        )
         if all(choice is not None for choice in self._votes.values()):
             self.end()
 
@@ -114,8 +136,16 @@ class VoteSession:
             skipped = len([v for v in self._votes.values() if v is None])
             details.append(f"Bỏ phiếu: {skipped} chưa chọn")
         embed.add_field(name="Kết quả tạm thời", value="\n".join(details) or "Chưa có phiếu", inline=False)
-        embed.set_footer(text=f"Số phiếu đã ghi nhận: {total}/{len(self._votes)}")
+        remaining = self._remaining_seconds()
+        embed.set_footer(text=f"Số phiếu đã ghi nhận: {total}/{len(self._votes)} | Còn {remaining}s")
         return embed
+
+    def _remaining_seconds(self) -> int:
+        if not self._start_time:
+            return self.duration
+        elapsed = datetime.utcnow() - self._start_time
+        remaining = max(0, int(self.duration - elapsed.total_seconds()))
+        return remaining
 
     def _compute_result(self) -> VoteResult:
         counts: Counter[int] = Counter()
@@ -128,7 +158,14 @@ class VoteSession:
             return VoteResult(winning_target_id=None, tally=counts, is_tie=True)
         top = counts.most_common()
         if len(top) > 1 and top[0][1] == top[1][1]:
+            logging.getLogger("werewolf").info("Vote result tie | title=%s", self.title)
             return VoteResult(winning_target_id=None, tally=counts, is_tie=True)
+        logging.getLogger("werewolf").info(
+            "Vote result | title=%s winner=%s votes=%s",
+            self.title,
+            top[0][0],
+            counts,
+        )
         return VoteResult(winning_target_id=top[0][0], tally=counts, is_tie=False)
 
 

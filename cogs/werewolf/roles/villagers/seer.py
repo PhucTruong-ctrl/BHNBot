@@ -14,4 +14,5 @@ class Seer(Role):
         expansion=Expansion.BASIC,
         description="Mỗi đêm bạn có thể soi danh tính của một người chơi.",
         night_order=50,
+        card_image_url="https://static.wikia.nocookie.net/allthetropes/images/6/69/Voyante_1512.jpg/revision/latest?cb=20240928215718",
     )

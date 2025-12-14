@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import random
 from collections import Counter
-from typing import Dict, List, Optional, Sequence, Set
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import discord
 from discord import abc as discord_abc
@@ -16,10 +17,15 @@ from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
 from .voting import VoteSession
 
-CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/vi/5/59/Ma_soi_Werewolves.png"
-MIN_PLAYERS = 6
+CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/vi/b/bf/Logo_The_Werewolves_of_Millers_Hollow.png"
+# Lowered to 4 for easier local testing; raise back to 6 for production balance
+MIN_PLAYERS = 4
 
 load_all_roles()
+
+logger = logging.getLogger("werewolf")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(message)s")
 
 
 class WerewolfGame:
@@ -48,16 +54,20 @@ class WerewolfGame:
         self._wolf_thread: Optional[discord.Thread] = None
         self._lobby_message: Optional[discord.Message] = None
         self._lobby_view: Optional[_LobbyView] = None
-        self._pending_deaths: List[int] = []
+        # (player_id, cause) where cause in {wolves, white_wolf, witch, pyro, hunter, lynch, lover, scapegoat}
+        self._pending_deaths: List[Tuple[int, str]] = []
         self._lovers: Set[int] = set()
         self._charmed: Set[int] = set()
         self._piper_id: Optional[int] = None
         self._stop_event = asyncio.Event()
+        self._death_log: List[Tuple[int, str, str]] = []
+        self._little_girl_peeking: Optional[int] = None  # Little girl user_id if peeking this night
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
         embed = self._build_lobby_embed()
         self._lobby_message = await self.channel.send(embed=embed, view=self._lobby_view)
+        logger.info("Lobby opened | guild=%s channel=%s host=%s", self.guild.id, self.channel.id, self.host.id)
 
     def _build_lobby_embed(self) -> discord.Embed:
         player_lines = [f"- {player.display_name()}" for player in self.list_players()]
@@ -122,6 +132,7 @@ class WerewolfGame:
             return
         self.players[guild_member.id] = PlayerState(member=guild_member)
         await self._refresh_lobby()
+        logger.info("Player joined lobby | guild=%s channel=%s player=%s", self.guild.id, self.channel.id, guild_member.id)
 
     async def remove_player(self, member: discord_abc.User) -> None:
         if self.phase != Phase.LOBBY:
@@ -131,6 +142,7 @@ class WerewolfGame:
             return
         self.players.pop(guild_member.id, None)
         await self._refresh_lobby()
+        logger.info("Player left lobby | guild=%s channel=%s player=%s", self.guild.id, self.channel.id, guild_member.id)
 
     async def toggle_expansion(self, expansion: Expansion) -> None:
         if self.phase != Phase.LOBBY:
@@ -151,12 +163,14 @@ class WerewolfGame:
         await self._assign_roles()
         await self._notify_roles()
         await self._create_wolf_thread()
+        await self._announce_role_composition()
         if self._lobby_message:
             try:
                 await self._lobby_message.edit(content="Trận đấu đã bắt đầu", view=None)
             except discord.HTTPException:
                 pass
         self._loop_task = asyncio.create_task(self._game_loop())
+        logger.info("Game started | guild=%s channel=%s players=%s expansions=%s", self.guild.id, self.channel.id, len(self.players), list(self.settings.expansions))
 
     async def _game_loop(self) -> None:
         try:
@@ -178,7 +192,16 @@ class WerewolfGame:
         self.phase = Phase.NIGHT
         for player in self.alive_players():
             player.reset_night_flags()
-        await self.channel.send(f"Đêm {self.night_number} buông xuống. Tất cả đi ngủ.")
+        # Announce night with embed
+        embed = discord.Embed(
+            title=f"🌙 Đêm {self.night_number}",
+            description="Buông xuống. Tất cả đi ngủ.",
+            colour=discord.Colour.dark_blue(),
+        )
+        embed.set_image(url=CARD_BACK_URL)
+        await self.channel.send(embed=embed)
+        await self._run_countdown(self.channel, f"Đêm {self.night_number}", self.settings.night_intro_duration)
+        logger.info("Night start | guild=%s channel=%s night=%s", self.guild.id, self.channel.id, self.night_number)
 
         await self._resolve_role_sequence(first_night=self.night_number == 1)
         await self._resolve_pending_deaths("night")
@@ -197,26 +220,34 @@ class WerewolfGame:
         await self.channel.send("\n".join(announcements))
         for player in new_deaths:
             player.death_pending = False
+        await self._run_countdown(self.channel, f"Thảo luận ngày {self.day_number}", self.settings.day_discussion_duration)
         await self._run_day_vote()
+        logger.info("Day start | guild=%s channel=%s day=%s deaths=%s", self.guild.id, self.channel.id, self.day_number, [p.user_id for p in new_deaths])
 
     async def _resolve_pending_deaths(self, phase_label: str) -> None:
         if not self._pending_deaths:
             return
-        unique = {pid for pid in self._pending_deaths}
+        # Deduplicate by player id while keeping first cause
+        unique: Dict[int, str] = {}
+        for pid, cause in self._pending_deaths:
+            if pid not in unique:
+                unique[pid] = cause
         self._pending_deaths.clear()
-        for pid in unique:
+        for pid, cause in unique.items():
             player = self.players.get(pid)
             if player and player.alive:
                 player.alive = False
                 player.death_pending = True
-                await self._handle_death(player, cause=phase_label)
+                await self._handle_death(player, cause=cause)
 
     async def _run_day_vote(self) -> None:
         alive = self.alive_players()
+        eligible: List[int] = []
         if len(alive) <= 2:
             await self.channel.send("Không đủ người sống để bỏ phiếu ban ngày.")
             return
         eligible = [p.user_id for p in alive if not p.vote_disabled]
+        logger.info("Day vote start | guild=%s day=%s eligible=%s", self.guild.id, self.day_number, eligible)
         options = {p.user_id: p.display_name() for p in alive}
         vote = VoteSession(
             self.bot,
@@ -244,8 +275,10 @@ class WerewolfGame:
                 await self.channel.send("Lá phiếu bế tắc. Kẻ thế thân phải ra đi thay làng.")
                 scapegoat.alive = False
                 await self._handle_death(scapegoat, cause="scapegoat")
+                logger.info("Scapegoat executed due to tie | guild=%s player=%s", self.guild.id, scapegoat.user_id)
                 return
             await self.channel.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
+            logger.info("Day vote tie no execution | guild=%s day=%s", self.guild.id, self.day_number)
             return
         target_player = self.players.get(top[0][0])
         if not target_player:
@@ -255,28 +288,61 @@ class WerewolfGame:
             target_player.role.revealed = True  # type: ignore[attr-defined]
             target_player.vote_disabled = True
             await self.channel.send("Thằng ngốc lộ diện và vẫn sống, nhưng mất quyền bỏ phiếu.")
+            logger.info("Idiot revealed survives lynch | guild=%s player=%s", self.guild.id, target_player.user_id)
             return
         await self.channel.send(f"{target_player.display_name()} bị dân làng treo cổ.")
         if target_player.alive:
             target_player.alive = False
             await self._handle_death(target_player, cause="lynch")
+            # Resolve any immediate retaliations (e.g., Hunter) during the day
+            await self._resolve_pending_deaths("hunter")
+            logger.info("Player lynched | guild=%s player=%s", self.guild.id, target_player.display_name())
 
     async def _assign_roles(self) -> None:
         player_ids = list(self.players.keys())
         random.shuffle(player_ids)
-        role_layout = self._build_role_layout(len(player_ids))
+        
+        # First, build layout without thief bonus to check if thief is in the game
+        role_layout = self._build_role_layout(len(player_ids), has_thief=False)
         random.shuffle(role_layout)
+        
+        # Check if thief was randomly assigned in the layout
+        has_thief_role = any(cls().metadata.name == "Tên Trộm" for cls in role_layout)
+        
+        if has_thief_role:
+            # Rebuild layout with 2 extra cards for thief
+            role_layout = self._build_role_layout(len(player_ids), has_thief=True)
+            random.shuffle(role_layout)
+        
         extra_cards: List[Role] = []
         thief_id: Optional[int] = None
-        for player_id, role_cls in zip(player_ids, role_layout):
+        
+        # Assign first N roles to players
+        for player_id, role_cls in zip(player_ids, role_layout[:len(player_ids)]):
             role = role_cls()
             if role.metadata.name == "Tên Trộm":
                 thief_id = player_id
             self.players[player_id].role = role
-        if thief_id is not None:
+            logger.info(
+                "Role assigned | guild=%s player=%s name=%s alignment=%s",
+                self.guild.id,
+                player_id,
+                role.metadata.name,
+                role.alignment,
+            )
+        
+        # If thief exists, the last 2 roles become extra cards
+        if thief_id is not None and len(role_layout) > len(player_ids):
             thief = self.players[thief_id]
-            extra_cards = self._generate_thief_cards()
+            extra_role_classes = role_layout[len(player_ids):]
+            extra_cards = [role_cls() for role_cls in extra_role_classes]
             thief.role.extra_cards = extra_cards  # type: ignore[attr-defined]
+            logger.info(
+                "Thief extra cards generated | guild=%s cards=%s",
+                self.guild.id,
+                [role.metadata.name for role in extra_cards]
+            )
+        
         for player in self.players.values():
             if player.role:
                 await player.role.on_assign(self, player)
@@ -288,14 +354,69 @@ class WerewolfGame:
             role = player.role
             if not role:
                 continue
-            embed = discord.Embed(title="Bạn được giao vai trò", description=role.format_private_information())
-            embed.colour = discord.Colour.dark_gold()
-            embed.add_field(name="Phe", value=player.faction_view())
-            embed.add_field(name="Đồng đội", value=wolf_names if role.alignment == Alignment.WEREWOLF else "Ẩn danh")
+            embed = discord.Embed(
+                title=f"🃏 Vai của bạn: {role.metadata.name}",
+                description=role.format_private_information(),
+                colour=discord.Colour.dark_gold(),
+            )
+            embed.add_field(name="Phe", value=player.faction_view(), inline=True)
+            embed.add_field(name="Đồng đội", value=wolf_names if role.alignment == Alignment.WEREWOLF else "Ẩn danh", inline=True)
+            embed.set_thumbnail(url=role.metadata.card_image_url)
             try:
                 await player.member.send(embed=embed)
             except discord.HTTPException:
                 await self.channel.send(f"Không thể gửi DM cho {player.display_name()}. Hãy bật DM để chơi.")
+
+    async def _announce_role_composition(self) -> None:
+        """Announce all roles in the game at the start."""
+        from collections import Counter
+        role_counts = Counter(p.role.metadata.name for p in self.players.values() if p.role)
+        
+        embed = discord.Embed(
+            title="🎴 Các Vai Trò Trong Game",
+            description=f"Trận đấu có {len(self.players)} người chơi với các vai trò sau:",
+            colour=discord.Colour.gold(),
+        )
+        
+        # Group by alignment
+        village_roles = []
+        wolf_roles = []
+        neutral_roles = []
+        
+        for role_name, count in role_counts.items():
+            role_cls = get_role_class(role_name)
+            if not role_cls:
+                continue
+            role_instance = role_cls()
+            display = f"{role_name} x{count}" if count > 1 else role_name
+            
+            if role_instance.alignment == Alignment.VILLAGE:
+                village_roles.append(display)
+            elif role_instance.alignment == Alignment.WEREWOLF:
+                wolf_roles.append(display)
+            else:
+                neutral_roles.append(display)
+        
+        if village_roles:
+            embed.add_field(name="🏘️ Phe Dân Làng", value="\n".join(village_roles), inline=True)
+        if wolf_roles:
+            embed.add_field(name="🐺 Phe Ma Sói", value="\n".join(wolf_roles), inline=True)
+        if neutral_roles:
+            embed.add_field(name="⚖️ Phe Trung Lập", value="\n".join(neutral_roles), inline=True)
+        
+        embed.set_footer(text="Vai trò của bạn đã được gửi qua DM")
+        embed.set_image(url=CARD_BACK_URL)
+        await self.channel.send(embed=embed)
+
+    async def _announce_role_action(self, role: Role) -> None:
+        """Announce a specific role is taking action."""
+        embed = discord.Embed(
+            title=f"🌟 {role.metadata.name}",
+            description="Đang hành động...",
+            colour=discord.Colour.purple(),
+        )
+        embed.set_thumbnail(url=role.metadata.card_image_url)
+        await self.channel.send(embed=embed)
 
     async def _create_wolf_thread(self) -> None:
         wolves = [p for p in self.players.values() if p.role and p.role.alignment == Alignment.WEREWOLF]
@@ -330,66 +451,177 @@ class WerewolfGame:
         result = await vote.start()
         return result.winning_target_id if not result.is_tie else None
 
+    def _calculate_night_action_duration(self, *, first_night: bool) -> int:
+        """Calculate estimated total duration for all night role actions."""
+        duration = 0
+        # Thief (first night only)
+        if first_night and self._find_role_holder("Tên Trộm"):
+            duration += 60
+        # Cupid (first night only)
+        if first_night and self._find_role_holder("Thần Tình Yêu"):
+            duration += 120  # 2 lovers
+        # Wolf vote
+        wolves = [p for p in self.alive_players() if p.role and p.role.alignment == Alignment.WEREWOLF]
+        if wolves:
+            duration += self.settings.night_vote_duration
+        # Guard
+        if self._find_role_holder("Bảo Vệ"):
+            duration += 60
+        # Seer
+        if self._find_role_holder("Tiên Tri"):
+            duration += 60
+        # Witch
+        if self._find_role_holder("Phù Thủy"):
+            duration += 120  # heal + poison
+        # White Wolf (every other night)
+        if self.night_number % 2 == 0 and self._find_role_holder("Sói Trắng"):
+            duration += 60
+        # Raven
+        if self._find_role_holder("Con Quạ"):
+            duration += 60
+        # Piper
+        if self._find_role_holder("Thổi Sáo"):
+            duration += 120  # 2 targets
+        # Pyromaniac
+        pyro = self._find_role_holder("Kẻ Phóng Hỏa")
+        if pyro and not getattr(pyro.role, "ignited", False):
+            duration += 60
+        return max(duration, 30)  # Minimum 30s
+
     async def _resolve_role_sequence(self, *, first_night: bool) -> None:
         thief = self._find_role_holder("Tên Trộm")
         if first_night and thief:
+            await self._announce_role_action(thief.role)
             await self._handle_thief(thief)
+            logger.info("Thief resolved | guild=%s player=%s", self.guild.id, thief.user_id)
         cupid = self._find_role_holder("Thần Tình Yêu")
         if first_night and cupid:
+            await self._announce_role_action(cupid.role)
             await self._handle_cupid(cupid)
+            logger.info("Cupid resolved | guild=%s player=%s", self.guild.id, cupid.user_id)
+        
+        wolves = [p for p in self.alive_players() if p.role and p.role.alignment == Alignment.WEREWOLF]
+        if wolves:
+            await self._announce_role_action(wolves[0].role)
+        
+        # Handle little girl peeking before wolf vote (so wolves can see the discovery message)
         little_girl = self._find_role_holder("Cô Bé")
-        target_id = await self._run_wolf_vote()
         if little_girl:
             await self._handle_little_girl(little_girl)
+        
+        # Run wolf vote - if little girl was discovered, wolves can choose to kill her instead
+        target_id = await self._run_wolf_vote()
+        logger.info("Wolf vote target | guild=%s night=%s target=%s", self.guild.id, self.night_number, target_id)
+        
+        # Check if wolves chose to replace the original target with the discovered little girl
+        if self._little_girl_peeking and target_id == self._little_girl_peeking:
+            # Little girl becomes the victim instead of the original choice
+            logger.info("Little girl killed while discovered peeking | guild=%s night=%s", self.guild.id, self.night_number)
+        elif self._little_girl_peeking:
+            # Original target remains, but reset the peeking flag
+            self._little_girl_peeking = None
+        else:
+            self._little_girl_peeking = None
+        
         guard = self._find_role_holder("Bảo Vệ")
+        if guard:
+            await self._announce_role_action(guard.role)
         protected_id = await self._handle_guard(guard) if guard else None
+        logger.info("Guard protected | guild=%s night=%s target=%s", self.guild.id, self.night_number, protected_id)
         killed_id = target_id if target_id != protected_id else None
         if killed_id and self._handle_elder_resistance(killed_id):
             killed_id = None
+        
         white_wolf = self._find_role_holder("Sói Trắng")
+        if white_wolf and self.night_number % 2 == 0:
+            await self._announce_role_action(white_wolf.role)
         betrayer_kill = await self._handle_white_wolf(white_wolf) if white_wolf else None
+        
         seer = self._find_role_holder("Tiên Tri")
         if seer:
+            await self._announce_role_action(seer.role)
             await self._handle_seer(seer)
+        
         witch = self._find_role_holder("Phù Thủy")
         if witch:
+            await self._announce_role_action(witch.role)
             killed_id = await self._handle_witch(witch, killed_id)
+        
         raven = self._find_role_holder("Con Quạ")
         if raven:
+            await self._announce_role_action(raven.role)
             await self._handle_raven(raven)
+        
         piper = self._find_role_holder("Thổi Sáo")
         if piper:
+            await self._announce_role_action(piper.role)
             await self._handle_piper(piper)
+        
         pyro = self._find_role_holder("Kẻ Phóng Hỏa")
-        if pyro:
+        if pyro and not getattr(pyro.role, "ignited", False):
+            await self._announce_role_action(pyro.role)
             await self._handle_pyromaniac(pyro)
+        
         if killed_id:
-            self._pending_deaths.append(killed_id)
+            self._pending_deaths.append((killed_id, "wolves"))
         if betrayer_kill:
-            self._pending_deaths.append(betrayer_kill)
+            self._pending_deaths.append((betrayer_kill, "white_wolf"))
+        logger.info("Night resolution | guild=%s night=%s killed=%s extra=%s", self.guild.id, self.night_number, killed_id, betrayer_kill)
 
     async def _handle_thief(self, thief: PlayerState) -> None:
         role = thief.role
         extra_cards = getattr(role, "extra_cards", [])
         if not extra_cards:
             return
-        options = {idx: card.metadata.name for idx, card in enumerate(extra_cards)}
+        
+        # Check if any of the extra cards is a werewolf
+        wolf_indices = [idx for idx, card in enumerate(extra_cards) if card.alignment == Alignment.WEREWOLF]
+        has_wolf = len(wolf_indices) > 0
+        
+        # Build options - if has wolf, only show wolf cards
+        if has_wolf:
+            options = {idx: card.metadata.name for idx, card in enumerate(extra_cards) if card.alignment == Alignment.WEREWOLF}
+            description = "⚠️ Có ít nhất một lá Sói! Bạn BẮT BUỘC phải chọn Sói.\n\nChọn một trong các lá bài Sói:"
+        else:
+            options = {idx: card.metadata.name for idx, card in enumerate(extra_cards)}
+            description = "Chọn một trong hai lá bài bỏ dư:"
+        
         result = await self._prompt_dm_choice(
             thief,
             title="Tên trộm chọn vai mới",
-            description="Chọn một trong hai lá bài bỏ dư.",
+            description=description,
             options=options,
             allow_skip=False,
         )
         if result is None:
             return
+        
         new_role = extra_cards[result]
+        old_role_name = thief.role.metadata.name
         thief.role = new_role
         await new_role.on_assign(self, thief)
+        
+        # If thief becomes a werewolf, add to wolf thread
+        if new_role.alignment == Alignment.WEREWOLF and self._wolf_thread:
+            try:
+                await self._wolf_thread.add_user(thief.member)
+                # Notify other wolves
+                wolf_players = [p for p in self.players.values() 
+                               if p.alive and p.role and p.role.alignment == Alignment.WEREWOLF and p.user_id != thief.user_id]
+                wolf_mention = " ".join(p.member.mention for p in wolf_players)
+                if wolf_mention:
+                    await self._wolf_thread.send(f"{wolf_mention} - {thief.display_name()} đã trở thành {new_role.metadata.name} và gia nhập bầy sói!")
+                logger.info("Thief joined wolf thread | guild=%s player=%s", self.guild.id, thief.user_id)
+            except discord.HTTPException as e:
+                logger.warning("Failed to add thief to wolf thread | guild=%s player=%s error=%s", 
+                             self.guild.id, thief.user_id, str(e))
+        
         try:
             await thief.member.send(f"Bạn đã chọn '{new_role.metadata.name}'.")
         except discord.HTTPException:
             pass
+        logger.info("Thief chose role | guild=%s player=%s old_role=%s new_role=%s", 
+                   self.guild.id, thief.user_id, old_role_name, new_role.metadata.name)
 
     async def _handle_cupid(self, cupid: PlayerState) -> None:
         available = {p.user_id: p.display_name() for p in self.alive_players() if p.user_id != cupid.user_id}
@@ -417,6 +649,7 @@ class WerewolfGame:
                 await b.member.send(f"Bạn và {a.display_name()} đã trúng mũi tên tình ái.")
             except discord.HTTPException:
                 pass
+            logger.info("Cupid linked lovers | guild=%s cupid=%s lovers=%s", self.guild.id, cupid.user_id, self._lovers)
 
     async def _handle_guard(self, guard: PlayerState) -> Optional[int]:
         options = {p.user_id: p.display_name() for p in self.alive_players()}
@@ -444,6 +677,7 @@ class WerewolfGame:
                 guard.role.mark_self_target()
                 await guard.member.send("Bạn đã chọn bảo vệ chính mình đêm nay. Bạn sẽ không thể tự bảo vệ nữa.")
             guard.role.last_protected = target_id
+            logger.info("Guard protected | guild=%s player=%s target=%s", self.guild.id, guard.user_id, target_id)
         return target_id
 
     async def _handle_seer(self, seer: PlayerState) -> None:
@@ -469,6 +703,7 @@ class WerewolfGame:
             await seer.member.send(message)
         except discord.HTTPException:
             pass
+        logger.info("Seer peek | guild=%s seer=%s target=%s faction=%s", self.guild.id, seer.user_id, target_id, faction)
 
     async def _handle_witch(self, witch: PlayerState, killed_id: Optional[int]) -> Optional[int]:
         role = witch.role
@@ -506,16 +741,58 @@ class WerewolfGame:
                     witch.role.mark_self_target()
                     await witch.member.send("Bạn đã tự kết liễu chính mình.")
         if kill_target:
-            self._pending_deaths.append(kill_target)
+            self._pending_deaths.append((kill_target, "witch"))
+            logger.info("Witch used poison | guild=%s witch=%s target=%s", self.guild.id, witch.user_id, kill_target)
         return None if saved else killed_id
 
-    async def _handle_little_girl(self, little: PlayerState) -> None:
-        wolves = [p.display_name() for p in self.alive_players() if p.role and p.role.alignment == Alignment.WEREWOLF]
+    async def _handle_little_girl(self, little: PlayerState) -> Optional[bool]:
+        """Handle little girl peeking. Returns True if discovered, False/None if not.
+        
+        From night 2, little girl can peek when wolves wake up.
+        There's a small chance (20%) she's discovered if peeking.
+        """
+        # Can only peek from night 2 onwards
+        if self.night_number < 2:
+            return None
+        
+        wolves = [p for p in self.alive_players() if p.role and p.role.alignment == Alignment.WEREWOLF]
         if not wolves:
-            return
-        message = "Bạn hé mắt và thấy: " + ", ".join(wolves)
+            return None
+        
+        # Ask if she wants to peek
+        can_peek = await self._prompt_dm_choice(
+            little,
+            title="Cô bé - Hé mắt nhìn",
+            description="Bạn có muốn hé mắt nhìn khi các Ma Sói thức giấc không?",
+            options={1: "Có, hé mắt", 0: "Không, ngủ tiếp"},
+            allow_skip=False,
+        )
+        
+        if not can_peek:
+            logger.info("Little girl chose not to peek | guild=%s night=%s", self.guild.id, self.night_number)
+            return None
+        
+        wolf_names = ", ".join(p.display_name() for p in wolves)
+        message = "Bạn hé mắt và thấy: " + wolf_names
         with contextlib.suppress(discord.HTTPException):
             await little.member.send(message)
+        
+        # 20% chance of being discovered while peeking
+        discovered = random.random() < 0.2
+        
+        if discovered:
+            self._little_girl_peeking = little.user_id
+            logger.info("Little girl discovered peeking | guild=%s night=%s chance=20%%", self.guild.id, self.night_number)
+            # Notify wolves that they spotted someone peeking
+            if self._wolf_thread:
+                await self._wolf_thread.send(
+                    "⚠️ **Cảnh báo:** Các bạn phát hiện có ai đó đang hé mắt nhìn các bạn! "
+                    "Bạn muốn thay đổi mục tiêu và giết người đó thay thế không?"
+                )
+            return True
+        else:
+            logger.info("Little girl peeked undetected | guild=%s night=%s", self.guild.id, self.night_number)
+            return False
 
     async def _handle_raven(self, raven: PlayerState) -> None:
         options = {p.user_id: p.display_name() for p in self.alive_players() if p.user_id != raven.user_id}
@@ -535,6 +812,7 @@ class WerewolfGame:
             target.marked_by_raven = True
             with contextlib.suppress(discord.HTTPException):
                 await raven.member.send(f"Bạn đã nguyền {target.display_name()}.")
+            logger.info("Raven marked target | guild=%s raven=%s target=%s", self.guild.id, raven.user_id, target.user_id)
 
     async def _handle_piper(self, piper: PlayerState) -> None:
         self._piper_id = piper.user_id
@@ -558,6 +836,8 @@ class WerewolfGame:
             if target:
                 with contextlib.suppress(discord.HTTPException):
                     await target.member.send("Bạn nghe tiếng sáo lạ và thấy mình như bị thôi miên.")
+        if charmed_now:
+            logger.info("Piper charmed | guild=%s piper=%s targets=%s", self.guild.id, piper.user_id, charmed_now)
 
     async def _handle_white_wolf(self, white_wolf: PlayerState) -> Optional[int]:
         if not white_wolf.alive:
@@ -581,6 +861,7 @@ class WerewolfGame:
         if choice == white_wolf.user_id:
             white_wolf.role.mark_self_target()
         return choice
+        logger.info("White wolf acted | guild=%s player=%s target=%s", self.guild.id, white_wolf.user_id, choice)
 
     async def _handle_pyromaniac(self, pyro: PlayerState) -> None:
         role = pyro.role
@@ -602,7 +883,8 @@ class WerewolfGame:
         if choice == pyro.user_id:
             pyro.role.mark_self_target()
             await pyro.member.send("Bạn đã đốt chính ngôi nhà của mình.")
-        self._pending_deaths.append(choice)
+        self._pending_deaths.append((choice, "pyro"))
+        logger.info("Pyromaniac ignited | guild=%s pyro=%s target=%s", self.guild.id, pyro.user_id, choice)
 
     def _handle_elder_resistance(self, target_id: int) -> bool:
         target = self.players.get(target_id)
@@ -618,6 +900,7 @@ class WerewolfGame:
                 await target.member.send("Bạn bị ma sói tấn công nhưng vẫn sống.")
 
         asyncio.create_task(notify())
+        logger.info("Elder resisted wolf attack | guild=%s elder=%s", self.guild.id, target.user_id)
         return True
 
     def _find_role_holder(self, role_name: str) -> Optional[PlayerState]:
@@ -626,42 +909,60 @@ class WerewolfGame:
                 return player
         return None
 
-    def _build_role_layout(self, player_count: int) -> List[type[Role]]:
+    def _build_role_layout(self, player_count: int, has_thief: bool = False) -> List[type[Role]]:
+        # If thief is present, we need player_count + 2 roles (2 extra for thief to choose from)
+        target_count = player_count + 2 if has_thief else player_count
+        
         layout: List[type[Role]] = []
         wolves = max(1, player_count // 4)
         wolf_cls = get_role_class("Ma Sói")
         for _ in range(wolves):
             layout.append(wolf_cls)
+        
         essentials = [
             "Tiên Tri",
             "Phù Thủy",
             "Thợ Săn",
             "Thần Tình Yêu",
         ]
-        optional = ["Cô Bé", "Tên Trộm", "Trưởng Làng"]
         for name in essentials:
             cls = get_role_class(name)
             layout.append(cls)
-        for name in optional:
-            if len(layout) < player_count:
-                layout.append(get_role_class(name))
+        
+        # Prioritize neutral roles when expansions are enabled
+        neutral_priority = []
         if Expansion.NEW_MOON in self.settings.expansions:
-            for name in ["Thằng Ngốc", "Già Làng", "Kẻ Thế Thân", "Bảo Vệ", "Thổi Sáo"]:
-                if len(layout) < player_count:
-                    layout.append(get_role_class(name))
+            neutral_priority.append("Thổi Sáo")  # Pied Piper
         if Expansion.THE_VILLAGE in self.settings.expansions:
-            for name in ["Sói Trắng", "Con Quạ", "Kẻ Phóng Hỏa"]:
-                if len(layout) < player_count:
+            neutral_priority.append("Kẻ Phóng Hỏa")  # Pyromaniac
+        
+        # Add neutral roles first (if expansion enabled)
+        for name in neutral_priority:
+            if len(layout) < target_count:
+                layout.append(get_role_class(name))
+        
+        # Then add optional village roles
+        optional = ["Cô Bé", "Tên Trộm", "Trưởng Làng"]
+        for name in optional:
+            if len(layout) < target_count:
+                layout.append(get_role_class(name))
+        
+        # Then add other expansion roles (non-neutral)
+        if Expansion.NEW_MOON in self.settings.expansions:
+            for name in ["Thằng Ngốc", "Già Làng", "Kẻ Thế Thân", "Bảo Vệ"]:
+                if len(layout) < target_count:
                     layout.append(get_role_class(name))
+        
+        if Expansion.THE_VILLAGE in self.settings.expansions:
+            for name in ["Sói Trắng", "Con Quạ"]:
+                if len(layout) < target_count:
+                    layout.append(get_role_class(name))
+        
+        # Fill remaining with villagers
         villager_cls = get_role_class("Dân Làng")
-        while len(layout) < player_count:
+        while len(layout) < target_count:
             layout.append(villager_cls)
-        return layout[:player_count]
-
-    def _generate_thief_cards(self) -> List[Role]:
-        villager_cls = get_role_class("Dân Làng")
-        wolf_cls = get_role_class("Ma Sói")
-        return [villager_cls(), wolf_cls()]
+        return layout[:target_count]
 
     async def _prompt_dm_choice(
         self,
@@ -717,16 +1018,76 @@ class WerewolfGame:
 
     async def _announce_winner(self) -> None:
         if self._winner is None:
-            await self.channel.send("Trận đấu kết thúc mà không xác định được phe thắng.")
+            embed = discord.Embed(
+                title="⚠️ Kết Thúc Trận Đấu",
+                description="Trận đấu kết thúc mà không xác định được phe thắng.",
+                colour=discord.Colour.greyple(),
+            )
+            embed.set_image(url=CARD_BACK_URL)
+            await self.channel.send(embed=embed)
             return
         mapping = {
-            Alignment.VILLAGE: "Dân làng",
-            Alignment.WEREWOLF: "Ma Sói",
-            Alignment.NEUTRAL: "Tình nhân",
+            Alignment.VILLAGE: ("Dân Làng", discord.Colour.green()),
+            Alignment.WEREWOLF: ("Ma Sói", discord.Colour.red()),
+            Alignment.NEUTRAL: ("Tình Nhân", discord.Colour.purple()),
         }
-        await self.channel.send(f"Trò chơi kết thúc. Phe chiến thắng: {mapping[self._winner]}.")
+        faction_name, faction_colour = mapping[self._winner]
+        
+        # Compose brief reason based on last recorded death events
+        survivors = ", ".join(p.display_name() for p in self.alive_players()) or "Không còn ai sống"
+        last_night: List[str] = []
+        last_day: List[str] = []
+        # Find last occurrences for night/day
+        for pid, cause, phase in reversed(self._death_log):
+            player = self.players.get(pid)
+            name = player.display_name() if player else str(pid)
+            text = name
+            if cause == "wolves":
+                text += " bị sói cắn"
+            elif cause == "white_wolf":
+                text += " bị sói trắng giết"
+            elif cause == "witch":
+                text += " bị phù thủy đầu độc"
+            elif cause == "pyro":
+                text += " bị kẻ phóng hỏa thiêu"
+            elif cause == "lynch":
+                text += " bị treo cổ"
+            elif cause == "hunter":
+                text = f"Thợ săn bắn hạ {name}"
+            elif cause == "lover":
+                text += " chết theo người yêu"
+            elif cause == "scapegoat":
+                text = f"Kẻ thế thân bị hiến tế ({name})"
+            else:
+                text += f" chết ({cause})"
+            if phase == "Đêm":
+                if not last_night or (last_day and last_night):
+                    # If we already collected day events after, stop when phase switches
+                    last_day = last_day
+                last_night.append(text)
+            else:
+                last_day.append(text)
+            # Stop after we collected both sections with at least one item
+            if last_night and last_day:
+                break
+        
+        embed = discord.Embed(
+            title="🏆 Trò Chơi Kết Thúc",
+            description=f"**Phe Chiến Thắng:** {faction_name}",
+            colour=faction_colour,
+        )
+        embed.add_field(name="Người Sống Sót", value=survivors, inline=False)
+        if last_night:
+            embed.add_field(name="Đêm Hôm Trước", value="; ".join(reversed(last_night)), inline=False)
+        if last_day:
+            embed.add_field(name="Sáng Hôm Sau", value="; ".join(reversed(last_day)), inline=False)
+        embed.set_image(url=CARD_BACK_URL)
+        await self.channel.send(embed=embed)
 
     async def _handle_death(self, player: PlayerState, *, cause: str) -> None:
+        # Record death for end-of-game summary with phase label
+        phase_label = "Đêm" if self.phase == Phase.NIGHT else "Ngày"
+        self._death_log.append((player.user_id, cause, phase_label))
         await player.role.on_death(self, player, cause)  # type: ignore[union-attr]
         if player.lover_id:
             lover = self.players.get(player.lover_id)
@@ -734,6 +1095,28 @@ class WerewolfGame:
                 lover.alive = False
                 lover.death_pending = True
                 await self._handle_death(lover, cause="lover")
+        logger.info("Player died | guild=%s player=%s cause=%s", self.guild.id, player.display_name(), cause)
+
+    async def _run_countdown(self, channel: discord.abc.Messageable, label: str, seconds: int, step: int = 3) -> None:
+        if seconds <= 0:
+            return
+        try:
+            message = await channel.send(f"{label}: {seconds}s")
+        except discord.HTTPException:
+            return
+        remaining = seconds
+        try:
+            while remaining > 0:
+                await asyncio.sleep(min(step, remaining))
+                remaining -= step
+                if remaining < 0:
+                    remaining = 0
+                with contextlib.suppress(discord.HTTPException):
+                    await message.edit(content=f"{label}: {remaining}s")
+        except asyncio.CancelledError:
+            return
+        with contextlib.suppress(discord.HTTPException):
+            await message.edit(content=f"{label}: hết giờ")
 
 
 class _LobbyView(discord.ui.View):
@@ -789,11 +1172,20 @@ class _StartButton(discord.ui.Button):
             await interaction.response.send_message("Chỉ chủ bàn mới bắt đầu được.", ephemeral=True)
             return
         try:
+            if not interaction.response.is_done():
+                await interaction.response.defer(ephemeral=True, thinking=False)
             await self.game.start()
+            logger.info("Start button acknowledged | guild=%s host=%s", self.game.guild.id, self.game.host.id)
+            if interaction.response.is_done():
+                await interaction.followup.send("Đã bắt đầu trận đấu.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Đã bắt đầu trận đấu.", ephemeral=True)
         except Exception as exc:  # pylint: disable=broad-except
-            await interaction.response.send_message(str(exc), ephemeral=True)
-            return
-        await interaction.response.send_message("Đã bắt đầu trận đấu.", ephemeral=True)
+            logger.exception("Error when starting game via button | guild=%s host=%s", self.game.guild.id, self.game.host.id)
+            if interaction.response.is_done():
+                await interaction.followup.send(str(exc), ephemeral=True)
+            else:
+                await interaction.response.send_message(str(exc), ephemeral=True)
 
 
 class _ToggleExpansionButton(discord.ui.Button):

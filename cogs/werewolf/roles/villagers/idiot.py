@@ -13,6 +13,7 @@ class Idiot(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.NEW_MOON,
         description="Nếu bị dân làng treo cổ, bạn lộ bài và sống sót nhưng mất quyền bỏ phiếu.",
+        card_image_url="https://via.placeholder.com/250x350?text=Idiot",
     )
 
     def __init__(self) -> None:
