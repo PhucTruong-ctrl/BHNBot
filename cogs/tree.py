@@ -607,31 +607,5 @@ class CommunityCog(commands.Cog):
         
         print(f"[TREE] HARVEST EVENT - Season {season} completed! Top1: {top1_user}, Total: {total}")
 
-    @app_commands.command(name="settreechannel", description="Set tree display channel (Admin Only)")
-    @app_commands.describe(channel="Kênh để hiển thị cây")
-    @app_commands.checks.has_permissions(administrator=True)
-    async def set_tree_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        """Set the channel where tree will be displayed"""
-        await interaction.response.defer(ephemeral=True)
-        
-        guild_id = interaction.guild.id
-        
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE server_tree SET tree_channel_id = ? WHERE guild_id = ?",
-                (channel.id, guild_id)
-            )
-            await db.commit()
-        
-        await interaction.followup.send(
-            f"✅ Đã set kênh cây thành {channel.mention}",
-            ephemeral=True
-        )
-        
-        # Create pinned message
-        await self.update_or_create_pin_message(guild_id, channel.id)
-        
-        print(f"[TREE] Tree channel set to {channel.name} ({channel.id})")
-
 async def setup(bot):
     await bot.add_cog(CommunityCog(bot))
