@@ -47,7 +47,7 @@ class General(commands.Cog):
     async def help_prefix(self, ctx):
         """Hiển thị danh sách lệnh"""
         embed = discord.Embed(
-            title="📖 Danh sách lệnh BHNBot",
+            title="📖 Danh sách lệnh Mèo Béo",
             color=discord.Color.blue(),
             description="Sử dụng các lệnh dưới đây để tương tác với bot"
         )
@@ -262,7 +262,7 @@ class General(commands.Cog):
             await interaction.followup.send(file=file)
         
         except Exception as e:
-            await interaction.followup.send(f"❌ Lỗi tạo profile: {e}")
+            await interaction.followup.send(f"Lỗi tạo profile: {e}")
             print(f"[PROFILE] Error: {e}")
 
     async def _create_profile_card(self, user, seeds, xp, level, best_friend):

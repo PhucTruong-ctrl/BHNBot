@@ -142,14 +142,16 @@ class ConfigCog(commands.Cog):
         kenh_noitu="Kênh chơi nối từ (Game Channel)",
         kenh_giveaway="Kênh thông báo Giveaway",
         kenh_logs="Kênh ghi log (Log Channel)",
-        kenh_soi="Kênh voice họp sói (Wolf Voice Channel)"
+        kenh_soi="Kênh voice họp sói (Wolf Voice Channel)",
+        kenh_cay="Kênh trồng cây server (Tree Channel)"
     )
     @app_commands.checks.has_permissions(administrator=True)
     async def config_set(self, interaction: discord.Interaction, 
                          kenh_noitu: discord.TextChannel = None, 
                          kenh_giveaway: discord.TextChannel = None,
                          kenh_logs: discord.TextChannel = None,
-                         kenh_soi: discord.VoiceChannel = None):
+                         kenh_soi: discord.VoiceChannel = None,
+                         kenh_cay: discord.TextChannel = None):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
@@ -159,7 +161,7 @@ class ConfigCog(commands.Cog):
         # 2. Defer ngay lập tức để tránh timeout 3s
         await interaction.response.defer(ephemeral=True)
 
-        if not any([kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi]):
+        if not any([kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi, kenh_cay]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -200,9 +202,26 @@ class ConfigCog(commands.Cog):
                     new_noitu = None
                     await interaction.followup.send("Kênh Nối Từ đã bị xoá vì xung đột với kênh voice Sói")
                 
+                # Handle tree channel
+                if kenh_cay:
+                    new_tree = kenh_cay.id
+                    
+                    # Get tree cog
+                    tree_cog = self.bot.get_cog("CommunityCog")
+                    if tree_cog:
+                        # Create or update pinned message
+                        await tree_cog.update_or_create_pin_message(guild_id, kenh_cay.id)
+                else:
+                    new_tree = None
+                
                 # Save
-                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id) VALUES (?, ?, ?, ?, ?)", 
-                                 (guild_id, new_logs, new_noitu, new_wolf, new_giveaway))
+                await db.execute("UPDATE server_config SET logs_channel_id = ?, noitu_channel_id = ?, wolf_channel_id = ?, giveaway_channel_id = ? WHERE guild_id = ?", 
+                                 (new_logs, new_noitu, new_wolf, new_giveaway, guild_id))
+                
+                if kenh_cay:
+                    await db.execute("UPDATE server_tree SET tree_channel_id = ? WHERE guild_id = ?",
+                                     (kenh_cay.id, guild_id))
+                
                 await db.commit()
                 print(f"CONFIG_SAVED [Guild {guild_id}]")
 
@@ -211,6 +230,7 @@ class ConfigCog(commands.Cog):
             if kenh_giveaway: msg += f"🎁 Giveaway: {kenh_giveaway.mention}\n"
             if kenh_logs: msg += f"📋 Logs: {kenh_logs.mention}\n"
             if kenh_soi: msg += f"🐺 Sói Voice: {kenh_soi.mention}\n"
+            if kenh_cay: msg += f"🌳 Cây: {kenh_cay.mention}\n"
             
             await interaction.followup.send(msg)
 

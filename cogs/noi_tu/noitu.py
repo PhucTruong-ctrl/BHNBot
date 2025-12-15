@@ -201,6 +201,74 @@ class GameNoiTu(commands.Cog):
         except Exception as e:
             log(f"ERROR updating player stats: {e}")
     
+    async def distribute_rewards(self, guild_id, winner_id, all_players, channel):
+        """Distribute seeds rewards after game ends"""
+        try:
+            economy_cog = self.bot.get_cog("EconomyCog")
+            if not economy_cog:
+                log(f"ERROR: EconomyCog not found")
+                return
+            
+            # Check if harvest buff is active
+            is_buff_active = await economy_cog.is_harvest_buff_active(guild_id)
+            buff_multiplier = 2 if is_buff_active else 1
+            
+            # Calculate rewards
+            winner_reward = 15 * buff_multiplier
+            loser_reward = 5 * buff_multiplier
+            
+            winner_name = None
+            loser_names = []
+            
+            # Distribute rewards
+            for user_id, username in all_players.items():
+                if user_id == winner_id:
+                    await economy_cog.add_seeds(user_id, winner_reward)
+                    winner_name = username
+                else:
+                    await economy_cog.add_seeds(user_id, loser_reward)
+                    loser_names.append(username)
+            
+            # Create reward notification embed
+            embed = discord.Embed(
+                title="🎮 Phần Thưởng Nối Từ",
+                description="Game kết thúc! Phần thưởng đã được phát.",
+                colour=discord.Colour.gold()
+            )
+            
+            # Winner info
+            winner_display = f"🥇 {winner_name}" if winner_name else "🥇 Unknown"
+            embed.add_field(
+                name="👑 Người Thắng",
+                value=f"{winner_display}\n+{winner_reward} 🌱",
+                inline=False
+            )
+            
+            # Loser info (if any)
+            if loser_names:
+                loser_display = ", ".join(loser_names)
+                embed.add_field(
+                    name="🤝 Những Người Tham Gia",
+                    value=f"{loser_display}\n+{loser_reward} 🌱 mỗi người",
+                    inline=False
+                )
+            
+            # Buff info
+            if is_buff_active:
+                embed.add_field(
+                    name="🔥 Cộng Hưởng Sinh Lực (Harvest Buff)",
+                    value=f"Phần thưởng được nhân 2x!",
+                    inline=False
+                )
+            
+            try:
+                await channel.send(embed=embed)
+            except Exception as e:
+                log(f"ERROR sending reward embed: {e}")
+        
+        except Exception as e:
+            log(f"ERROR distributing rewards: {e}")
+    
     async def update_ranking_roles(self, guild):
         """Update ranking roles based on current standings"""
         # Role IDs for top 3
@@ -308,7 +376,8 @@ class GameNoiTu(commands.Cog):
             "player_count": 0,
             "last_message_time": None,
             "start_message": None,  # Track the start message for sticky behavior
-            "start_message_content": f"Từ khởi đầu: **{word}**\nChờ người chơi nhập vào..."
+            "start_message_content": f"Từ khởi đầu: **{word}**\nChờ người chơi nhập vào...",
+            "players": {}  # Track players: {user_id: username}
         }
         
         log(f"GAME_START [Guild {guild_id}] Starting word: '{word}'")
@@ -386,6 +455,10 @@ class GameNoiTu(commands.Cog):
                 
                 # Update winner stats
                 await self.update_player_stats(winner_id, winner.name, is_winner=True)
+                
+                # Distribute rewards
+                if game_data.get('players'):
+                    await self.distribute_rewards(guild_id, winner_id, game_data['players'], channel)
                 
                 await self.start_new_round(guild_id, channel)
             
@@ -528,6 +601,9 @@ class GameNoiTu(commands.Cog):
                 except:
                     pass
                 log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (player #{game['player_count'] + 1})")
+                
+                # Track player
+                game['players'][message.author.id] = message.author.name
                 
                 # Update player stats (correct word count)
                 await self.update_player_stats(message.author.id, message.author.name, is_winner=False)

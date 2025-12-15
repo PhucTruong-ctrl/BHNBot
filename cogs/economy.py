@@ -46,6 +46,24 @@ class EconomyCog(commands.Cog):
                 return (user_id, username, 0, 0, 1, None, None, datetime.now(), datetime.now())
             return user
 
+    async def is_harvest_buff_active(self, guild_id: int) -> bool:
+        """Check if 24h harvest buff is active"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row or not row[0]:
+                return False
+            
+            buff_until = datetime.fromisoformat(row[0])
+            return datetime.now() < buff_until
+        except:
+            return False
+
     async def add_seeds(self, user_id: int, amount: int):
         """Add seeds to user"""
         async with aiosqlite.connect(DB_PATH) as db:
@@ -265,20 +283,28 @@ class EconomyCog(commands.Cog):
         
         # Award random seeds
         reward = random.randint(CHAT_REWARD_MIN, CHAT_REWARD_MAX)
+        
+        # Check if harvest buff is active (x2 multiplier)
+        is_buff_active = await self.is_harvest_buff_active(message.guild.id)
+        if is_buff_active:
+            reward = reward * 2
+            print(f"[ECONOMY] 🔥 HARVEST BUFF ACTIVE! {message.author.name} earned {reward} seeds from chat")
+        else:
+            print(f"[ECONOMY] {message.author.name} earned {reward} seeds from chat")
+        
         await self.add_seeds(user_id, reward)
         await self.update_last_chat_reward(user_id)
         
         # Update cooldown
         self.chat_cooldowns[user_id] = now
-        
-        # Log
-        print(f"[ECONOMY] {message.author.name} earned {reward} seeds from chat")
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
     async def voice_reward_task(self):
         """Check voice channels and reward members every 5 minutes"""
         try:
             for guild in self.bot.guilds:
+                is_buff_active = await self.is_harvest_buff_active(guild.id)
+                
                 for voice_channel in guild.voice_channels:
                     # Get members in voice (exclude bots)
                     members = [m for m in voice_channel.members if not m.bot]
@@ -289,8 +315,15 @@ class EconomyCog(commands.Cog):
                     # Award seeds to each member
                     for member in members:
                         await self.get_or_create_user(member.id, member.name)
-                        await self.add_seeds(member.id, VOICE_REWARD)
-                        print(f"[ECONOMY] {member.name} earned {VOICE_REWARD} seeds from voice chat")
+                        
+                        reward = VOICE_REWARD
+                        if is_buff_active:
+                            reward = reward * 2
+                            print(f"[ECONOMY] 🔥 HARVEST BUFF! {member.name} earned {reward} seeds from voice (x2)")
+                        else:
+                            print(f"[ECONOMY] {member.name} earned {reward} seeds from voice")
+                        
+                        await self.add_seeds(member.id, reward)
         
         except Exception as e:
             print(f"[ECONOMY] Voice reward error: {e}")

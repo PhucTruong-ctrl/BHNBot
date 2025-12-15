@@ -2366,6 +2366,127 @@ class WerewolfGame:
         except Exception as e:
             logger.error("Failed to clear channel permissions | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
+
+
+    async def _distribute_rewards(self) -> None:
+        """Distribute seed rewards based on game outcome"""
+        if self._winner is None:
+            return
+        
+        try:
+            # Import EconomyCog dynamically to avoid circular imports
+            from cogs.economy import EconomyCog
+            
+            # Get bot instance
+            bot = None
+            for attr in dir(self):
+                if hasattr(getattr(self, attr, None), 'get_cog'):
+                    bot = getattr(self, attr)
+                    break
+            
+            # Alternative: access bot through guild
+            if not bot:
+                # Try to get bot from first player
+                for player in self.players.values():
+                    if hasattr(player.member, '_state') and hasattr(player.member._state, '_get_client'):
+                        bot = player.member._state._get_client()
+                        break
+            
+            if not bot:
+                logger.warning("Could not access bot for reward distribution")
+                return
+            
+            economy_cog = bot.get_cog("EconomyCog")
+            if not economy_cog:
+                logger.warning("EconomyCog not found for reward distribution")
+                return
+            
+            # Check if harvest buff is active
+            is_buff_active = await economy_cog.is_harvest_buff_active(self.guild.id)
+            buff_multiplier = 2 if is_buff_active else 1
+            
+            # Calculate rewards
+            winner_reward = 15 * buff_multiplier
+            loser_reward = 5 * buff_multiplier
+            
+            # Get winner and loser alignments
+            winner_alignment = self._winner
+            loser_alignment = None
+            
+            # Determine loser alignment
+            all_alignments = set()
+            for player in self.players.values():
+                alignment = player.get_alignment_priority()
+                all_alignments.add(alignment)
+            
+            for alignment in all_alignments:
+                if alignment != winner_alignment:
+                    loser_alignment = alignment
+                    break
+            
+            # Distribute rewards
+            winners_list = []
+            losers_list = []
+            
+            for player in self.players.values():
+                player_alignment = player.get_alignment_priority()
+                if player_alignment == winner_alignment:
+                    await economy_cog.add_seeds(player.user_id, winner_reward)
+                    winners_list.append(player.display_name())
+                else:
+                    await economy_cog.add_seeds(player.user_id, loser_reward)
+                    losers_list.append(player.display_name())
+            
+            # Create reward embed
+            mapping = {
+                Alignment.VILLAGE: "Dân Làng",
+                Alignment.WEREWOLF: "Ma Sói",
+                Alignment.NEUTRAL: "Tình Nhân",
+            }
+            
+            winner_name = mapping.get(winner_alignment, "Unknown")
+            loser_name = mapping.get(loser_alignment, "Unknown") if loser_alignment else None
+            
+            embed = discord.Embed(
+                title="🎮 Phần Thưởng Ma Sói",
+                description=f"Game kết thúc! Phần thưởng đã được phát cho {winner_name}.",
+                colour=discord.Colour.gold()
+            )
+            
+            # Winners info
+            if winners_list:
+                winners_display = ", ".join(winners_list)
+                embed.add_field(
+                    name=f"👑 {winner_name} Thắng",
+                    value=f"{winners_display}\n+{winner_reward} 🌱 mỗi người",
+                    inline=False
+                )
+            
+            # Losers info (if any)
+            if losers_list and loser_name:
+                losers_display = ", ".join(losers_list)
+                embed.add_field(
+                    name=f"🤝 {loser_name}",
+                    value=f"{losers_display}\n+{loser_reward} 🌱 mỗi người",
+                    inline=False
+                )
+            
+            # Buff info
+            if is_buff_active:
+                embed.add_field(
+                    name="🔥 Cộng Hưởng Sinh Lực (Harvest Buff)",
+                    value="Phần thưởng được nhân 2x!",
+                    inline=False
+                )
+            
+            try:
+                await self.channel.send(embed=embed)
+            except Exception as e:
+                logger.error("Failed to send reward embed: %s", str(e))
+        
+        except Exception as e:
+            logger.error("Error distributing rewards: %s", str(e), exc_info=True)
+
     async def _announce_winner(self) -> None:
         if self._winner is None:
             embed = discord.Embed(
@@ -2376,6 +2497,11 @@ class WerewolfGame:
             embed.set_image(url=CARD_BACK_URL)
             await self.channel.send(embed=embed)
             return
+        
+        # Distribute rewards first
+        await self._distribute_rewards()
+        
+        # Then announce winner
         mapping = {
             Alignment.VILLAGE: ("Dân Làng", discord.Colour.green()),
             Alignment.WEREWOLF: ("Ma Sói", discord.Colour.red()),

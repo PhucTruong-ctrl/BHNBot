@@ -23,7 +23,8 @@ def init_database():
                     noitu_channel_id INTEGER,
                     wolf_channel_id INTEGER,
                     giveaway_channel_id INTEGER,
-                    exclude_chat_channels TEXT
+                    exclude_chat_channels TEXT,
+                    harvest_buff_until DATETIME
                 )''')
     
     # Player Stats: Track wins and correct words per user
@@ -65,6 +66,26 @@ def init_database():
                     quantity INTEGER DEFAULT 1,
                     obtained_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(user_id, item_name)
+                )''')
+    
+    # Server Tree: Community-wide tree that grows with contributions
+    c.execute('''CREATE TABLE IF NOT EXISTS server_tree (
+                    guild_id INTEGER PRIMARY KEY,
+                    current_level INTEGER DEFAULT 1,
+                    current_progress INTEGER DEFAULT 0,
+                    total_contributed INTEGER DEFAULT 0,
+                    season INTEGER DEFAULT 1,
+                    tree_channel_id INTEGER,
+                    tree_message_id INTEGER,
+                    last_harvest DATETIME
+                )''')
+    
+    # Tree Contributors: Track who contributed to the tree
+    c.execute('''CREATE TABLE IF NOT EXISTS tree_contributors (
+                    user_id INTEGER,
+                    guild_id INTEGER,
+                    amount INTEGER DEFAULT 0,
+                    PRIMARY KEY (user_id, guild_id)
                 )''')
     
     # Migration: Rename admin_channel_id to logs_channel_id (if table exists with old schema)
@@ -113,13 +134,73 @@ def init_database():
                 print("✓ Added logs_channel_id column")
             except sqlite3.OperationalError:
                 print("ℹ️ logs_channel_id column already exists")
+        
+        if "harvest_buff_until" not in columns:
+            try:
+                c.execute("ALTER TABLE server_config ADD COLUMN harvest_buff_until DATETIME")
+                print("✓ Added harvest_buff_until column")
+            except sqlite3.OperationalError:
+                print("ℹ️ harvest_buff_until column already exists")
     
     except Exception as e:
         print(f"⚠️ Migration check error: {e}")
     
+    # Check and migrate relationships table
+    try:
+        c.execute("PRAGMA table_info(relationships)")
+        rel_columns = [row[1] for row in c.fetchall()]
+        
+        # Check if table exists but is missing required columns
+        if "user_id_1" not in rel_columns or "user_id_2" not in rel_columns:
+            print("🔄 Migrating: Recreating relationships table with correct schema")
+            try:
+                # Drop old table and recreate with correct schema
+                c.execute("DROP TABLE IF EXISTS relationships_old")
+                c.execute("ALTER TABLE relationships RENAME TO relationships_old")
+                
+                # Create new table with correct schema
+                c.execute('''CREATE TABLE relationships (
+                                user_id_1 INTEGER,
+                                user_id_2 INTEGER,
+                                affinity INTEGER DEFAULT 0,
+                                last_interaction DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                PRIMARY KEY (user_id_1, user_id_2)
+                            )''')
+                
+                # Try to migrate old data if it exists
+                try:
+                    c.execute("INSERT INTO relationships SELECT * FROM relationships_old")
+                except:
+                    pass
+                
+                c.execute("DROP TABLE IF EXISTS relationships_old")
+                print("✓ Relationships table recreated with correct schema")
+            except Exception as e:
+                print(f"⚠️ Migration error (attempting to recreate): {e}")
+        
+        # Now add any missing columns to the correct schema
+        c.execute("PRAGMA table_info(relationships)")
+        rel_columns = [row[1] for row in c.fetchall()]
+        
+        if "affinity" not in rel_columns:
+            try:
+                c.execute("ALTER TABLE relationships ADD COLUMN affinity INTEGER DEFAULT 0")
+                print("✓ Added affinity column to relationships table")
+            except sqlite3.OperationalError:
+                print("ℹ️ affinity column already exists")
+        
+        if "last_interaction" not in rel_columns:
+            try:
+                c.execute("ALTER TABLE relationships ADD COLUMN last_interaction DATETIME DEFAULT CURRENT_TIMESTAMP")
+                print("✓ Added last_interaction column to relationships table")
+            except sqlite3.OperationalError:
+                print("ℹ️ last_interaction column already exists")
+    except Exception as e:
+        print(f"⚠️ Relationships table check error: {e}")
+    
     conn.commit()
     conn.close()
-    print("✅ Done! Database initialized (server_config and player_stats tables ready).")
+    print("✅ Done! Database initialized with all tables ready.")
 
 if __name__ == "__main__":
     setup_folder()
