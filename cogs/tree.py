@@ -50,8 +50,7 @@ TREE_DESCRIPTIONS = {
 }
 
 HARVEST_REWARDS = {
-    "seeds": 2000,  # Reward for all members
-    "xp_multiplier": 2  # 2x XP multiplier for 24h
+    "seeds": 2000  # Reward for all members
 }
 
 # ==================== UI COMPONENTS ====================

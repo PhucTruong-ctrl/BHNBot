@@ -73,21 +73,21 @@ class EconomyCog(commands.Cog):
             )
             await db.commit()
 
-    async def get_user_balance(self, user_id: int) -> tuple:
-        """Get user balance: (seeds, xp, level)"""
+    async def get_user_balance(self, user_id: int) -> int:
+        """Get user balance (seeds only)"""
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT seeds, xp, level FROM economy_users WHERE user_id = ?",
+                "SELECT seeds FROM economy_users WHERE user_id = ?",
                 (user_id,)
             ) as cursor:
                 row = await cursor.fetchone()
-            return row if row else (0, 0, 1)
+            return row[0] if row else 0
 
     async def get_leaderboard(self, limit: int = 10) -> list:
         """Get top players by seeds"""
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT user_id, username, seeds, level FROM economy_users ORDER BY seeds DESC LIMIT ?",
+                "SELECT user_id, username, seeds FROM economy_users ORDER BY seeds DESC LIMIT ?",
                 (limit,)
             ) as cursor:
                 return await cursor.fetchall()
@@ -164,7 +164,7 @@ class EconomyCog(commands.Cog):
         await self.update_last_daily(user.id)
         
         # Get new balance
-        seeds, xp, level = await self.get_user_balance(user.id)
+        seeds = await self.get_user_balance(user.id)
         
         embed = discord.Embed(
             title="☀️ Chào buổi sáng!",
@@ -172,8 +172,6 @@ class EconomyCog(commands.Cog):
             color=discord.Color.gold()
         )
         embed.add_field(name="💰 Hạt hiện tại", value=f"**{seeds}**", inline=False)
-        embed.add_field(name="📊 Level", value=f"**{level}**", inline=True)
-        embed.add_field(name="⚡ XP", value=f"**{xp}**", inline=True)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -186,15 +184,13 @@ class EconomyCog(commands.Cog):
         target_user = user or interaction.user
         await self.get_or_create_user(target_user.id, target_user.name)
         
-        seeds, xp, level = await self.get_user_balance(target_user.id)
+        seeds = await self.get_user_balance(target_user.id)
         
         embed = discord.Embed(
             title=f"💰 Số dư của {target_user.name}",
             color=discord.Color.green()
         )
         embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
-        embed.add_field(name="📊 Level", value=f"**{level}**", inline=True)
-        embed.add_field(name="⚡ XP", value=f"**{xp}**", inline=True)
         embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
@@ -223,9 +219,9 @@ class EconomyCog(commands.Cog):
         ranking_text = ""
         medals = ["🥇", "🥈", "🥉"]
         
-        for idx, (user_id, username, seeds, level) in enumerate(top_users, 1):
-            medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
-            ranking_text += f"{medal} **{username}** - {seeds} hạt (Lv. {level})\n"
+        for idx, (user_id, username, seeds) in enumerate(top_users, 1):
+            medal = medals[idx - 1] if idx <= 3 else f"{idx}."
+            ranking_text += f"{medal} **{username}** - {seeds} Hạt\n"
         
         embed.description = ranking_text
         embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")

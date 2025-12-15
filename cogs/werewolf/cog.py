@@ -175,6 +175,4 @@ class WerewolfCog(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(WerewolfCog(bot))
-    # Load the guide cog
-    from .guide import WerewolfGuideCog
-    await bot.add_cog(WerewolfGuideCog(bot))
+    # WerewolfGuideCog is loaded separately via guide.py setup()

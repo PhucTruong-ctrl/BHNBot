@@ -215,7 +215,7 @@ class General(commands.Cog):
             # Get user data from economy
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT seeds, xp, level FROM economy_users WHERE user_id = ?",
+                    "SELECT seeds FROM economy_users WHERE user_id = ?",
                     (target_user.id,)
                 ) as cursor:
                     economy_row = await cursor.fetchone()
@@ -235,7 +235,7 @@ class General(commands.Cog):
                 ) as cursor:
                     friend_row2 = await cursor.fetchone()
             
-            seeds, xp, level = economy_row if economy_row else (0, 0, 1)
+            seeds = economy_row[0] if economy_row else 0
             
             # Determine best friend
             best_friend_id = None
@@ -255,7 +255,7 @@ class General(commands.Cog):
                     best_friend_name = "Người lạ"
             
             # Create profile card image
-            profile_img = await self._create_profile_card(target_user, seeds, xp, level, best_friend_name)
+            profile_img = await self._create_profile_card(target_user, seeds, best_friend_name)
             
             # Send as file
             file = discord.File(profile_img, filename="profile.png")
@@ -265,7 +265,7 @@ class General(commands.Cog):
             await interaction.followup.send(f"Lỗi tạo profile: {e}")
             print(f"[PROFILE] Error: {e}")
 
-    async def _create_profile_card(self, user, seeds, xp, level, best_friend):
+    async def _create_profile_card(self, user, seeds, best_friend):
         """Create profile card using Pillow"""
         from urllib.request import urlopen
         
@@ -300,7 +300,7 @@ class General(commands.Cog):
         draw.text((170, 40), f"{user.name}", font=title_font, fill=(255, 255, 255))
         
         # Draw stats
-        stats_text = f"💰 {seeds} Hạt  |  📊 Level {level}  |  ⚡ {xp} XP"
+        stats_text = f"💰 {seeds} Hạt"
         draw.text((170, 100), stats_text, font=stat_font, fill=(200, 200, 200))
         
         # Draw best friend

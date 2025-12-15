@@ -36,13 +36,11 @@ def init_database():
                     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
                 )''')
     
-    # Economy: Track seeds, XP, and level per user
+    # Economy: Track seeds per user
     c.execute('''CREATE TABLE IF NOT EXISTS economy_users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
                     seeds INTEGER DEFAULT 0,
-                    xp INTEGER DEFAULT 0,
-                    level INTEGER DEFAULT 1,
                     last_daily DATETIME,
                     last_chat_reward DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -141,9 +139,52 @@ def init_database():
                 print("✓ Added harvest_buff_until column")
             except sqlite3.OperationalError:
                 print("ℹ️ harvest_buff_until column already exists")
+        
+        if "exclude_chat_channels" not in columns:
+            try:
+                c.execute("ALTER TABLE server_config ADD COLUMN exclude_chat_channels TEXT")
+                print("✓ Added exclude_chat_channels column")
+            except sqlite3.OperationalError:
+                print("ℹ️ exclude_chat_channels column already exists")
     
     except Exception as e:
         print(f"⚠️ Migration check error: {e}")
+    
+    # Cleanup: Remove XP and Level columns from economy_users if they exist
+    try:
+        c.execute("PRAGMA table_info(economy_users)")
+        eco_columns = [row[1] for row in c.fetchall()]
+        
+        if "xp" in eco_columns or "level" in eco_columns:
+            print("🔄 Cleaning up: Removing XP/Level columns from economy_users")
+            try:
+                # Recreate table without xp and level columns
+                c.execute('''
+                    CREATE TABLE economy_users_new (
+                        user_id INTEGER PRIMARY KEY,
+                        username TEXT,
+                        seeds INTEGER DEFAULT 0,
+                        last_daily DATETIME,
+                        last_chat_reward DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Migrate data (only keep the columns we want)
+                c.execute('''
+                    INSERT INTO economy_users_new (user_id, username, seeds, last_daily, last_chat_reward, created_at, updated_at)
+                    SELECT user_id, username, seeds, last_daily, last_chat_reward, created_at, updated_at FROM economy_users
+                ''')
+                
+                c.execute('DROP TABLE economy_users')
+                c.execute('ALTER TABLE economy_users_new RENAME TO economy_users')
+                print("✓ Removed XP/Level columns from economy_users")
+            except Exception as e:
+                print(f"⚠️ Cleanup error: {e}")
+    
+    except Exception as e:
+        print(f"⚠️ Economy table check error: {e}")
     
     # Check and migrate relationships table
     try:
