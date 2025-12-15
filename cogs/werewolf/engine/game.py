@@ -632,6 +632,12 @@ class WerewolfGame:
                         target_player_second = self.players.get(top_second[0][0])
                         if target_player_second and target_player_second.alive:
                             await self.channel.send(f"{target_player_second.display_name()} bị dân làng treo cổ lần thứ hai.")
+                            
+                            # Check for Devoted Servant power on SECOND lynch too
+                            logger.info("Judge double lynch: checking Devoted Servant for second target | guild=%s target=%s", 
+                                       self.guild.id, target_player_second.user_id)
+                            await self._check_devoted_servant_power(target_player_second)
+                            
                             target_player_second.alive = False
                             await self._handle_death(target_player_second, cause="lynch")
                             await self._resolve_pending_deaths("hunter")
@@ -1401,16 +1407,29 @@ class WerewolfGame:
 
     async def _check_devoted_servant_power(self, target_player: PlayerState) -> None:
         """Check if Devoted Servant wants to take the role of the lynched player."""
+        logger.info("_check_devoted_servant_power START | guild=%s target=%s", 
+                   self.guild.id, target_player.user_id)
+        
         servant = self._find_role_holder("Người Tôi Tớ Trung Thành")
-        if not servant or not servant.alive:
+        if not servant:
+            logger.debug("No Devoted Servant found | guild=%s", self.guild.id)
+            return
+        
+        if not servant.alive:
+            logger.debug("Devoted Servant is dead | guild=%s servant=%s", 
+                        self.guild.id, servant.user_id)
             return
         
         # Check if servant already used the power
         servant_role = servant.roles[0] if servant.roles else None
         if not servant_role or servant_role.metadata.name != "Người Tôi Tớ Trung Thành":
+            logger.warning("Servant role not found or mismatch | guild=%s servant=%s roles=%s", 
+                          self.guild.id, servant.user_id, [r.metadata.name for r in servant.roles])
             return
         
         if hasattr(servant_role, 'has_used_power') and servant_role.has_used_power:  # type: ignore[attr-defined]
+            logger.info("Devoted Servant already used power | guild=%s servant=%s", 
+                       self.guild.id, servant.user_id)
             return
         
         # Check if servant is a lover (cannot use power)
@@ -1419,8 +1438,9 @@ class WerewolfGame:
                        self.guild.id, servant.user_id)
             return
         
-        logger.info("Checking Devoted Servant power | guild=%s servant=%s target=%s", 
-                   self.guild.id, servant.user_id, target_player.user_id)
+        logger.info("Checking Devoted Servant power | guild=%s servant=%s target=%s target_role=%s", 
+                   self.guild.id, servant.user_id, target_player.user_id,
+                   target_player.roles[0].metadata.name if target_player.roles else "Unknown")
         
         try:
             # Prompt Devoted Servant to use power (before revealing target's role)
@@ -1453,16 +1473,20 @@ class WerewolfGame:
                     )
                     await self.channel.send(embed=embed)
                     
-                    logger.info("Devoted Servant used power | guild=%s servant=%s target=%s target_role=%s",
+                    logger.info("Devoted Servant USED power | guild=%s servant=%s target=%s stolen_role=%s",
                                self.guild.id, servant.user_id, target_player.user_id, 
-                               target_player.roles[0].metadata.name if target_player.roles else "Unknown")
+                               self._devoted_servant_stolen_role.metadata.name)
+                    logger.info("_check_devoted_servant_power END (power used) | guild=%s servant=%s", 
+                               self.guild.id, servant.user_id)
             else:
-                logger.info("Devoted Servant chose not to use power | guild=%s servant=%s target=%s",
+                logger.info("Devoted Servant CHOSE NOT to use power | guild=%s servant=%s target=%s",
                            self.guild.id, servant.user_id, target_player.user_id)
+                logger.info("_check_devoted_servant_power END (power not used) | guild=%s servant=%s", 
+                           self.guild.id, servant.user_id)
         
         except Exception as e:
-            logger.error("Error in Devoted Servant power check | guild=%s servant=%s error=%s",
-                        self.guild.id, servant.user_id, str(e), exc_info=True)
+            logger.error("ERROR in Devoted Servant power check | guild=%s servant=%s target=%s error=%s",
+                        self.guild.id, servant.user_id, target_player.user_id, str(e), exc_info=True)
 
 
     async def _handle_seer(self, seer: PlayerState) -> None:

@@ -29,8 +29,31 @@ class DevovedServant(Role):
         super().__init__()
         self.has_used_power: bool = False  # Track if power has been used
 
+    async def on_assign(self, game: WerewolfGame, player: PlayerState) -> None:
+        """Notify Devoted Servant about their power on assignment."""
+        try:
+            embed = game._create_embed(
+                title="🤝 Người Tôi Tớ Trung Thành - Hướng Dẫn",
+                description=(
+                    "Mỗi khi ai đó bị dân làng treo cổ (trước khi lộ bài), bạn có thể chọn lộ diện.\n\n"
+                    "Nếu bạn đồng ý:\n"
+                    "- Vai trò của bạn sẽ bị lộ diện cho mọi người\n"
+                    "- Bạn sẽ bí mật nhận lấy vai trò của người vừa bị treo\n"
+                    "- Bạn chỉ có thể dùng kỹ năng này 1 lần\n\n"
+                    "⚠️ **Nếu bạn là tình nhân, bạn KHÔNG thể dùng kỹ năng này!**"
+                ),
+                color=0xFF69B4,
+            )
+            await player.user.send(embed=embed)
+            logger.info("Devoted Servant assigned | guild=%s servant=%s", 
+                       game.guild.id, player.user_id)
+        except Exception as e:
+            logger.error("Failed to notify Devoted Servant | guild=%s servant=%s error=%s",
+                        game.guild.id, player.user_id, str(e))
+
     @property
     def alignment(self) -> str:  # type: ignore[override]
         """Return current alignment based on stolen role if any."""
         # If we've stolen a role, this is tracked separately in game state
+        logger.debug("Devoted Servant alignment check | has_used_power=%s", self.has_used_power)
         return self.metadata.alignment
