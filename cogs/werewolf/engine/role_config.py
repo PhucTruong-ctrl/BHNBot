@@ -72,6 +72,7 @@ class RoleConfig:
         RoleSlot("Kỵ Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Thẩm Phán", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Diễn Viên", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Bô Lão", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
     ]
 
     @staticmethod

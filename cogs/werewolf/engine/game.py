@@ -88,6 +88,9 @@ class WerewolfGame:
         self._actor_hunt_target: Optional[int] = None  # Target to hunt if Actor killed using Hunter ability
         self._actor_raven_target: Optional[int] = None  # Target cursed by Actor using Raven ability
         self._actor_harp_target: Optional[int] = None  # Target charmed by Actor using Hypnotist ability
+        self._elder_man_id: Optional[int] = None  # Elder Man player ID
+        self._elder_man_group1: List[int] = []  # Group 1 player IDs
+        self._elder_man_group2: List[int] = []  # Group 2 player IDs
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -1940,6 +1943,24 @@ class WerewolfGame:
                 else:
                     logger.info(">>> Pied Piper not winning | guild=%s charmed=%s others=%s", 
                                  self.guild.id, len(self._charmed), len(others))
+        
+        # Check Elder Man win condition
+        if self._elder_man_id and self._elder_man_group1 and self._elder_man_group2:
+            elder_man = self.players.get(self._elder_man_id)
+            if elder_man and elder_man.alive:
+                # Find which group Elder Man is in
+                if self._elder_man_id in self._elder_man_group1:
+                    opposing_group = self._elder_man_group2
+                else:
+                    opposing_group = self._elder_man_group1
+                
+                # Check if all members of opposing group are dead
+                opposing_alive = [pid for pid in opposing_group if self.players.get(pid) and self.players[pid].alive]
+                if not opposing_alive:
+                    self._winner = Alignment.NEUTRAL
+                    logger.info("Win condition met: Elder Man wins | guild=%s elder_man=%s opposing_group_dead=%s", 
+                                self.guild.id, self._elder_man_id, len(opposing_group))
+                    return True
         
         logger.info(">>> No win condition met - returning False | guild=%s", self.guild.id)
         return False
