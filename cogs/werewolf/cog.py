@@ -7,6 +7,7 @@ from typing import Set
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 
 from .engine.game import WerewolfGame
 from .engine.manager import WerewolfManager
@@ -34,7 +35,7 @@ class WerewolfCog(commands.Cog):
 
     @commands.group(name="werewolf", invoke_without_command=True)
     async def werewolf_group(self, ctx: commands.Context) -> None:
-        await ctx.send("Các lệnh: !werewolf create, !werewolf cancel")
+        await ctx.send("Các lệnh: !werewolf create, !werewolf cancel, !werewolf guide")
 
     @werewolf_group.command(name="create")
     async def create(self, ctx: commands.Context, game_mode: str = "text", *expansion_flags: str) -> None:
@@ -73,6 +74,40 @@ class WerewolfCog(commands.Cog):
             return
         await self.manager.remove_game(ctx.guild.id)
         await ctx.send("Đã huỷ bàn Ma Sói.", delete_after=6)
+
+    @werewolf_group.command(name="guide")
+    async def guide_prefix(self, ctx: commands.Context) -> None:
+        """Show werewolf role guide.
+        
+        Usage:
+            !werewolf guide
+        """
+        guide_cog = self.bot.get_cog("WerewolfGuideCog")
+        if not guide_cog:
+            await ctx.send("❌ Guide cog không được load!", delete_after=6)
+            return
+
+        embed = guide_cog.get_guide_embed()
+        view = guide_cog.get_guide_view(ctx.author.id)
+        await ctx.send(embed=embed, view=view)
+
+    werewolf_group_app = app_commands.Group(name="werewolf", description="Werewolf game commands")
+
+    @werewolf_group_app.command(name="guide", description="Xem hướng dẫn các role trong trò chơi Ma Sói")
+    async def guide_slash(self, interaction: discord.Interaction) -> None:
+        """Show werewolf role guide via slash command.
+        
+        Usage:
+            /werewolf guide
+        """
+        guide_cog = self.bot.get_cog("WerewolfGuideCog")
+        if not guide_cog:
+            await interaction.response.send_message("❌ Guide cog không được load!", ephemeral=True)
+            return
+
+        embed = guide_cog.get_guide_embed()
+        view = guide_cog.get_guide_view(interaction.user.id)
+        await interaction.response.send_message(embed=embed, view=view)
 
 
 async def setup(bot: commands.Bot) -> None:

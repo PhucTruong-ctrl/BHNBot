@@ -135,49 +135,15 @@ class WerewolfGuideCog(commands.Cog):
         self.bot = bot
         self.guide_pages = create_guide_pages()
 
-    @commands.command(name="guide", aliases=["g", "hd", "huongdan"])
-    async def guide_prefix(self, ctx: commands.Context, game: str = "werewolf") -> None:
-        """
-        Prefix command: Show werewolf role guide.
-
-        Usage:
-            !guide werewolf
-            !guide
-        """
-        if game.lower() not in ("werewolf", "soi", "ma", ""):
-            await ctx.send("❌ Chỉ có guide cho game **Werewolf** thôi!")
-            return
-
+    def get_guide_embed(self) -> discord.Embed:
+        """Get the first page of the guide."""
         if not self.guide_pages:
-            await ctx.send("❌ Không tìm thấy dữ liệu guide!")
-            return
+            return discord.Embed(title="❌ Lỗi", description="Không tìm thấy dữ liệu guide!")
+        return self.guide_pages[0]
 
-        view = RoleGuideView(self.guide_pages, ctx.author.id)
-        await ctx.send(embed=self.guide_pages[0], view=view)
-
-    @app_commands.command(name="guide", description="Xem hướng dẫn các role trong trò chơi Ma Sói")
-    @app_commands.describe(game="Game muốn xem guide (mặc định: werewolf)")
-    async def guide_slash(self, interaction: discord.Interaction, game: str = "werewolf") -> None:
-        """
-        Slash command: Show werewolf role guide.
-
-        Parameters:
-            game: Game name (default: werewolf)
-        """
-        if game.lower() not in ("werewolf", "soi", "ma", ""):
-            await interaction.response.send_message(
-                "❌ Chỉ có guide cho game **Werewolf** thôi!", ephemeral=True
-            )
-            return
-
-        if not self.guide_pages:
-            await interaction.response.send_message(
-                "❌ Không tìm thấy dữ liệu guide!", ephemeral=True
-            )
-            return
-
-        view = RoleGuideView(self.guide_pages, interaction.user.id)
-        await interaction.response.send_message(embed=self.guide_pages[0], view=view)
+    def get_guide_view(self, author_id: int) -> RoleGuideView:
+        """Get the view for guide navigation."""
+        return RoleGuideView(self.guide_pages, author_id)
 
 
 async def setup(bot: commands.Bot) -> None:
