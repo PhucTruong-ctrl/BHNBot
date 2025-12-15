@@ -58,6 +58,8 @@ class RoleConfig:
         RoleSlot("Sói To Xấu Xa", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói Quỷ", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói Lửa", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Sói Anh", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Sói Em", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói Lai", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Đứa Con Hoang", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Hiệp Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
@@ -154,6 +156,13 @@ class RoleConfig:
                 if remaining_slots > 0:
                     distribution[role_name] = 1
                     remaining_slots -= 1
+            
+            # Add Wolf Brother & Sister as a pair (must have both or neither)
+            if remaining_slots >= 2:
+                # Both Sói Anh (werewolf) and Sói Em (hidden village) take 2 slots
+                distribution["Sói Anh"] = 1
+                distribution["Sói Em"] = 1
+                remaining_slots -= 2
 
         if Expansion.NEW_MOON in expansions and remaining_slots > 0:
             # NEW_MOON unique roles (excluding duplicates)

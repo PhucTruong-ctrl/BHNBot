@@ -80,6 +80,8 @@ class WerewolfGame:
         self._assassin_votes_day1: Dict[int, int] = {}  # Track votes day 1 of assassin cycle
         self._assassin_votes_day2: Dict[int, int] = {}  # Track votes day 2 of assassin cycle
         self._wolves_died_today: List[int] = []  # Track which wolves died during day (for Fire Wolf)
+        self._wolf_brother_id: Optional[int] = None  # Wolf Brother player ID
+        self._wolf_sister_id: Optional[int] = None  # Wolf Sister player ID
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -623,6 +625,52 @@ class WerewolfGame:
             except discord.HTTPException:
                 pass
             logger.info("Two Sisters identified | guild=%s sisters=%s", self.guild.id, self._sisters_ids)
+        
+        # Detect Wolf Brother & Sister and pair them
+        wolf_siblings = [(p, p.roles[0]) for p in self.players.values() if p.roles and p.roles[0].metadata.name in ("Sói Anh", "Sói Em")]
+        
+        # VALIDATION: Ensure both Wolf Brother and Sister are present together (not partial assignment)
+        wolf_brother_count = sum(1 for p, r in wolf_siblings if r.metadata.name == "Sói Anh")
+        wolf_sister_count = sum(1 for p, r in wolf_siblings if r.metadata.name == "Sói Em")
+        
+        if wolf_brother_count != wolf_sister_count:
+            logger.error(
+                "CRITICAL: Incomplete Wolf Sibling assignment | guild=%s brothers=%s sisters=%s",
+                self.guild.id, wolf_brother_count, wolf_sister_count
+            )
+            # If we have one but not the other, log the error and continue (shouldn't happen with new role_config logic)
+        elif wolf_brother_count == 1 and wolf_sister_count == 1:
+            # Both are present - proceed with pairing
+            player1, role1 = wolf_siblings[0]
+            player2, role2 = wolf_siblings[1]
+            
+            # Randomly decide who is brother and who is sister
+            if random.random() < 0.5:
+                brother_player, sister_player = player1, player2
+                brother_role, sister_role = role1, role2
+            else:
+                brother_player, sister_player = player2, player1
+                brother_role, sister_role = role2, role1
+            
+            # If we need to swap roles (if assigned wrong), do it now
+            if brother_role.metadata.name != "Sói Anh":
+                # Swap roles
+                brother_player.roles = [sister_role]
+                sister_player.roles = [brother_role]
+                brother_role, sister_role = sister_role, brother_role
+            
+            # Link them together
+            self._wolf_brother_id = brother_player.user_id
+            self._wolf_sister_id = sister_player.user_id
+            brother_role.sister_id = sister_player.user_id
+            sister_role.brother_id = brother_player.user_id
+            
+            logger.info(
+                "Wolf siblings paired | guild=%s brother=%s sister=%s",
+                self.guild.id,
+                brother_player.user_id,
+                sister_player.user_id,
+            )
 
     async def _notify_roles(self) -> None:
         wolf_players = [p for p in self.players.values() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
@@ -965,6 +1013,30 @@ class WerewolfGame:
                     await announce_task
                 logger.info("Cupid resolved | guild=%s player=%s", self.guild.id, cupid.user_id)
             
+            # Handle Wolf Brother & Sister first-night recognition
+            if first_night and self._wolf_brother_id and self._wolf_sister_id:
+                brother = self.players.get(self._wolf_brother_id)
+                sister = self.players.get(self._wolf_sister_id)
+                if brother and sister and brother.alive and sister.alive:
+                    # Call on_first_night for both siblings
+                    for role in brother.roles:
+                        if hasattr(role, 'on_first_night'):
+                            try:
+                                await role.on_first_night(self, brother)
+                                logger.info("Wolf Brother first-night resolved | guild=%s player=%s", self.guild.id, brother.user_id)
+                            except Exception as e:
+                                logger.error("Error in Wolf Brother first-night | guild=%s player=%s error=%s", 
+                                           self.guild.id, brother.user_id, str(e), exc_info=True)
+                    
+                    for role in sister.roles:
+                        if hasattr(role, 'on_first_night'):
+                            try:
+                                await role.on_first_night(self, sister)
+                                logger.info("Wolf Sister first-night resolved | guild=%s player=%s", self.guild.id, sister.user_id)
+                            except Exception as e:
+                                logger.error("Error in Wolf Sister first-night | guild=%s player=%s error=%s", 
+                                           self.guild.id, sister.user_id, str(e), exc_info=True)
+            
             wolves = [p for p in self.alive_players() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
             announce_task = None
             if wolves:
@@ -1260,11 +1332,26 @@ class WerewolfGame:
                            self.guild.id, seer.user_id, target_id)
             return
         
-        faction = target.role.alignment
+        # Check if target is Wolf Sister and Wolf Brother is still alive - hide her alignment
+        is_hidden_wolf_sister = False
+        if self._wolf_sister_id == target_id and self._wolf_brother_id:
+            brother = self.players.get(self._wolf_brother_id)
+            if brother and brother.alive:
+                # Sister is hidden - report her as villager
+                faction = Alignment.VILLAGE
+                is_hidden_wolf_sister = True
+                logger.info("Wolf Sister hidden from Seer | guild=%s seer=%s sister=%s brother_alive=true", 
+                           self.guild.id, seer.user_id, target_id)
+            else:
+                # Brother is dead, report actual alignment (WEREWOLF)
+                faction = target.role.alignment
+        else:
+            faction = target.role.alignment
+        
         message = "Người đó thuộc phe Dân Làng." if faction == Alignment.VILLAGE else "Người đó thuộc phe Ma Sói." if faction == Alignment.WEREWOLF else "Người đó thuộc phe Trung Lập."
         
-        logger.info("Seer peek | guild=%s seer=%s target=%s faction=%s night=%s", 
-                    self.guild.id, seer.user_id, target_id, faction.value, self.night_number)
+        logger.info("Seer peek | guild=%s seer=%s target=%s faction=%s night=%s hidden=%s", 
+                    self.guild.id, seer.user_id, target_id, faction.value, self.night_number, is_hidden_wolf_sister)
         
         try:
             await seer.member.send(message)
@@ -1880,6 +1967,53 @@ class WerewolfGame:
         embed.set_image(url=CARD_BACK_URL)
         await self.channel.send(embed=embed)
 
+    async def _transform_wolf_sister(self, sister: PlayerState, dead_brother: PlayerState) -> None:
+        """Transform Wolf Sister into full werewolf when her brother dies."""
+        if not sister.roles:
+            return
+        
+        # Get the sister's role
+        from ..roles.werewolves.wolf_sister import WolfSister
+        sister_role = sister.roles[0]
+        
+        if not isinstance(sister_role, WolfSister):
+            return
+        
+        # Mark sister as transformed
+        sister_role.is_transformed = True
+        
+        # Change alignment to werewolf
+        sister_role.metadata.alignment = Alignment.WEREWOLF
+        
+        # Notify the sister
+        try:
+            await sister.member.send(
+                f"🐺💢 **TỨC GIẬN!** Anh sói {dead_brother.display_name()} đã chết!\n"
+                f"Bạn giận dữ gia nhập phe sói ngay lập tức. Bây giờ bạn sẽ dậy cùng phe sói mỗi đêm để giết người!"
+            )
+        except discord.HTTPException:
+            pass
+        
+        # Notify all wolves about the new member
+        wolves = [p for p in self.alive_players() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
+        wolf_names = ", ".join(p.display_name() for p in wolves)
+        
+        if self._wolf_thread:
+            try:
+                await self._wolf_thread.send(
+                    f"🐺💢 **Sói Em {sister.display_name()} tức giận gia nhập phe sói!**\n"
+                    f"Đồng đội sói hiện tại: {wolf_names}"
+                )
+            except discord.HTTPException:
+                pass
+        
+        logger.info(
+            "Wolf Sister transformed to werewolf | guild=%s sister=%s brother=%s",
+            self.guild.id,
+            sister.user_id,
+            dead_brother.user_id,
+        )
+
     async def _restrict_dead_player(self, player: PlayerState) -> None:
         """Prevent dead player from unmuting, messaging in channels and threads."""
         if not player.member:
@@ -2041,6 +2175,20 @@ class WerewolfGame:
                 lover.alive = False
                 lover.death_pending = True
                 await self._handle_death(lover, cause="lover")
+        
+        # Check if Wolf Brother died - trigger Wolf Sister transformation if alive
+        wolf_brother_role = None
+        for role in player.roles:
+            if hasattr(role, '__class__') and role.__class__.__name__ == 'WolfBrother':
+                wolf_brother_role = role
+                break
+        
+        if wolf_brother_role and self._wolf_sister_id:
+            sister = self.players.get(self._wolf_sister_id)
+            if sister and sister.alive:
+                logger.info("Wolf Brother died, triggering sister transformation | guild=%s brother=%s sister=%s", 
+                           self.guild.id, player.user_id, sister.user_id)
+                await self._transform_wolf_sister(sister, player)
         
         logger.info("Player died | guild=%s player=%s cause=%s", self.guild.id, player.display_name(), cause)
 

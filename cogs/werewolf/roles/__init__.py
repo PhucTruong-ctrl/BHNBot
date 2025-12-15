@@ -37,6 +37,8 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.werewolves.big_bad_wolf",
 	"cogs.werewolf.roles.werewolves.demon_wolf",
 	"cogs.werewolf.roles.werewolves.fire_wolf",
+	"cogs.werewolf.roles.werewolves.wolf_brother",
+	"cogs.werewolf.roles.werewolves.wolf_sister",
 	"cogs.werewolf.roles.neutrals.pied_piper",
 	"cogs.werewolf.roles.neutrals.pyromaniac",
 	"cogs.werewolf.roles.neutrals.white_werewolf",
