@@ -82,6 +82,12 @@ class WerewolfGame:
         self._wolves_died_today: List[int] = []  # Track which wolves died during day (for Fire Wolf)
         self._wolf_brother_id: Optional[int] = None  # Wolf Brother player ID
         self._wolf_sister_id: Optional[int] = None  # Wolf Sister player ID
+        self._judge_activated_double_lynch: bool = False  # Judge activated double lynch this day
+        self._actor_protected_target: Optional[int] = None  # Target protected by Actor using Guard ability
+        self._actor_heal_target: Optional[int] = None  # Target healed by Actor using Witch Heal ability
+        self._actor_hunt_target: Optional[int] = None  # Target to hunt if Actor killed using Hunter ability
+        self._actor_raven_target: Optional[int] = None  # Target cursed by Actor using Raven ability
+        self._actor_harp_target: Optional[int] = None  # Target charmed by Actor using Hypnotist ability
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -297,6 +303,9 @@ class WerewolfGame:
         
         # Reset wolves died tracking for the new day
         self._wolves_died_today = []
+        
+        # Reset Judge double lynch flag for the new day
+        self._judge_activated_double_lynch = False
         
         # Enable text chat and unmute voice channel for day phase
         await self._enable_text_chat()
@@ -585,6 +594,42 @@ class WerewolfGame:
             # Resolve any immediate retaliations (e.g., Hunter) during the day
             await self._resolve_pending_deaths("hunter")
             logger.info("Player lynched | guild=%s player=%s", self.guild.id, target_player.display_name())
+            
+            # Check if Judge activated double lynch
+            if self._judge_activated_double_lynch:
+                alive_after_first = self.alive_players()
+                if len(alive_after_first) >= 2:
+                    # Need a second lynch
+                    await self.channel.send("🎭 **Thẩm phán đã kích hoạt ám hiệu! Sẽ có thêm 1 người nữa bị treo cổ ngay lập tức!**")
+                    
+                    # Create a second vote for the second lynch
+                    options_second = {p.user_id: p.display_name() for p in alive_after_first}
+                    vote_second = VoteSession(
+                        self.bot,
+                        self.channel,
+                        title=f"Bỏ phiếu treo cổ lần 2 (Thẩm Phán) ngày {self.day_number}",
+                        description="Chọn người thứ hai sẽ bị treo cổ.",
+                        options=options_second,
+                        eligible_voters=[p.user_id for p in alive_after_first],
+                        duration=30,  # Shorter vote time for second lynch
+                        allow_skip=True,
+                        vote_weights={p.user_id: p.vote_weight for p in alive_after_first},
+                    )
+                    result_second = await vote_second.start()
+                    tally_second = Counter(result_second.tally)
+                    
+                    if tally_second:
+                        top_second = tally_second.most_common()
+                        target_player_second = self.players.get(top_second[0][0])
+                        if target_player_second and target_player_second.alive:
+                            await self.channel.send(f"{target_player_second.display_name()} bị dân làng treo cổ lần thứ hai.")
+                            target_player_second.alive = False
+                            await self._handle_death(target_player_second, cause="lynch")
+                            await self._resolve_pending_deaths("hunter")
+                            logger.info("Second lynch executed (Judge) | guild=%s player=%s", 
+                                       self.guild.id, target_player_second.display_name())
+                else:
+                    logger.info("Not enough players for second lynch | guild=%s", self.guild.id)
 
     async def _assign_roles(self) -> None:
         player_ids = list(self.players.keys())
@@ -808,7 +853,7 @@ class WerewolfGame:
         Returns a task that completes when countdown finishes."""
         async def _run_countdown() -> None:
             embed = discord.Embed(
-                title=f"{role.metadata.name}",
+                title=f"{role.metadata.name} Dậy đi!",
                 description=f"Đang hành động... (Thời gian: {duration}s)",
                 colour=discord.Colour.purple(),
             )
@@ -2002,7 +2047,7 @@ class WerewolfGame:
         
         embed = discord.Embed(
             title="🏆 Trò Chơi Kết Thúc",
-            description=f"**Phe Chiến Thắng:** {faction_name}",
+            description=f"Phe Chiến Thắng: **{faction_name}**",
             colour=faction_colour,
         )
         embed.add_field(name="Người Sống Sót", value=survivors, inline=False)

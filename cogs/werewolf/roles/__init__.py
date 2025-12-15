@@ -33,6 +33,8 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.villagers.pharmacist",
 	"cogs.werewolf.roles.villagers.assassin",
 	"cogs.werewolf.roles.villagers.cavalry",
+	"cogs.werewolf.roles.villagers.judge",
+	"cogs.werewolf.roles.villagers.actor",
 	"cogs.werewolf.roles.werewolves.werewolf",
 	"cogs.werewolf.roles.werewolves.big_bad_wolf",
 	"cogs.werewolf.roles.werewolves.demon_wolf",
