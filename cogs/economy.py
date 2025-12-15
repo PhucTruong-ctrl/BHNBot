@@ -24,9 +24,11 @@ class EconomyCog(commands.Cog):
         self.chat_cooldowns = {}  # {user_id: last_reward_time}
         self.reaction_cooldowns = {}  # {user_id: last_reaction_reward_time}
         self.voice_reward_task.start()
+        self.voice_affinity_task.start()
 
     def cog_unload(self):
         self.voice_reward_task.cancel()
+        self.voice_affinity_task.cancel()
 
     # ==================== HELPER FUNCTIONS ====================
     async def get_or_create_user(self, user_id: int, username: str):
@@ -368,20 +370,20 @@ class EconomyCog(commands.Cog):
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
     async def voice_reward_task(self):
-        """Check voice channels and reward members every 5 minutes"""
+        """Check voice channels and reward members every 5 minutes - ONLY if speaking"""
         try:
             for guild in self.bot.guilds:
                 is_buff_active = await self.is_harvest_buff_active(guild.id)
                 
                 for voice_channel in guild.voice_channels:
-                    # Get members in voice (exclude bots)
-                    members = [m for m in voice_channel.members if not m.bot]
+                    # Get members in voice (exclude bots) who are SPEAKING
+                    speaking_members = [m for m in voice_channel.members if not m.bot and m.voice and m.voice.self_mute == False]
                     
-                    if not members:
+                    if not speaking_members:
                         continue
                     
-                    # Award seeds to each member
-                    for member in members:
+                    # Award seeds to each speaking member
+                    for member in speaking_members:
                         await self.get_or_create_user(member.id, member.name)
                         
                         reward = VOICE_REWARD
@@ -389,15 +391,49 @@ class EconomyCog(commands.Cog):
                             reward = reward * 2
                             print(f"[ECONOMY] 🔥 HARVEST BUFF! {member.name} earned {reward} seeds from voice (x2)")
                         else:
-                            print(f"[ECONOMY] {member.name} earned {reward} seeds from voice")
+                            print(f"[ECONOMY] 🎙️ {member.name} earned {reward} seeds from voice (speaking)")
                         
                         await self.add_seeds(member.id, reward)
         
         except Exception as e:
             print(f"[ECONOMY] Voice reward error: {e}")
 
+    @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
+    async def voice_affinity_task(self):
+        """Increase affinity between members speaking in the same voice channel"""
+        try:
+            interactions_cog = self.bot.get_cog("InteractionsCog")
+            if not interactions_cog:
+                return
+            
+            for guild in self.bot.guilds:
+                for voice_channel in guild.voice_channels:
+                    # Get members in voice (exclude bots) who are SPEAKING
+                    speaking_members = [m for m in voice_channel.members if not m.bot and m.voice and m.voice.self_mute == False]
+                    
+                    # Need at least 2 members to increase affinity
+                    if len(speaking_members) < 2:
+                        continue
+                    
+                    # Increase affinity between all pairs of speaking members
+                    for i, member1 in enumerate(speaking_members):
+                        for member2 in speaking_members[i+1:]:
+                            # Add 3 affinity points per person pair in voice
+                            await interactions_cog.add_affinity(member1.id, member2.id, 3)
+                            print(f"[AFFINITY] 🎙️ {member1.name} & {member2.name} +3 affinity (voice chat)")
+        
+        except Exception as e:
+            print(f"[ECONOMY] Voice affinity task error: {e}")
+            import traceback
+            traceback.print_exc()
+
     @voice_reward_task.before_loop
     async def before_voice_reward_task(self):
+        """Wait for bot to be ready before starting task"""
+        await self.bot.wait_until_ready()
+
+    @voice_affinity_task.before_loop
+    async def before_voice_affinity_task(self):
         """Wait for bot to be ready before starting task"""
         await self.bot.wait_until_ready()
 
