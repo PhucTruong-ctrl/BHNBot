@@ -55,6 +55,7 @@ class RoleConfig:
         RoleSlot("Con Quạ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói Trắng", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Kẻ Phóng Hỏa", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Kẻ Báo Thù", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói To Xấu Xa", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói Quỷ", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Sói Lửa", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),

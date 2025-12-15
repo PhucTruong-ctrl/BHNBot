@@ -149,6 +149,26 @@ class WerewolfGame:
                      self.guild.id, alignment.value, len(result))
         return result
 
+    def get_active_werewolves(self, filter_alive: bool = True) -> List[PlayerState]:
+        """Get werewolves excluding Avengers on werewolf side (they don't participate in wolf votes/actions)."""
+        players_to_check = self.alive_players() if filter_alive else self.players.values()
+        wolves = []
+        for p in players_to_check:
+            if any(r.alignment == Alignment.WEREWOLF for r in p.roles):
+                # Check if this is an Avenger on werewolf side
+                is_avenger_wolf_side = False
+                for role in p.roles:
+                    if hasattr(role, '__class__') and role.__class__.__name__ == 'Avenger':
+                        if hasattr(role, 'chosen_side') and role.chosen_side == Alignment.WEREWOLF:
+                            is_avenger_wolf_side = True
+                            break
+                
+                # Only add if not an Avenger on werewolf side
+                if not is_avenger_wolf_side:
+                    wolves.append(p)
+        
+        return wolves
+
     async def add_player(self, member: discord_abc.User) -> None:
         if self.phase != Phase.LOBBY:
             raise RuntimeError("Không thể tham gia sau khi trận đấu đã bắt đầu")
@@ -822,7 +842,25 @@ class WerewolfGame:
         return asyncio.create_task(_run_countdown())
 
     async def _create_wolf_thread(self) -> None:
-        wolves = [p for p in self.players.values() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
+        # Get wolves but exclude Avengers on werewolf side (they don't join wolf thread)
+        wolves = []
+        for p in self.players.values():
+            if any(r.alignment == Alignment.WEREWOLF for r in p.roles):
+                # Check if this is an Avenger on werewolf side
+                is_avenger_wolf_side = False
+                for role in p.roles:
+                    if hasattr(role, '__class__') and role.__class__.__name__ == 'Avenger':
+                        if hasattr(role, 'chosen_side') and role.chosen_side == Alignment.WEREWOLF:
+                            is_avenger_wolf_side = True
+                            break
+                
+                # Only add to wolves if not an Avenger on werewolf side
+                if not is_avenger_wolf_side:
+                    wolves.append(p)
+                else:
+                    logger.info("Avenger on werewolf side excluded from wolf thread | guild=%s player=%s", 
+                               self.guild.id, p.user_id)
+        
         if not wolves:
             return
         name = f"{self.settings.wolf_thread_name} - Đêm 1"
@@ -1039,6 +1077,7 @@ class WerewolfGame:
             
             wolves = [p for p in self.alive_players() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
             announce_task = None
+            wolves = self.get_active_werewolves()
             if wolves:
                 announce_task = self._announce_role_action(wolves[0].roles[0])
             
@@ -1346,7 +1385,15 @@ class WerewolfGame:
                 # Brother is dead, report actual alignment (WEREWOLF)
                 faction = target.role.alignment
         else:
+            # Check if target is Avenger - use their chosen side (or NEUTRAL if not chosen yet)
             faction = target.role.alignment
+            for role in target.roles:
+                if hasattr(role, '__class__') and role.__class__.__name__ == 'Avenger':
+                    if hasattr(role, 'chosen_side') and role.chosen_side:
+                        faction = role.chosen_side
+                        logger.info("Seer peeks Avenger as %s | guild=%s seer=%s avenger=%s", 
+                                   faction.value, self.guild.id, seer.user_id, target_id)
+                    break
         
         message = "Người đó thuộc phe Dân Làng." if faction == Alignment.VILLAGE else "Người đó thuộc phe Ma Sói." if faction == Alignment.WEREWOLF else "Người đó thuộc phe Trung Lập."
         

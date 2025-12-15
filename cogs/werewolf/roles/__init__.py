@@ -42,6 +42,7 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.neutrals.pied_piper",
 	"cogs.werewolf.roles.neutrals.pyromaniac",
 	"cogs.werewolf.roles.neutrals.white_werewolf",
+	"cogs.werewolf.roles.neutrals.avenger",
 )
 
 
