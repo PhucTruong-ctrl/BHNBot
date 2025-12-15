@@ -673,7 +673,9 @@ class WerewolfGame:
         Formula: Base time (60s) + (alive_players * 30s)
         Example: 10 players = 60 + (10 * 30) = 360s (6 minutes)
         
-        Allow Skip Vote: If all eligible players agree, skip to voting early.
+        Allow Skip Vote: Players can vote to skip discussion at ANY TIME during discussion.
+        Skip vote: If ALL alive players vote skip, immediately proceed to voting phase.
+        Menu stays available without timeout throughout discussion time.
         """
         if not self.settings.allow_skip_vote:
             # No skip feature, just run normal countdown
@@ -684,58 +686,66 @@ class WerewolfGame:
             )
             return
         
-        # Create a skip vote option
+        # Create skip vote menu
         alive_players = self.alive_players()
-        eligible_voters = [p.user_id for p in alive_players if not p.vote_disabled]
+        skip_vote_view = _DiscussionSkipVoteView(self, alive_players)
         
-        skip_options = {
-            1: "Bỏ qua thảo luận",
-            2: "Tiếp tục thảo luận",
-        }
-        
-        await self.channel.send(
-            f"⏱️ **Thảo luận ngày {self.day_number}** ({alive_count} người sống)\n"
-            f"⏳ Thời gian: {discussion_time} giây\n"
-            f"📢 Vui lòng bỏ phiếu nếu muốn bỏ qua thảo luận (cần sự đồng ý chung)"
+        embed = discord.Embed(
+            title=f"⏱️ Thảo luận ngày {self.day_number}",
+            description=f"👥 **{alive_count} người sống** • ⏳ **{discussion_time}s**\n\n"
+                       f"💬 Hãy thảo luận về ai là Ma Sói!\n\n"
+                       f"🔘 **Phiếu bỏ qua:** Nếu **TẤT CẢ** người chơi đều chọn bỏ qua, "
+                       f"sẽ kết thúc thảo luận và đi thẳng đến treo cổ.",
+            colour=discord.Colour.blue()
         )
+        embed.set_footer(text=f"Menu luôn sẵn sàng, không timeout")
         
-        logger.info("Discussion phase started | guild=%s day=%s time=%s alive=%s", 
+        skip_message = await self.channel.send(embed=embed, view=skip_vote_view)
+        skip_vote_view.message = skip_message
+        
+        logger.info("Discussion phase started with skip voting | guild=%s day=%s time=%s alive=%s", 
                    self.guild.id, self.day_number, discussion_time, alive_count)
         
-        # Run skip vote with short timeout (10 seconds)
-        from .voting import VoteSession
-        skip_vote = VoteSession(
-            self.bot,
-            self.channel,
-            title=f"Bỏ qua thảo luận ngày {self.day_number}?",
-            description="Bỏ phiếu nếu muốn bỏ qua thời gian thảo luận và sang bỏ phiếu.",
-            options=skip_options,
-            eligible_voters=eligible_voters,
-            duration=10,  # 10 seconds to decide on skip
-            allow_skip=True,
-            vote_weights={p.user_id: p.vote_weight for p in alive_players},
-        )
+        # Run countdown while monitoring skip votes
+        start_time = asyncio.get_event_loop().time()
+        remaining_time = discussion_time
         
-        skip_result = await skip_vote.start()
-        skip_tally = Counter(skip_result.tally)
+        while remaining_time > 0:
+            # Check if all players voted to skip
+            if skip_vote_view.can_skip():
+                await self.channel.send("✅ **Tất cả người chơi đều bỏ qua thảo luận!**\n💨 Chuyển sang giai đoạn treo cổ...")
+                logger.info("Discussion skipped by all players | guild=%s day=%s", self.guild.id, self.day_number)
+                skip_vote_view.stop()
+                break
+            
+            # Sleep and check remaining time
+            await asyncio.sleep(1)
+            elapsed = asyncio.get_event_loop().time() - start_time
+            remaining_time = discussion_time - int(elapsed)
+            
+            # Update countdown every 5 seconds
+            if int(elapsed) % 5 == 0 and remaining_time > 0:
+                skip_votes = len(skip_vote_view.skip_votes)
+                skip_embed = discord.Embed(
+                    title=f"⏱️ Thảo luận ngày {self.day_number}",
+                    description=f"⏳ **{remaining_time}s** còn lại\n"
+                               f"🔘 Bỏ qua: {skip_votes}/{alive_count}",
+                    colour=discord.Colour.blue()
+                )
+                try:
+                    await skip_message.edit(embed=skip_embed, view=skip_vote_view)
+                except discord.HTTPException:
+                    pass
         
-        skip_votes = skip_tally.get(1, 0)
-        continue_votes = skip_tally.get(2, 0)
+        skip_vote_view.stop()
         
-        if skip_votes > 0 and continue_votes == 0:
-            # Everyone wants to skip
-            await self.channel.send("✅ Tất cả mọi người đều đồng ý bỏ qua thảo luận! Sang bỏ phiếu ngay.")
-            logger.info("Skip vote passed | guild=%s day=%s skip_votes=%s", 
-                       self.guild.id, self.day_number, skip_votes)
-            return
+        # Final summary
+        skip_votes = len(skip_vote_view.skip_votes)
+        if skip_votes > 0:
+            await self.channel.send(f"📊 **Kết quả bỏ phiếu:** {skip_votes}/{alive_count} người chọn bỏ qua")
         
-        # Otherwise, proceed with normal countdown discussion
-        await self.channel.send(f"💬 Thảo luận tiếp tục, còn {discussion_time} giây...")
-        await self._run_countdown(
-            self.channel,
-            f"Thảo luận ngày {self.day_number}",
-            discussion_time
-        )
+        logger.info("Discussion phase ended | guild=%s day=%s skip_votes=%s", 
+                   self.guild.id, self.day_number, skip_votes)
 
     async def _run_defense_phase(self, target_player: PlayerState) -> None:
         """
@@ -1048,7 +1058,7 @@ class WerewolfGame:
         
         logger.info("Sisters woken up | guild=%s night=%s sisters=%s", self.guild.id, self.night_number, self._sisters_ids)
 
-    def _announce_role_action(self, role: Role, duration: int = 30) -> asyncio.Task:
+    def _announce_role_action(self, role: Role, duration: int = 45) -> asyncio.Task:
         """Announce a specific role is taking action with a countdown (cannot skip).
         Returns a task that completes when countdown finishes."""
         async def _run_countdown() -> None:
@@ -1378,42 +1388,42 @@ class WerewolfGame:
             
             white_wolf = self._find_role_holder("Sói Trắng")
             announce_task = None
-            if white_wolf and self.night_number % 2 == 0:
+            if white_wolf and self.night_number % 2 == 0 and self._is_player_eligible_for_action(white_wolf):
                 announce_task = self._announce_role_action(white_wolf.role)
-            betrayer_kill = await self._handle_white_wolf(white_wolf) if white_wolf else None
+            betrayer_kill = await self._handle_white_wolf(white_wolf) if white_wolf and self.night_number % 2 == 0 and self._is_player_eligible_for_action(white_wolf) else None
             if announce_task:
                 await announce_task
             
             seer = self._find_role_holder("Tiên Tri")
-            if seer:
+            if seer and self._is_player_eligible_for_action(seer):
                 announce_task = self._announce_role_action(seer.role)
                 await self._handle_seer(seer)
                 if announce_task:
                     await announce_task
             
             witch = self._find_role_holder("Phù Thủy")
-            if witch:
+            if witch and self._is_player_eligible_for_action(witch):
                 announce_task = self._announce_role_action(witch.role)
                 killed_id = await self._handle_witch(witch, killed_id)
                 if announce_task:
                     await announce_task
             
             raven = self._find_role_holder("Con Quạ")
-            if raven and self._moon_maiden_disabled != raven.user_id:
+            if raven and self._moon_maiden_disabled != raven.user_id and self._is_player_eligible_for_action(raven):
                 announce_task = self._announce_role_action(raven.role)
                 await self._handle_raven(raven)
                 if announce_task:
                     await announce_task
             
             piper = self._find_role_holder("Thổi Sáo")
-            if piper and self._moon_maiden_disabled != piper.user_id:
+            if piper and self._moon_maiden_disabled != piper.user_id and self._is_player_eligible_for_action(piper):
                 announce_task = self._announce_role_action(piper.role)
                 await self._handle_piper(piper)
                 if announce_task:
                     await announce_task
             
             pyro = self._find_role_holder("Kẻ Phóng Hỏa")
-            if pyro and not getattr(pyro.role, "ignited", False):
+            if pyro and not getattr(pyro.role, "ignited", False) and self._is_player_eligible_for_action(pyro):
                 announce_task = self._announce_role_action(pyro.role)
                 await self._handle_pyromaniac(pyro)
                 if announce_task:
@@ -1562,33 +1572,69 @@ class WerewolfGame:
         logger.info("_handle_cupid END | guild=%s cupid=%s", self.guild.id, cupid.user_id)
 
     async def _handle_guard(self, guard: PlayerState) -> Optional[int]:
-        options = {p.user_id: p.display_name() for p in self.alive_players()}
-        choice = await self._prompt_dm_choice(
-            guard,
-            title="Bảo vệ thức giấc",
-            description="Chọn người cần bảo vệ đêm nay.",
-            options=options,
-            allow_skip=True,
-        )
-        if choice is None:
-            return None
-        target_id = choice
-        target = self.players.get(target_id)
-        if target:
-            if target_id == guard.user_id and not guard.role.can_self_target():
-                await guard.member.send("Bạn không thể tiếp tục tự bảo vệ.")
-                return None
+        """Handle Guard night action with retry logic and filtering of unavailable targets."""
+        max_attempts = 3
+        attempt = 0
+        
+        while attempt < max_attempts:
+            attempt += 1
+            
+            # Build available options - exclude last protected target
             last_target = getattr(guard.role, "last_protected", None)
-            if last_target == target_id:
-                await guard.member.send("Bạn không thể bảo vệ cùng một người hai đêm liên tiếp.")
+            options = {
+                p.user_id: p.display_name() 
+                for p in self.alive_players() 
+                if p.user_id != last_target  # Hide person protected last night
+            }
+            
+            if not options:
+                # No valid targets left (shouldn't happen, but safety check)
+                await guard.member.send("Không có người nào có thể bảo vệ.")
                 return None
+            
+            choice = await self._prompt_dm_choice(
+                guard,
+                title="Bảo vệ thức giấc",
+                description="Chọn người cần bảo vệ đêm nay.\n*(Người được bảo vệ đêm trước đã bị ẩn)*" if last_target else "Chọn người cần bảo vệ đêm nay.",
+                options=options,
+                allow_skip=True,
+            )
+            
+            if choice is None:
+                # Player skipped
+                return None
+            
+            target_id = choice
+            target = self.players.get(target_id)
+            
+            if not target:
+                await guard.member.send("Lựa chọn không hợp lệ. Vui lòng thử lại.")
+                continue
+            
+            # Validate choice
+            if target_id == guard.user_id and not guard.role.can_self_target():
+                await guard.member.send(
+                    "❌ Bạn không thể tiếp tục tự bảo vệ đêm này.\n"
+                    "💡 Vui lòng chọn người khác."
+                )
+                continue  # Ask again instead of returning None
+            
+            # All validations passed
             target.protected_last_night = True
             if target_id == guard.user_id:
                 guard.role.mark_self_target()
-                await guard.member.send("Bạn đã chọn bảo vệ chính mình đêm nay. Bạn sẽ không thể tự bảo vệ nữa.")
+                await guard.member.send(
+                    "✅ Bạn đã chọn bảo vệ chính mình đêm nay.\n"
+                    "⚠️ Bạn sẽ không thể tự bảo vệ nữa."
+                )
             guard.role.last_protected = target_id
             logger.info("Guard protected | guild=%s player=%s target=%s", self.guild.id, guard.user_id, target_id)
-        return target_id
+            return target_id
+        
+        # Max attempts reached
+        await guard.member.send("⏱️ Hết thời gian, bảo vệ bị bỏ qua.")
+        logger.info("Guard timeout | guild=%s player=%s attempts=%s", self.guild.id, guard.user_id, attempt)
+        return None
 
     async def _check_devoted_servant_power(self, target_player: PlayerState) -> None:
         """Check if Devoted Servant wants to take the role of the lynched player.
@@ -2753,6 +2799,67 @@ class _ToggleExpansionButton(discord.ui.Button):
             return
         await self.game.toggle_expansion(self.expansion)
         await interaction.response.send_message("Đã cập nhật bản mở rộng.", ephemeral=True)
+
+
+
+
+class _DiscussionSkipVoteView(discord.ui.View):
+    """Vote to skip discussion phase. No timeout - menu stays available."""
+    
+    def __init__(self, game: WerewolfGame, alive_players: List[PlayerState]) -> None:
+        super().__init__(timeout=None)
+        self.game = game
+        self.alive_players = alive_players
+        self.skip_votes: Set[int] = set()
+        self.dont_skip_votes: Set[int] = set()
+        self.message: Optional[discord.Message] = None
+    
+    def can_skip(self) -> bool:
+        """Check if all alive players voted to skip."""
+        alive_ids = {p.user_id for p in self.alive_players}
+        return len(self.skip_votes) == len(alive_ids) and len(self.skip_votes) > 0
+    
+    @discord.ui.button(label="✅ Bỏ Qua", style=discord.ButtonStyle.green, emoji="⏭️")
+    async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if interaction.user.id not in {p.user_id for p in self.alive_players}:
+            await interaction.response.send_message("Bạn không phải người chơi sống.", ephemeral=True)
+            return
+        
+        # Record vote
+        self.skip_votes.add(interaction.user.id)
+        self.dont_skip_votes.discard(interaction.user.id)
+        
+        skip_count = len(self.skip_votes)
+        total = len(self.alive_players)
+        
+        await interaction.response.send_message(
+            f"✅ Bạn chọn bỏ qua!\n📊 {skip_count}/{total} người bỏ qua",
+            ephemeral=True
+        )
+        
+        logger.info("Discussion skip vote | guild=%s player=%s skip_count=%s total=%s", 
+                   self.game.guild.id, interaction.user.id, skip_count, total)
+    
+    @discord.ui.button(label="❌ Không Bỏ", style=discord.ButtonStyle.red, emoji="🛑")
+    async def dont_skip_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if interaction.user.id not in {p.user_id for p in self.alive_players}:
+            await interaction.response.send_message("Bạn không phải người chơi sống.", ephemeral=True)
+            return
+        
+        # Record vote
+        self.dont_skip_votes.add(interaction.user.id)
+        self.skip_votes.discard(interaction.user.id)
+        
+        skip_count = len(self.skip_votes)
+        total = len(self.alive_players)
+        
+        await interaction.response.send_message(
+            f"❌ Bạn chọn không bỏ qua!\n📊 {skip_count}/{total} người bỏ qua",
+            ephemeral=True
+        )
+        
+        logger.info("Discussion no-skip vote | guild=%s player=%s skip_count=%s total=%s", 
+                   self.game.guild.id, interaction.user.id, skip_count, total)
 
 
 class _ChoiceView(discord.ui.View):

@@ -29,8 +29,8 @@ class GameSettings:
     
     # Night phase timing (static)
     lobby_timeout: int = 180
-    night_intro_duration: int = 30
-    night_vote_duration: int = 90
+    night_intro_duration: int = 15
+    night_vote_duration: int = 45  # Reduced from 90 to 45 seconds for faster night resolution
     
     # Day phase base times (will be calculated dynamically based on alive players)
     day_discussion_base: int = 60          # Base discussion time (seconds)
