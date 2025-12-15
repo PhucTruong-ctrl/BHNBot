@@ -93,7 +93,7 @@ class WerewolfCog(commands.Cog):
 
     werewolf_group_app = app_commands.Group(name="werewolf", description="Werewolf game commands")
 
-    @werewolf_group_app.command(name="guide", description="Xem hướng dẫn các role trong trò chơi Ma Sói")
+    @werewolf_group_app.command(name="guide", description="Xem hướng dẫn chơi Ma Sói")
     async def guide_slash(self, interaction: discord.Interaction) -> None:
         """Show werewolf role guide via slash command.
         

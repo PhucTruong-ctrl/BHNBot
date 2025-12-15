@@ -23,7 +23,7 @@ class WildChild(Role):
         expansion=Expansion.THE_VILLAGE,
         description="Đêm đầu tiên bạn chọn 1 người. Khi người đó chết, bạn sẽ hoá thành Ma Sói và dậy cùng bầy sói mỗi đêm.",
         first_night_only=True,
-        night_order=20,
+        night_order=70,
         card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/wild-child.png",
     )
 

@@ -18,7 +18,7 @@ from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
 from .voting import VoteSession
 
-CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/vi/b/bf/Logo_The_Werewolves_of_Millers_Hollow.png"
+CARD_BACK_URL = "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/banner.png"
 # Lowered to 4 for easier local testing; raise back to 6 for production balance
 MIN_PLAYERS = 4
 
@@ -1406,7 +1406,13 @@ class WerewolfGame:
         return target_id
 
     async def _check_devoted_servant_power(self, target_player: PlayerState) -> None:
-        """Check if Devoted Servant wants to take the role of the lynched player."""
+        """Check if Devoted Servant wants to take the role of the lynched player.
+        
+        Implements official rulebook edge cases:
+        - Lover: cannot use power, but old lover dies of sorrow if accepting
+        - Sheriff/Town Crier: special succession rules
+        - Charmed/Infected: status is preserved in new role
+        """
         logger.info("_check_devoted_servant_power START | guild=%s target=%s", 
                    self.guild.id, target_player.user_id)
         
@@ -1432,10 +1438,11 @@ class WerewolfGame:
                        self.guild.id, servant.user_id)
             return
         
-        # Check if servant is a lover (cannot use power)
+        # Check if servant is a lover (cannot use power per official rules)
         if servant.user_id in self._lovers:
             logger.info("Devoted Servant is a lover, cannot use power | guild=%s servant=%s", 
                        self.guild.id, servant.user_id)
+            await servant.member.send("⚠️ Vì bạn là tình nhân, bạn không thể sử dụng kỹ năng Người Tôi Tớ Trung Thành.")
             return
         
         logger.info("Checking Devoted Servant power | guild=%s servant=%s target=%s target_role=%s", 
@@ -1444,7 +1451,7 @@ class WerewolfGame:
         
         try:
             # Prompt Devoted Servant to use power (before revealing target's role)
-            use_power = await self._prompt_dm_choice(  # pylint: disable=protected-access
+            use_power = await self._prompt_dm_choice(
                 servant,
                 title="Người Tôi Tớ Trung Thành - Sử Dụng Kỹ Năng",
                 description=f"{target_player.display_name()} vừa bị treo cổ. Bạn có muốn lộ diện và nhận lấy vai trò của họ không?\n\n⚠️ Nếu đồng ý, vai trò của bạn sẽ bị lộ diện, nhưng vai trò của {target_player.display_name()} sẽ vẫn bí mật.",
@@ -1455,9 +1462,14 @@ class WerewolfGame:
             if use_power == 1:
                 # Store the stolen role and mark as used
                 if target_player.roles:
-                    self._devoted_servant_stolen_role = target_player.roles[0]
+                    stolen_role = target_player.roles[0]
+                    self._devoted_servant_stolen_role = stolen_role
                     self._devoted_servant_original_target = target_player.user_id
                     servant_role.has_used_power = True  # type: ignore[attr-defined]
+                    
+                    # HANDLE EDGE CASES from official rulebook
+                    if hasattr(servant_role, 'handle_stolen_role_assignment'):
+                        await servant_role.handle_stolen_role_assignment(self, servant, stolen_role)  # type: ignore[attr-defined]
                     
                     # Announce Devoted Servant revealing herself
                     import discord
@@ -1471,6 +1483,16 @@ class WerewolfGame:
                         value=f"Họ nhận lấy vai trò của {target_player.display_name()} (bí mật).",
                         inline=False
                     )
+                    
+                    # Add edge case information if applicable
+                    target_role_name = stolen_role.metadata.name if hasattr(stolen_role, 'metadata') else "Unknown"
+                    if target_role_name == "Thần Tình Yêu" or "Lover" in stolen_role.__class__.__name__:
+                        embed.add_field(
+                            name="⚠️ **Quy Tắc Đặc Biệt**",
+                            value="Người Tôi Tớ không trở thành Tình Nhân, nhưng người yêu cũ chết vì đau buồn.",
+                            inline=False
+                        )
+                    
                     await self.channel.send(embed=embed)
                     
                     logger.info("Devoted Servant USED power | guild=%s servant=%s target=%s stolen_role=%s",

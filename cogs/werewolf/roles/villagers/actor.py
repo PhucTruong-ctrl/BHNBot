@@ -67,7 +67,7 @@ class Actor(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.THE_VILLAGE,
         description="Đêm đầu tiên, quản trò chọn ngẫu nhiên 3 lá chức năng. Mỗi đêm bạn có thể chọn ngẫu nhiên 1 lá để thực hiện chức năng đó. Mỗi lá chỉ được dùng 1 lần.",
-        night_order=90,
+        night_order=10,
         card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/actor.png",
     )
 

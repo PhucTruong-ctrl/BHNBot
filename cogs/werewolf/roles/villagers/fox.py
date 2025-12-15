@@ -22,7 +22,7 @@ class Fox(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.THE_VILLAGE,
         description="Mỗi đêm bạn có thể chỉ định 1 nhóm 3 người kế cận (chỉ người ở giữa). Nếu có ít nhất 1 Ma Sói trong nhóm, bạn giữ quyền này. Nếu không có, bạn mất quyền nhưng biết được 3 người đó không có sói.",
-        night_order=55,
+        night_order=30,
         card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/fox.png",
     )
 

@@ -22,7 +22,7 @@ class PiedPiper(Role):
         alignment=Alignment.NEUTRAL,
         expansion=Expansion.NEW_MOON,
         description="Mỗi đêm bạn có thể mê hoặc tối đa 2 người chơi mới (không kể bản thân). Những người bị mê hoặc sẽ thức dậy để nhận diện lẫn nhau. Bạn thắng nếu tất cả người chơi còn sống đều bị mê hoặc.",
-        night_order=20,
+        night_order=100,
         card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/neutral/piedpier.png",
     )
 

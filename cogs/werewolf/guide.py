@@ -93,8 +93,8 @@ def create_guide_pages() -> list[discord.Embed]:
     for page_num, i in enumerate(range(0, len(all_roles), roles_per_page)):
         page_roles = all_roles[i : i + roles_per_page]
         embed = discord.Embed(
-            title=f"📖 Hướng Dẫn Các Role Ma Sói - Trang {page_num + 1}",
-            description="Hướng dẫn chi tiết về tất cả các role trong trò chơi.",
+            title=f"📖 Hướng Dẫn Chơi Ma Sói - Trang {page_num + 1}",
+            description="Hướng dẫn chi tiết về luật lệ, vai trò trong trò chơi Ma Sói.",
             color=0x2C3E50,
         )
 

@@ -22,7 +22,7 @@ class Knight(Role):
         alignment=Alignment.VILLAGE,
         expansion=Expansion.THE_VILLAGE,
         description="Khi bị Ma Sói cắn chết, chiếc kiếm rĩ sét của bạn sẽ giết chết Ma Sói gần nhất (bên trái đầu tiên).",
-        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/knightWithRusticSword.png",
+        card_image_url="https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/role-pics/villager/knight.png",
     )
 
     async def on_death(self, game: WerewolfGame, player: PlayerState, cause: str) -> None:  # type: ignore[override]
