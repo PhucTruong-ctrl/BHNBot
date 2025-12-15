@@ -2819,7 +2819,7 @@ class _DiscussionSkipVoteView(discord.ui.View):
         alive_ids = {p.user_id for p in self.alive_players}
         return len(self.skip_votes) == len(alive_ids) and len(self.skip_votes) > 0
     
-    @discord.ui.button(label="✅ Bỏ Qua", style=discord.ButtonStyle.green, emoji="⏭️")
+    @discord.ui.button(label="Bỏ Qua", style=discord.ButtonStyle.green, emoji="⏭️")
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id not in {p.user_id for p in self.alive_players}:
             await interaction.response.send_message("Bạn không phải người chơi sống.", ephemeral=True)
@@ -2833,14 +2833,14 @@ class _DiscussionSkipVoteView(discord.ui.View):
         total = len(self.alive_players)
         
         await interaction.response.send_message(
-            f"✅ Bạn chọn bỏ qua!\n📊 {skip_count}/{total} người bỏ qua",
+            f"Bạn chọn bỏ qua!\n{skip_count}/{total} người bỏ qua",
             ephemeral=True
         )
         
         logger.info("Discussion skip vote | guild=%s player=%s skip_count=%s total=%s", 
                    self.game.guild.id, interaction.user.id, skip_count, total)
     
-    @discord.ui.button(label="❌ Không Bỏ", style=discord.ButtonStyle.red, emoji="🛑")
+    @discord.ui.button(label="Không Bỏ", style=discord.ButtonStyle.red, emoji="🛑")
     async def dont_skip_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id not in {p.user_id for p in self.alive_players}:
             await interaction.response.send_message("Bạn không phải người chơi sống.", ephemeral=True)

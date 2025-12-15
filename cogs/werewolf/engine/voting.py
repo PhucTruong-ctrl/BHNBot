@@ -95,7 +95,7 @@ class VoteSession:
     async def _ticker(self) -> None:
         try:
             while not self._finished.is_set():
-                await asyncio.sleep(3)
+                await asyncio.sleep(5)
                 await self._refresh_message()
         except asyncio.CancelledError:
             return
