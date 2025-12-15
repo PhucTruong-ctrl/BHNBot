@@ -146,7 +146,7 @@ class RoleConfig:
         # Add essential village roles (only 1 of each) - but only if there's room
         essential_roles = [
             "Tiên Tri", "Phù Thủy", "Thợ Săn", "Thần Tình Yêu",
-            "Cô Bé", "Tên Trộm", "Trưởng Làng"
+            "Cô Bé", "Tên Trộm", "Trưởng Làng", "Bảo vệ"
         ]
         
         for role_name in essential_roles:

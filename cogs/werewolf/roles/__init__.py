@@ -20,7 +20,6 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.villagers.wolf_hybrid",
 	"cogs.werewolf.roles.villagers.wild_child",
 	"cogs.werewolf.roles.villagers.mayor",
-	"cogs.werewolf.roles.villagers.idiot",
 	"cogs.werewolf.roles.villagers.elder",
 	"cogs.werewolf.roles.villagers.scapegoat",
 	"cogs.werewolf.roles.villagers.guard",
@@ -49,6 +48,8 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.neutrals.white_werewolf",
 	"cogs.werewolf.roles.neutrals.avenger",
 	"cogs.werewolf.roles.neutrals.elder_man",
+	"cogs.werewolf.roles.neutrals.idiot",
+	"cogs.werewolf.roles.neutrals.idiot",
 )
 
 
