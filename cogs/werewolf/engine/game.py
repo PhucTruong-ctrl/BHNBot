@@ -79,6 +79,7 @@ class WerewolfGame:
         self._pharmacist_slept_target: Optional[int] = None  # Player targeted by Pharmacist's sleeping potion this night
         self._assassin_votes_day1: Dict[int, int] = {}  # Track votes day 1 of assassin cycle
         self._assassin_votes_day2: Dict[int, int] = {}  # Track votes day 2 of assassin cycle
+        self._wolves_died_today: List[int] = []  # Track which wolves died during day (for Fire Wolf)
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -137,8 +138,8 @@ class WerewolfGame:
         return [p for p in self.players.values() if p.alive and not p.death_pending]
 
     def _is_player_eligible_for_action(self, player: PlayerState) -> bool:
-        """Check if player can take night/day actions (alive and not pending death)."""
-        return player.alive and not player.death_pending
+        """Check if player can take night/day actions (alive, not pending death, and not disabled by Fire Wolf)."""
+        return player.alive and not player.death_pending and not player.skills_disabled
 
     def alive_by_alignment(self, alignment: Alignment) -> List[PlayerState]:
         result = [p for p in self.alive_players() if any(r.alignment == alignment for r in p.roles)]
@@ -271,6 +272,9 @@ class WerewolfGame:
     async def _run_day(self) -> None:
         self.phase = Phase.DAY
         self.day_number += 1
+        
+        # Reset wolves died tracking for the new day
+        self._wolves_died_today = []
         
         # Enable text chat and unmute voice channel for day phase
         await self._enable_text_chat()
@@ -1072,6 +1076,33 @@ class WerewolfGame:
                 await self._handle_moon_maiden(moon_maiden)
                 if announce_task:
                     await announce_task
+            
+            # Fire Wolf ability - trigger if wolves died during the day
+            fire_wolf = self._find_role_holder("Sói Lửa")
+            if fire_wolf and self._is_player_eligible_for_action(fire_wolf):
+                # Check if any wolves died today (first ability trigger)
+                if len(self._wolves_died_today) >= 1 and not getattr(fire_wolf.role, 'has_used_ability_first', False):
+                    # Mark that first wolf death triggered the ability
+                    fire_wolf._fire_wolf_trigger_first = True
+                    announce_task = self._announce_role_action(fire_wolf.role)
+                    await fire_wolf.role.on_night(self, fire_wolf, self.night_number)
+                    if announce_task:
+                        await announce_task
+                    logger.info(
+                        "Fire Wolf triggered (first wolf death) | guild=%s fire_wolf=%s wolves_died=%s",
+                        self.guild.id, fire_wolf.user_id, len(self._wolves_died_today)
+                    )
+                # Check if 2+ wolves died today (second ability trigger)
+                elif len(self._wolves_died_today) >= 2 and not getattr(fire_wolf.role, 'has_used_ability_second', False):
+                    fire_wolf.role.can_use_again = True
+                    announce_task = self._announce_role_action(fire_wolf.role)
+                    await fire_wolf.role.on_night(self, fire_wolf, self.night_number)
+                    if announce_task:
+                        await announce_task
+                    logger.info(
+                        "Fire Wolf triggered (2+ wolves died) | guild=%s fire_wolf=%s wolves_died=%s",
+                        self.guild.id, fire_wolf.user_id, len(self._wolves_died_today)
+                    )
             
             if killed_id:
                 self._pending_deaths.append((killed_id, "wolves"))
@@ -1985,6 +2016,12 @@ class WerewolfGame:
         
         # Mark player as dead
         player.alive = False
+        
+        # Track if a werewolf dies during the day (for Fire Wolf ability)
+        if self.phase == Phase.DAY and any(r.alignment == Alignment.WEREWOLF for r in player.roles):
+            self._wolves_died_today.append(player.user_id)
+            logger.info("Wolf died during day | guild=%s player=%s day=%s total_wolves_today=%s", 
+                       self.guild.id, player.user_id, self.day_number, len(self._wolves_died_today))
         
         # Disable dead player permissions immediately
         await self._restrict_dead_player(player)

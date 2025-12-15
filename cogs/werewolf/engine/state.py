@@ -44,6 +44,7 @@ class PlayerState:
     lover_id: Optional[int] = None
     charmed: bool = False
     vote_disabled: bool = False
+    skills_disabled: bool = False  # Fire Wolf: vô hiệu hóa kỹ năng vĩnh viễn
     mayor: bool = False
     vote_weight: int = 1
     house_token: Optional[str] = None
