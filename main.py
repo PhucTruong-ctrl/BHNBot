@@ -38,9 +38,10 @@ async def on_ready():
         await load_cogs()
         bot.cogs_loaded = True
     
-    # NOTE: Slash commands sync manually only via /sync command (see admin.py)
+    # NOTE: Slash commands sync manually via /sync or !sync command (see admin.py)
     # This prevents rate limits and gives control over when/where commands sync
-    # After adding new slash commands, use: /sync guild (test server) or /sync global (all servers)
+    # After adding new slash commands, use: /sync guild (to sync to current server)
+    # Or: /sync global (to sync globally to all servers)
     # Then restart Discord client (Ctrl+R) to see changes
 
 # Hàm load các Cogs (Module)
@@ -48,10 +49,22 @@ async def load_cogs():
     print("\n[LOADING COGS]")
     cogs_dir = './cogs'
     
-    # Load top-level cogs
+    # Load top-level cogs (prioritize admin.py first for sync functionality)
+    priority_cogs = ['admin.py']
+    
+    # Load priority cogs first
+    for filename in priority_cogs:
+        if os.path.exists(os.path.join(cogs_dir, filename)):
+            try:
+                await bot.load_extension(f'cogs.{filename[:-3]}')
+                print(f'Loaded: {filename}')
+            except Exception as e:
+                print(f'Error: {filename} - {e}')
+    
+    # Load remaining top-level cogs
     for filename in os.listdir(cogs_dir):
         filepath = os.path.join(cogs_dir, filename)
-        if filename.endswith('.py') and filename != '__init__.py':
+        if filename.endswith('.py') and filename != '__init__.py' and filename not in priority_cogs:
             try:
                 await bot.load_extension(f'cogs.{filename[:-3]}')
                 print(f'Loaded: {filename}')
@@ -74,6 +87,21 @@ async def load_cogs():
     # List all commands in bot.tree after loading cogs
     print("\n[SLASH COMMANDS REGISTERED]")
     all_commands = bot.tree.get_commands()
+    
+    # DEBUG: Also check cogs for app_commands
+    print(f"\nCogs loaded: {len(bot.cogs)}")
+    slash_command_count = 0
+    for cog_name, cog in bot.cogs.items():
+        cog_slash_commands = 0
+        for attr_name in dir(cog):
+            attr = getattr(cog, attr_name)
+            if hasattr(attr, '__discord_app_commands__'):
+                cog_slash_commands += 1
+                slash_command_count += 1
+        if cog_slash_commands > 0:
+            print(f"  - {cog_name}: {cog_slash_commands} slash command(s)")
+    
+    print(f"\nbot.tree.get_commands(): {len(all_commands)} commands")
     if all_commands:
         for cmd in all_commands:
             print(f"  - /{cmd.name}")

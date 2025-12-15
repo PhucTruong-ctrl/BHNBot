@@ -35,7 +35,7 @@ class WerewolfCog(commands.Cog):
 
     @commands.group(name="werewolf", invoke_without_command=True)
     async def werewolf_group(self, ctx: commands.Context) -> None:
-        await ctx.send("Các lệnh: !werewolf create, !werewolf cancel, !werewolf guide")
+        await ctx.send("Các lệnh: !werewolf create, !werewolf guide")
 
     @werewolf_group.command(name="create")
     async def create(self, ctx: commands.Context, game_mode: str = "text", *expansion_flags: str) -> None:
@@ -63,18 +63,6 @@ class WerewolfCog(commands.Cog):
         mode_text = "Voice" if game_mode == "voice" else "Text"
         await ctx.send(f"Đã tạo bàn Ma Sói [{mode_text}]. Dùng nút để tham gia!", delete_after=10)
 
-    @werewolf_group.command(name="cancel")
-    async def cancel(self, ctx: commands.Context) -> None:
-        game = self.manager.get_game(ctx.guild.id) if ctx.guild else None
-        if not game:
-            await ctx.send("Không có bàn nào để huỷ.", delete_after=6)
-            return
-        if ctx.author.id != game.host.id and not ctx.author.guild_permissions.manage_guild:
-            await ctx.send("Chỉ chủ bàn hoặc quản trị viên mới huỷ được.", delete_after=6)
-            return
-        await self.manager.remove_game(ctx.guild.id)
-        await ctx.send("Đã huỷ bàn Ma Sói.", delete_after=6)
-
     @werewolf_group.command(name="guide")
     async def guide_prefix(self, ctx: commands.Context) -> None:
         """Show werewolf role guide.
@@ -92,6 +80,47 @@ class WerewolfCog(commands.Cog):
         await ctx.send(embed=embed, view=view)
 
     werewolf_group_app = app_commands.Group(name="werewolf", description="Werewolf game commands")
+
+    @werewolf_group_app.command(name="start", description="Bắt đầu trò chơi Ma Sói")
+    @app_commands.describe(
+        game_mode="'text' hoặc 'voice' (mặc định: text)",
+        expansion="Expansion (newmoon, village)"
+    )
+    async def start_slash(self, interaction: discord.Interaction, game_mode: str = "text", expansion: str = "") -> None:
+        """Start a werewolf game via slash command.
+        
+        Usage:
+            /werewolf start
+            /werewolf start voice newmoon
+        """
+        game_mode = game_mode.lower()
+        if game_mode not in ("text", "voice"):
+            await interaction.response.send_message("Mode phải là 'text' hoặc 'voice'", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        
+        existing = self.manager.get_game(interaction.guild.id) if interaction.guild else None
+        if existing and not existing.is_finished:
+            await interaction.followup.send("Đang có một bàn Ma Sói khác hoạt động.")
+            return
+        
+        expansions: Set[Expansion] = set()
+        if expansion:
+            exp = EXPANSION_ALIASES.get(expansion.lower())
+            if exp:
+                expansions.add(exp)
+        
+        try:
+            game = await self.manager.create_game(interaction.guild, interaction.channel, interaction.user, expansions, game_mode=game_mode)  # type: ignore[arg-type]
+        except RuntimeError as exc:
+            await interaction.followup.send(str(exc))
+            return
+        
+        await game.open_lobby()
+        await game.add_player(interaction.user)
+        mode_text = "Voice" if game_mode == "voice" else "Text"
+        await interaction.followup.send(f"Đã tạo bàn Ma Sói [{mode_text}]. Dùng nút để tham gia!")
 
     @werewolf_group_app.command(name="guide", description="Xem hướng dẫn chơi Ma Sói")
     async def guide_slash(self, interaction: discord.Interaction) -> None:

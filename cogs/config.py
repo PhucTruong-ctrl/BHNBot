@@ -65,9 +65,28 @@ class ConfigCog(commands.Cog):
         await self._handle_reset(ctx.guild.id, ctx.channel.id, ctx)
 
     async def _handle_reset(self, guild_id, channel_id, response_obj):
-        """Handle reset logic for both slash and prefix commands"""
+        """Handle reset logic for both slash and prefix commands - supports both Werewolf and NoiTu games"""
         try:
-            # Get all configured channels for this guild
+            # Check for Werewolf game in current channel first
+            werewolf_manager = None
+            werewolf_cog = self.bot.get_cog("WerewolfCog")
+            if werewolf_cog:
+                werewolf_manager = werewolf_cog.manager
+                game = werewolf_manager.get_game(guild_id)
+                
+                if game and not game.is_finished:
+                    # Found an active werewolf game
+                    if game.channel.id == channel_id:
+                        # Reset werewolf game in this channel
+                        await werewolf_manager.remove_game(guild_id)
+                        msg = "✅ Đã huỷ bàn Ma Sói"
+                        if isinstance(response_obj, commands.Context):
+                            await response_obj.send(msg, delete_after=3)
+                        else:
+                            await response_obj.followup.send(msg, delete_after=3)
+                        return
+            
+            # Check for NoiTu game in current channel
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
                     "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
@@ -76,15 +95,16 @@ class ConfigCog(commands.Cog):
                     row = await cursor.fetchone()
             
             if not row or not row[0]:
+                msg = "❌ Kênh này ko có game nào hoạt động"
                 if isinstance(response_obj, commands.Context):
-                    await response_obj.send("Ko có game nào setup ở server này")
+                    await response_obj.send(msg, delete_after=3)
                 else:
-                    await response_obj.followup.send("Ko có game nào setup ở server này")
+                    await response_obj.followup.send(msg, delete_after=3)
                 return
 
             noitu_channel_id = row[0]
 
-            # Check if current channel matches any game channel
+            # Check if current channel matches noitu game channel
             if channel_id == noitu_channel_id:
                 # Reset nối từ game
                 game_cog = self.bot.get_cog("GameNoiTu")
@@ -92,13 +112,13 @@ class ConfigCog(commands.Cog):
                     channel = self.bot.get_channel(channel_id)
                     if channel:
                         await game_cog.start_new_round(guild_id, channel)
-                        msg = "Reset game nối từ ok"
+                        msg = "✅ Reset game nối từ ok"
                     else:
-                        msg = "Ko tìm thấy kênh"
+                        msg = "❌ Ko tìm thấy kênh"
                 else:
-                    msg = "Ko tìm thấy game cog"
+                    msg = "❌ Ko tìm thấy game cog"
             else:
-                msg = "Kênh này ko có game nào"
+                msg = "❌ Kênh này ko có game nào hoạt động"
 
             # Send response
             if isinstance(response_obj, commands.Context):
@@ -109,25 +129,25 @@ class ConfigCog(commands.Cog):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            error_msg = f"Lỗi: {str(e)}"
+            error_msg = f"❌ Lỗi: {str(e)}"
             if isinstance(response_obj, commands.Context):
                 await response_obj.send(error_msg)
             else:
                 await response_obj.followup.send(error_msg)
 
-    @config_group.command(name="set", description="Thiet lap cac kenh chuc nang (Admin Only)")
+    @config_group.command(name="set", description="Cài đặt các kênh chức năng (Admin Only)")
     @app_commands.describe(
-        kenh_noitu="Kenh choi noi tu (Game Channel)",
-        kenh_admin="Kenh thong bao duyet tu (Admin Channel)",
-        kenh_giveaway="Kenh thong bao Giveaway",
-        kenh_soi="Kenh hop soi (Wolf Meeting Channel)"
+        kenh_noitu="Kênh chơi nối từ (Game Channel)",
+        kenh_giveaway="Kênh thông báo Giveaway",
+        kenh_logs="Kênh ghi log (Log Channel)",
+        kenh_soi="Kênh voice họp sói (Wolf Voice Channel)"
     )
     @app_commands.checks.has_permissions(administrator=True)
     async def config_set(self, interaction: discord.Interaction, 
                          kenh_noitu: discord.TextChannel = None, 
-                         kenh_admin: discord.TextChannel = None,
                          kenh_giveaway: discord.TextChannel = None,
-                         kenh_soi: discord.TextChannel = None):
+                         kenh_logs: discord.TextChannel = None,
+                         kenh_soi: discord.VoiceChannel = None):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
@@ -137,7 +157,7 @@ class ConfigCog(commands.Cog):
         # 2. Defer ngay lập tức để tránh timeout 3s
         await interaction.response.defer(ephemeral=True)
 
-        if not any([kenh_noitu, kenh_admin, kenh_giveaway, kenh_soi]):
+        if not any([kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -146,27 +166,30 @@ class ConfigCog(commands.Cog):
             print(f"CONFIG [Guild {guild_id}] Setting channels")
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get old config
-                async with db.execute("SELECT admin_channel_id, noitu_channel_id, wolf_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
-                old_admin = row[0] if row else None
+                old_logs = row[0] if row else None
                 old_noitu = row[1] if row else None
                 old_wolf = row[2] if row else None
+                old_giveaway = row[3] if row else None
 
                 # Merge
-                new_admin = kenh_admin.id if kenh_admin else old_admin
+                new_logs = kenh_logs.id if kenh_logs else old_logs
                 new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
                 new_wolf = kenh_soi.id if kenh_soi else old_wolf
+                new_giveaway = kenh_giveaway.id if kenh_giveaway else old_giveaway
                 
                 # Save
-                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, admin_channel_id, noitu_channel_id, wolf_channel_id) VALUES (?, ?, ?, ?)", 
-                                 (guild_id, new_admin, new_noitu, new_wolf))
+                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id) VALUES (?, ?, ?, ?, ?)", 
+                                 (guild_id, new_logs, new_noitu, new_wolf, new_giveaway))
                 await db.commit()
                 print(f"CONFIG_SAVED [Guild {guild_id}]")
 
-            msg = "Setup ok:\n"
-            if kenh_noitu: msg += f"- Noi Tu: {kenh_noitu.mention}\n"
-            if kenh_admin: msg += f"- Admin: {kenh_admin.mention}\n"
-            if kenh_soi: msg += f"- Wolf Meeting: {kenh_soi.mention}\n"
+            msg = "✅ Setup ok:\n"
+            if kenh_noitu: msg += f"📝 Nối Từ: {kenh_noitu.mention}\n"
+            if kenh_giveaway: msg += f"🎁 Giveaway: {kenh_giveaway.mention}\n"
+            if kenh_logs: msg += f"📋 Logs: {kenh_logs.mention}\n"
+            if kenh_soi: msg += f"🐺 Sói Voice: {kenh_soi.mention}\n"
             
             await interaction.followup.send(msg)
 
@@ -190,7 +213,96 @@ class ConfigCog(commands.Cog):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            await interaction.followup.send(f"Lỗi: {str(e)}")
+            await interaction.followup.send(f"❌ Lỗi: {str(e)}")
+
+    # --- Prefix commands for easier access ---
+    @commands.command(name="config", description="Cài đặt các kênh chức năng")
+    @commands.has_permissions(administrator=True)
+    async def config_prefix(self, ctx, key: str = None, channel: discord.TextChannel = None):
+        """Configure channels via prefix command.
+        
+        Usage:
+            !config kenh_noitu #channel
+            !config kenh_giveaway #channel
+            !config kenh_logs #channel
+            !config kenh_soi #voice_channel (voice channel)
+        """
+        if not key:
+            msg = "**Các option cấu hình:**\n"
+            msg += "• `!config kenh_noitu #channel` - Kênh chơi nối từ\n"
+            msg += "• `!config kenh_giveaway #channel` - Kênh giveaway\n"
+            msg += "• `!config kenh_logs #channel` - Kênh logs (admin channel)\n"
+            msg += "• `!config kenh_soi #voice_channel` - Kênh voice sói\n"
+            await ctx.send(msg)
+            return
+        
+        if not channel and key != "kenh_soi":
+            await ctx.send("❌ Vui lòng chỉ định kênh: `!config kenh_noitu #channel`")
+            return
+        
+        guild_id = ctx.guild.id
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get current config
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                    row = await cursor.fetchone()
+                
+                current_logs = row[0] if row else None
+                current_noitu = row[1] if row else None
+                current_wolf = row[2] if row else None
+                current_giveaway = row[3] if row else None
+                
+                # Update based on key
+                if key == "kenh_noitu":
+                    new_logs, new_noitu, new_wolf, new_giveaway = current_logs, channel.id, current_wolf, current_giveaway
+                    msg_key = "Nối Từ"
+                elif key == "kenh_giveaway":
+                    new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, current_wolf, channel.id
+                    msg_key = "Giveaway"
+                elif key == "kenh_logs":
+                    new_logs, new_noitu, new_wolf, new_giveaway = channel.id, current_noitu, current_wolf, current_giveaway
+                    msg_key = "Logs"
+                elif key == "kenh_soi":
+                    # For wolf channel, accept voice channel mention
+                    if not ctx.message.mentions and not ctx.message.raw_channel_mentions:
+                        # Try to parse as ID
+                        try:
+                            voice_channel = await commands.VoiceChannelConverter().convert(ctx, ctx.message.content.split()[-1])
+                            new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, voice_channel.id, current_giveaway
+                            msg_key = "Sói Voice"
+                        except:
+                            await ctx.send("❌ Kênh voice không hợp lệ. Dùng: `!config kenh_soi 1449580372705677312` (ID)")
+                            return
+                    else:
+                        await ctx.send("❌ Để cấu hình kênh sói, dùng ID: `!config kenh_soi 1449580372705677312`")
+                        return
+                else:
+                    await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi")
+                    return
+                
+                # Save
+                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id) VALUES (?, ?, ?, ?, ?)", 
+                                 (guild_id, new_logs, new_noitu, new_wolf, new_giveaway))
+                await db.commit()
+                
+                # Get channel mention for confirmation
+                if key == "kenh_noitu":
+                    channel_mention = f"<#{channel.id}>"
+                elif key == "kenh_giveaway":
+                    channel_mention = f"<#{channel.id}>"
+                elif key == "kenh_logs":
+                    channel_mention = f"<#{channel.id}>"
+                else:  # kenh_soi
+                    channel_mention = f"<#{new_wolf}>"
+                
+                await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
+                print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention if key != 'kenh_soi' else new_wolf}")
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            await ctx.send(f"❌ Lỗi: {str(e)}")
 
 async def setup(bot):
     await bot.add_cog(ConfigCog(bot))
