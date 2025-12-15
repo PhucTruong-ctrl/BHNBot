@@ -319,177 +319,222 @@ class General(commands.Cog):
             traceback.print_exc()
 
     async def _create_profile_card_new(self, user, seeds, rank):
-        """Create profile card using Pillow with new design"""
+        """Create profile card using Pillow with 'Resident Card' (Ghibli/Journal) design"""
         import aiohttp
+        import os
         
+        # --- CONFIGURATION ---
+        # Colors (Earth Tones)
+        COLOR_BG = (245, 240, 235)      # Warm Beige
+        COLOR_BORDER = (139, 90, 43)    # Brown
+        COLOR_TEXT_MAIN = (74, 59, 42)  # Dark Brown
+        COLOR_TEXT_ACCENT = (92, 138, 69) # Green
+        COLOR_BAR_BG = (224, 224, 224)  # Light Grey
+        COLOR_BAR_FILL = (118, 200, 147) # Pastel Green
+        COLOR_HEART = (255, 107, 107)   # Pastel Red
+        
+        # Dimensions
+        WIDTH, HEIGHT = 900, 300
+        
+        # --- ASSETS LOADING ---
+        # Fonts
+        def load_font(name, size, fallback_font="arial.ttf"):
+            font_path = f"./assets/{name}"
+            try:
+                return ImageFont.truetype(font_path, size)
+            except:
+                try:
+                    return ImageFont.truetype(fallback_font, size)
+                except:
+                    return ImageFont.load_default()
+
+        font_main = load_font("PatrickHand-Regular.ttf", 45)
+        font_rank = load_font("PatrickHand-Regular.ttf", 18)
+        font_info = load_font("Nunito-Bold.ttf", 16)
+        font_small = load_font("Nunito-Bold.ttf", 14)
+        
+        # Background
+        bg_path = "./assets/card_bg_ghibli.png"
+        if os.path.exists(bg_path):
+            try:
+                img = Image.open(bg_path).resize((WIDTH, HEIGHT))
+            except:
+                img = Image.new('RGB', (WIDTH, HEIGHT), color=COLOR_BG)
+        else:
+            img = Image.new('RGB', (WIDTH, HEIGHT), color=COLOR_BG)
+            
+        draw = ImageDraw.Draw(img, 'RGBA')
+        
+        # Draw Border if no background image
+        if not os.path.exists(bg_path):
+            draw.rectangle((5, 5, WIDTH-5, HEIGHT-5), outline=COLOR_BORDER, width=3)
+        
+        # --- AVATAR SECTION (LEFT) ---
         # Download avatar
         user_avatar_url = str(user.avatar.url if user.avatar else user.default_avatar.url)
         async with aiohttp.ClientSession() as session:
             async with session.get(user_avatar_url) as resp:
                 avatar_bytes = io.BytesIO(await resp.read())
         
-        # Create image (1000x240 like the reference)
-        img = Image.new('RGB', (1000, 240), color=(30, 30, 30))
-        logo = Image.open(avatar_bytes).convert('RGBA').resize((200, 200))
+        avatar_size = 200
+        avatar = Image.open(avatar_bytes).convert('RGBA').resize((avatar_size, avatar_size))
         
-        # Create circular mask for avatar
-        bigsize = (logo.size[0] * 3, logo.size[1] * 3)
-        mask = Image.new('L', bigsize, 0)
+        # Create circular mask
+        mask = Image.new('L', (avatar_size, avatar_size), 0)
         mask_draw = ImageDraw.Draw(mask)
-        mask_draw.ellipse((0, 0) + bigsize, fill=255)
-        mask = mask.resize(logo.size, Image.Resampling.LANCZOS)
-        logo.putalpha(mask)
+        mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
         
         # Paste avatar
-        img.paste(logo, (20, 20), mask=logo)
+        avatar_x, avatar_y = 25, 50
+        img.paste(avatar, (avatar_x, avatar_y), mask)
         
-        # Main drawing
-        draw = ImageDraw.Draw(img, 'RGBA')
+        # Draw decorative ring around avatar
+        draw.ellipse((avatar_x-5, avatar_y-5, avatar_x+avatar_size+5, avatar_y+avatar_size+5), 
+                     outline=COLOR_BORDER, width=4)
         
-        # Status circle (black background)
-        draw.ellipse((152, 152, 208, 208), fill='#000000')
-        
-        # Status color (using user status if available)
-        status_color = '#3BA55B'  # Default online green
-        try:
-            if hasattr(user, 'status'):
-                if str(user.status) == "online":
-                    status_color = '#3BA55B'
-                elif str(user.status) == "idle":
-                    status_color = '#F9A61A'
-                elif str(user.status) == "dnd":
-                    status_color = '#EC4245'
-                else:
-                    status_color = '#737F8D'
-        except:
-            pass
-        
-        # Status indicator circle
-        draw.ellipse((155, 155, 205, 205), fill=status_color)
-        
-        # Load fonts
-        try:
-            big_font = ImageFont.truetype("arial.ttf", 60)
-            medium_font = ImageFont.truetype("arial.ttf", 40)
-            small_font = ImageFont.truetype("arial.ttf", 30)
-        except:
-            try:
-                big_font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 60)
-                medium_font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 40)
-                small_font = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 30)
-            except:
-                big_font = ImageFont.load_default()
-                medium_font = ImageFont.load_default()
-                small_font = ImageFont.load_default()
-        
-        # Rank and Level display (top right)
-        rank_text = f"#{rank}"
-        bbox = draw.textbbox((0, 0), rank_text, font=big_font)
-        text_width = bbox[2] - bbox[0]
-        offset_x = 1000 - 15 - text_width
-        offset_y = 5
-        draw.text((offset_x, offset_y), rank_text, font=big_font, fill="#FFFFFF")
-        
-        # "RANK" label
-        rank_label_text = "RANK"
-        bbox = draw.textbbox((0, 0), rank_label_text, font=small_font)
-        label_width = bbox[2] - bbox[0]
-        offset_x -= 5 + label_width
-        offset_y = 35
-        draw.text((offset_x, offset_y), rank_label_text, font=small_font, fill="#FFFFFF")
-        
-        # Level display
-        level_text = "1"  # Fixed level 1 for seeds system
-        bbox = draw.textbbox((0, 0), level_text, font=big_font)
-        text_width = bbox[2] - bbox[0]
-        offset_x -= 15 + text_width
-        offset_y = 5
-        draw.text((offset_x, offset_y), level_text, font=big_font, fill="#11ebf2")
-        
-        # "LEVEL" label
-        level_label = "LEVEL"
-        bbox = draw.textbbox((0, 0), level_label, font=small_font)
-        label_width = bbox[2] - bbox[0]
-        offset_x -= 5 + label_width
-        offset_y = 35
-        draw.text((offset_x, offset_y), level_label, font=small_font, fill="#11ebf2")
-        
-        # Progress bar for seeds
-        bar_offset_x = logo.size[0] + 20 + 100
-        bar_offset_y = 160
-        bar_offset_x_1 = 1000 - 50
-        bar_offset_y_1 = 200
-        circle_size = bar_offset_y_1 - bar_offset_y
-        
-        # Background bar (grey)
-        draw.rectangle((bar_offset_x, bar_offset_y, bar_offset_x_1, bar_offset_y_1), fill="#727175")
-        
-        # Left circle background
-        draw.ellipse((bar_offset_x - circle_size // 2, bar_offset_y, bar_offset_x + circle_size // 2, bar_offset_y + circle_size), fill="#727175")
-        
-        # Right circle background
-        draw.ellipse((bar_offset_x_1 - circle_size // 2, bar_offset_y, bar_offset_x_1 + circle_size // 2, bar_offset_y_1), fill="#727175")
-        
-        # Calculate progress (max 10000 seeds for visual representation)
-        max_seeds = 10000
-        progress = min((seeds / max_seeds) * 100, 100)
-        
-        bar_length = bar_offset_x_1 - bar_offset_x
-        progress_bar_length = round(bar_length * progress / 100)
-        pbar_offset_x_1 = bar_offset_x + progress_bar_length
-        
-        # Draw progress rectangle (cyan)
-        if progress_bar_length > 0:
-            draw.rectangle((bar_offset_x, bar_offset_y, pbar_offset_x_1, bar_offset_y_1), fill="#11ebf2")
-            
-            # Left circle progress
-            draw.ellipse((bar_offset_x - circle_size // 2, bar_offset_y, bar_offset_x + circle_size // 2, bar_offset_y + circle_size), fill="#11ebf2")
-            
-            # Right circle progress
-            draw.ellipse((pbar_offset_x_1 - circle_size // 2, bar_offset_y, pbar_offset_x_1 + circle_size // 2, bar_offset_y_1), fill="#11ebf2")
-        
-        # Seeds text
-        seeds_text = f"/ 10000 Hạt"
-        bbox = draw.textbbox((0, 0), seeds_text, font=small_font)
-        text_width = bbox[2] - bbox[0]
-        seeds_offset_x = bar_offset_x_1 - text_width
-        seeds_offset_y = bar_offset_y - 40
-        draw.text((seeds_offset_x, seeds_offset_y), seeds_text, font=small_font, fill="#727175")
-        
-        seeds_current = f"{seeds} "
-        bbox = draw.textbbox((0, 0), seeds_current, font=small_font)
-        seeds_width = bbox[2] - bbox[0]
-        draw.text((seeds_offset_x - seeds_width, seeds_offset_y), seeds_current, font=small_font, fill="#FFFFFF")
+        # --- INFO SECTION (MIDDLE) ---
+        info_x = 280
         
         # Username
-        username_text = user.display_name if hasattr(user, 'display_name') else user.name
-        if len(username_text) >= 15:
-            bbox = draw.textbbox((0, 0), username_text, font=small_font)
-            text_offset_x = bar_offset_x - 10
-            text_offset_y = bar_offset_y - 40
-            draw.text((text_offset_x, text_offset_y), username_text, font=small_font, fill="#FFFFFF")
-            username_width = bbox[2] - bbox[0]
+        display_name = user.display_name
+        draw.text((info_x, 90), display_name, font=font_main, fill=COLOR_TEXT_MAIN)
+        
+        # Rank Title
+        rank_title = self._get_rank_title_no_emoji(seeds)
+        draw.text((info_x, 145), f"Hạng: {rank_title} (#{rank})", font=font_rank, fill=COLOR_TEXT_ACCENT)
+        
+        # Progress Bar (Branch style)
+        # Milestones: 50, 200, 500, 1000, 5000
+        next_milestone = 50
+        if seeds >= 5000: next_milestone = 10000
+        elif seeds >= 1000: next_milestone = 5000
+        elif seeds >= 500: next_milestone = 1000
+        elif seeds >= 200: next_milestone = 500
+        elif seeds >= 50: next_milestone = 200
+            
+        progress = min(seeds / next_milestone, 1.0)
+        
+        bar_x, bar_y = info_x, 175
+        bar_w, bar_h = 335, 15
+        
+        # Draw Seeds Text
+        draw.text((info_x + bar_w - 100, 150), f"{seeds}/{next_milestone}", font=font_info, fill=COLOR_TEXT_MAIN)
+
+        # Draw Bar Background
+        draw.rounded_rectangle([(bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h)], radius=12, fill=COLOR_BAR_BG)
+        
+        # Draw Bar Fill
+        if progress > 0:
+            fill_w = int(bar_w * progress)
+            draw.rounded_rectangle([(bar_x, bar_y), (bar_x + fill_w, bar_y + bar_h)], radius=12, fill=COLOR_BAR_FILL)
+            
+        # --- AFFINITY SECTION (RIGHT/BOTTOM) ---
+        # Get best friend
+        best_friend_data = await self._get_best_friend(user.id)
+        
+        if best_friend_data:
+            f_id, f_affinity = best_friend_data
+            try:
+                friend = await self.bot.fetch_user(f_id)
+                
+                # Friend Avatar
+                f_avatar_url = str(friend.avatar.url if friend.avatar else friend.default_avatar.url)
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(f_avatar_url) as resp:
+                        f_avatar_bytes = io.BytesIO(await resp.read())
+                
+                f_size = 200
+                f_avatar = Image.open(f_avatar_bytes).convert('RGBA').resize((f_size, f_size))
+                
+                # Mask
+                f_mask = Image.new('L', (f_size, f_size), 0)
+                ImageDraw.Draw(f_mask).ellipse((0, 0, f_size, f_size), fill=255)
+                
+                # Position: Bottom Right of the info section
+                f_x, f_y = 680, 50
+                
+                img.paste(f_avatar, (f_x, f_y), f_mask)
+                draw.ellipse((f_x-2, f_y-2, f_x+f_size+2, f_y+f_size+2), outline=COLOR_HEART, width=2)
+                
+                # Text
+                affinity_title = self._get_affinity_title(f_affinity)
+                draw.text((info_x, 190), f"Đang thân với: {friend.name}", font=font_info, fill=COLOR_HEART)
+                draw.text((info_x, 210), f"Mức độ: {affinity_title} ({f_affinity})", font=font_small, fill=COLOR_TEXT_MAIN)
+                
+            except Exception as e:
+                print(f"Error loading friend: {e}")
+                draw.text((info_x, 210), "Chưa có tri kỷ", font=font_info, fill=(150, 150, 150))
         else:
-            bbox = draw.textbbox((0, 0), username_text, font=medium_font)
-            text_offset_x = bar_offset_x - 10
-            text_offset_y = bar_offset_y - 40
-            draw.text((text_offset_x, text_offset_y), username_text, font=medium_font, fill="#FFFFFF")
-            username_width = bbox[2] - bbox[0]
-        
-        # Discriminator
-        if hasattr(user, 'discriminator'):
-            discriminator = f"#{user.discriminator}"
-            text_offset_x += username_width + 10
-            bbox = draw.textbbox((0, 0), discriminator, font=small_font)
-            text_offset_y = bar_offset_y - 40
-            draw.text((text_offset_x - 10, text_offset_y), discriminator, font=small_font, fill="#727175")
-        
-        # Save to bytes
+            draw.text((info_x, 210), "Chưa có tri kỷ", font=font_info, fill=(150, 150, 150))
+
+        # Save
         img_bytes = io.BytesIO()
         img.save(img_bytes, 'PNG')
         img_bytes.seek(0)
-        
         return img_bytes
+
+    async def _get_best_friend(self, user_id):
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                """SELECT user_id_2, affinity FROM relationships 
+                   WHERE user_id_1 = ? ORDER BY affinity DESC LIMIT 1""",
+                (user_id,)
+            ) as cursor:
+                r1 = await cursor.fetchone()
+            
+            async with db.execute(
+                """SELECT user_id_1, affinity FROM relationships 
+                   WHERE user_id_2 = ? ORDER BY affinity DESC LIMIT 1""",
+                (user_id,)
+            ) as cursor:
+                r2 = await cursor.fetchone()
+        
+        if r1 and r2:
+            return r1 if r1[1] >= r2[1] else r2
+        return r1 or r2
+
+    def _get_rank_title_no_emoji(self, seeds: int) -> str:
+        """Get rank title based on seeds earned (without emoji)"""
+        if seeds < 50:
+            return "Người Gieo Hạt"
+        elif seeds < 200:
+            return "Nảy Mầm"
+        elif seeds < 500:
+            return "Cây Non"
+        elif seeds < 1000:
+            return "Trưởng Thành"
+        elif seeds < 5000:
+            return "Ra Hoa"
+        else:
+            return "Cây Đại Thụ"
+
+    def _get_rank_title(self, seeds: int) -> str:
+        """Get rank title based on seeds earned"""
+        if seeds < 50:
+            return "🌱 Người Gieo Hạt"
+        elif seeds < 200:
+            return "🌿 Nảy Mầm"
+        elif seeds < 500:
+            return "🎋 Cây Non"
+        elif seeds < 1000:
+            return "🌳 Trưởng Thành"
+        elif seeds < 5000:
+            return "🌸 Ra Hoa"
+        else:
+            return "🍎 Cây Đại Thụ"
+
+    def _get_affinity_title(self, affinity: int) -> str:
+        """Get affinity level title"""
+        if affinity < 10:
+            return "Quen biết"
+        elif affinity < 30:
+            return "Bạn tốt"
+        elif affinity < 60:
+            return "Bạn thân"
+        elif affinity < 100:
+            return "Gia đình"
+        else:
+            return "Linh hồn song sinh"
 
     async def _create_profile_card(self, user, seeds, best_friend):
         """Create profile card using Pillow - Legacy version"""
