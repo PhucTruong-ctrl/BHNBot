@@ -36,6 +36,8 @@ _ROLE_MODULES = (
 	"cogs.werewolf.roles.villagers.judge",
 	"cogs.werewolf.roles.villagers.actor",
 	"cogs.werewolf.roles.villagers.bear_tamer",
+	"cogs.werewolf.roles.villagers.devoted_servant",
+	"cogs.werewolf.roles.villagers.fox",
 	"cogs.werewolf.roles.werewolves.werewolf",
 	"cogs.werewolf.roles.werewolves.big_bad_wolf",
 	"cogs.werewolf.roles.werewolves.demon_wolf",

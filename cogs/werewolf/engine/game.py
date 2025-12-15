@@ -91,6 +91,9 @@ class WerewolfGame:
         self._elder_man_id: Optional[int] = None  # Elder Man player ID
         self._elder_man_group1: List[int] = []  # Group 1 player IDs
         self._elder_man_group2: List[int] = []  # Group 2 player IDs
+        self._devoted_servant_id: Optional[int] = None  # Devoted Servant player ID
+        self._devoted_servant_stolen_role: Optional[Role] = None  # Stolen role by Devoted Servant
+        self._devoted_servant_original_target: Optional[int] = None  # Original target of Devoted Servant swap
 
     async def open_lobby(self) -> None:
         self._lobby_view = _LobbyView(self)
@@ -590,6 +593,9 @@ class WerewolfGame:
                         )
                         logger.info("Assassin notified | guild=%s assassin=%s total_votes=%s day1=%s day2=%s night=%s", 
                                     self.guild.id, assassin.user_id, total_assassin_votes, assassin_votes_day1, assassin_votes_day2, self.night_number + 1)
+        
+        # Check for Devoted Servant power before revealing role
+        await self._check_devoted_servant_power(target_player)
         
         if target_player.alive:
             target_player.alive = False
@@ -1392,6 +1398,72 @@ class WerewolfGame:
             guard.role.last_protected = target_id
             logger.info("Guard protected | guild=%s player=%s target=%s", self.guild.id, guard.user_id, target_id)
         return target_id
+
+    async def _check_devoted_servant_power(self, target_player: PlayerState) -> None:
+        """Check if Devoted Servant wants to take the role of the lynched player."""
+        servant = self._find_role_holder("Người Tôi Tớ Trung Thành")
+        if not servant or not servant.alive:
+            return
+        
+        # Check if servant already used the power
+        servant_role = servant.roles[0] if servant.roles else None
+        if not servant_role or servant_role.metadata.name != "Người Tôi Tớ Trung Thành":
+            return
+        
+        if hasattr(servant_role, 'has_used_power') and servant_role.has_used_power:  # type: ignore[attr-defined]
+            return
+        
+        # Check if servant is a lover (cannot use power)
+        if servant.user_id in self._lovers:
+            logger.info("Devoted Servant is a lover, cannot use power | guild=%s servant=%s", 
+                       self.guild.id, servant.user_id)
+            return
+        
+        logger.info("Checking Devoted Servant power | guild=%s servant=%s target=%s", 
+                   self.guild.id, servant.user_id, target_player.user_id)
+        
+        try:
+            # Prompt Devoted Servant to use power (before revealing target's role)
+            use_power = await self._prompt_dm_choice(  # pylint: disable=protected-access
+                servant,
+                title="Người Tôi Tớ Trung Thành - Sử Dụng Kỹ Năng",
+                description=f"{target_player.display_name()} vừa bị treo cổ. Bạn có muốn lộ diện và nhận lấy vai trò của họ không?\n\n⚠️ Nếu đồng ý, vai trò của bạn sẽ bị lộ diện, nhưng vai trò của {target_player.display_name()} sẽ vẫn bí mật.",
+                options={1: "✅ Lộ diện và nhận lấy vai trò", 2: "❌ Không, giữ bí mật"},
+                allow_skip=False,
+            )
+            
+            if use_power == 1:
+                # Store the stolen role and mark as used
+                if target_player.roles:
+                    self._devoted_servant_stolen_role = target_player.roles[0]
+                    self._devoted_servant_original_target = target_player.user_id
+                    servant_role.has_used_power = True  # type: ignore[attr-defined]
+                    
+                    # Announce Devoted Servant revealing herself
+                    import discord
+                    embed = discord.Embed(
+                        title="🤝 **Người Tôi Tớ Trung Thành - Lộ Diện**",
+                        description=f"{servant.display_name()} là **Người Tôi Tớ Trung Thành** và đã lộ diện!",
+                        colour=discord.Colour.teal(),
+                    )
+                    embed.add_field(
+                        name="📝 **Hành Động**",
+                        value=f"Họ nhận lấy vai trò của {target_player.display_name()} (bí mật).",
+                        inline=False
+                    )
+                    await self.channel.send(embed=embed)
+                    
+                    logger.info("Devoted Servant used power | guild=%s servant=%s target=%s target_role=%s",
+                               self.guild.id, servant.user_id, target_player.user_id, 
+                               target_player.roles[0].metadata.name if target_player.roles else "Unknown")
+            else:
+                logger.info("Devoted Servant chose not to use power | guild=%s servant=%s target=%s",
+                           self.guild.id, servant.user_id, target_player.user_id)
+        
+        except Exception as e:
+            logger.error("Error in Devoted Servant power check | guild=%s servant=%s error=%s",
+                        self.guild.id, servant.user_id, str(e), exc_info=True)
+
 
     async def _handle_seer(self, seer: PlayerState) -> None:
         options = {p.user_id: p.display_name() for p in self.alive_players() if p.user_id != seer.user_id}
