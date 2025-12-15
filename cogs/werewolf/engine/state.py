@@ -22,16 +22,53 @@ class Phase(Enum):
 
 @dataclass(slots=True)
 class GameSettings:
-    """Runtime configuration for a Werewolf match."""
+    """Runtime configuration for a Werewolf match with dynamic day phase timing."""
 
     expansions: Set[Expansion] = field(default_factory=set)
     wolf_thread_name: str = "Hội Sói"
+    
+    # Night phase timing (static)
     lobby_timeout: int = 180
     night_intro_duration: int = 30
     night_vote_duration: int = 90
-    day_discussion_duration: int = 60
-    day_vote_duration: int = 120
+    
+    # Day phase base times (will be calculated dynamically based on alive players)
+    day_discussion_base: int = 60          # Base discussion time (seconds)
+    day_discussion_per_player: int = 30    # Additional seconds per alive player
+    day_vote_duration: int = 45            # Voting phase (seconds)
+    day_defense_duration: int = 75         # Defense/Biện hộ phase (seconds)
+    day_judgment_duration: int = 20        # Judgment/Biểu quyết phase (seconds)
+    day_last_words_duration: int = 10      # Last words before execution (seconds)
+    
+    # Feature toggles
     allow_self_target_roles: Set[str] = field(default_factory=set)
+    allow_skip_vote: bool = True           # Allow players to skip discussion phase
+    
+    def calculate_discussion_time(self, alive_players: int) -> int:
+        """
+        Calculate dynamic discussion time based on number of alive players.
+        
+        Formula: base_time + (alive_players * per_player_time)
+        
+        Examples:
+        - 10 players: 60 + (10 * 30) = 360s (6 minutes)
+        - 4 players: 60 + (4 * 30) = 180s (3 minutes)
+        """
+        return self.day_discussion_base + (alive_players * self.day_discussion_per_player)
+    
+    def get_day_phases_duration(self, alive_players: int) -> dict:
+        """
+        Get all day phase durations as a dictionary.
+        
+        Returns a dict with timing for each phase.
+        """
+        return {
+            "discussion": self.calculate_discussion_time(alive_players),
+            "vote": self.day_vote_duration,
+            "defense": self.day_defense_duration,
+            "judgment": self.day_judgment_duration,
+            "last_words": self.day_last_words_duration,
+        }
 
 
 @dataclass(slots=True)

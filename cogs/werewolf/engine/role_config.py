@@ -1,10 +1,10 @@
-"""Dynamic role configuration based on player count and expansions."""
+"""Dynamic role configuration based on player count and expansions with point-based balancing."""
 
 from __future__ import annotations
 
-import math
+import random
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from ..roles.base import Alignment, Expansion
 
@@ -20,102 +20,156 @@ class RoleSlot:
 
 
 class RoleConfig:
-    """Manages role distribution based on player count and active expansions."""
+    """
+    Manages role distribution based on player count and point-based balancing.
+    
+    Goal: Total game points should be close to 0 for balance.
+    - Negative points: Werewolves and Neutrals
+    - Positive points: Village roles
+    """
 
-    # Base game roles (expansion == BASIC)
-    BASE_ROLES = [
-        # Werewolves (4 fixed)
-        RoleSlot("Ma Sói", Alignment.WEREWOLF, Expansion.BASIC, count=4),
-        # Villagers (13 fixed in base)
-        RoleSlot("Dân Làng", Alignment.VILLAGE, Expansion.BASIC, count=13),
-        RoleSlot("Tiên Tri", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Cô Bé", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Phù Thủy", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Thợ Săn", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Thần Tình Yêu", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Tên Trộm", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Trưởng Làng", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Kẻ Thế Thân", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Bảo Vệ", Alignment.VILLAGE, Expansion.BASIC, count=1),
-        RoleSlot("Con Quạ", Alignment.VILLAGE, Expansion.BASIC, count=1),
-    ]
+    # Role point values (negative = wolf advantage, positive = village advantage)
+    ROLE_POINTS = {
+        # Werewolves (negative = wolf team)
+        "Ma Sói": -6,
+        "Sói To Xấu Xa": -8,
+        "Sói Quỷ": -9,
+        "Sói Lửa": -7,
+        "Sói Anh": -6,
+        "Sói Em": -6,
+        
+        # Neutrals (variable)
+        "Sói Trắng": -10,
+        "Thổi Sáo": 0,
+        "Kẻ Phóng Hỏa": -3,
+        "Kẻ Báo Thù": 2,
+        "Thằng Ngốc": -1,
+        "Bô Lão": 1,
+        
+        # Village - Tier 1: Powerful
+        "Tiên Tri": 7,
+        "Phù Thủy": 4,
+        
+        # Village - Tier 2: Strong
+        "Bảo Vệ": 3,
+        "Hiệp Sĩ": 3,
+        "Thợ Săn": 3,
+        "Con Quạ": 3,
+        
+        # Village - Tier 3: Medium
+        "Trưởng Làng": 2,
+        "Thẩm Phán": 2,
+        "Cáo": 2,
+        "Thần Gấu": 2,
+        
+        # Village - Tier 4: Utility
+        "Phù Thủy": 4,
+        "Cô Bé": 1,
+        "Oan Nhân": 1,
+        "Đứa Con Hoang": 2,
+        "Sói Lai": 2,
+        "Thần Tình Yêu": 1,
+        "Tên Trộm": 1,
+        "Cổ Hoặc Sư": 1,
+        "Dược Sĩ": 2,
+        "Thích Khách": 2,
+        "Kỵ Sĩ": 2,
+        "Ảnh Tử": 2,
+        "Nguyệt Nữ": 2,
+        "Người Tôi Tớ Trung Thành": 2,
+        "Hai Chị Em": 1,
+        "Già Làng": 1,
+        
+        # Base villager
+        "Dân Làng": 1,
+        
+        # Diễn Viên (variable based on abilities selected)
+        "Diễn Viên": 0,
+    }
 
-    # New Moon expansion roles
-    NEWMOON_ROLES = [
-        RoleSlot("Thằng Ngốc", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
-        RoleSlot("Già Làng", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
-        RoleSlot("Kẻ Thế Thân", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
-        RoleSlot("Bảo Vệ", Alignment.VILLAGE, Expansion.NEW_MOON, count=1),
-        RoleSlot("Thổi Sáo", Alignment.NEUTRAL, Expansion.NEW_MOON, count=1),
-        RoleSlot("Hai Chị Em", Alignment.VILLAGE, Expansion.NEW_MOON, count=2),
-    ]
-
-    # The Village expansion roles
-    THEVILLAGE_ROLES = [
-        RoleSlot("Con Quạ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói Trắng", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Kẻ Phóng Hỏa", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Kẻ Báo Thù", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói To Xấu Xa", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói Quỷ", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói Lửa", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói Anh", Alignment.WEREWOLF, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói Em", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Sói Lai", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Đứa Con Hoang", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Hiệp Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Ảnh Tử", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Nguyệt Nữ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Cổ Hoặc Sư", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Dược Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Thích Khách", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Kỵ Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Thẩm Phán", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Diễn Viên", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Thần Gấu", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Cáo", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Bô Lão", Alignment.NEUTRAL, Expansion.THE_VILLAGE, count=1),
-        RoleSlot("Người Tôi Tửo Trung Thành", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
-    ]
+    # Predefined setups for specific player counts
+    PRESETS = {
+        # Small games (8-9 players)
+        "small": {
+            "player_range": (8, 9),
+            "core_setup": {
+                "Ma Sói": 2,
+                "Tiên Tri": 1,
+            },
+            "fill_order": [
+                ("Bảo Vệ", 1),
+                ("Phù Thủy", 1),
+                ("Thợ Săn", 1),
+                ("Dân Làng", 3),
+            ],
+        },
+        # Standard games (12-15 players)
+        "standard": {
+            "player_range": (12, 15),
+            "core_setup": {
+                "Ma Sói": 3,
+                "Tiên Tri": 1,
+            },
+            "fill_order": [
+                ("Phù Thủy", 1),
+                ("Bảo Vệ", 1),
+                ("Thợ Săn", 1),
+                ("Sói Trắng", 1),
+                ("Thần Tình Yêu", 1),
+                ("Dân Làng", 6),
+            ],
+        },
+        # Large games (16+ players)
+        "large": {
+            "player_range": (16, 100),
+            "core_setup": {
+                "Ma Sói": 4,
+                "Tiên Tri": 1,
+            },
+            "fill_order": [
+                ("Phù Thủy", 1),
+                ("Bảo Vệ", 1),
+                ("Thợ Săn", 1),
+                ("Con Quạ", 1),
+                ("Thần Tình Yêu", 1),
+                ("Kẻ Phóng Hỏa", 1),
+                ("Thổi Sáo", 1),
+                ("Dân Làng", 8),
+            ],
+        },
+    }
 
     @staticmethod
     def calculate_werewolves(player_count: int) -> int:
         """
-        Calculate werewolf count using the Square Root Rule.
-        Formula: Werewolves = floor(sqrt(player_count))
+        Calculate werewolf count: floor(player_count / 3).
         
         Examples:
-        - 8 players: sqrt(8) ≈ 2.8 → 2 Werewolves
-        - 12 players: sqrt(12) ≈ 3.4 → 3 Werewolves
-        - 16 players: sqrt(16) = 4 → 4 Werewolves
+        - 8 players: floor(8/3) = 2 Werewolves
+        - 12 players: floor(12/3) = 4 Werewolves → clamped to 3
+        - 15 players: floor(15/3) = 5 Werewolves → clamped to 4
         """
-        werewolf_count = int(math.sqrt(player_count))
-        # Clamp between 1 and reasonable maximum
-        return max(1, min(werewolf_count, player_count // 2))
+        base_count = player_count // 3
+        # Clamp between 1 and player_count // 2
+        return max(1, min(base_count, player_count // 2))
 
     @staticmethod
-    def should_have_neutral(player_count: int) -> bool:
-        """
-        Determine if neutral roles should be included.
-        - Under 10 players: No neutral roles
-        - 10+ players: Can have neutral roles
-        """
-        return player_count >= 10
+    def calculate_total_points(distribution: Dict[str, int]) -> float:
+        """Calculate total game points for a distribution."""
+        total = 0.0
+        for role_name, count in distribution.items():
+            points = RoleConfig.ROLE_POINTS.get(role_name, 0)
+            total += points * count
+        return total
 
-    @staticmethod
-    def get_neutral_count(player_count: int) -> int:
-        """
-        Determine how many neutral roles to include.
-        - Under 10 players: 0
-        - 10-14 players: 0-1
-        - 15+ players: 1-2
-        """
-        if player_count < 10:
-            return 0
-        elif player_count < 15:
-            return 1
-        else:
-            return 2
+    @classmethod
+    def get_preset_for_players(cls, player_count: int) -> Optional[str]:
+        """Get the preset name for a given player count."""
+        for preset_name, preset_config in cls.PRESETS.items():
+            min_p, max_p = preset_config["player_range"]
+            if min_p <= player_count <= max_p:
+                return preset_name
+        return None
 
     @classmethod
     def build_role_distribution(
@@ -124,88 +178,62 @@ class RoleConfig:
         expansions: Optional[Set[Expansion]] = None,
     ) -> Dict[str, int]:
         """
-        Build the complete role distribution for a game.
+        Build role distribution using predefined presets and point-based balancing.
         
-        Returns a dict mapping role names to their counts.
+        Algorithm:
+        1. Select preset based on player count
+        2. Add core roles (Seer + Werewolves)
+        3. Fill remaining slots to balance toward 0 total points
+        4. Fill any remaining slots with Villagers
         """
         if expansions is None:
             expansions = {Expansion.BASIC}
 
         distribution: Dict[str, int] = {}
 
-        # Calculate dynamic counts
-        werewolf_count = cls.calculate_werewolves(player_count)
-        neutral_count = cls.get_neutral_count(player_count) if cls.should_have_neutral(player_count) else 0
-
-        # Start with werewolves (dynamic)
-        distribution["Ma Sói"] = werewolf_count
+        # Get matching preset
+        preset_name = cls.get_preset_for_players(player_count)
         
-        # Remaining slots after werewolves
-        remaining_slots = player_count - werewolf_count
-
-        # Add essential village roles (only 1 of each) - but only if there's room
-        essential_roles = [
-            "Tiên Tri", "Phù Thủy", "Thợ Săn", "Thần Tình Yêu",
-            "Cô Bé", "Tên Trộm", "Trưởng Làng", "Bảo vệ"
-        ]
-        
-        for role_name in essential_roles:
+        if preset_name:
+            preset = cls.PRESETS[preset_name]
+            
+            # Add core roles
+            for role, count in preset["core_setup"].items():
+                distribution[role] = count
+            
+            # Fill using the preset order
+            remaining_slots = player_count - sum(distribution.values())
+            for role, count in preset["fill_order"]:
+                if remaining_slots > 0:
+                    add_count = min(count, remaining_slots)
+                    distribution[role] = distribution.get(role, 0) + add_count
+                    remaining_slots -= add_count
+            
+            # Fill any remaining with Villagers
             if remaining_slots > 0:
-                distribution[role_name] = 1
-                remaining_slots -= 1
-
-        # Add expansion special roles (NOT duplicates from base game)
-        if Expansion.THE_VILLAGE in expansions and remaining_slots > 0:
-            # THE_VILLAGE unique roles (excluding Raven/Pyromaniac which are handled separately)
-            the_village_special = ["Sói Lai", "Đứa Con Hoang", "Hiệp Sĩ", "Ảnh Tử", "Nguyệt Nữ", 
-                                   "Cổ Hoặc Sư", "Dược Sĩ", "Thích Khách", "Kỵ Sĩ"]
-            for role_name in the_village_special:
-                if remaining_slots > 0:
-                    distribution[role_name] = 1
-                    remaining_slots -= 1
+                distribution["Dân Làng"] = distribution.get("Dân Làng", 0) + remaining_slots
+        else:
+            # Fallback: use simple algorithm
+            werewolf_count = cls.calculate_werewolves(player_count)
+            distribution["Ma Sói"] = werewolf_count
+            distribution["Tiên Tri"] = 1
             
-            # Add Wolf Brother & Sister as a pair (must have both or neither)
-            if remaining_slots >= 2:
-                # Both Sói Anh (werewolf) and Sói Em (hidden village) take 2 slots
-                distribution["Sói Anh"] = 1
-                distribution["Sói Em"] = 1
-                remaining_slots -= 2
-
-        if Expansion.NEW_MOON in expansions and remaining_slots > 0:
-            # NEW_MOON unique roles (excluding duplicates)
-            new_moon_special = ["Thằng Ngốc", "Già Làng", "Hai Chị Em"]
-            for role_name in new_moon_special:
-                if remaining_slots > 0:
-                    if role_name == "Hai Chị Em":
-                        # Two Sisters takes 2 slots
-                        if remaining_slots >= 2:
-                            distribution[role_name] = 2
-                            remaining_slots -= 2
-                    else:
-                        distribution[role_name] = 1
-                        remaining_slots -= 1
-
-        # Add neutral roles (limited and without duplicates)
-        neutral_roles_pool = []
-        
-        if Expansion.NEW_MOON in expansions:
-            neutral_roles_pool.append("Thổi Sáo")
+            remaining_slots = player_count - werewolf_count - 1
             
-        if Expansion.THE_VILLAGE in expansions:
-            neutral_roles_pool.extend(["Sói Trắng", "Kẻ Phóng Hỏa"])
-
-        # Add neutral roles up to neutral_count
-        for neutral_role in neutral_roles_pool:
-            if neutral_count > 0 and neutral_role not in distribution and remaining_slots > 0:
-                distribution[neutral_role] = 1
-                neutral_count -= 1
+            # Add powerful roles to balance
+            if remaining_slots > 0:
+                distribution["Phù Thủy"] = 1
                 remaining_slots -= 1
-
-        # Fill remaining slots with Dân Làng
-        if remaining_slots > 0:
-            distribution["Dân Làng"] = remaining_slots
-        elif "Dân Làng" not in distribution:
-            distribution["Dân Làng"] = 0
+            if remaining_slots > 0:
+                distribution["Bảo Vệ"] = 1
+                remaining_slots -= 1
+            if remaining_slots > 0:
+                distribution["Thợ Săn"] = 1
+                remaining_slots -= 1
+            
+            # Fill rest with villagers
+            if remaining_slots > 0:
+                distribution["Dân Làng"] = remaining_slots
 
         return distribution
 
@@ -218,7 +246,7 @@ class RoleConfig:
         """
         Get a flat list of role names, properly distributed.
         
-        Example: ["Werewolf", "Werewolf", "Seer", "Villager", ...]
+        Example: ["Ma Sói", "Ma Sói", "Tiên Tri", "Dân Làng", ...]
         """
         distribution = cls.build_role_distribution(player_count, expansions)
         roles: List[str] = []
@@ -231,25 +259,39 @@ class RoleConfig:
         cls,
         player_count: int,
         expansions: Optional[Set[Expansion]] = None,
-    ) -> Dict[str, int]:
+    ) -> Dict[str, object]:
         """
-        Get balance info grouped by alignment.
+        Get comprehensive balance info for a distribution.
         
-        Returns: {"village": count, "werewolf": count, "neutral": count}
+        Returns: {
+            "village": count,
+            "werewolf": count,
+            "neutral": count,
+            "total_points": float,
+            "distribution": Dict[str, int],
+        }
         """
         distribution = cls.build_role_distribution(player_count, expansions)
         
-        # Map role names to alignments (simplified)
+        # Map role names to alignments
         alignment_map = {
+            # Werewolves
             "Ma Sói": Alignment.WEREWOLF,
             "Sói To Xấu Xa": Alignment.WEREWOLF,
             "Sói Quỷ": Alignment.WEREWOLF,
+            "Sói Lửa": Alignment.WEREWOLF,
+            "Sói Anh": Alignment.WEREWOLF,
+            "Sói Em": Alignment.WEREWOLF,
+            # Neutrals
             "Sói Trắng": Alignment.NEUTRAL,
             "Thổi Sáo": Alignment.NEUTRAL,
             "Kẻ Phóng Hỏa": Alignment.NEUTRAL,
+            "Kẻ Báo Thù": Alignment.NEUTRAL,
+            "Thằng Ngốc": Alignment.NEUTRAL,
+            "Bô Lão": Alignment.NEUTRAL,
         }
 
-        info = {
+        alignment_counts = {
             Alignment.VILLAGE: 0,
             Alignment.WEREWOLF: 0,
             Alignment.NEUTRAL: 0,
@@ -257,6 +299,43 @@ class RoleConfig:
 
         for role_name, count in distribution.items():
             alignment = alignment_map.get(role_name, Alignment.VILLAGE)
-            info[alignment] += count
+            alignment_counts[alignment] += count
 
-        return info
+        total_points = cls.calculate_total_points(distribution)
+
+        return {
+            Alignment.VILLAGE: alignment_counts[Alignment.VILLAGE],
+            Alignment.WEREWOLF: alignment_counts[Alignment.WEREWOLF],
+            Alignment.NEUTRAL: alignment_counts[Alignment.NEUTRAL],
+            "total_points": total_points,
+            "distribution": distribution,
+        }
+
+    @classmethod
+    def get_setup_debug_info(cls, player_count: int) -> str:
+        """Get debug info about role distribution and points."""
+        distribution = cls.build_role_distribution(player_count)
+        total_points = cls.calculate_total_points(distribution)
+        balance_info = cls.get_balance_info(player_count)
+        
+        lines = [
+            f"🎮 **Setup cho {player_count} người chơi**",
+            f"",
+            f"**Phân bố vai trò:**",
+        ]
+        
+        for role_name, count in sorted(distribution.items()):
+            points = cls.ROLE_POINTS.get(role_name, 0)
+            total_role_points = points * count
+            lines.append(f"  • {role_name}: {count} (Điểm: {points} × {count} = {total_role_points})")
+        
+        lines.extend([
+            f"",
+            f"**Thống kê:**",
+            f"  • Dân làng: {balance_info[Alignment.VILLAGE]}",
+            f"  • Ma sói: {balance_info[Alignment.WEREWOLF]}",
+            f"  • Trung lập: {balance_info[Alignment.NEUTRAL]}",
+            f"  • **Tổng điểm: {total_points:.1f}**",
+        ])
+        
+        return "\n".join(lines)

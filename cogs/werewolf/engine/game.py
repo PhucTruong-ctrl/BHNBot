@@ -328,7 +328,13 @@ class WerewolfGame:
         await self.channel.send("\n".join(announcements))
         for player in new_deaths:
             player.death_pending = False
-        await self._run_countdown(self.channel, f"Thảo luận ngày {self.day_number}", self.settings.day_discussion_duration)
+        
+        # Calculate dynamic discussion time based on alive players
+        alive_count = len(self.alive_players())
+        discussion_time = self.settings.calculate_discussion_time(alive_count)
+        
+        # NEW: Run discussion with skip vote feature
+        await self._run_discussion_phase(alive_count, discussion_time)
         
         # Execute day phase role actions (e.g., Cavalry) before voting
         for player in self.alive_players():
@@ -571,7 +577,21 @@ class WerewolfGame:
             await self.channel.send("Không có kết quả rõ ràng.")
             return
         
-        await self.channel.send(f"{target_player.display_name()} bị dân làng treo cổ.")
+        await self.channel.send(f"🎪 **{target_player.display_name()} bị đưa lên giàn treo cổ.**")
+        
+        # NEW: Defense Phase (Biện hộ)
+        await self._run_defense_phase(target_player)
+        
+        # NEW: Judgment Phase (Biểu quyết sống/chết)
+        should_execute = await self._run_judgment_phase(target_player)
+        
+        if not should_execute or not target_player.alive:
+            # Player was spared or already dead from defense phase
+            logger.info("Player spared or dead | guild=%s player=%s", self.guild.id, target_player.user_id)
+            return
+        
+        # Proceed with execution
+        await self._run_last_words_phase(target_player)
         
         # Check if Assassin should be activated (on even days after 2-day cycle)
         if self.day_number % 2 == 0:  # Even days: 2, 4, 6... (end of 2-day cycle)
@@ -645,6 +665,171 @@ class WerewolfGame:
                                        self.guild.id, target_player_second.display_name())
                 else:
                     logger.info("Not enough players for second lynch | guild=%s", self.guild.id)
+
+    async def _run_discussion_phase(self, alive_count: int, discussion_time: int) -> None:
+        """
+        Discussion/Thảo luận phase with dynamic timing and Skip Vote feature.
+        
+        Formula: Base time (60s) + (alive_players * 30s)
+        Example: 10 players = 60 + (10 * 30) = 360s (6 minutes)
+        
+        Allow Skip Vote: If all eligible players agree, skip to voting early.
+        """
+        if not self.settings.allow_skip_vote:
+            # No skip feature, just run normal countdown
+            await self._run_countdown(
+                self.channel,
+                f"Thảo luận ngày {self.day_number} ({alive_count} người sống)",
+                discussion_time
+            )
+            return
+        
+        # Create a skip vote option
+        alive_players = self.alive_players()
+        eligible_voters = [p.user_id for p in alive_players if not p.vote_disabled]
+        
+        skip_options = {
+            1: "Bỏ qua thảo luận",
+            2: "Tiếp tục thảo luận",
+        }
+        
+        await self.channel.send(
+            f"⏱️ **Thảo luận ngày {self.day_number}** ({alive_count} người sống)\n"
+            f"⏳ Thời gian: {discussion_time} giây\n"
+            f"📢 Vui lòng bỏ phiếu nếu muốn bỏ qua thảo luận (cần sự đồng ý chung)"
+        )
+        
+        logger.info("Discussion phase started | guild=%s day=%s time=%s alive=%s", 
+                   self.guild.id, self.day_number, discussion_time, alive_count)
+        
+        # Run skip vote with short timeout (10 seconds)
+        from .voting import VoteSession
+        skip_vote = VoteSession(
+            self.bot,
+            self.channel,
+            title=f"Bỏ qua thảo luận ngày {self.day_number}?",
+            description="Bỏ phiếu nếu muốn bỏ qua thời gian thảo luận và sang bỏ phiếu.",
+            options=skip_options,
+            eligible_voters=eligible_voters,
+            duration=10,  # 10 seconds to decide on skip
+            allow_skip=True,
+            vote_weights={p.user_id: p.vote_weight for p in alive_players},
+        )
+        
+        skip_result = await skip_vote.start()
+        skip_tally = Counter(skip_result.tally)
+        
+        skip_votes = skip_tally.get(1, 0)
+        continue_votes = skip_tally.get(2, 0)
+        
+        if skip_votes > 0 and continue_votes == 0:
+            # Everyone wants to skip
+            await self.channel.send("✅ Tất cả mọi người đều đồng ý bỏ qua thảo luận! Sang bỏ phiếu ngay.")
+            logger.info("Skip vote passed | guild=%s day=%s skip_votes=%s", 
+                       self.guild.id, self.day_number, skip_votes)
+            return
+        
+        # Otherwise, proceed with normal countdown discussion
+        await self.channel.send(f"💬 Thảo luận tiếp tục, còn {discussion_time} giây...")
+        await self._run_countdown(
+            self.channel,
+            f"Thảo luận ngày {self.day_number}",
+            discussion_time
+        )
+
+    async def _run_defense_phase(self, target_player: PlayerState) -> None:
+        """
+        Defense/Biện hộ phase: Allow the nominated player to speak for their defense.
+        Duration: day_defense_duration seconds (default: 75 seconds)
+        """
+        defense_time = self.settings.day_defense_duration
+        
+        await self.channel.send(
+            f"⏱️ **Biện hộ:** {target_player.display_name()} có {defense_time} giây để thuyết phục mọi người. (Cả làng vui lòng lắng nghe...)"
+        )
+        logger.info("Defense phase started | guild=%s player=%s duration=%s", 
+                   self.guild.id, target_player.user_id, defense_time)
+        
+        await self._run_countdown(self.channel, "Phiên biện hộ", defense_time)
+
+    async def _run_judgment_phase(self, target_player: PlayerState) -> bool:
+        """
+        Judgment/Biểu quyết phase: Vote Kill or Spare (Giết hoặc Tha).
+        Duration: day_judgment_duration seconds (default: 20 seconds)
+        
+        Returns: True if player should be executed, False if spared
+        """
+        alive_players = self.alive_players()
+        judgment_time = self.settings.day_judgment_duration
+        
+        # Setup voting options: Kill (Giết) or Spare (Tha)
+        judgment_options = {
+            1: "Giết",
+            2: "Tha",
+        }
+        
+        await self.channel.send(
+            f"📋 **Biểu quyết:** Bạn có {judgment_time} giây để quyết định: **Giết** hay **Tha** {target_player.display_name()}?"
+        )
+        
+        logger.info("Judgment phase started | guild=%s player=%s duration=%s", 
+                   self.guild.id, target_player.user_id, judgment_time)
+        
+        # Create a judgment vote with Kill/Spare options
+        from .voting import VoteSession
+        judgment_vote = VoteSession(
+            self.bot,
+            self.channel,
+            title=f"Biểu quyết: {target_player.display_name()}",
+            description="Bạn có muốn giết hay tha người này?",
+            options=judgment_options,
+            eligible_voters=[p.user_id for p in alive_players if not p.vote_disabled],
+            duration=judgment_time,
+            allow_skip=False,
+            vote_weights={p.user_id: p.vote_weight for p in alive_players},
+        )
+        
+        result = await judgment_vote.start()
+        tally = Counter(result.tally)
+        
+        if not tally:
+            # No votes cast - default to sparing
+            await self.channel.send(f"Không ai quyết định được, {target_player.display_name()} được tha.")
+            return False
+        
+        # Count votes for Kill (1) vs Spare (2)
+        kill_votes = tally.get(1, 0)
+        spare_votes = tally.get(2, 0)
+        
+        await self.channel.send(f"📊 Kết quả: **Giết** {kill_votes} phiếu | **Tha** {spare_votes} phiếu")
+        
+        if kill_votes > spare_votes:
+            await self.channel.send(f"⚖️ Dân làng quyết định **GIẾT** {target_player.display_name()}.")
+            return True
+        elif spare_votes > kill_votes:
+            await self.channel.send(f"⚖️ Dân làng quyết định **THA** {target_player.display_name()}.")
+            return False
+        else:
+            # Tie in judgment - default to sparing
+            await self.channel.send(f"Hòa phiếu, {target_player.display_name()} được tha.")
+            return False
+
+    async def _run_last_words_phase(self, target_player: PlayerState) -> None:
+        """
+        Last Words/Trăng trối phase: Allow the condemned player to speak final words.
+        Duration: day_last_words_duration seconds (default: 10 seconds)
+        """
+        last_words_time = self.settings.day_last_words_duration
+        
+        await self.channel.send(
+            f"💬 **Lời cuối cùng:** {target_player.display_name()} có {last_words_time} giây để nói lời tạm biệt..."
+        )
+        logger.info("Last words phase started | guild=%s player=%s duration=%s", 
+                   self.guild.id, target_player.user_id, last_words_time)
+        
+        await self._run_countdown(self.channel, "Lời cuối cùng", last_words_time)
+        
+        await self.channel.send(f"💀 **{target_player.display_name()} đã bị xử tử.** 🪦")
 
     async def _assign_roles(self) -> None:
         player_ids = list(self.players.keys())
