@@ -555,7 +555,7 @@ class CommunityCog(commands.Cog):
         # Field 1: Global Buff
         embed.add_field(
             name="✨ TOÀN SERVER BỰC LỪA (24 Giờ)",
-            value=f"🔥 **X2 Tỷ lệ Hạt** khi chat/voice\n🔥 **X2 XP** cho mọi activity\n"
+            value=f"🔥 **X2 Hạt** khi chat/voice\n🔥 **X2 Hạt** cho mọi activity\n"
                   f"💫 Tất cả member nhận **{global_reward} Hạt** ngay lập tức!",
             inline=False
         )

@@ -39,11 +39,10 @@ class EconomyCog(commands.Cog):
             
             if not user:
                 await db.execute(
-                    "INSERT INTO economy_users (user_id, username, seeds, xp, level) VALUES (?, ?, ?, ?, ?)",
-                    (user_id, username, 0, 0, 1)
+                    "INSERT INTO economy_users (user_id, username, seeds) VALUES (?, ?, ?)",
+                    (user_id, username, 0)
                 )
                 await db.commit()
-                return (user_id, username, 0, 0, 1, None, None, datetime.now(), datetime.now())
             return user
 
     async def is_harvest_buff_active(self, guild_id: int) -> bool:
