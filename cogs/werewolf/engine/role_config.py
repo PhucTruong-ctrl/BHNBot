@@ -65,6 +65,7 @@ class RoleConfig:
         RoleSlot("Cổ Hoặc Sư", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Dược Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
         RoleSlot("Thích Khách", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
+        RoleSlot("Kỵ Sĩ", Alignment.VILLAGE, Expansion.THE_VILLAGE, count=1),
     ]
 
     @staticmethod
@@ -147,7 +148,7 @@ class RoleConfig:
         if Expansion.THE_VILLAGE in expansions and remaining_slots > 0:
             # THE_VILLAGE unique roles (excluding Raven/Pyromaniac which are handled separately)
             the_village_special = ["Sói Lai", "Đứa Con Hoang", "Hiệp Sĩ", "Ảnh Tử", "Nguyệt Nữ", 
-                                   "Cổ Hoặc Sư", "Dược Sĩ", "Thích Khách"]
+                                   "Cổ Hoặc Sư", "Dược Sĩ", "Thích Khách", "Kỵ Sĩ"]
             for role_name in the_village_special:
                 if remaining_slots > 0:
                     distribution[role_name] = 1

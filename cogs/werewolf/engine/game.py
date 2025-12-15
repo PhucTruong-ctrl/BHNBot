@@ -288,7 +288,26 @@ class WerewolfGame:
         for player in new_deaths:
             player.death_pending = False
         await self._run_countdown(self.channel, f"Thảo luận ngày {self.day_number}", self.settings.day_discussion_duration)
-        await self._run_day_vote()
+        
+        # Execute day phase role actions (e.g., Cavalry) before voting
+        for player in self.alive_players():
+            for role in player.roles:
+                try:
+                    await role.on_day(self, player, self.day_number)
+                except Exception as e:
+                    logger.error(
+                        "Error in role on_day | guild=%s player=%s role=%s error=%s",
+                        self.guild.id,
+                        player.user_id,
+                        role.metadata.name,
+                        str(e),
+                        exc_info=True,
+                    )
+        
+        # Check if game is still running after day actions (cavalry may end it)
+        if not self.is_finished:
+            await self._run_day_vote()
+        
         # Reset vote_disabled from Pharmacist's sleeping potion after day voting is complete
         for player in self.alive_players():
             player.vote_disabled = False
