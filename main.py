@@ -71,11 +71,11 @@ async def load_cogs():
             except Exception as e:
                 print(f'Error: {filename} - {e}')
     
-    # Load sub-module cogs (e.g., werewolf)
+    # Load sub-module cogs (e.g., werewolf, noi_tu)
     for subdir in os.listdir(cogs_dir):
         subdir_path = os.path.join(cogs_dir, subdir)
         if os.path.isdir(subdir_path) and not subdir.startswith('__'):
-            # Check if it has a cog.py file
+            # Try loading cog.py first (for werewolf)
             cog_file = os.path.join(subdir_path, 'cog.py')
             if os.path.exists(cog_file):
                 try:
@@ -83,6 +83,16 @@ async def load_cogs():
                     print(f'Loaded: cogs.{subdir}.cog')
                 except Exception as e:
                     print(f'Error loading cogs.{subdir}.cog: {e}')
+            
+            # Load additional module files in subdirectory (for noi_tu: noitu.py, add_word.py)
+            for filename in os.listdir(subdir_path):
+                if filename.endswith('.py') and filename not in ['__init__.py', 'cog.py']:
+                    module_name = filename[:-3]
+                    try:
+                        await bot.load_extension(f'cogs.{subdir}.{module_name}')
+                        print(f'Loaded: cogs.{subdir}.{module_name}')
+                    except Exception as e:
+                        print(f'Error loading cogs.{subdir}.{module_name}: {e}')
     
     # List all commands in bot.tree after loading cogs
     print("\n[SLASH COMMANDS REGISTERED]")

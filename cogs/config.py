@@ -79,11 +79,11 @@ class ConfigCog(commands.Cog):
                     if game.channel.id == channel_id:
                         # Reset werewolf game in this channel
                         await werewolf_manager.remove_game(guild_id)
-                        msg = "✅ Đã huỷ bàn Ma Sói"
+                        msg = "Đã huỷ bàn Ma Sói"
                         if isinstance(response_obj, commands.Context):
                             await response_obj.send(msg, delete_after=3)
                         else:
-                            await response_obj.followup.send(msg, delete_after=3)
+                            await response_obj.followup.send(msg)
                         return
             
             # Check for NoiTu game in current channel
@@ -95,11 +95,11 @@ class ConfigCog(commands.Cog):
                     row = await cursor.fetchone()
             
             if not row or not row[0]:
-                msg = "❌ Kênh này ko có game nào hoạt động"
+                msg = "Kênh này ko có game nào hoạt động"
                 if isinstance(response_obj, commands.Context):
                     await response_obj.send(msg, delete_after=3)
                 else:
-                    await response_obj.followup.send(msg, delete_after=3)
+                    await response_obj.followup.send(msg)
                 return
 
             noitu_channel_id = row[0]
@@ -112,19 +112,19 @@ class ConfigCog(commands.Cog):
                     channel = self.bot.get_channel(channel_id)
                     if channel:
                         await game_cog.start_new_round(guild_id, channel)
-                        msg = "✅ Reset game nối từ ok"
+                        msg = "Đã reset game nối từ"
                     else:
-                        msg = "❌ Ko tìm thấy kênh"
+                        msg = "Ko tìm thấy kênh"
                 else:
-                    msg = "❌ Ko tìm thấy game cog"
+                    msg = "Ko tìm thấy game cog"
             else:
-                msg = "❌ Kênh này ko có game nào hoạt động"
+                msg = "Ko có game nào hoạt động trong kênh này"
 
             # Send response
             if isinstance(response_obj, commands.Context):
                 await response_obj.send(msg, delete_after=3)
             else:
-                await response_obj.followup.send(msg, delete_after=3)
+                await response_obj.followup.send(msg)
 
         except Exception as e:
             import traceback
@@ -178,6 +178,25 @@ class ConfigCog(commands.Cog):
                 new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
                 new_wolf = kenh_soi.id if kenh_soi else old_wolf
                 new_giveaway = kenh_giveaway.id if kenh_giveaway else old_giveaway
+                
+                # Validate: một kênh không được có nhiều hơn 1 game
+                if kenh_noitu and kenh_soi:
+                    if kenh_noitu.id == kenh_soi.id:
+                        return await interaction.followup.send("Kênh không được vừa là kênh Nối Từ vừa là kênh voice Sói")
+                
+                # Check if new_noitu conflicts with existing wolf channel
+                if new_noitu and new_wolf and new_noitu == new_wolf:
+                    return await interaction.followup.send("Kênh không được vừa là kênh Nối Từ vừa là kênh voice Sói")
+                
+                # If setting kenh_noitu to a channel that was wolf channel, clear wolf channel
+                if kenh_noitu and new_wolf and kenh_noitu.id == new_wolf:
+                    new_wolf = None
+                    await interaction.followup.send("Kênh voice Sói đã bị xoá vì xung đột với kênh Nối Từ")
+                
+                # If setting kenh_soi to a channel that was noitu channel, clear noitu channel
+                if kenh_soi and new_noitu and kenh_soi.id == new_noitu:
+                    new_noitu = None
+                    await interaction.followup.send("Kênh Nối Từ đã bị xoá vì xung đột với kênh voice Sói")
                 
                 # Save
                 await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id) VALUES (?, ?, ?, ?, ?)", 
@@ -255,6 +274,10 @@ class ConfigCog(commands.Cog):
                 
                 # Update based on key
                 if key == "kenh_noitu":
+                    # Check if this channel is already set as wolf channel
+                    if current_wolf and channel.id == current_wolf:
+                        await ctx.send("❌ Kênh này đang được dùng cho Ma Sói. Xoá kenh_soi trước!")
+                        return
                     new_logs, new_noitu, new_wolf, new_giveaway = current_logs, channel.id, current_wolf, current_giveaway
                     msg_key = "Nối Từ"
                 elif key == "kenh_giveaway":
@@ -264,9 +287,19 @@ class ConfigCog(commands.Cog):
                     new_logs, new_noitu, new_wolf, new_giveaway = channel.id, current_noitu, current_wolf, current_giveaway
                     msg_key = "Logs"
                 elif key == "kenh_soi":
-                    # For wolf channel, accept voice channel mention
-                    if not ctx.message.mentions and not ctx.message.raw_channel_mentions:
-                        # Try to parse as ID
+                    # Check if this channel is already set as noitu channel
+                    if current_noitu:
+                        try:
+                            voice_channel = await commands.VoiceChannelConverter().convert(ctx, ctx.message.content.split()[-1])
+                            if voice_channel.id == current_noitu:
+                                await ctx.send("❌ Kênh này đang được dùng cho Nối Từ. Xoá kenh_noitu trước!")
+                                return
+                            new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, voice_channel.id, current_giveaway
+                            msg_key = "Sói Voice"
+                        except:
+                            await ctx.send("❌ Kênh voice không hợp lệ. Dùng: `!config kenh_soi 1449580372705677312` (ID)")
+                            return
+                    else:
                         try:
                             voice_channel = await commands.VoiceChannelConverter().convert(ctx, ctx.message.content.split()[-1])
                             new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, voice_channel.id, current_giveaway
@@ -274,9 +307,6 @@ class ConfigCog(commands.Cog):
                         except:
                             await ctx.send("❌ Kênh voice không hợp lệ. Dùng: `!config kenh_soi 1449580372705677312` (ID)")
                             return
-                    else:
-                        await ctx.send("❌ Để cấu hình kênh sói, dùng ID: `!config kenh_soi 1449580372705677312`")
-                        return
                 else:
                     await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi")
                     return
@@ -298,6 +328,23 @@ class ConfigCog(commands.Cog):
                 
                 await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
                 print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention if key != 'kenh_soi' else new_wolf}")
+                
+                # Start game if setting kenh_noitu
+                if key == "kenh_noitu":
+                    game_cog = self.bot.get_cog("GameNoiTu")
+                    if game_cog:
+                        # Stop old game if channel changed
+                        if current_noitu and current_noitu != channel.id:
+                            if guild_id in game_cog.games:
+                                del game_cog.games[guild_id]
+                                # Also clean up lock
+                                if guild_id in game_cog.game_locks:
+                                    del game_cog.game_locks[guild_id]
+                                print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {current_noitu}")
+                        
+                        # Start new game
+                        await game_cog.start_new_round(guild_id, channel)
+                        print(f"GAME_START [Guild {guild_id}] Started new game at channel {channel.id}")
                 
         except Exception as e:
             import traceback

@@ -44,6 +44,23 @@ class WerewolfCog(commands.Cog):
             await ctx.send("Mode phải là 'text' hoặc 'voice'", delete_after=6)
             return
         
+        # Check if current channel is set as NoiTu channel
+        import aiosqlite
+        DB_PATH = "./data/database.db"
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
+                    (ctx.guild.id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if row and row[0] == ctx.channel.id:
+                await ctx.send("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", delete_after=8)
+                return
+        except Exception as e:
+            print(f"Error checking NoiTu channel: {e}")
+        
         existing = self.manager.get_game(ctx.guild.id) if ctx.guild else None
         if existing and not existing.is_finished:
             await ctx.send("Đang có một bàn Ma Sói khác hoạt động.", delete_after=8)
@@ -72,7 +89,7 @@ class WerewolfCog(commands.Cog):
         """
         guide_cog = self.bot.get_cog("WerewolfGuideCog")
         if not guide_cog:
-            await ctx.send("❌ Guide cog không được load!", delete_after=6)
+            await ctx.send("Guide cog không được load!", delete_after=6)
             return
 
         embed = guide_cog.get_guide_embed()
@@ -97,6 +114,23 @@ class WerewolfCog(commands.Cog):
         if game_mode not in ("text", "voice"):
             await interaction.response.send_message("Mode phải là 'text' hoặc 'voice'", ephemeral=True)
             return
+        
+        # Check if current channel is set as NoiTu channel
+        import aiosqlite
+        DB_PATH = "./data/database.db"
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
+                    (interaction.guild.id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if row and row[0] == interaction.channel.id:
+                await interaction.response.send_message("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", ephemeral=True)
+                return
+        except Exception as e:
+            print(f"Error checking NoiTu channel: {e}")
         
         await interaction.response.defer()
         
@@ -131,7 +165,7 @@ class WerewolfCog(commands.Cog):
         """
         guide_cog = self.bot.get_cog("WerewolfGuideCog")
         if not guide_cog:
-            await interaction.response.send_message("❌ Guide cog không được load!", ephemeral=True)
+            await interaction.response.send_message("Guide cog không được load!", ephemeral=True)
             return
 
         embed = guide_cog.get_guide_embed()
