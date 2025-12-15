@@ -8,7 +8,8 @@ import asyncio
 DB_PATH = "./data/database.db"
 
 # Tree Level Requirements (Hạt cần thêm)
-LEVEL_REQS = {
+# Base requirements for season 1
+BASE_LEVEL_REQS = {
     1: 0,      # 🌱 Hạt mầm
     2: 1000,   # 🌿 Nảy mầm
     3: 2000,   # 🎋 Cây non
@@ -16,6 +17,9 @@ LEVEL_REQS = {
     5: 4000,   # 🌸 Ra hoa
     6: 5000    # 🍎 Kết trái (MAX)
 }
+
+# Scaling factor per season (25% increase each season)
+SEASON_SCALING = 1.25
 
 # Tree Images (Replace with your own image URLs)
 TREE_IMAGES = {
@@ -106,6 +110,20 @@ class CommunityCog(commands.Cog):
 
     # ==================== HELPER FUNCTIONS ====================
 
+    def get_level_reqs(self, season: int) -> dict:
+        """Calculate level requirements for a given season
+        
+        Each season increases requirements by 25%:
+        Season 1: 1000, 2000, 3000, 4000, 5000
+        Season 2: 1250, 2500, 3750, 5000, 6250
+        Season 3: 1563, 3125, 4688, 6250, 7813
+        """
+        multiplier = SEASON_SCALING ** (season - 1)
+        return {
+            level: int(BASE_LEVEL_REQS[level] * multiplier) if level > 1 else 0
+            for level in BASE_LEVEL_REQS
+        }
+
     async def get_tree_data(self, guild_id: int):
         """Get current tree data for guild"""
         async with aiosqlite.connect(DB_PATH) as db:
@@ -169,8 +187,11 @@ class CommunityCog(commands.Cog):
         """Create tree display embed"""
         lvl, prog, total, season, _, _ = await self.get_tree_data(guild_id)
         
+        # Get level requirements for current season
+        level_reqs = self.get_level_reqs(season)
+        
         # Calculate progress bar
-        req = LEVEL_REQS.get(lvl + 1, LEVEL_REQS[6])
+        req = level_reqs.get(lvl + 1, level_reqs[6])
         if lvl >= 6:
             bar = "🟩" * 10
             footer_text = f"🍎 Cây đã trĩu quả! Chờ thu hoạch • Tổng: {total} Hạt"
@@ -302,7 +323,8 @@ class CommunityCog(commands.Cog):
             return
         
         # Update tree progress
-        req = LEVEL_REQS.get(lvl + 1, LEVEL_REQS[6])
+        level_reqs = self.get_level_reqs(season)
+        req = level_reqs.get(lvl + 1, level_reqs[6])
         new_progress = prog + amount
         new_total = total + amount
         leveled_up = False
@@ -391,9 +413,13 @@ class CommunityCog(commands.Cog):
         
         lvl, prog, total, season, tree_channel_id, _ = await self.get_tree_data(guild_id)
         
+        # Get level requirements for current season
+        level_reqs = self.get_level_reqs(season)
+        max_req = level_reqs[6]
+        
         if lvl < 6:
             await interaction.followup.send(
-                f"❌ Cây chưa chín! Hiện tại: Level {lvl}/6. Cần thêm {LEVEL_REQS[6] - prog} Hạt.",
+                f"❌ Cây chưa chín! Hiện tại: Level {lvl}/6. Cần thêm {max_req - prog} Hạt.",
                 ephemeral=True
             )
             return
