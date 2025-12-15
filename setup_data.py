@@ -22,7 +22,8 @@ def init_database():
                     logs_channel_id INTEGER,
                     noitu_channel_id INTEGER,
                     wolf_channel_id INTEGER,
-                    giveaway_channel_id INTEGER
+                    giveaway_channel_id INTEGER,
+                    exclude_chat_channels TEXT
                 )''')
     
     # Player Stats: Track wins and correct words per user
@@ -32,6 +33,38 @@ def init_database():
                     wins INTEGER DEFAULT 0,
                     correct_words INTEGER DEFAULT 0,
                     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+    
+    # Economy: Track seeds, XP, and level per user
+    c.execute('''CREATE TABLE IF NOT EXISTS economy_users (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    seeds INTEGER DEFAULT 0,
+                    xp INTEGER DEFAULT 0,
+                    level INTEGER DEFAULT 1,
+                    last_daily DATETIME,
+                    last_chat_reward DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+    
+    # Relationships: Track affinity between users
+    c.execute('''CREATE TABLE IF NOT EXISTS relationships (
+                    user_id_1 INTEGER,
+                    user_id_2 INTEGER,
+                    affinity INTEGER DEFAULT 0,
+                    last_interaction DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id_1, user_id_2)
+                )''')
+    
+    # Inventory: Track items owned by users
+    c.execute('''CREATE TABLE IF NOT EXISTS inventory (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    item_name TEXT,
+                    quantity INTEGER DEFAULT 1,
+                    obtained_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, item_name)
                 )''')
     
     # Migration: Rename admin_channel_id to logs_channel_id (if table exists with old schema)

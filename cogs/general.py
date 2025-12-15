@@ -1,6 +1,11 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+import aiosqlite
+from PIL import Image, ImageDraw, ImageFont
+import io
+
+DB_PATH = "./data/database.db"
 
 class General(commands.Cog):
     def __init__(self, bot):
@@ -195,6 +200,119 @@ class General(commands.Cog):
                 await ctx_or_interaction.send(msg)
             else:
                 await ctx_or_interaction.response.send_message(msg, ephemeral=True)
+
+    # ==================== PROFILE CARD ====================
+
+    @app_commands.command(name="profile", description="Xem profile card")
+    @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
+    async def profile_slash(self, interaction: discord.Interaction, user: discord.User = None):
+        """View profile card"""
+        await interaction.response.defer()
+        
+        target_user = user or interaction.user
+        
+        try:
+            # Get user data from economy
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT seeds, xp, level FROM economy_users WHERE user_id = ?",
+                    (target_user.id,)
+                ) as cursor:
+                    economy_row = await cursor.fetchone()
+                
+                # Get top friends (affinity)
+                async with db.execute(
+                    """SELECT user_id_2 as friend_id, affinity FROM relationships 
+                       WHERE user_id_1 = ? ORDER BY affinity DESC LIMIT 1""",
+                    (target_user.id,)
+                ) as cursor:
+                    friend_row1 = await cursor.fetchone()
+                
+                async with db.execute(
+                    """SELECT user_id_1 as friend_id, affinity FROM relationships 
+                       WHERE user_id_2 = ? ORDER BY affinity DESC LIMIT 1""",
+                    (target_user.id,)
+                ) as cursor:
+                    friend_row2 = await cursor.fetchone()
+            
+            seeds, xp, level = economy_row if economy_row else (0, 0, 1)
+            
+            # Determine best friend
+            best_friend_id = None
+            if friend_row1 and friend_row2:
+                best_friend_id = friend_row1[0] if friend_row1[1] >= friend_row2[1] else friend_row2[0]
+            elif friend_row1:
+                best_friend_id = friend_row1[0]
+            elif friend_row2:
+                best_friend_id = friend_row2[0]
+            
+            best_friend_name = "Chưa có"
+            if best_friend_id:
+                try:
+                    best_friend = await self.bot.fetch_user(best_friend_id)
+                    best_friend_name = best_friend.name
+                except:
+                    best_friend_name = "Người lạ"
+            
+            # Create profile card image
+            profile_img = await self._create_profile_card(target_user, seeds, xp, level, best_friend_name)
+            
+            # Send as file
+            file = discord.File(profile_img, filename="profile.png")
+            await interaction.followup.send(file=file)
+        
+        except Exception as e:
+            await interaction.followup.send(f"❌ Lỗi tạo profile: {e}")
+            print(f"[PROFILE] Error: {e}")
+
+    async def _create_profile_card(self, user, seeds, xp, level, best_friend):
+        """Create profile card using Pillow"""
+        from urllib.request import urlopen
+        
+        # Create image
+        width, height = 800, 400
+        img = Image.new('RGB', (width, height), color=(30, 30, 30))
+        draw = ImageDraw.Draw(img)
+        
+        # Load avatar
+        try:
+            avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
+            avatar_data = urlopen(avatar_url).read()
+            avatar_img = Image.open(io.BytesIO(avatar_data)).convert('RGBA')
+            avatar_img = avatar_img.resize((120, 120))
+            
+            # Add avatar (rounded)
+            img.paste(avatar_img, (30, 30), avatar_img)
+        except:
+            pass
+        
+        # Get fonts (use default if unavailable)
+        try:
+            title_font = ImageFont.truetype("arial.ttf", 40)
+            stat_font = ImageFont.truetype("arial.ttf", 24)
+            label_font = ImageFont.truetype("arial.ttf", 16)
+        except:
+            title_font = ImageFont.load_default()
+            stat_font = ImageFont.load_default()
+            label_font = ImageFont.load_default()
+        
+        # Draw username
+        draw.text((170, 40), f"{user.name}", font=title_font, fill=(255, 255, 255))
+        
+        # Draw stats
+        stats_text = f"💰 {seeds} Hạt  |  📊 Level {level}  |  ⚡ {xp} XP"
+        draw.text((170, 100), stats_text, font=stat_font, fill=(200, 200, 200))
+        
+        # Draw best friend
+        draw.text((30, 180), "👥 Người tri kỷ:", font=label_font, fill=(255, 165, 0))
+        draw.text((200, 180), best_friend, font=stat_font, fill=(255, 200, 0))
+        
+        # Convert to bytes
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+        
+        return img_bytes
 
 # Hàm setup bắt buộc để load Cog
 async def setup(bot):

@@ -1,0 +1,304 @@
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+import aiosqlite
+from datetime import datetime, time
+import random
+import asyncio
+
+DB_PATH = "./data/database.db"
+
+# Constants
+DAILY_BONUS = 10  # Hạt nhận từ /chao
+DAILY_WINDOW_START = 5  # 5 AM
+DAILY_WINDOW_END = 10  # 10 AM
+CHAT_REWARD_MIN = 1
+CHAT_REWARD_MAX = 3
+CHAT_REWARD_COOLDOWN = 60  # seconds
+VOICE_REWARD_INTERVAL = 5  # minutes
+VOICE_REWARD = 5  # Hạt mỗi 5 phút trong voice
+
+class EconomyCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.chat_cooldowns = {}  # {user_id: last_reward_time}
+        self.voice_reward_task.start()
+
+    def cog_unload(self):
+        self.voice_reward_task.cancel()
+
+    # ==================== HELPER FUNCTIONS ====================
+    async def get_or_create_user(self, user_id: int, username: str):
+        """Get or create user in economy_users table"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT * FROM economy_users WHERE user_id = ?",
+                (user_id,)
+            ) as cursor:
+                user = await cursor.fetchone()
+            
+            if not user:
+                await db.execute(
+                    "INSERT INTO economy_users (user_id, username, seeds, xp, level) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, username, 0, 0, 1)
+                )
+                await db.commit()
+                return (user_id, username, 0, 0, 1, None, None, datetime.now(), datetime.now())
+            return user
+
+    async def add_seeds(self, user_id: int, amount: int):
+        """Add seeds to user"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "UPDATE economy_users SET seeds = seeds + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                (amount, user_id)
+            )
+            await db.commit()
+
+    async def get_user_balance(self, user_id: int) -> tuple:
+        """Get user balance: (seeds, xp, level)"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT seeds, xp, level FROM economy_users WHERE user_id = ?",
+                (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            return row if row else (0, 0, 1)
+
+    async def get_leaderboard(self, limit: int = 10) -> list:
+        """Get top players by seeds"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT user_id, username, seeds, level FROM economy_users ORDER BY seeds DESC LIMIT ?",
+                (limit,)
+            ) as cursor:
+                return await cursor.fetchall()
+
+    async def update_last_daily(self, user_id: int):
+        """Update last daily reward time"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "UPDATE economy_users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
+    async def update_last_chat_reward(self, user_id: int):
+        """Update last chat reward time"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "UPDATE economy_users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
+    async def get_last_daily(self, user_id: int) -> datetime:
+        """Get last daily reward time"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT last_daily FROM economy_users WHERE user_id = ?",
+                (user_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            if row and row[0]:
+                return datetime.fromisoformat(row[0])
+            return None
+
+    def is_daily_window(self) -> bool:
+        """Check if current time is within daily reward window (5 AM - 10 AM)"""
+        now = datetime.now()
+        return DAILY_WINDOW_START <= now.hour < DAILY_WINDOW_END
+
+    # ==================== COMMANDS ====================
+
+    @app_commands.command(name="chao", description="Chào buổi sáng (5h-10h) để nhận hạt")
+    async def daily_bonus(self, interaction: discord.Interaction):
+        """Daily bonus reward between 5 AM - 10 AM"""
+        await interaction.response.defer(ephemeral=True)
+        
+        # Check time window
+        if not self.is_daily_window():
+            now = datetime.now()
+            await interaction.followup.send(
+                f"❌ Chỉ nhận hạt từ 5h tới 10h sáng!\n"
+                f"Giờ hiện tại: {now.strftime('%H:%M')}",
+                ephemeral=True
+            )
+            return
+        
+        # Get or create user
+        user = interaction.user
+        await self.get_or_create_user(user.id, user.name)
+        
+        # Check if already claimed today
+        last_daily = await self.get_last_daily(user.id)
+        if last_daily:
+            today = datetime.now().date()
+            if last_daily.date() == today:
+                await interaction.followup.send(
+                    f"❌ Bạn đã nhận hạt hôm nay rồi! Quay lại vào ngày mai.",
+                    ephemeral=True
+                )
+                return
+        
+        # Award seeds
+        await self.add_seeds(user.id, DAILY_BONUS)
+        await self.update_last_daily(user.id)
+        
+        # Get new balance
+        seeds, xp, level = await self.get_user_balance(user.id)
+        
+        embed = discord.Embed(
+            title="☀️ Chào buổi sáng!",
+            description=f"Bạn nhận được **{DAILY_BONUS} hạt**",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="💰 Hạt hiện tại", value=f"**{seeds}**", inline=False)
+        embed.add_field(name="📊 Level", value=f"**{level}**", inline=True)
+        embed.add_field(name="⚡ XP", value=f"**{xp}**", inline=True)
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="bal", description="Xem số hạt hiện tại")
+    @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
+    async def balance(self, interaction: discord.Interaction, user: discord.User = None):
+        """Check balance"""
+        await interaction.response.defer(ephemeral=True)
+        
+        target_user = user or interaction.user
+        await self.get_or_create_user(target_user.id, target_user.name)
+        
+        seeds, xp, level = await self.get_user_balance(target_user.id)
+        
+        embed = discord.Embed(
+            title=f"💰 Số dư của {target_user.name}",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
+        embed.add_field(name="📊 Level", value=f"**{level}**", inline=True)
+        embed.add_field(name="⚡ XP", value=f"**{xp}**", inline=True)
+        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="tuido", description="Xem số hạt hiện tại (alias của /bal)")
+    async def balance_alias(self, interaction: discord.Interaction):
+        """Alias for /bal command"""
+        await self.balance(interaction)
+
+    @app_commands.command(name="top", description="Xem bảng xếp hạng hạt")
+    async def leaderboard(self, interaction: discord.Interaction):
+        """Show leaderboard"""
+        await interaction.response.defer(ephemeral=True)
+        
+        top_users = await self.get_leaderboard(10)
+        
+        if not top_users:
+            await interaction.followup.send("❌ Chưa có ai trong bảng xếp hạng!", ephemeral=True)
+            return
+        
+        embed = discord.Embed(
+            title="🏆 Bảng Xếp Hạng Hạt",
+            color=discord.Color.gold()
+        )
+        
+        ranking_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for idx, (user_id, username, seeds, level) in enumerate(top_users, 1):
+            medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
+            ranking_text += f"{medal} **{username}** - {seeds} hạt (Lv. {level})\n"
+        
+        embed.description = ranking_text
+        embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    # ==================== EVENTS ====================
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Reward seeds for chat activity"""
+        if message.author.bot:
+            return
+        
+        if not message.guild:
+            return
+        
+        # Check excluded channels (logs, admin channels, etc)
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = ?",
+                (message.guild.id,)
+            ) as cursor:
+                config = await cursor.fetchone()
+        
+        excluded_channels = []
+        if config:
+            if config[0]:
+                excluded_channels.append(config[0])  # logs_channel_id
+            
+            # Parse exclude_chat_channels (JSON format: "[123, 456, 789]")
+            if config[1]:
+                try:
+                    import json
+                    excluded = json.loads(config[1])
+                    excluded_channels.extend(excluded)
+                except:
+                    pass
+        
+        # Don't reward in excluded channels
+        if message.channel.id in excluded_channels:
+            return
+        
+        # Check cooldown
+        user_id = message.author.id
+        now = datetime.now().timestamp()
+        
+        if user_id in self.chat_cooldowns:
+            last_reward = self.chat_cooldowns[user_id]
+            if now - last_reward < CHAT_REWARD_COOLDOWN:
+                return
+        
+        # Get or create user
+        await self.get_or_create_user(user_id, message.author.name)
+        
+        # Award random seeds
+        reward = random.randint(CHAT_REWARD_MIN, CHAT_REWARD_MAX)
+        await self.add_seeds(user_id, reward)
+        await self.update_last_chat_reward(user_id)
+        
+        # Update cooldown
+        self.chat_cooldowns[user_id] = now
+        
+        # Log
+        print(f"[ECONOMY] {message.author.name} earned {reward} seeds from chat")
+
+    @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
+    async def voice_reward_task(self):
+        """Check voice channels and reward members every 5 minutes"""
+        try:
+            for guild in self.bot.guilds:
+                for voice_channel in guild.voice_channels:
+                    # Get members in voice (exclude bots)
+                    members = [m for m in voice_channel.members if not m.bot]
+                    
+                    if not members:
+                        continue
+                    
+                    # Award seeds to each member
+                    for member in members:
+                        await self.get_or_create_user(member.id, member.name)
+                        await self.add_seeds(member.id, VOICE_REWARD)
+                        print(f"[ECONOMY] {member.name} earned {VOICE_REWARD} seeds from voice chat")
+        
+        except Exception as e:
+            print(f"[ECONOMY] Voice reward error: {e}")
+
+    @voice_reward_task.before_loop
+    async def before_voice_reward_task(self):
+        """Wait for bot to be ready before starting task"""
+        await self.bot.wait_until_ready()
+
+async def setup(bot):
+    await bot.add_cog(EconomyCog(bot))

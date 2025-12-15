@@ -2,6 +2,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import aiosqlite
+import traceback
+import json
 
 DB_PATH = "./data/database.db"
 class ApprovalView(discord.ui.View):
@@ -350,6 +352,124 @@ class ConfigCog(commands.Cog):
             import traceback
             traceback.print_exc()
             await ctx.send(f"❌ Lỗi: {str(e)}")
+
+    # ==================== EXCLUDE CHANNELS ====================
+
+    @app_commands.command(name="exclude", description="Quản lý kênh không nhận seed từ chat")
+    @app_commands.describe(
+        action="add (thêm) hoặc remove (xoá)",
+        channel="Kênh muốn thêm/xoá"
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    async def exclude_channel(self, interaction: discord.Interaction, action: str, channel: discord.TextChannel):
+        """Add or remove channel from chat reward exclusion list"""
+        await interaction.response.defer(ephemeral=True)
+        
+        action = action.lower()
+        if action not in ["add", "remove"]:
+            await interaction.followup.send("❌ Action phải là 'add' hoặc 'remove'", ephemeral=True)
+            return
+        
+        guild_id = interaction.guild.id
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get current exclude list
+                async with db.execute(
+                    "SELECT exclude_chat_channels FROM server_config WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                
+                excluded = []
+                if row and row[0]:
+                    try:
+                        excluded = json.loads(row[0])
+                    except:
+                        excluded = []
+                
+                if action == "add":
+                    if channel.id in excluded:
+                        await interaction.followup.send(
+                            f"⚠️ Kênh {channel.mention} đã trong danh sách loại trừ rồi",
+                            ephemeral=True
+                        )
+                        return
+                    
+                    excluded.append(channel.id)
+                    msg = f"✅ Thêm {channel.mention} vào danh sách loại trừ"
+                
+                else:  # remove
+                    if channel.id not in excluded:
+                        await interaction.followup.send(
+                            f"⚠️ Kênh {channel.mention} không trong danh sách loại trừ",
+                            ephemeral=True
+                        )
+                        return
+                    
+                    excluded.remove(channel.id)
+                    msg = f"✅ Xoá {channel.mention} khỏi danh sách loại trừ"
+                
+                # Update database
+                await db.execute(
+                    "INSERT OR REPLACE INTO server_config (guild_id, exclude_chat_channels) VALUES (?, ?)",
+                    (guild_id, json.dumps(excluded))
+                )
+                await db.commit()
+                
+                await interaction.followup.send(msg, ephemeral=True)
+                print(f"[EXCLUDE] {interaction.user.name} {action}ed {channel.name}")
+        
+        except Exception as e:
+            traceback.print_exc()
+            await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
+
+    @app_commands.command(name="exclude_list", description="Xem danh sách kênh loại trừ")
+    async def exclude_list(self, interaction: discord.Interaction):
+        """Show excluded channels list"""
+        await interaction.response.defer(ephemeral=True)
+        
+        guild_id = interaction.guild.id
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT exclude_chat_channels FROM server_config WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            excluded = []
+            if row and row[0]:
+                try:
+                    excluded = json.loads(row[0])
+                except:
+                    excluded = []
+            
+            embed = discord.Embed(
+                title="🚫 Danh sách kênh loại trừ (không nhận seed)",
+                color=discord.Color.red()
+            )
+            
+            if not excluded:
+                embed.description = "Không có kênh nào bị loại trừ"
+            else:
+                channels_text = ""
+                for channel_id in excluded:
+                    channel = interaction.guild.get_channel(channel_id)
+                    if channel:
+                        channels_text += f"• {channel.mention}\n"
+                    else:
+                        channels_text += f"• ❌ Kênh ID: {channel_id} (không tìm thấy)\n"
+                
+                embed.description = channels_text
+            
+            embed.set_footer(text="Dùng /exclude add/remove để quản lý")
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        except Exception as e:
+            traceback.print_exc()
+            await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(ConfigCog(bot))
