@@ -57,7 +57,10 @@ class ConfigCog(commands.Cog):
     @app_commands.command(name="reset", description="Reset game trong kênh hiện tại")
     async def reset_slash(self, interaction: discord.Interaction):
         """Reset game in current channel"""
-        await interaction.response.defer(ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            return
         await self._handle_reset(interaction.guild_id, interaction.channel_id, interaction)
 
     # Prefix command: !reset
@@ -190,11 +193,17 @@ class ConfigCog(commands.Cog):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
-            await interaction.response.defer(ephemeral=True)
+            try:
+                await interaction.response.defer(ephemeral=True)
+            except discord.errors.NotFound:
+                return
             return await interaction.followup.send("Ko có quyền admin để dùng lệnh này")
         
         # 2. Defer ngay lập tức để tránh timeout 3s
-        await interaction.response.defer(ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            return
 
         if not any([kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi, kenh_cay]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
@@ -418,7 +427,11 @@ class ConfigCog(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def exclude_channel(self, interaction: discord.Interaction, action: str, channel: discord.TextChannel):
         """Add or remove channel from chat reward exclusion list"""
-        await interaction.response.defer(ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            # Interaction already timed out, cannot respond
+            return
         
         action = action.lower()
         if action not in ["add", "remove"]:
@@ -482,7 +495,11 @@ class ConfigCog(commands.Cog):
     @app_commands.command(name="exclude_list", description="Xem danh sách kênh loại trừ")
     async def exclude_list(self, interaction: discord.Interaction):
         """Show excluded channels list"""
-        await interaction.response.defer(ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            # Interaction already timed out, cannot respond
+            return
         
         guild_id = interaction.guild.id
         

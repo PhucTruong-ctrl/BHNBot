@@ -5,6 +5,8 @@ import subprocess
 import logging
 from discord.ext import commands
 from dotenv import load_dotenv
+from setup_data import setup_folder, init_database
+from concurrent.futures import ThreadPoolExecutor
 
 # Load biến môi trường từ file .env
 load_dotenv()
@@ -121,11 +123,21 @@ async def load_cogs():
 
 # Chạy bot
 async def main():
+    # Initialize database and folders BEFORE starting bot (run in thread pool to avoid blocking)
+    print("[INITIALIZING DATA]")
+    loop = asyncio.get_event_loop()
+    executor = ThreadPoolExecutor(max_workers=1)
+    await loop.run_in_executor(executor, setup_folder)
+    await loop.run_in_executor(executor, init_database)
+    print("[DATA INITIALIZED]")
+    
     async with bot:
         # Rebuild words dictionary before starting
         print("\n[REBUILDING WORDS DICT]")
         try:
-            result = subprocess.run(['python', 'build_words_dict.py'], capture_output=True, text=True)
+            # Get the absolute path to the script
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build_words_dict.py')
+            result = subprocess.run([os.sys.executable, script_path], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
             print(result.stdout)
             if result.returncode != 0:
                 print(f"Error: {result.stderr}")

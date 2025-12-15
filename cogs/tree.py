@@ -73,12 +73,12 @@ class ContributeModal(discord.ui.Modal):
         try:
             amount = int(self.amount_input.value)
             if amount <= 0:
-                await interaction.response.send_message("Số lượng phải lớn hơn 0!", ephemeral=True, delete_after=10)
+                await interaction.response.send_message("Số lượng phải lớn hơn 0!", ephemeral=True)
                 return
             
             await self.tree_cog.process_contribution(interaction, amount)
         except ValueError:
-            await interaction.response.send_message("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True, delete_after=10)
+            await interaction.response.send_message("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True)
 
 class TreeContributeView(discord.ui.View):
     """View with quick contribute buttons"""
@@ -288,8 +288,7 @@ class CommunityCog(commands.Cog):
             current = row[0] if row else 0
             await interaction.followup.send(
                 f"Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current}",
-                ephemeral=True,
-                delete_after=10
+                ephemeral=True
             )
             return
         
