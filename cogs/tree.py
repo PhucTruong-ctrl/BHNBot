@@ -23,12 +23,12 @@ SEASON_SCALING = 1.25
 
 # Tree Images (Replace with your own image URLs)
 TREE_IMAGES = {
-    1: "https://imgur.com/seed.png",      # 🌱 Hạt mầm
-    2: "https://imgur.com/sprout.png",    # 🌿 Nảy mầm
-    3: "https://imgur.com/sapling.png",   # 🎋 Cây non
-    4: "https://imgur.com/tree.png",      # 🌳 Trưởng thành
-    5: "https://imgur.com/flower.png",    # 🌸 Ra hoa
-    6: "https://imgur.com/fruit.png"      # 🍎 Kết trái
+    1: "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(1).png",      # 🌱 Hạt mầm
+    2: "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(2).png",    # 🌿 Nảy mầm
+    3: "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(3).png",   # 🎋 Cây non
+    4: "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(4).png",      # 🌳 Trưởng thành
+    5: "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(5).png",    # 🌸 Ra hoa
+    6: "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(6).png"      # 🍎 Kết trái
 }
 
 TREE_NAMES = {
@@ -73,12 +73,12 @@ class ContributeModal(discord.ui.Modal):
         try:
             amount = int(self.amount_input.value)
             if amount <= 0:
-                await interaction.response.send_message("❌ Số lượng phải lớn hơn 0!", ephemeral=True)
+                await interaction.response.send_message("Số lượng phải lớn hơn 0!", ephemeral=True, delete_after=10)
                 return
             
             await self.tree_cog.process_contribution(interaction, amount)
         except ValueError:
-            await interaction.response.send_message("❌ Vui lòng nhập số nguyên hợp lệ!", ephemeral=True)
+            await interaction.response.send_message("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True, delete_after=10)
 
 class TreeContributeView(discord.ui.View):
     """View with quick contribute buttons"""
@@ -93,10 +93,6 @@ class TreeContributeView(discord.ui.View):
     @discord.ui.button(label="🌿 100 Hạt", style=discord.ButtonStyle.blurple, custom_id="tree_100")
     async def contribute_100(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.tree_cog.process_contribution(interaction, 100)
-    
-    @discord.ui.button(label="🌳 1000 Hạt", style=discord.ButtonStyle.blurple, custom_id="tree_1000")
-    async def contribute_1000(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.tree_cog.process_contribution(interaction, 1000)
     
     @discord.ui.button(label="✏️ Tuỳ ý", style=discord.ButtonStyle.secondary, custom_id="tree_custom")
     async def contribute_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -197,8 +193,8 @@ class CommunityCog(commands.Cog):
             percent = 100
         else:
             percent = min(100, int((prog / req) * 100)) if req > 0 else 0
-            filled = int(percent / 10)
-            bar = "🟩" * filled + "⬜" * (10 - filled)
+            filled = int(percent * 14 / 100)
+            bar = "🟩" * filled + "⬜" * (14 - filled)
             footer_text = f"Mùa {season} • Level {lvl}/6 • {prog}/{req} Hạt • Tổng: {total}"
         
         embed = discord.Embed(
@@ -291,8 +287,9 @@ class CommunityCog(commands.Cog):
         if not row or row[0] < amount:
             current = row[0] if row else 0
             await interaction.followup.send(
-                f"❌ Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current}",
-                ephemeral=True
+                f"Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current}",
+                ephemeral=True,
+                delete_after=10
             )
             return
         
@@ -595,7 +592,7 @@ class CommunityCog(commands.Cog):
         # === TAG EVERYONE ===
         try:
             announce_msg = (
-                f"🎊 @everyone 🎊\n\n"
+                f"🎊 Yayyyy 🎊\n\n"
                 f"**MÙA THU HOẠCH CÂY HIÊN NHÀ ĐÃ KẾT THÚC!**\n\n"
                 f"🔥 Trong 24 giờ tới, mọi người sẽ nhận **X2 Hạt từ chat/voice**!\n"
                 f"💨 Hãy tranh thủ online để tối đa hóa lợi nhuận!\n\n"

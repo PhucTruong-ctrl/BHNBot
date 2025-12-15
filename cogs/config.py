@@ -67,7 +67,7 @@ class ConfigCog(commands.Cog):
         await self._handle_reset(ctx.guild.id, ctx.channel.id, ctx)
 
     async def _handle_reset(self, guild_id, channel_id, response_obj):
-        """Handle reset logic for both slash and prefix commands - supports both Werewolf and NoiTu games"""
+        """Handle reset logic for both slash and prefix commands - supports Werewolf, NoiTu, and Tree games"""
         try:
             # Check for Werewolf game in current channel first
             werewolf_manager = None
@@ -88,15 +88,50 @@ class ConfigCog(commands.Cog):
                             await response_obj.followup.send(msg)
                         return
             
-            # Check for NoiTu game in current channel
+            # Check for Tree channel
             async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    tree_row = await cursor.fetchone()
+                
                 async with db.execute(
                     "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
                     (guild_id,)
                 ) as cursor:
-                    row = await cursor.fetchone()
+                    noitu_row = await cursor.fetchone()
             
-            if not row or not row[0]:
+            # Check if current channel is tree channel
+            if tree_row and tree_row[0] and channel_id == tree_row[0]:
+                # This is the tree channel - refresh the tree message
+                tree_cog = self.bot.get_cog("CommunityCog")
+                if tree_cog:
+                    # Delete old pinned message if it exists
+                    if tree_row[1]:
+                        try:
+                            channel = self.bot.get_channel(tree_row[0])
+                            if channel:
+                                message = await channel.fetch_message(tree_row[1])
+                                if message:
+                                    await message.delete()
+                        except:
+                            pass
+                    
+                    # Create and pin new message with same data
+                    await tree_cog.update_or_create_pin_message(guild_id, tree_row[0])
+                    msg = "Đã làm mới tin nhắn cây"
+                else:
+                    msg = "Ko tìm thấy tree cog"
+                
+                if isinstance(response_obj, commands.Context):
+                    await response_obj.send(msg, delete_after=3)
+                else:
+                    await response_obj.followup.send(msg)
+                return
+            
+            # Check for NoiTu game in current channel
+            if not noitu_row or not noitu_row[0]:
                 msg = "Kênh này ko có game nào hoạt động"
                 if isinstance(response_obj, commands.Context):
                     await response_obj.send(msg, delete_after=3)
@@ -104,7 +139,7 @@ class ConfigCog(commands.Cog):
                     await response_obj.followup.send(msg)
                 return
 
-            noitu_channel_id = row[0]
+            noitu_channel_id = noitu_row[0]
 
             # Check if current channel matches noitu game channel
             if channel_id == noitu_channel_id:

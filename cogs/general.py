@@ -54,7 +54,7 @@ class General(commands.Cog):
         
         # Game commands
         embed.add_field(
-            name="Nối Từ",
+            name="🎮 Nối Từ",
             value="• `!reset` - Reset game trong kênh\n"
                   "• `/reset` - Reset game (slash)\n"
                   "• Nhắn 2 từ để nối tiếp từ",
@@ -63,29 +63,66 @@ class General(commands.Cog):
         
         # Word management
         embed.add_field(
-            name="Quản lý từ vựng",
+            name="📚 Quản lý từ vựng",
             value="• `!themtu từ1 từ2` - Đề xuất từ mới\n"
                   "• `/themtu từ1 từ2` - Đề xuất từ mới (slash)",
             inline=False
         )
         
+        # Economy commands
+        embed.add_field(
+            name="💰 Kinh tế (Hạt)",
+            value="• `/chao` - Chào buổi sáng (5h-10h) nhận 10 hạt\n"
+                  "• `/bal` - Xem số hạt hiện tại\n"
+                  "• `/tuido` - Alias của /bal\n"
+                  "• `/top` - Xem bảng xếp hạng hạt",
+            inline=False
+        )
+        
+        # Tree commands
+        embed.add_field(
+            name="🌳 Trồng Cây",
+            value="• `/cay` - Xem trạng thái cây server\n"
+                  "• `/gophat` - Góp hạt để nuôi cây\n"
+                  "• `/thuhoach` - Thu hoạch cây (Admin only)",
+            inline=False
+        )
+        
+        # Shop commands
+        embed.add_field(
+            name="🛍️ Cửa hàng",
+            value="• `/shop` - Xem danh sách quà\n"
+                  "• `/buy <item>` - Mua quà\n"
+                  "• `/inventory [@user]` - Xem túi đồ",
+            inline=False
+        )
+        
+        # Interaction commands
+        embed.add_field(
+            name="💝 Tương tác",
+            value="• `/tangqua <user> <item>` - Tặng quà cho ai đó\n"
+                  "• `/affinity [@user]` - Xem mức độ thân thiết",
+            inline=False
+        )
+        
         # Configuration (Admin only)
         embed.add_field(
-            name="Cấu hình (Admin only)",
-            value="• `/config set kenh_noitu <channel>` - Đặt kênh chơi\n"
-                  "• `/config set kenh_admin <channel>` - Đặt kênh admin\n"
-                  "• `/config set kenh_giveaway <channel>` - Đặt kênh giveaway",
+            name="⚙️ Cấu hình (Admin only)",
+            value="• `/config set kenh_noitu <channel>` - Đặt kênh chơi nối từ\n"
+                  "• `/config set kenh_cay <channel>` - Đặt kênh trồng cây\n"
+                  "• `/config set kenh_giveaway <channel>` - Đặt kênh giveaway\n"
+                  "• `/config set kenh_logs <channel>` - Đặt kênh logs\n"
+                  "• `/exclude add|remove <channel>` - Loại trừ kênh không nhận seed",
             inline=False
         )
         
         # Utility
         embed.add_field(
-            name="Tiện ích",
+            name="🔧 Tiện ích",
             value="• `!ping` - Kiểm tra độ trễ bot\n"
-                  "• `!avatar [@user]` - Xem avatar\n"
-                  "• `/avatar [@user]` - Xem avatar (slash)\n"
-                  "• `!help` / `/help` - Hiển thị trợ giúp\n"
-                  "• `!ntrank` / `/ntrank` - Xem xếp hạng",
+                  "• `/avatar [@user]` - Xem avatar\n"
+                  "• `/profile [@user]` - Xem profile card\n"
+                  "• `/ntrank` - Xem xếp hạng nối từ",
             inline=False
         )
         
@@ -96,14 +133,14 @@ class General(commands.Cog):
     async def help_slash(self, interaction: discord.Interaction):
         """Hiển thị danh sách lệnh"""
         embed = discord.Embed(
-            title="Danh sách lệnh BHNBot",
+            title="📖 Danh sách lệnh BHNBot",
             color=discord.Color.blue(),
             description="Sử dụng các lệnh dưới đây để tương tác với bot"
         )
         
         # Game commands
         embed.add_field(
-            name="Nối Từ",
+            name="🎮 Nối Từ",
             value="• `!reset` - Reset game trong kênh\n"
                   "• `/reset` - Reset game (slash)\n"
                   "• Nhắn 2 từ để nối tiếp từ",
@@ -112,29 +149,66 @@ class General(commands.Cog):
         
         # Word management
         embed.add_field(
-            name="Quản lý từ vựng",
+            name="📚 Quản lý từ vựng",
             value="• `!themtu từ1 từ2` - Đề xuất từ mới\n"
                   "• `/themtu từ1 từ2` - Đề xuất từ mới (slash)",
             inline=False
         )
         
+        # Economy commands
+        embed.add_field(
+            name="💰 Kinh tế (Hạt)",
+            value="• `/chao` - Chào buổi sáng (5h-10h) nhận 10 hạt\n"
+                  "• `/bal` - Xem số hạt hiện tại\n"
+                  "• `/tuido` - Alias của /bal\n"
+                  "• `/top` - Xem bảng xếp hạng hạt",
+            inline=False
+        )
+        
+        # Tree commands
+        embed.add_field(
+            name="🌳 Trồng Cây",
+            value="• `/cay` - Xem trạng thái cây server\n"
+                  "• `/gophat` - Góp hạt để nuôi cây\n"
+                  "• `/thuhoach` - Thu hoạch cây (Admin only)",
+            inline=False
+        )
+        
+        # Shop commands
+        embed.add_field(
+            name="🛍️ Cửa hàng",
+            value="• `/shop` - Xem danh sách quà\n"
+                  "• `/buy <item>` - Mua quà\n"
+                  "• `/inventory [@user]` - Xem túi đồ",
+            inline=False
+        )
+        
+        # Interaction commands
+        embed.add_field(
+            name="💝 Tương tác",
+            value="• `/tangqua <user> <item>` - Tặng quà cho ai đó\n"
+                  "• `/affinity [@user]` - Xem mức độ thân thiết",
+            inline=False
+        )
+        
         # Configuration (Admin only)
         embed.add_field(
-            name="Cấu hình (Admin only)",
-            value="• `/config set kenh_noitu <channel>` - Đặt kênh chơi\n"
-                  "• `/config set kenh_admin <channel>` - Đặt kênh admin\n"
-                  "• `/config set kenh_giveaway <channel>` - Đặt kênh giveaway",
+            name="⚙️ Cấu hình (Admin only)",
+            value="• `/config set kenh_noitu <channel>` - Đặt kênh chơi nối từ\n"
+                  "• `/config set kenh_cay <channel>` - Đặt kênh trồng cây\n"
+                  "• `/config set kenh_giveaway <channel>` - Đặt kênh giveaway\n"
+                  "• `/config set kenh_logs <channel>` - Đặt kênh logs\n"
+                  "• `/exclude add|remove <channel>` - Loại trừ kênh không nhận seed",
             inline=False
         )
         
         # Utility
         embed.add_field(
-            name="Tiện ích",
+            name="🔧 Tiện ích",
             value="• `!ping` - Kiểm tra độ trễ bot\n"
-                  "• `!avatar [@user]` - Xem avatar\n"
-                  "• `/avatar [@user]` - Xem avatar (slash)\n"
-                  "• `!help` / `/help` - Hiển thị trợ giúp\n"
-                  "• `!ntrank` / `/ntrank` - Xem xếp hạng",
+                  "• `/avatar [@user]` - Xem avatar\n"
+                  "• `/profile [@user]` - Xem profile card\n"
+                  "• `/ntrank` - Xem xếp hạng nối từ",
             inline=False
         )
         

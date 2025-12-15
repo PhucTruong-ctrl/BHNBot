@@ -116,7 +116,7 @@ class ShopCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         embed = discord.Embed(
-            title="🎁 Cửa Hàng Quà Tặng",
+            title="Cửa Hàng Quà Tặng",
             color=discord.Color.purple()
         )
         

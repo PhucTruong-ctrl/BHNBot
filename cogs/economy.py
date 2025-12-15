@@ -22,6 +22,7 @@ class EconomyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.chat_cooldowns = {}  # {user_id: last_reward_time}
+        self.reaction_cooldowns = {}  # {user_id: last_reaction_reward_time}
         self.voice_reward_task.start()
 
     def cog_unload(self):
@@ -125,6 +126,34 @@ class EconomyCog(commands.Cog):
         """Check if current time is within daily reward window (5 AM - 10 AM)"""
         now = datetime.now()
         return DAILY_WINDOW_START <= now.hour < DAILY_WINDOW_END
+
+    async def get_excluded_channels(self, guild_id: int) -> list:
+        """Get list of excluded channels for a guild"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    config = await cursor.fetchone()
+            
+            excluded = []
+            if config:
+                if config[0]:  # logs_channel_id
+                    excluded.append(config[0])
+                
+                # Parse exclude_chat_channels (JSON format)
+                if config[1]:
+                    try:
+                        import json
+                        parsed = json.loads(config[1])
+                        excluded.extend(parsed)
+                    except:
+                        pass
+            
+            return excluded
+        except:
+            return []
 
     # ==================== COMMANDS ====================
 
@@ -238,27 +267,8 @@ class EconomyCog(commands.Cog):
         if not message.guild:
             return
         
-        # Check excluded channels (logs, admin channels, etc)
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = ?",
-                (message.guild.id,)
-            ) as cursor:
-                config = await cursor.fetchone()
-        
-        excluded_channels = []
-        if config:
-            if config[0]:
-                excluded_channels.append(config[0])  # logs_channel_id
-            
-            # Parse exclude_chat_channels (JSON format: "[123, 456, 789]")
-            if config[1]:
-                try:
-                    import json
-                    excluded = json.loads(config[1])
-                    excluded_channels.extend(excluded)
-                except:
-                    pass
+        # Get excluded channels
+        excluded_channels = await self.get_excluded_channels(message.guild.id)
         
         # Don't reward in excluded channels
         if message.channel.id in excluded_channels:
@@ -292,6 +302,69 @@ class EconomyCog(commands.Cog):
         
         # Update cooldown
         self.chat_cooldowns[user_id] = now
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.User):
+        """Reward seeds when someone reacts to a message or forum post"""
+        # Don't reward bot reactions
+        if user.bot:
+            return
+        
+        # Get message author (the one who posted the message/forum post)
+        message = reaction.message
+        if not message.author:
+            return
+        
+        # Don't reward self-reactions
+        if user.id == message.author.id:
+            return
+        
+        # Must be in a guild
+        if not message.guild:
+            return
+        
+        # Get excluded channels
+        excluded_channels = await self.get_excluded_channels(message.guild.id)
+        
+        # Check if channel is excluded
+        if message.channel.id in excluded_channels:
+            return
+        
+        # Check if it's a forum post or regular message
+        # Forum posts are in ThreadChannel
+        is_forum_post = isinstance(message.channel, discord.Thread) and message.channel.parent and hasattr(message.channel.parent, 'type') and message.channel.parent.type == discord.ChannelType.forum
+        
+        # Check cooldown for the message author (not the reactor)
+        author_id = message.author.id
+        now = datetime.now().timestamp()
+        
+        cooldown_key = f"{author_id}_reaction"
+        if cooldown_key in self.reaction_cooldowns:
+            last_reward = self.reaction_cooldowns[cooldown_key]
+            # Use longer cooldown for reactions (120 seconds)
+            if now - last_reward < 120:
+                return
+        
+        # Get or create user
+        await self.get_or_create_user(author_id, message.author.name)
+        
+        # Award seeds - same as chat reward
+        reward = random.randint(CHAT_REWARD_MIN, CHAT_REWARD_MAX)
+        
+        # Check if harvest buff is active
+        is_buff_active = await self.is_harvest_buff_active(message.guild.id)
+        if is_buff_active:
+            reward = reward * 2
+        
+        # Log with context
+        location = f"forum post" if is_forum_post else "message"
+        if is_buff_active:
+            print(f"[ECONOMY] 🔥 HARVEST BUFF! {message.author.name} earned {reward} seeds from emoji reaction on {location}")
+        else:
+            print(f"[ECONOMY] {message.author.name} earned {reward} seeds from emoji reaction on {location}")
+        
+        await self.add_seeds(author_id, reward)
+        self.reaction_cooldowns[cooldown_key] = now
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
     async def voice_reward_task(self):
