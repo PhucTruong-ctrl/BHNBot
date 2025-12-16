@@ -415,90 +415,90 @@ RANDOM_EVENTS = {
     # effect: Loại hình phạt (lose_worm, lose_catch, lose_money_*, cooldown_*, durability_hit, lose_turn, lose_all_bait, thief)
     
     # --- Nhóm 1: Mất Mồi & Dây (Cơ bản) ---
-    "snapped_line":    {"chance": 0.005, "name": "Đứt Dây!", "effect": "lose_worm"},
-    "hook_stuck":      {"chance": 0.005, "name": "Mắc Cây!", "effect": "lose_worm"},
-    "rat_bite":        {"chance": 0.004, "name": "Chuột Cắn!", "effect": "lose_worm"},
-    "poor_knot":       {"chance": 0.005, "name": "Tuột Nút!", "effect": "lose_worm"},
-    "fish_escape":     {"chance": 0.005, "name": "Cá Sẩy!", "effect": "lose_worm"},
+    "snapped_line":    {"chance": 0.005, "type": "bad", "name": "Đứt Dây!", "effect": "lose_worm"},
+    "hook_stuck":      {"chance": 0.005, "type": "bad", "name": "Mắc Cây!", "effect": "lose_worm"},
+    "rat_bite":        {"chance": 0.004, "type": "bad", "name": "Chuột Cắn!", "effect": "lose_worm"},
+    "poor_knot":       {"chance": 0.005, "type": "bad", "name": "Tuột Nút!", "effect": "lose_worm"},
+    "fish_escape":     {"chance": 0.005, "type": "bad", "name": "Cá Sẩy!", "effect": "lose_worm"},
 
     # --- Nhóm 2: Mất Cá (Ức chế) ---
-    "predator":        {"chance": 0.005, "name": "Cá Dữ!", "effect": "lose_catch"},
-    "cat_steal":       {"chance": 0.005, "name": "Mèo Mun!", "effect": "thief"},  # Mất cá to nhất
-    "bird_steal":      {"chance": 0.004, "name": "Chim Cướp!", "effect": "lose_catch"},
-    "bucket_leak":     {"chance": 0.003, "name": "Thủng Xô!", "effect": "lose_catch"},
-    "otter_troll":     {"chance": 0.003, "name": "Rái Cá!", "effect": "thief"},
+    "predator":        {"chance": 0.005, "type": "bad", "name": "Cá Dữ!", "effect": "lose_catch"},
+    "cat_steal":       {"chance": 0.005, "type": "bad", "name": "Mèo Mun!", "effect": "thief"},  # Mất cá to nhất
+    "bird_steal":      {"chance": 0.004, "type": "bad", "name": "Chim Cướp!", "effect": "lose_catch"},
+    "bucket_leak":     {"chance": 0.003, "type": "bad", "name": "Thủng Xô!", "effect": "lose_catch"},
+    "otter_troll":     {"chance": 0.003, "type": "bad", "name": "Rái Cá!", "effect": "thief"},
 
     # --- Nhóm 3: Mất Tiền (Tai nạn tài chính) ---
-    "police_fine":     {"chance": 0.004, "name": "Công An!", "effect": "lose_money_50"},
-    "broken_phone":    {"chance": 0.001, "name": "Rớt ĐT!", "effect": "lose_money_200"},  # Hiếm
-    "wallet_fall":     {"chance": 0.002, "name": "Rớt Ví!", "effect": "lose_money_100"},
-    "snake_bite":      {"chance": 0.002, "name": "Rắn Cắn!", "effect": "lose_money_percent"},  # -5%
-    "hospital_fee":    {"chance": 0.001, "name": "Nhập Viện!", "effect": "lose_money_percent"},
-    "bet_lose":        {"chance": 0.005, "name": "Thua Cược!", "effect": "bet_loss"},
+    "police_fine":     {"chance": 0.004, "type": "bad", "name": "Công An!", "effect": "lose_money_50"},
+    "broken_phone":    {"chance": 0.001, "type": "bad", "name": "Rớt ĐT!", "effect": "lose_money_200"},  # Hiếm
+    "wallet_fall":     {"chance": 0.002, "type": "bad", "name": "Rớt Ví!", "effect": "lose_money_100"},
+    "snake_bite":      {"chance": 0.002, "type": "bad", "name": "Rắn Cắn!", "effect": "lose_money_percent"},  # -5%
+    "hospital_fee":    {"chance": 0.001, "type": "bad", "name": "Nhập Viện!", "effect": "lose_money_percent"},
+    "bet_lose":        {"chance": 0.005, "type": "bad", "name": "Thua Cược!", "effect": "bet_loss"},
 
     # --- Nhóm 4: Tăng Cooldown (Tốn thời gian) ---
-    "dropped_slipper": {"chance": 0.005, "name": "Rớt Dép!", "effect": "cooldown_short"},  # +2 phút
-    "tangled_line":    {"chance": 0.005, "name": "Rối Dây!", "effect": "cooldown_short"},
-    "stomach_ache":    {"chance": 0.004, "name": "Đau Bụng!", "effect": "cooldown_medium"},  # +5 phút
-    "heavy_rain":      {"chance": 0.004, "name": "Mưa To!", "effect": "cooldown_medium"},
-    "equipment_break": {"chance": 0.002, "name": "Gãy Cần!", "effect": "cooldown_long"},  # +10 phút
+    "dropped_slipper": {"chance": 0.005, "type": "bad", "name": "Rớt Dép!", "effect": "cooldown_short"},  # +2 phút
+    "tangled_line":    {"chance": 0.005, "type": "bad", "name": "Rối Dây!", "effect": "cooldown_short"},
+    "stomach_ache":    {"chance": 0.004, "type": "bad", "name": "Đau Bụng!", "effect": "cooldown_medium"},  # +5 phút
+    "heavy_rain":      {"chance": 0.004, "type": "bad", "name": "Mưa To!", "effect": "cooldown_medium"},
+    "equipment_break": {"chance": 0.002, "type": "bad", "name": "Gãy Cần!", "effect": "cooldown_long"},  # +10 phút
 
     # --- Nhóm 5: Mất Lượt (Vô tri/Hài hước) ---
-    "mom_called":      {"chance": 0.005, "name": "Mẹ Gọi!", "effect": "lose_turn"},
-    "wife_gank":       {"chance": 0.003, "name": "Vợ Gank!", "effect": "lose_turn"},
-    "sleepy":          {"chance": 0.005, "name": "Ngủ Gật!", "effect": "lose_turn"},
-    "sneeze":          {"chance": 0.005, "name": "Hắt Xì!", "effect": "lose_turn"},
-    "kids_rock":       {"chance": 0.004, "name": "Trẻ Trâu!", "effect": "lose_turn"},
+    "mom_called":      {"chance": 0.005, "type": "bad", "name": "Mẹ Gọi!", "effect": "lose_turn"},
+    "wife_gank":       {"chance": 0.003, "type": "bad", "name": "Vợ Gank!", "effect": "lose_turn"},
+    "sleepy":          {"chance": 0.005, "type": "bad", "name": "Ngủ Gật!", "effect": "lose_turn"},
+    "sneeze":          {"chance": 0.005, "type": "bad", "name": "Hắt Xì!", "effect": "lose_turn"},
+    "kids_rock":       {"chance": 0.004, "type": "bad", "name": "Trẻ Trâu!", "effect": "lose_turn"},
 
     # --- Nhóm 6: Hại Độ Bền (Phá hoại) ---
-    "plastic_trap":    {"chance": 0.005, "name": "Vướng Rác!", "effect": "durability_hit"},
-    "big_log":         {"chance": 0.004, "name": "Mắc Gỗ!", "effect": "durability_hit"},
-    "crab_cut":        {"chance": 0.004, "name": "Cua Kẹp!", "effect": "durability_hit"},
-    "electric_eel":    {"chance": 0.002, "name": "Lươn Điện!", "effect": "durability_hit"},
-    "sea_sickness":    {"chance": 0.002, "name": "Say Sóng!", "effect": "lose_all_bait"},  # Đặc biệt
+    "plastic_trap":    {"chance": 0.005, "type": "bad", "name": "Vướng Rác!", "effect": "durability_hit"},
+    "big_log":         {"chance": 0.004, "type": "bad", "name": "Mắc Gỗ!", "effect": "durability_hit"},
+    "crab_cut":        {"chance": 0.004, "type": "bad", "name": "Cua Kẹp!", "effect": "durability_hit"},
+    "electric_eel":    {"chance": 0.002, "type": "bad", "name": "Lươn Điện!", "effect": "durability_hit"},
+    "sea_sickness":    {"chance": 0.002, "type": "bad", "name": "Say Sóng!", "effect": "lose_all_bait"},  # Đặc biệt
 
     # ================= 30 GOOD EVENTS (NHÂN PHẨM) =================
     # effect: gain_money_*, gain_worm_*, gain_chest_*, gain_pearl, gain_ring, multiply_catch_*, reset_cooldown, restore_durability, lucky_buff, avoid_bad_event
     
     # --- Nhóm 1: Nhặt Được Tiền (Lộc trời cho) ---
-    "found_wallet":    {"chance": 0.005, "name": "Vớt Ví!", "effect": "gain_money_medium"},  # 100-200
-    "tourist_tip":     {"chance": 0.005, "name": "Tiền Tip!", "effect": "gain_money_medium"},
-    "floating_cash":   {"chance": 0.005, "name": "Tiền Trôi!", "effect": "gain_money_small"},  # 50-100
-    "ancient_coin":    {"chance": 0.003, "name": "Xu Cổ!", "effect": "gain_money_large"},  # 300-500
-    "lottery_win":     {"chance": 0.001, "name": "Trúng Số!", "effect": "gain_money_huge"},  # 1000
-    "streamer_gift":   {"chance": 0.004, "name": "Donate!", "effect": "gain_money_medium"},
-    "bet_win":         {"chance": 0.005, "name": "Thắng Cược!", "effect": "bet_win"},
+    "found_wallet":    {"chance": 0.005, "type": "good", "name": "Vớt Ví!", "effect": "gain_money_medium"},  # 100-200
+    "tourist_tip":     {"chance": 0.005, "type": "good", "name": "Tiền Tip!", "effect": "gain_money_medium"},
+    "floating_cash":   {"chance": 0.005, "type": "good", "name": "Tiền Trôi!", "effect": "gain_money_small"},  # 50-100
+    "ancient_coin":    {"chance": 0.003, "type": "good", "name": "Xu Cổ!", "effect": "gain_money_large"},  # 300-500
+    "lottery_win":     {"chance": 0.001, "type": "good", "name": "Trúng Số!", "effect": "gain_money_huge"},  # 1000
+    "streamer_gift":   {"chance": 0.004, "type": "good", "name": "Donate!", "effect": "gain_money_medium"},
+    "bet_win":         {"chance": 0.005, "type": "good", "name": "Thắng Cược!", "effect": "bet_win"},
 
     # --- Nhóm 2: Nhận Vật Phẩm (Mồi/Rương/Ngọc) ---
-    "fairy_gift":      {"chance": 0.005, "name": "Ông Bụt!", "effect": "gain_worm_5"},
-    "worm_nest":       {"chance": 0.004, "name": "Ổ Giun!", "effect": "gain_worm_10"},
-    "treasure_chest":  {"chance": 0.003, "name": "Rương Báu!", "effect": "gain_chest_1"},
-    "shipwreck":       {"chance": 0.001, "name": "Tàu Đắm!", "effect": "gain_chest_2"},
-    "mermaid_gift":    {"chance": 0.002, "name": "Tiên Cá!", "effect": "gain_pearl"},  # Ngọc trai
-    "message_bottle":  {"chance": 0.003, "name": "Thư Chai!", "effect": "gain_chest_1"},
-    "engagement_ring": {"chance": 0.002, "name": "Nhẫn Cưới!", "effect": "gain_ring"},  # Bán giá cao
+    "fairy_gift":      {"chance": 0.005, "type": "good", "name": "Ông Bụt!", "effect": "gain_worm_5"},
+    "worm_nest":       {"chance": 0.004, "type": "good", "name": "Ổ Giun!", "effect": "gain_worm_10"},
+    "treasure_chest":  {"chance": 0.003, "type": "good", "name": "Rương Báu!", "effect": "gain_chest_1"},
+    "shipwreck":       {"chance": 0.001, "type": "good", "name": "Tàu Đắm!", "effect": "gain_chest_2"},
+    "mermaid_gift":    {"chance": 0.002, "type": "good", "name": "Tiên Cá!", "effect": "gain_pearl"},  # Ngọc trai
+    "message_bottle":  {"chance": 0.003, "type": "good", "name": "Thư Chai!", "effect": "gain_chest_1"},
+    "engagement_ring": {"chance": 0.002, "type": "good", "name": "Nhẫn Cưới!", "effect": "gain_ring"},  # Bán giá cao
 
     # --- Nhóm 3: X2, X3 Cá (Trúng mánh) ---
-    "school_of_fish":  {"chance": 0.005, "name": "Bão Cá!", "effect": "multiply_catch_3"},
-    "golden_hook":     {"chance": 0.006, "name": "Lưỡi Vàng!", "effect": "multiply_catch_2"},
-    "fish_feeding":    {"chance": 0.005, "name": "Cá Ăn Rộ!", "effect": "multiply_catch_2"},
-    "friendly_otter":  {"chance": 0.004, "name": "Rái Cá Giúp!", "effect": "multiply_catch_2"},
-    "net_fishing":     {"chance": 0.002, "name": "Vớt Lưới!", "effect": "multiply_catch_3"},
+    "school_of_fish":  {"chance": 0.005, "type": "good", "name": "Bão Cá!", "effect": "multiply_catch_3"},
+    "golden_hook":     {"chance": 0.006, "type": "good", "name": "Lưỡi Vàng!", "effect": "multiply_catch_2"},
+    "fish_feeding":    {"chance": 0.005, "type": "good", "name": "Cá Ăn Rộ!", "effect": "multiply_catch_2"},
+    "friendly_otter":  {"chance": 0.004, "type": "good", "name": "Rái Cá Giúp!", "effect": "multiply_catch_2"},
+    "net_fishing":     {"chance": 0.002, "type": "good", "name": "Vớt Lưới!", "effect": "multiply_catch_3"},
 
     # --- Nhóm 4: Hồi Phục & Cooldown (Tiện ích) ---
-    "golden_turtle":   {"chance": 0.005, "name": "Rùa Vàng!", "effect": "reset_cooldown"},
-    "favorable_wind":  {"chance": 0.005, "name": "Gió Thuận!", "effect": "reset_cooldown"},
-    "blacksmith_ghost":{"chance": 0.003, "name": "Ma Thợ Rèn!", "effect": "restore_durability"},  # Hồi độ bền
-    "maintenance_kit": {"chance": 0.003, "name": "Dầu Máy!", "effect": "restore_durability"},
-    "energy_drink":    {"chance": 0.004, "name": "Tăng Lực!", "effect": "reset_cooldown"},
+    "golden_turtle":   {"chance": 0.005, "type": "good", "name": "Rùa Vàng!", "effect": "reset_cooldown"},
+    "favorable_wind":  {"chance": 0.005, "type": "good", "name": "Gió Thuận!", "effect": "reset_cooldown"},
+    "blacksmith_ghost":{"chance": 0.003, "type": "good", "name": "Ma Thợ Rèn!", "effect": "restore_durability"},  # Hồi độ bền
+    "maintenance_kit": {"chance": 0.003, "type": "good", "name": "Dầu Máy!", "effect": "restore_durability"},
+    "energy_drink":    {"chance": 0.004, "type": "good", "name": "Tăng Lực!", "effect": "reset_cooldown"},
 
     # --- Nhóm 5: Buff May Mắn (Tâm linh) ---
-    "double_rainbow":  {"chance": 0.003, "name": "Cầu Vồng!", "effect": "lucky_buff"},  # Lần sau chắc chắn Rare
-    "shooting_star":   {"chance": 0.003, "name": "Sao Băng!", "effect": "lucky_buff"},
-    "ancestor_bless":  {"chance": 0.004, "name": "Ông Bà Độ!", "effect": "lucky_buff"},
-    "sixth_sense":     {"chance": 0.004, "name": "Giác Quan 6!", "effect": "avoid_bad_event"},  # Tránh xui lần sau
-    "lucky_underwear": {"chance": 0.002, "name": "Quần Đỏ!", "effect": "lucky_buff"},  # Hài hước
-    "temple_pray":     {"chance": 0.003, "name": "Đi Chùa!", "effect": "avoid_bad_event"},
+    "double_rainbow":  {"chance": 0.003, "type": "good", "name": "Cầu Vồng!", "effect": "lucky_buff"},  # Lần sau chắc chắn Rare
+    "shooting_star":   {"chance": 0.003, "type": "good", "name": "Sao Băng!", "effect": "lucky_buff"},
+    "ancestor_bless":  {"chance": 0.004, "type": "good", "name": "Ông Bà Độ!", "effect": "lucky_buff"},
+    "sixth_sense":     {"chance": 0.004, "type": "good", "name": "Giác Quan 6!", "effect": "avoid_bad_event"},  # Tránh xui lần sau
+    "lucky_underwear": {"chance": 0.002, "type": "good", "name": "Quần Đỏ!", "effect": "lucky_buff"},  # Hài hước
+    "temple_pray":     {"chance": 0.003, "type": "good", "name": "Đi Chùa!", "effect": "avoid_bad_event"},
 }
 
 RANDOM_EVENT_MESSAGES = {
@@ -1478,7 +1478,7 @@ class FishingCog(commands.Cog):
             # If lose_catch, don't process fishing
             if event_result.get("lose_catch", False):
                 embed = discord.Embed(
-                    title=f"⚠️ THẢM HỌA - {username}!",
+                    title=f"⚠️ KIẾP NẠN - {username}!",
                     description=event_message,
                     color=discord.Color.red()
                 )
@@ -1491,9 +1491,12 @@ class FishingCog(commands.Cog):
                 return
             
             # Otherwise, display event message and continue fishing
-            color = discord.Color.green() if "gain" in event_type or event_type in ["double_rainbow", "sixth_sense", "golden_turtle", "school_of_fish"] else discord.Color.orange()
+            event_type_data = RANDOM_EVENTS.get(event_type, {})
+            is_good_event = event_type_data.get("type") == "good"
+            color = discord.Color.green() if is_good_event else discord.Color.orange()
+            event_title = f"🌟 PHƯỚC LÀNH - {username}!" if is_good_event else f"⚠️ KIẾP NẠN - {username}!"
             embed = discord.Embed(
-                title=f"⚠️ SỰ KIỆN - {username}!",
+                title=event_title,
                 description=event_message,
                 color=color
             )
@@ -1922,10 +1925,10 @@ class FishingCog(commands.Cog):
         # 4. Display sell event notification FIRST (if triggered)
         if triggered_event:
             if SELL_EVENTS[triggered_event]["type"] == "good":
-                title = f"🌟 SỰ KIỆN - {username}!"
+                title = f"🌟 PHƯỚC LÀNH - {username}!"
                 event_embed_color = discord.Color.gold()
             else:
-                title = f"⚠️ SỰ CỐ - {username}!"
+                title = f"⚠️ KIẾP NẠN - {username}!"
                 event_embed_color = discord.Color.orange()
             
             diff = final_total - base_total
