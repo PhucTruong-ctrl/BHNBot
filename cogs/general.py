@@ -104,8 +104,20 @@ class General(commands.Cog):
             name="💰 Kinh tế (Hạt)",
             value="• `/chao` - Chào buổi sáng (5h-10h) nhận 10 hạt\n"
                   "• `/bal` - Xem số hạt hiện tại\n"
-                  "• `/tuido` - Alias của /bal\n"
-                  "• `/top` - Xem bảng xếp hạng hạt",
+                  "• `/tuido` - Xem túi đồ và hạt\n"
+                  "• `/top` - Xem bảng xếp hạng top 10 hạt",
+            inline=False
+        )
+        
+        # Fishing commands
+        embed.add_field(
+            name="🎣 Câu Cá",
+            value="• `/cauca` - Câu cá (cooldown 30s)\n"
+                  "• `/banca` - Bán cá\n"
+                  "• `/suutapca` - Xem bộ sưu tập cá\n"
+                  "• `/taiche` - Tái chế rác (10 rác → 1 phân)\n"
+                  "• `/bonphan` - Dùng phân bón nuôi cây\n"
+                  "• `/moruong` - Mở rương kho báu (sau khi câu)",
             inline=False
         )
         
@@ -190,8 +202,20 @@ class General(commands.Cog):
             name="💰 Kinh tế (Hạt)",
             value="• `/chao` - Chào buổi sáng (5h-10h) nhận 10 hạt\n"
                   "• `/bal` - Xem số hạt hiện tại\n"
-                  "• `/tuido` - Alias của /bal\n"
-                  "• `/top` - Xem bảng xếp hạng hạt",
+                  "• `/tuido` - Xem túi đồ và hạt\n"
+                  "• `/top` - Xem bảng xếp hạng top 10 hạt",
+            inline=False
+        )
+        
+        # Fishing commands
+        embed.add_field(
+            name="🎣 Câu Cá",
+            value="• `/cauca` - Câu cá (cooldown 30s)\n"
+                  "• `/banca` - Bán cá\n"
+                  "• `/suutapca` - Xem bộ sưu tập cá\n"
+                  "• `/taiche` - Tái chế rác (10 rác → 1 phân)\n"
+                  "• `/bonphan` - Dùng phân bón nuôi cây\n"
+                  "• `/moruong` - Mở rương kho báu (sau khi câu)",
             inline=False
         )
         
@@ -208,8 +232,8 @@ class General(commands.Cog):
         embed.add_field(
             name="🛍️ Cửa hàng",
             value="• `/shop` - Xem danh sách quà\n"
-                  "• `/buy <item>` - Mua quà\n"
-                  "• `/inventory [@user]` - Xem túi đồ",
+                  "• `/mua <item> [soluong]` - Mua quà (Giá: ☕ 50, 🌹 75, 💍 150, 🎁 100, 🍫 60, 💌 40, 🪱 10)\n"
+                  "• `/tuido [@user]` - Xem túi đồ",
             inline=False
         )
         

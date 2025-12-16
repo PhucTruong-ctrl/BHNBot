@@ -78,9 +78,9 @@ class ShopCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="mua", description="Mua quà")
+    @app_commands.command(name="mua", description="Mua quà - ☕ Cà phê (50), 🌹 Hoa (75), 💍 Nhẫn (150), 🎁 Quà (100), 🍫 Sô cô la (60), 💌 Thiệp (40), 🪱 Giun (10)")
     @app_commands.describe(
-        item="Tên item tiếng Việt (Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp, Giun)",
+        item="Tên item tiếng Việt: Cà phê (50), Hoa (75), Nhẫn (150), Quà (100), Sô cô la (60), Thiệp (40), Giun (10)",
         soluong="Số lượng muốn mua (mặc định: 1)"
     )
     async def buy_slash(self, interaction: discord.Interaction, item: str, soluong: int = 1):
@@ -137,7 +137,7 @@ class ShopCog(commands.Cog):
         
         print(f"[SHOP] {interaction.user.name} bought {soluong}x {item}")
 
-    @commands.command(name="mua", description="Mua quà")
+    @commands.command(name="mua", description="Mua quà - ☕ Cà phê (50), 🌹 Hoa (75), 💍 Nhẫn (150), 🎁 Quà (100), 🍫 Sô cô la (60), 💌 Thiệp (40), 🪱 Giun (10)")
     async def buy_prefix(self, ctx, soluong: int = 1, *, item: str):
         """Buy item from shop via prefix - Usage: !mua [quantity] [item_name]"""
         # Validate quantity

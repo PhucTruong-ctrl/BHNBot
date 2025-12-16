@@ -230,7 +230,7 @@ RARE_FISH = [
     {"key": "luon_dien", "name": "Lươn Điện", "emoji": "⚡", "sell_price": 70},
     {"key": "ran_bien", "name": "Rắn Biển", "emoji": "🐍", "sell_price": 65},
     {"key": "ca_hoang_hau", "name": "Cá Hoàng Hậu", "emoji": "👸", "sell_price": 80},
-    {"key": "ca_vampire", "name": "Cá Vampire", "emoji": "🧛", "sell_price": 85},
+    {"key": "ca_ma_ca_rong", "name": "Cá Ma Cà Rồng", "emoji": "🧛", "sell_price": 85},
 
     # --- LEGENDARY: Thú biển & Thần thoại (100-150+ Hạt) ---
     {"key": "ca_voi_xanh", "name": "Cá Voi Xanh", "emoji": "🐋", "sell_price": 120},
@@ -287,10 +287,41 @@ RARE_FISH_KEYS = [f["key"] for f in RARE_FISH]
 
 # Rác tái chế
 TRASH_ITEMS = [
+    # --- Rác Cơ Bản (10 món) ---
     {"name": "Ủng Rách", "emoji": "🥾"},
     {"name": "Lon Nước", "emoji": "🥫"},
     {"name": "Xà Phòng Cũ", "emoji": "🧼"},
     {"name": "Mảnh Kính", "emoji": "🔨"},
+    {"name": "Túi Ni Lông", "emoji": "🛍️"},
+    {"name": "Chai Nhựa", "emoji": "🥤"},
+    {"name": "Lốp Xe Hư", "emoji": "🍩"},
+    {"name": "Cành Củi Khô", "emoji": "🪵"},
+    {"name": "Giấy Báo Cũ", "emoji": "📰"},
+    {"name": "Hộp Xốp", "emoji": "🥡"},
+
+    # --- Rác Hữu Cơ & Sinh Vật Chết (10 món) ---
+    {"name": "Vỏ Chuối", "emoji": "🍌"},
+    {"name": "Xương Cá", "emoji": "🦴"},
+    {"name": "Rong Biển", "emoji": "🌿"},
+    {"name": "Xác Gián", "emoji": "🪳"},
+    {"name": "Cùi Bắp", "emoji": "🌽"},
+    {"name": "Trứng Ung", "emoji": "🥚"},
+    {"name": "Đầu Tôm", "emoji": "🦐"},
+    {"name": "Táo Cắn Dở", "emoji": "🍎"},
+    {"name": "Hoa Héo", "emoji": "🥀"},
+    {"name": "Cơm Thiu", "emoji": "🍚"},
+
+    # --- Rác "Bựa" & Tục Tiễu (10 món) ---
+    {"name": "Quần Xì Rách", "emoji": "🩲"},   
+    {"name": "Cục Cứt", "emoji": "💩"},      
+    {"name": "Ba Con Sói", "emoji": "🎈"},    
+    {"name": "Băng Vệ Sinh", "emoji": "🩸"},     
+    {"name": "Áo Dú Cũ", "emoji": "👙"},      
+    {"name": "Vớ Thối", "emoji": "🧦"},      
+    {"name": "Răng Giả", "emoji": "🦷"},     
+    {"name": "Giấy Chùi Đít", "emoji": "🧻"},  
+    {"name": "Tả Em Bé", "emoji": "👶"},      
+    {"name": "Dép Tổ Ong Rách", "emoji": "🩴"}, 
 ]
 
 # Rương báu - các loại vật phẩm có thể ra
@@ -499,18 +530,30 @@ RANDOM_EVENTS = {
     "sixth_sense":     {"chance": 0.004, "type": "good", "name": "Giác Quan 6!", "effect": "avoid_bad_event"},  # Tránh xui lần sau
     "lucky_underwear": {"chance": 0.002, "type": "good", "name": "Quần Đỏ!", "effect": "lucky_buff"},  # Hài hước
     "temple_pray":     {"chance": 0.003, "type": "good", "name": "Đi Chùa!", "effect": "avoid_bad_event"},
+
+    # --- Nhóm 6: GLOBAL RESET (Siêu Hiếm: 0.1%) ---
+    "broken_hourglass": {"chance": 0.001, "type": "good", "name": "⏳ Đồng Hồ Cát Vỡ!", "effect": "global_reset"},
+    "whale_song":       {"chance": 0.001, "type": "good", "name": "🐋 Tiếng Hát Cá Voi!", "effect": "global_reset"},
+    "red_tide":         {"chance": 0.001, "type": "good", "name": "🌊 Thủy Triều Đỏ!", "effect": "global_reset"},
+    "lantern_festival": {"chance": 0.001, "type": "good", "name": "🏮 Lễ Hội Thả Đèn!", "effect": "global_reset"},
+    "dragon_blessing":  {"chance": 0.001, "type": "good", "name": "🐉 Long Vương Ban Phước!", "effect": "global_reset"},
+    "energy_storm":     {"chance": 0.001, "type": "good", "name": "⚡ Cơn Bão Năng Lượng!", "effect": "global_reset"},
+    "mermaid_tea":      {"chance": 0.001, "type": "good", "name": "🧚‍♀️ Tiệc Trà Tiên Cá!", "effect": "global_reset"},
+    "monsoon":          {"chance": 0.001, "type": "good", "name": "🌬️ Gió Mùa Đông Bắc!", "effect": "global_reset"},
+    "temple_bell":      {"chance": 0.001, "type": "good", "name": "🔔 Tiếng Chuông Chùa!", "effect": "global_reset"},
+    "warp_gate":        {"chance": 0.001, "type": "good", "name": "🌌 Cổng Không Gian!", "effect": "global_reset"},
 }
 
 RANDOM_EVENT_MESSAGES = {
     # --- BAD EVENTS MESSAGES ---
-    "snapped_line":    "Dây câu căng quá... PẶT! Mất toi cái mồi rồi. 😭",
+    "snapped_line":    "Dây câu căng quá... PẶT! Mất toi cái mồi rồi (-5 Độ bền). 😭",
     "hook_stuck":      "Lưỡi câu mắc vào rễ cây dưới đáy hồ. Phải cắt dây bỏ mồi. ✂️",
     "rat_bite":        "Một con chuột cống chạy qua cắn đứt dây câu của bạn! 🐀",
     "poor_knot":       "Do buộc nút không chặt, lưỡi câu tuột mất tiêu. Gà quá! 🐔",
     "fish_escape":     "Cá đã cắn câu nhưng quẫy mạnh quá nên thoát được. Tiếc hùi hụi! 🐟💨",
     "bet_lose": "Một tay câu mới đến thách đấu. Bạn tự tin nhận kèo và... thua sấp mặt! 💸",
 
-    "predator":        "Cá Sư Tử lao tới đớp trọn mẻ cá của bạn rồi bỏ chạy! 😱",
+    "predator":        "Cá Sư Tử lao tới đớp trọn mẻ cá của bạn rồi bỏ chạy (-3 Độ bền)! 😱",
     "cat_steal":       "Meow! 🐈 Một con mèo đen nhanh tay cướp mất con cá to nhất của bạn!",
     "bird_steal":      "Một con Hải Âu sà xuống cắp mất con cá ngon nhất. Cay thế nhở! 🦅",
     "bucket_leak":     "Xô đựng cá bị thủng đáy! Mấy con cá bé chui ra ngoài hết rồi. 🕳️",
@@ -526,7 +569,7 @@ RANDOM_EVENT_MESSAGES = {
     "tangled_line":    "Dây câu rối như tơ vò. Ngồi gỡ mất cả thanh xuân (2 phút). 🧶",
     "stomach_ache":    "Tào Tháo đuổi! 🚽 Bạn phải chạy đi giải quyết nỗi buồn (Chờ 5 phút).",
     "heavy_rain":      "Mưa to gió lớn! Phải trú mưa chờ tạnh (Chờ 5 phút). ⛈️",
-    "equipment_break": "Rắc! Cần câu bị gãy gập. Phải đem đi hàn lại (Chờ 10 phút). 🛠️",
+    "equipment_break": "Rắc! Cần câu bị gãy gập. Phải đem đi hàn lại (Chờ 10 phút - Mất toàn bộ độ bền). 🛠️",
 
     "mom_called":      "Alo? Mẹ gọi về ăn cơm! Bạn vội chạy về, bỏ lỡ mẻ cá này. 🍚",
     "wife_gank":       "Vợ/Người yêu xuất hiện gank! 'Suốt ngày câu với kéo!'. Bạn phải trốn ngay. 🏃",
@@ -534,10 +577,10 @@ RANDOM_EVENT_MESSAGES = {
     "sneeze":          "Hắt xì!!! 🤧 Tiếng hắt hơi làm đàn cá giật mình bơi đi hết.",
     "kids_rock":       "Lũ trẻ trâu ném đá xuống hồ làm cá sợ chạy mất dép. 🗿",
 
-    "plastic_trap":    "Lưỡi câu móc vào bao tải rác. Kéo nặng trịch làm hại độ bền cần. 🗑️",
-    "big_log":         "Tưởng cá to, hóa ra là khúc gỗ mục. Cần câu bị cong vòng (-Độ bền). 🪵",
-    "crab_cut":        "Con Cua kẹp vào dây câu làm xước dây và mòn cần. 🦀",
-    "electric_eel":    "Câu trúng Lươn Điện! Nó phóng điện làm bạn tê tay, rơi cần xuống đất. ⚡",
+    "plastic_trap":    "Lưỡi câu móc vào bao tải rác. Kéo nặng trịch làm hại độ bền cần (-5 Độ bền). 🗑️",
+    "big_log":         "Tưởng cá to, hóa ra là khúc gỗ mục. Cần câu bị cong vòng (-5 Độ bền). 🪵",
+    "crab_cut":        "Con Cua kẹp vào dây câu làm xước dây và mòn cần (-5 Độ bền). 🦀",
+    "electric_eel":    "Câu trúng Lươn Điện! Nó phóng điện làm bạn tê tay, rơi cần xuống đất (-5 Độ bền). ⚡",
     "sea_sickness":    "Sóng đánh tụt quần! Bạn nôn thốc nôn tháo... nôn hết cả túi mồi ra biển. 🤢",
     
     # --- GOOD EVENTS MESSAGES ---
@@ -569,12 +612,24 @@ RANDOM_EVENT_MESSAGES = {
     "maintenance_kit": "Vớt được hộp dầu máy. Tra dầu vào cần câu chạy mượt hẳn! (+20 Độ bền) 🛢️",
     "energy_drink":    "Làm lon bò húc! Tỉnh cả người, quăng cần liên tục. 🐂",
 
-    "double_rainbow":  "Cầu vồng đôi! 🌈 Nhân phẩm bùng nổ (Lần sau chắc chắn ra Cá Hiếm).",
+    "double_rainbow":  "Cầu vồng đôi! 🌈 Nhân phẩm bùng nổ.",
     "shooting_star":   "Sao băng lướt qua! 🌠 Ước gì được nấy (Buff may mắn).",
     "ancestor_bless":  "Ông bà gánh còng lưng! Lần câu sau auto đỏ. 🙏",
     "sixth_sense":     "Mắt phải giật liên hồi... Linh tính mách bảo bạn sẽ tránh được kiếp nạn sắp tới. 👁️",
     "lucky_underwear": "Bạn mặc chiếc quần chip đỏ may mắn hôm nay. Cá to tự tìm đến! 🩲",
     "temple_pray":     "Hôm qua mới đi chùa thắp hương. Thần linh phù hộ tránh xui xẻo. 🏯",
+    
+    # --- GLOBAL RESET EVENTS (Cực Hiếm: 0.1%) ---
+    "broken_hourglass": "Bạn câu được một chiếc đồng hồ cát cổ đại... Nó vỡ tan và làm thời gian đảo ngược! ⏳✨",
+    "whale_song": "Một chú Cá Voi Xanh khổng lồ nổi lên và cất tiếng hát vang vọng đại dương. Âm thanh chữa lành mọi mệt mỏi. 🐋🎵",
+    "red_tide": "Một đợt thủy triều mang theo hàng triệu sinh vật phù du tràn về. Cá ăn điên cuồng, không cần chờ đợi! 🌊✨",
+    "lantern_festival": "Hàng nghìn chiếc đèn lồng trôi trên mặt nước, soi sáng cả một vùng. Không khí lễ hội khiến ai cũng hăng say. 🏮🎊",
+    "dragon_blessing": "Long Vương đi vi hành và thấy sự chăm chỉ của các bạn. Ngài phất tay xóa bỏ mọi giới hạn! 🐉👑",
+    "energy_storm": "Một luồng điện tích tụ trong không khí kích thích thần kinh vận động. Mọi người thao tác nhanh như chớp! ⚡💨",
+    "mermaid_tea": "Các nàng tiên cá mời cả server dùng 'Trà Rong Biển'. Uống vào tỉnh táo, quăng cần không biết mệt. 🧚‍♀️🫖",
+    "monsoon": "Gió mùa về! Cá nổi lên hít thở rợp cả mặt hồ. Cơ hội ngàn năm có một! 🌬️🐟",
+    "temple_bell": "Tiếng chuông chùa xa xa vọng lại... Tâm tịnh, tay nhanh, mọi phiền muộn (và cooldown) đều tan biến. 🔔✨",
+    "warp_gate": "Lưỡi câu của bạn móc trúng nút 'Refresh' của Vũ Trụ. Hệ thống thời gian bị reset! 🌌🔄",
 }
 
 
@@ -607,7 +662,7 @@ SELL_EVENTS = {
     "market_management":  {"chance": 0.004, "type": "bad", "mul": 1.0, "flat": -200, "name": "QLTT Phạt!"},
     "sanitation_fine":    {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -100, "name": "Vệ Sinh!"},
     "parking_fee":        {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -10, "name": "Gửi Xe!"},
-    "rent_increase":      {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -50, "name": "Tăng Rent!"},
+    "rent_increase":      {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -50, "name": "Tăng Giá Thuê!"},
 
     # --- Nhóm 4: Tội Phạm & Lừa Đảo (Mất mát) ---
     "fake_money":         {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -100, "name": "Tiền Giả!"},
@@ -977,24 +1032,14 @@ class FishingCog(commands.Cog):
         
         return ""
     
-    async def trigger_random_event(self, user_id: int, guild_id: int) -> dict:
+    async def trigger_random_event(self, user_id: int, guild_id: int, rod_level: int = 1) -> dict:
         """Trigger random event during fishing - returns event_type and result"""
         # Check if user has avoid_bad_event protection
-        if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
+        has_protection = hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False)
+        if has_protection:
             # Clear the protection flag
             self.avoid_event_users[user_id] = False
-            print(f"[EVENT PROTECTION] User {user_id} avoided bad event (protection active)")
-            # Return no event
-            return {
-                "triggered": False, "type": None, "message": "",
-                "lose_worm": False, "lose_catch": False, "lose_money": 0, "gain_money": 0,
-                "cooldown_increase": 0,
-                "catch_multiplier": 1,
-                "convert_to_trash": False,
-                "gain_items": {},
-                "custom_effect": None,
-                "durability_loss": 0
-            }
+            print(f"[EVENT PROTECTION] User {user_id} avoiding bad event (protection active)")
         
         # Default result dict
         result = {
@@ -1005,7 +1050,8 @@ class FishingCog(commands.Cog):
             "convert_to_trash": False,  # Mặc định False
             "gain_items": {},  # Item nhận được thêm
             "custom_effect": None,  # Cho các effect đặc biệt
-            "durability_loss": 0  # Mất độ bền riêng
+            "durability_loss": 0,  # Mất độ bền riêng
+            "avoided": False  # Flag để indicate sự kiện bị tránh
         }
         
         # Roll for random event
@@ -1017,6 +1063,34 @@ class FishingCog(commands.Cog):
             if rand < current_chance:
                 # Event triggered!
                 print(f"[EVENT] {event_type} triggered for user {user_id}")
+                
+                # Skip global_reset events if rod level < 3
+                if event_data.get("effect") == "global_reset" and rod_level < 3:
+                    print(f"[EVENT SKIP] {event_type} skipped for user {user_id} (rod level {rod_level} < 3)")
+                    return result
+                
+                # If protection is active and this is a bad event, avoid it
+                if has_protection and event_data.get("type") == "bad":
+                    # Build the avoided event info
+                    result["triggered"] = True
+                    result["type"] = event_type
+                    result["message"] = f"**{event_data['name']}** {RANDOM_EVENT_MESSAGES[event_type]}"
+                    result["avoided"] = True  # Mark as avoided
+                    print(f"[EVENT PROTECTION] {event_type} avoided for user {user_id}")
+                    return result
+                
+                # Build result dict with event data
+                result["triggered"] = True
+                result["type"] = event_type
+                result["message"] = f"**{event_data['name']}** {RANDOM_EVENT_MESSAGES[event_type]}"
+                
+                # Skip bad events if player has 0 or fewer seeds
+                if event_data.get("type") == "bad":
+                    user_seeds = await get_user_balance(user_id)
+                    if user_seeds <= 0:
+                        print(f"[EVENT SKIP] {event_type} skipped for user {user_id} (seeds <= 0)")
+                        # Return no event
+                        return result
                 
                 # Build result dict with event data
                 result["triggered"] = True
@@ -1118,6 +1192,10 @@ class FishingCog(commands.Cog):
 
                 elif effect == "avoid_bad_event":
                     result["custom_effect"] = "sixth_sense"
+                
+                elif effect == "global_reset":
+                    result["custom_effect"] = "global_reset"
+                    result["triggered"] = True
                 
                 return result
         
@@ -1277,12 +1355,12 @@ class FishingCog(commands.Cog):
     
     # ==================== COMMANDS ====================
     
-    @app_commands.command(name="cauca", description="Câu cá - cooldown 30s")
+    @app_commands.command(name="cauca", description="Câu cá - thời gian chờ 30s")
     async def fish_slash(self, interaction: discord.Interaction):
         """Fish via slash command"""
         await self._fish_action(interaction)
     
-    @commands.command(name="cauca", description="Câu cá - cooldown 30s")
+    @commands.command(name="cauca", description="Câu cá - thời gian chờ 30s")
     async def fish_prefix(self, ctx):
         """Fish via prefix command"""
         await self._fish_action(ctx)
@@ -1330,7 +1408,7 @@ class FishingCog(commands.Cog):
         remaining = await self.get_fishing_cooldown_remaining(user_id)
         if remaining > 0:
             username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
-            msg = f"⏱️ **{username_display}** chờ chút nhen! Cần chờ {remaining}s nữa mới được câu lại! (Cooldown: {rod_config['cd']}s)"
+            msg = f"⏱️ **{username_display}** chờ chút nhen! Cần chờ {remaining}s nữa mới được câu lại! (Thời gian chờ: {rod_config['cd']}s)"
             if is_slash:
                 await ctx.followup.send(msg, ephemeral=True)
             else:
@@ -1380,7 +1458,7 @@ class FishingCog(commands.Cog):
         elif not has_worm:
             status_text = "\n⚠️ *Không có mồi (Tỉ lệ rác cao)*"
         
-        rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Cooldown: {rod_config['cd']}s)*"
+        rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Thời gian chờ: {rod_config['cd']}s)*"
 
         casting_msg = await channel.send(
             f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}"
@@ -1407,23 +1485,23 @@ class FishingCog(commands.Cog):
         
         # ==================== TRIGGER RANDOM EVENTS ====================
         
-        # Check if user was protected from bad event
-        was_protected = False
-        if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
-            was_protected = True
+        event_result = await self.trigger_random_event(user_id, channel.guild.id, rod_lvl)
         
-        event_result = await self.trigger_random_event(user_id, channel.guild.id)
-        
-        # If user was protected, show protection message
-        if was_protected:
+        # If user avoided a bad event, show what they avoided
+        if event_result.get("avoided", False):
             embed = discord.Embed(
                 title=f"🛡️ BẢO VỆ - {username}!",
-                description="✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\nBạn an toàn thoát khỏi một sự kiện xấu!",
+                description=f"✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\n{event_result['message']}\n\n**Bạn an toàn thoát khỏi sự kiện này!**",
                 color=discord.Color.gold()
             )
             await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             await asyncio.sleep(1)
             casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
+        
+        # Check if user was protected from bad event
+        was_protected = False
+        if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
+            was_protected = True
         
         # Initialize durability loss (apply after event check)
         durability_loss = 1  # Default: 1 per cast
@@ -1437,15 +1515,12 @@ class FishingCog(commands.Cog):
             if event_type == "equipment_break":
                 # Gãy cần: Trừ hết độ bền
                 durability_loss = rod_durability  # Trừ sạch về 0
-                event_message += " (**Cần bị gãy hoàn toàn!**)"
-            elif event_type in ["snapped_line", "plastic_trap"]:
-                # Đứt dây / Vướng rác: Trừ 5 độ bền
+            elif event_type in ["snapped_line", "plastic_trap", "big_log", "crab_cut", "electric_eel"]:
+                # Đứt dây / Vướng rác / Mắc gỗ / Cua kẹp / Lươn Điện: Trừ 5 độ bền
                 durability_loss = 5
-                event_message += " (-5 Độ bền cần)"
             elif event_type == "predator":
                 # Cá dữ: Trừ 3 độ bền
                 durability_loss = 3
-                event_message += " (-3 Độ bền cần)"
             
             # Process event effects
             if event_result.get("lose_worm", False) and has_worm:
@@ -1515,13 +1590,15 @@ class FishingCog(commands.Cog):
                 event_message += f" (Độ bền +20: {rod_durability}/{max_durability})"
                 print(f"[EVENT] {username} restored rod durability to {rod_durability}")
             
+            # Note: global_reset is handled after event embed display below
+            
             # Adjust cooldown (golden_turtle có thể là -30 để reset)
             if event_result.get("cooldown_increase", 0) != 0:
                 if event_result["cooldown_increase"] < 0:
                     # Reset cooldown (golden_turtle)
                     self.fishing_cooldown[user_id] = time.time()
-                    event_message += " (Cooldown xóa sạch!)"
-                    print(f"[EVENT] {username} cooldown reset")
+                    event_message += " (Thời gian chờ xóa sạch!)"
+                    print(f"[EVENT] {username} Thời gian chờ reset")
                 else:
                     self.fishing_cooldown[user_id] = time.time() + rod_config["cd"] + event_result["cooldown_increase"]
             else:
@@ -1553,6 +1630,22 @@ class FishingCog(commands.Cog):
                 color=color
             )
             await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
+            
+            # Handle global reset events
+            if event_result.get("custom_effect") == "global_reset":
+                # Clear all fishing cooldowns
+                self.fishing_cooldown.clear()
+                
+                # Send server-wide announcement
+                announcement_embed = discord.Embed(
+                    title="🌟🌟🌟 SỰ KIỆN TOÀN SERVER! 🌟🌟🌟",
+                    description=f"⚡ **{username}** đã kích hoạt **{event_type_data.get('name', event_type)}**!\n\n"
+                                f"✨ **TẤT CẢ MỌI NGƯỜI ĐÃ ĐƯỢC HỒI PHỤC COOLDOWN!**\n"
+                                f"🚀 Mau vào câu ngay nào các đồng ngư ơi! 🎣🎣🎣",
+                    color=discord.Color.magenta()
+                )
+                await channel.send(embed=announcement_embed)
+                print(f"[GLOBAL EVENT] {username} triggered {event_type} - All fishing cooldowns cleared!")
             
             # Wait a bit before showing catch
             await asyncio.sleep(1)
@@ -2048,9 +2141,11 @@ class FishingCog(commands.Cog):
         if is_slash:
             await ctx_or_interaction.response.defer(ephemeral=False)
             user_id = ctx_or_interaction.user.id
+            user_name = ctx_or_interaction.user.name
             ctx = ctx_or_interaction
         else:
             user_id = ctx_or_interaction.author.id
+            user_name = ctx_or_interaction.author.name
             ctx = ctx_or_interaction
         
         # Check if user has chest
@@ -2079,6 +2174,7 @@ class FishingCog(commands.Cog):
                 description="**🌾 Phân Bón** (Dùng `/bonphan` để nuôi cây)",
                 color=discord.Color.gold()
             )
+            embed.set_footer(text=f"👤 {user_name}")
         
         elif loot_type == "puzzle_piece":
             pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
@@ -2106,12 +2202,14 @@ class FishingCog(commands.Cog):
                     description=f"**🧩 Mảnh Ghép {piece_display}**\n\n🎉 **ĐỦ 4 MẢNH - TỰ ĐỘNG GHÉP!**\n💰 **Bạn nhận được {reward} Hạt!**",
                     color=discord.Color.gold()
                 )
+                embed.set_footer(text=f"👤 {user_name}")
             else:
                 embed = discord.Embed(
                     title="🎁 Rương Kho Báu",
                     description=f"**🧩 Mảnh Ghép {piece_display}** (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)",
                     color=discord.Color.blue()
                 )
+                embed.set_footer(text=f"👤 {user_name}")
         
         elif loot_type == "coin_pouch":
             coins = random.randint(100, 200)
@@ -2121,6 +2219,7 @@ class FishingCog(commands.Cog):
                 description=f"**💰 Túi Hạt** - Bạn nhận được **{coins} Hạt**!",
                 color=discord.Color.green()
             )
+            embed.set_footer(text=f"👤 {user_name}")
         
         else:  # gift_random
             gift = random.choice(GIFT_ITEMS)
@@ -2132,6 +2231,7 @@ class FishingCog(commands.Cog):
                 description=f"**{gift_names[gift]}** (Dùng `/tangqua` để tặng cho ai đó)",
                 color=discord.Color.magenta()
             )
+            embed.set_footer(text=f"👤 {user_name}")
         
         if is_slash:
             await ctx.followup.send(embed=embed)
@@ -2281,7 +2381,7 @@ class FishingCog(commands.Cog):
             description=f"**{rod_info['emoji']} {rod_info['name']}** (Cấp {next_lvl}/5)",
             color=discord.Color.gold()
         )
-        embed.add_field(name="⚡ Cooldown", value=f"**{rod_info['cd']}s** (giảm từ {ROD_LEVELS[cur_lvl]['cd']}s)", inline=True)
+        embed.add_field(name="⚡ Thời Gian Chờ", value=f"**{rod_info['cd']}s** (giảm từ {ROD_LEVELS[cur_lvl]['cd']}s)", inline=True)
         embed.add_field(name="🛡️ Độ Bền", value=f"**{rod_info['durability']}** (tăng từ {ROD_LEVELS[cur_lvl]['durability']})", inline=True)
         embed.add_field(name="🍀 May Mắn", value=f"**+{int(rod_info['luck']*100)}%** Cá Hiếm" if rod_info['luck'] > 0 else "**Không thay đổi**", inline=True)
         embed.add_field(name="💰 Chi Phí", value=f"**{cost:,} Hạt**", inline=False)
