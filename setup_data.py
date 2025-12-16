@@ -208,6 +208,84 @@ def init_database():
                 print("✓ Added rod_durability column to economy_users (fishing rod durability)")
             except sqlite3.OperationalError:
                 print("ℹ️ rod_durability column already exists")
+        
+        # New achievement tracking columns
+        if "bad_events_encountered" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN bad_events_encountered INTEGER DEFAULT 0")
+                print("✓ Added bad_events_encountered column")
+            except sqlite3.OperationalError:
+                print("ℹ️ bad_events_encountered column already exists")
+        
+        if "global_reset_triggered" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN global_reset_triggered INTEGER DEFAULT 0")
+                print("✓ Added global_reset_triggered column")
+            except sqlite3.OperationalError:
+                print("ℹ️ global_reset_triggered column already exists")
+        
+        if "chests_caught" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN chests_caught INTEGER DEFAULT 0")
+                print("✓ Added chests_caught column")
+            except sqlite3.OperationalError:
+                print("ℹ️ chests_caught column already exists")
+        
+        if "market_boom_sales" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN market_boom_sales INTEGER DEFAULT 0")
+                print("✓ Added market_boom_sales column")
+            except sqlite3.OperationalError:
+                print("ℹ️ market_boom_sales column already exists")
+        
+        if "robbed_count" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN robbed_count INTEGER DEFAULT 0")
+                print("✓ Added robbed_count column")
+            except sqlite3.OperationalError:
+                print("ℹ️ robbed_count column already exists")
+        
+        if "god_of_wealth_encountered" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN god_of_wealth_encountered INTEGER DEFAULT 0")
+                print("✓ Added god_of_wealth_encountered column")
+            except sqlite3.OperationalError:
+                print("ℹ️ god_of_wealth_encountered column already exists")
+        
+        if "rods_repaired" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN rods_repaired INTEGER DEFAULT 0")
+                print("✓ Added rods_repaired column")
+            except sqlite3.OperationalError:
+                print("ℹ️ rods_repaired column already exists")
+        
+        if "trash_recycled" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN trash_recycled INTEGER DEFAULT 0")
+                print("✓ Added trash_recycled column")
+            except sqlite3.OperationalError:
+                print("ℹ️ trash_recycled column already exists")
+        
+        if "legendary_fish" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN legendary_fish TEXT DEFAULT '[]'")
+                print("✓ Added legendary_fish column (JSON list)")
+            except sqlite3.OperationalError:
+                print("ℹ️ legendary_fish column already exists")
+        
+        if "legendary_fish_count" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN legendary_fish_count INTEGER DEFAULT 0")
+                print("✓ Added legendary_fish_count column")
+            except sqlite3.OperationalError:
+                print("ℹ️ legendary_fish_count column already exists")
+        
+        if "legendary_hall_of_fame" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN legendary_hall_of_fame TEXT DEFAULT '{}'")
+                print("✓ Added legendary_hall_of_fame column (JSON dict)")
+            except sqlite3.OperationalError:
+                print("ℹ️ legendary_hall_of_fame column already exists")
     
     except Exception as e:
         print(f"⚠️ Economy table check error: {e}")

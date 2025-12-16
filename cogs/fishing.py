@@ -279,8 +279,66 @@ RARE_FISH = [
 # Ngọc Trai - Item hiếm từ Tiên Cá (bán giá cao)
 PEARL_INFO = {"key": "pearl", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
 
+# ==================== LEGENDARY FISH ====================
+# Giới hạn: 1 con duy nhất mỗi User (Stardew Valley style)
+# Không thể bán, nhưng có thể hiển thị trong bảng huyền thoại
+LEGENDARY_FISH = [
+    {
+        "key": "thuong_luong",
+        "name": "Thuồng Luồng",
+        "emoji": "🐍🌊",
+        "sell_price": 500,
+        "description": "Quái vật sông nước trong truyền thuyết Việt Nam. Kẻ cai trị những dòng nước xoáy dữ dội nhất.",
+        "condition": "river_storm",  # Chỉ xuất hiện ở Sông khi trời Mưa Bão
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/thuongluong.png",
+        "level": 5,  # Cần cần câu level 5 trở lên để có cơ hội catch
+    },
+    {
+        "key": "ca_ngan_ha",
+        "name": "Cá Ngân Hà",
+        "emoji": "🌌✨",
+        "sell_price": 600,
+        "description": "Cơ thể nó chứa đựng cả một vũ trụ thu nhỏ. Chỉ bơi xuống trần gian vào những đêm đầy sao.",
+        "condition": "clear_night",  # Chỉ xuất hiện vào Ban Đêm khi trời Quang Mây (00:00-04:00)
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/canganha.png",
+        "level": 5,
+    },
+    {
+        "key": "ca_phuong_hoang",
+        "name": "Cá Phượng Hoàng",
+        "emoji": "🔥🦅",
+        "sell_price": 550,
+        "description": "Sinh vật kỳ bí rực cháy dưới nước. Truyền thuyết nói rằng nó mang lại sự hồi sinh.",
+        "condition": "noon_sun",  # Chỉ xuất hiện vào 12h trưa (Giờ Ngọ) khi nắng gắt
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/caphuonghoang.png",
+        "level": 5,
+    },
+    {
+        "key": "cthulhu_con",
+        "name": "Cthulhu Non",
+        "emoji": "🐙👁️",
+        "sell_price": 666,
+        "description": "Một thực thể cổ xưa đang say ngủ. Đừng nhìn vào mắt nó quá lâu nếu không muốn mất trí.",
+        "condition": "deep_sea",  # Cần dùng mồi đặc biệt hoặc câu ở biển sâu, rare event
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/cthulunon.png",
+        "level": 5,
+    },
+    {
+        "key": "ca_voi_52hz",
+        "name": "Cá Voi 52Hz",
+        "emoji": "🐋💔",
+        "sell_price": 800,
+        "description": "Chú cá voi cô đơn nhất thế giới. Tiếng hát của nó không đồng loại nào nghe thấy được.",
+        "condition": "silence",  # Chỉ xuất hiện khi server vắng vẻ (random cực thấp) hoặc sau sự kiện buồn
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/cavoi52hz.png",
+        "level": 5,
+    }
+]
+
+LEGENDARY_FISH_KEYS = [f["key"] for f in LEGENDARY_FISH]
+
 # Create lookup dictionaries
-ALL_FISH = {fish["key"]: fish for fish in COMMON_FISH + RARE_FISH}
+ALL_FISH = {fish["key"]: fish for fish in COMMON_FISH + RARE_FISH + LEGENDARY_FISH}
 ALL_FISH["pearl"] = PEARL_INFO  # Thêm ngọc trai vào danh sách để có thể bán
 COMMON_FISH_KEYS = [f["key"] for f in COMMON_FISH]
 RARE_FISH_KEYS = [f["key"] for f in RARE_FISH]
@@ -370,7 +428,7 @@ ACHIEVEMENTS = {
         "target": 1,
         "reward_coins": 50,
         "emoji": "🎣",
-        "role_id": None  # Để trống - không cấp role cho thành tựu này
+        "role_id": 1450496409341263912  # Để trống - không cấp role cho thành tựu này
     },
     "worm_destroyer": {
         "name": "Kẻ Hủy Diệt Giun",
@@ -379,7 +437,7 @@ ACHIEVEMENTS = {
         "target": 500,
         "reward_coins": 1000,
         "emoji": "🪱",
-        "role_id": None  # Để trống hoặc thay bằng role_id của server
+        "role_id": 1450496472817729729  # Để trống hoặc thay bằng role_id của server
     },
     "trash_master": {
         "name": "Hiệp Sĩ Môi Trường",
@@ -388,7 +446,7 @@ ACHIEVEMENTS = {
         "target": 100,
         "reward_coins": 500,
         "emoji": "🗑️",
-        "role_id": None
+        "role_id": 1450496511329833103
     },
     "millionaire": {
         "name": "Tỷ Phú",
@@ -397,7 +455,7 @@ ACHIEVEMENTS = {
         "target": 100000,
         "reward_coins": 5000,
         "emoji": "💰",
-        "role_id": None
+        "role_id": 1450496548138909780
     },
     "dragon_slayer": {
         "name": "Long Vương",
@@ -406,7 +464,7 @@ ACHIEVEMENTS = {
         "target": "ca_rong",
         "reward_coins": 1000,
         "emoji": "🐲",
-        "role_id": None
+        "role_id": 1450496587691327540
     },
     "unlucky": {
         "name": "Thánh Nhọ",
@@ -415,7 +473,7 @@ ACHIEVEMENTS = {
         "target": 50,
         "reward_coins": 500,
         "emoji": "😭",
-        "role_id": None
+        "role_id": 1450496621413404863
     },
     "lucky": {
         "name": "Bạn Của Thần Tài",
@@ -424,7 +482,7 @@ ACHIEVEMENTS = {
         "target": 50,
         "reward_coins": 2000,
         "emoji": "✨",
-        "role_id": None
+        "role_id": 1450496661477396491
     },
     "collection_master": {
         "name": "Vua Câu Cá",
@@ -434,6 +492,158 @@ ACHIEVEMENTS = {
         "reward_coins": 10000,
         "emoji": "👑",
         "role_id": 1450409414111658024  # Dùng role "Vua Câu Cá" hiện tại
+    },
+    "survivor": {
+        "name": "Kẻ Sống Sót",
+        "description": "Vượt qua 100 sự kiện xấu khi câu cá",
+        "condition_type": "bad_events",
+        "target": 100,
+        "reward_coins": 2000,
+        "emoji": "🛡️",
+        "role_id": None
+    },
+    "child_of_sea": {
+        "name": "Đứa Con Của Biển",
+        "description": "Kích hoạt sự kiện Global Reset (Tiếng Hát Cá Voi hoặc Thủy Triều Đỏ)",
+        "condition_type": "global_reset",
+        "target": 1,
+        "reward_coins": 5000,
+        "emoji": "🌊",
+        "role_id": 1450517603675017276
+    },
+    "treasure_hunter": {
+        "name": "Thợ Săn Kho Báu",
+        "description": "Câu được 50 Rương Kho Báu",
+        "condition_type": "chests",
+        "target": 50,
+        "reward_coins": 3000,
+        "emoji": "💎",
+        "role_id": 1450499187727925349
+    },
+    "market_manipulator": {
+        "name": "Gian Thương",
+        "description": "Bán cá trúng sự kiện Thị Trường Sôi Động 20 lần",
+        "condition_type": "market_boom",
+        "target": 20,
+        "reward_coins": 2500,
+        "emoji": "📈",
+        "role_id": 1450517773888389140
+    },
+    "market_unluckiest": {
+        "name": "Thánh Nhọ Chợ Cá",
+        "description": "Bị Cướp mất trắng tiền bán cá 3 lần",
+        "condition_type": "robbed",
+        "target": 3,
+        "reward_coins": 1000,
+        "emoji": "😭",
+        "role_id": 1450517849645908018
+    },
+    "god_of_wealth": {
+        "name": "Thần Tài Gõ Cửa",
+        "description": "Gặp sự kiện Thần Tài khi bán cá",
+        "condition_type": "god_of_wealth",
+        "target": 1,
+        "reward_coins": 5000,
+        "emoji": "💰",
+        "role_id": 1450517908076892193
+    },
+    "diligent_smith": {
+        "name": "Thợ Rèn Cần Mẫn",
+        "description": "Tự động sửa cần câu 100 lần",
+        "condition_type": "rods_repaired",
+        "target": 100,
+        "reward_coins": 1500,
+        "emoji": "🔨",
+        "role_id": 1450517830100582411
+    },
+    "rod_tycoon": {
+        "name": "Ông Trùm Cần Câu",
+        "description": "Nâng cấp cần câu lên cấp tối đa (Poseidon - Level 5)",
+        "condition_type": "rod_level",
+        "target": 5,
+        "reward_coins": 10000,
+        "emoji": "🔱",
+        "role_id": 1450518071319203993
+    },
+    "master_recycler": {
+        "name": "Nhà Tái Chế Đại Tài",
+        "description": "Tái chế thành công 1000 rác thành phân bón",
+        "condition_type": "trash_recycled",
+        "target": 1000,
+        "reward_coins": 2000,
+        "emoji": "♻️",
+        "role_id": 1450518142299279551
+    },
+    "boss_hunter": {
+        "name": "Chuyên Gia Săn Boss",
+        "description": "Câu được đủ bộ 3 con Boss: Megalodon, Kraken, Leviathan",
+        "condition_type": "boss_hunter",
+        "target": 1,
+        "reward_coins": 20000,
+        "emoji": "🦑",
+        "role_id": 1450518235526205440
+    },
+    
+    # ==================== LEGENDARY FISH ACHIEVEMENTS ====================
+    
+    "river_lord": {
+        "name": "Chúa Tể Vùng Nước Xoáy",
+        "description": "Câu được Thuồng Luồng trong cơn bão dữ",
+        "condition_type": "caught_legendary",
+        "target": "thuong_luong",
+        "reward_coins": 5000,
+        "emoji": "⛈️",
+        "role_id": 1450518323770167327
+    },
+    
+    "star_walker": {
+        "name": "Kẻ Hái Sao",
+        "description": "Câu được Cá Ngân Hà vào lúc đêm khuya thanh vắng",
+        "condition_type": "caught_legendary",
+        "target": "ca_ngan_ha",
+        "reward_coins": 6000,
+        "emoji": "🌌",
+        "role_id": 1450518368368066611
+    },
+    
+    "sun_guardian": {
+        "name": "Ngự Lâm Quân Mặt Trời",
+        "description": "Câu được Cá Phượng Hoàng dưới ánh nắng chói chang",
+        "condition_type": "caught_legendary",
+        "target": "ca_phuong_hoang",
+        "reward_coins": 5500,
+        "emoji": "☀️",
+        "role_id": 1450518432582992004
+    },
+    
+    "void_gazer": {
+        "name": "Kẻ Nhìn Thấu Vực Thẳm",
+        "description": "Bắt được Cthulhu Non và giữ được sự tỉnh táo",
+        "condition_type": "caught_legendary",
+        "target": "cthulhu_con",
+        "reward_coins": 6666,
+        "emoji": "👁️",
+        "role_id": 1450518489247776880
+    },
+    
+    "lonely_frequency": {
+        "name": "Tần Số Cô Đơn",
+        "description": "Tìm thấy Cá Voi 52Hz giữa đại dương mênh mông",
+        "condition_type": "caught_legendary",
+        "target": "ca_voi_52hz",
+        "reward_coins": 8000,
+        "emoji": "🐋",
+        "role_id": 1450518545627877466
+    },
+    
+    "legendary_hunter": {
+        "name": "Thợ Săn Huyền Thoại",
+        "description": "Sở hữu đủ 5 loài cá Legendary mới trong Hồ Cá",
+        "condition_type": "full_legendary_set",
+        "target": 5,
+        "reward_coins": 50000,
+        "emoji": "🏆",
+        "role_id": 1450518602041004162
     }
 }
 
@@ -586,7 +796,7 @@ RANDOM_EVENT_MESSAGES = {
     # --- GOOD EVENTS MESSAGES ---
     "found_wallet":    "Vớt được cái ví da cá sấu! Bên trong có kha khá tiền lẻ. 👛",
     "tourist_tip":     "Khách du lịch thấy bạn câu điệu nghệ quá nên tip nóng! 💵",
-    "floating_cash":   "Ai đó đánh rơi tờ 50k trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
+    "floating_cash":   "Ai đó đánh rơi tờ tiền trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
     "ancient_coin":    "Móc lên được đồng xu cổ thời vua Hùng. Bảo tàng mua lại giá cao! 🪙",
     "lottery_win":     "Vớt được tờ vé số trúng giải độc đắc (giải khuyến khích)! 🎫🎉",
     "streamer_gift":   "Độ Mixi đi ngang qua và donate cho bạn tiền mua mồi! 🎥",
@@ -831,6 +1041,166 @@ SELL_MESSAGES = {
 
 # ==================== UI COMPONENTS ====================
 
+class LegendaryBossFightView(discord.ui.View):
+    """Interactive boss fight for legendary fish"""
+    def __init__(self, cog, user_id, legendary_fish: dict, rod_durability: int, rod_level: int, channel=None, guild_id=None):
+        super().__init__(timeout=60)  # 60 second timeout for choices
+        self.cog = cog
+        self.user_id = user_id
+        self.legendary_fish = legendary_fish
+        self.rod_durability = rod_durability
+        self.rod_level = rod_level
+        self.channel = channel
+        self.guild_id = guild_id
+        self.fought = False
+    
+    @discord.ui.button(label="🔴 Giật Mạnh", style=discord.ButtonStyle.danger)
+    async def jerk_hard(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """High risk, high reward: 30% success, full durability loss if fail"""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
+            return
+        
+        if self.fought:
+            await interaction.response.send_message("❌ Đã quyết định rồi!", ephemeral=True)
+            return
+        
+        self.fought = True
+        success_rate = 0.30
+        success = random.random() < success_rate
+        
+        if success:
+            result_embed = discord.Embed(
+                title="✨ THÀNH CÔNG! ✨",
+                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n"
+                           f"💪 Một cú giật mạnh hoàn hảo đã chinh phục quái vật!",
+                color=discord.Color.gold()
+            )
+            result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
+            
+            # Award the fish
+            await self.cog.add_legendary_fish_to_user(self.user_id, self.legendary_fish['key'])
+            
+            # Check individual legendary achievement
+            achievement_key = self.legendary_fish.get("achievement")
+            if achievement_key:
+                await self.cog.check_achievement(self.user_id, achievement_key, self.channel, self.guild_id)
+            
+            # Check if now has all 5 legendaries for legendary_hunter achievement
+            await self.cog.check_achievement(self.user_id, "legendary_hunter", self.channel, self.guild_id)
+            
+        else:
+            # Rod breaks
+            result_embed = discord.Embed(
+                title="💔 THẤT BẠI! 💔",
+                description=f"❌ Quá mạnh! Cần câu của bạn đã **GÃY TOÁC**!\n\n"
+                           f"💥 {self.legendary_fish['emoji']} **{self.legendary_fish['name']}** vẫy đuôi rồi biến mất...",
+                color=discord.Color.red()
+            )
+            result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
+            
+            # Break the rod
+            await self.cog.update_rod_data(self.user_id, 0)
+        
+        for child in self.children:
+            child.disabled = True
+        
+        await interaction.response.edit_message(embed=result_embed, view=self)
+    
+    @discord.ui.button(label="🟡 Dìu Cá (Kỹ Thuật)", style=discord.ButtonStyle.primary)
+    async def guide_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Technical skill: requires rod level 5, 60% success, 30 durability loss on fail"""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
+            return
+        
+        if self.fought:
+            await interaction.response.send_message("❌ Đã quyết định rồi!", ephemeral=True)
+            return
+        
+        self.fought = True
+        
+        if self.rod_level < 5:
+            fail_embed = discord.Embed(
+                title="❌ KHÔNG ĐỦ LEVEL!",
+                description=f"🎣 Cần câu hiện tại chỉ cấp {self.rod_level}/5.\n\n"
+                           f"Bạn không đủ kỹ thuật để dìu con quái vật này!",
+                color=discord.Color.orange()
+            )
+            for child in self.children:
+                child.disabled = True
+            await interaction.response.edit_message(embed=fail_embed, view=self)
+            return
+        
+        success_rate = 0.60
+        success = random.random() < success_rate
+        
+        if success:
+            result_embed = discord.Embed(
+                title="✨ THÀNH CÔNG! ✨",
+                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n"
+                           f"🎣 Kỹ thuật dìu cá hoàn hảo của bạn đã tước được quái vật!",
+                color=discord.Color.gold()
+            )
+            result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
+            
+            # Award the fish
+            await self.cog.add_legendary_fish_to_user(self.user_id, self.legendary_fish['key'])
+            
+            # Check individual legendary achievement
+            achievement_key = self.legendary_fish.get("achievement")
+            if achievement_key:
+                await self.cog.check_achievement(self.user_id, achievement_key, self.channel, self.guild_id)
+            
+            # Check if now has all 5 legendaries for legendary_hunter achievement
+            await self.cog.check_achievement(self.user_id, "legendary_hunter", self.channel, self.guild_id)
+            
+        else:
+            # Durability loss
+            new_durability = max(0, self.rod_durability - 30)
+            result_embed = discord.Embed(
+                title="💔 THẤT BẠI! 💔",
+                description=f"❌ Quá mạnh! Bạn mất 30 độ bền!\n\n"
+                           f"💥 {self.legendary_fish['emoji']} **{self.legendary_fish['name']}** vẫy đuôi rồi biến mất...\n"
+                           f"🛠️ Độ bền cần câu: {new_durability}/120",
+                color=discord.Color.red()
+            )
+            result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
+            
+            # Update durability
+            await self.cog.update_rod_data(self.user_id, new_durability)
+        
+        for child in self.children:
+            child.disabled = True
+        
+        await interaction.response.edit_message(embed=result_embed, view=self)
+    
+    @discord.ui.button(label="🔵 Cắt Dây (Bỏ Cuộc)", style=discord.ButtonStyle.secondary)
+    async def cut_line(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Safe option: fish escapes, no penalty"""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
+            return
+        
+        if self.fought:
+            await interaction.response.send_message("❌ Đã quyết định rồi!", ephemeral=True)
+            return
+        
+        self.fought = True
+        
+        result_embed = discord.Embed(
+            title="🏃 ĐÃ BỎ CUỘC 🏃",
+            description=f"✂️ Bạn cắt dây cá.\n\n"
+                       f"{self.legendary_fish['emoji']} **{self.legendary_fish['name']}** thoát khỏi câu và biến mất...",
+            color=discord.Color.greyple()
+        )
+        result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
+        
+        for child in self.children:
+            child.disabled = True
+        
+        await interaction.response.edit_message(embed=result_embed, view=self)
+
 class FishSellView(discord.ui.View):
     def __init__(self, cog, user_id, caught_items, guild_id):
         super().__init__(timeout=300)  # 5 minute timeout
@@ -1064,6 +1434,31 @@ class FishingCog(commands.Cog):
                 # Event triggered!
                 print(f"[EVENT] {event_type} triggered for user {user_id}")
                 
+                # === UPDATE ACHIEVEMENT STATS IN DATABASE ===
+                try:
+                    async with aiosqlite.connect(DB_PATH) as db:
+                        if event_data.get("type") == "bad":
+                            # Increment bad_events_encountered
+                            await db.execute(
+                                "UPDATE economy_users SET bad_events_encountered = bad_events_encountered + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                            # Check survivor achievement
+                            await self.check_achievement(user_id, "survivor", None, guild_id)
+                        
+                        if event_data.get("effect") == "global_reset":
+                            # Increment global_reset_triggered
+                            await db.execute(
+                                "UPDATE economy_users SET global_reset_triggered = global_reset_triggered + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                            # Check child_of_sea achievement
+                            await self.check_achievement(user_id, "child_of_sea", None, guild_id)
+                        
+                        await db.commit()
+                except Exception as e:
+                    print(f"[ERROR] Failed to update achievement stats for user {user_id}: {e}")
+                
                 # Skip global_reset events if rod level < 3
                 if event_data.get("effect") == "global_reset" and rod_level < 3:
                     print(f"[EVENT SKIP] {event_type} skipped for user {user_id} (rod level {rod_level} < 3)")
@@ -1168,8 +1563,33 @@ class FishingCog(commands.Cog):
                 
                 elif effect == "gain_chest_1":
                     result["gain_items"] = {"treasure_chest": 1}
+                    # Update achievement stat
+                    try:
+                        async with aiosqlite.connect(DB_PATH) as db:
+                            await db.execute(
+                                "UPDATE economy_users SET chests_caught = chests_caught + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                            await db.commit()
+                            # Check treasure_hunter achievement
+                            await self.check_achievement(user_id, "treasure_hunter", None, guild_id)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to update chests_caught: {e}")
+                
                 elif effect == "gain_chest_2":
                     result["gain_items"] = {"treasure_chest": 2}
+                    # Update achievement stat (count as 2 chests)
+                    try:
+                        async with aiosqlite.connect(DB_PATH) as db:
+                            await db.execute(
+                                "UPDATE economy_users SET chests_caught = chests_caught + 2 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                            await db.commit()
+                            # Check treasure_hunter achievement
+                            await self.check_achievement(user_id, "treasure_hunter", None, guild_id)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to update chests_caught: {e}")
                 
                 elif effect == "gain_pearl":
                     result["gain_items"] = {"pearl": 1}
@@ -1215,10 +1635,96 @@ class FishingCog(commands.Cog):
         if not achievement:
             return False
         
-        # Check if conditions are met (simplified version)
-        # Full implementation would check self.user_stats[user_id]
-        if achievement_key == "collection_master":
-            # This is checked separately in _fish_action
+        # Get user stats from database
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    """SELECT bad_events_encountered, global_reset_triggered, chests_caught,
+                       market_boom_sales, robbed_count, god_of_wealth_encountered, 
+                       rods_repaired, rod_level, trash_recycled FROM economy_users WHERE user_id = ?""",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if not row:
+                        return False
+                    
+                    bad_events, global_reset, chests, market_boom, robbed, god_wealth, rods_rep, rod_lvl, trash_rec = row
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error fetching stats: {e}")
+            return False
+        
+        # Check conditions based on achievement type
+        condition_met = False
+        
+        if achievement_key == "survivor" and bad_events >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "child_of_sea" and global_reset >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "treasure_hunter" and chests >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "market_manipulator" and market_boom >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "market_unluckiest" and robbed >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "god_of_wealth" and god_wealth >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "diligent_smith" and rods_rep >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "rod_tycoon" and rod_lvl >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "master_recycler" and trash_rec >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "boss_hunter":
+            # Check if user has all 3 boss fish
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT item_name FROM inventory WHERE user_id = ? AND item_name IN ('megalodon', 'thuy_quai_kraken', 'leviathan')",
+                        (user_id,)
+                    ) as cursor:
+                        boss_fish = await cursor.fetchall()
+                        if len(boss_fish) >= 3:
+                            condition_met = True
+            except:
+                pass
+        elif achievement_key in ["river_lord", "star_walker", "sun_guardian", "void_gazer", "lonely_frequency"]:
+            # Check if user has caught this legendary fish
+            import json
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0]:
+                            legendary_list = json.loads(row[0])
+                            target_fish = achievement["target"]
+                            if target_fish in legendary_list:
+                                condition_met = True
+            except:
+                pass
+        elif achievement_key == "legendary_hunter":
+            # Check if user has all 5 legendary fish
+            import json
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0]:
+                            legendary_list = json.loads(row[0])
+                            required_legendaries = ["thuong_luong", "ca_ngan_ha", "ca_phuong_hoang", "cthulhu_con", "ca_voi_52hz"]
+                            if all(fish in legendary_list for fish in required_legendaries):
+                                condition_met = True
+            except:
+                pass
+        elif achievement_key == "collection_master":
+            condition_met = True  # This is checked separately in _fish_action
+        
+        if condition_met:
             self.user_achievements[user_id].append(achievement_key)
             
             # Award role if specified
@@ -1233,6 +1739,17 @@ class FishingCog(commands.Cog):
                             print(f"[ACHIEVEMENT] {user_id} awarded role '{role.name}' for achievement '{achievement_key}'")
                 except Exception as e:
                     print(f"[ACHIEVEMENT] Error awarding role for {achievement_key}: {e}")
+            
+            # Award coins in database
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    await db.execute(
+                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                        (achievement["reward_coins"], user_id)
+                    )
+                    await db.commit()
+            except:
+                pass
             
             # Send announcement
             if channel:
@@ -1353,6 +1870,181 @@ class FishingCog(commands.Cog):
         except Exception as e:
             print(f"[ROD] Error updating rod data: {e}")
     
+    # ==================== LEGENDARY FISH HELPERS ====================
+    
+    def zalgo_text(self, text: str) -> str:
+        """Convert text to Zalgo (corrupted) text for Cthulhu theme"""
+        combining_chars = ['\u0300', '\u0301', '\u0302', '\u0303', '\u0304', '\u0305', '\u0306', 
+                          '\u0307', '\u0308', '\u0309', '\u030A', '\u030B', '\u030C', '\u030D',
+                          '\u030E', '\u030F', '\u0310', '\u0311', '\u0312', '\u0313', '\u0314',
+                          '\u0315', '\u0316', '\u0317', '\u0318', '\u0319', '\u031A']
+        result = ""
+        for char in text:
+            result += char
+            if len(combining_chars) > 0:
+                result += combining_chars[hash(char) % len(combining_chars)]
+                result += combining_chars[(hash(char) + 1) % len(combining_chars)]
+        return result
+    
+    async def check_legendary_spawn_conditions(self, user_id: int, guild_id: int, current_hour: int) -> dict | None:
+        """Check if legendary fish should spawn based on conditions"""
+        import json
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get user's legendary fish list
+                async with db.execute(
+                    "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        legendary_list = json.loads(row[0] or "[]")
+                    else:
+                        legendary_list = []
+        except:
+            legendary_list = []
+        
+        # If user already has legendary fish, prevent duplicate catch
+        if len(legendary_list) > 0:
+            return None
+        
+        # Determine which legendary fish can spawn based on conditions
+        current_time = datetime.now()
+        spawnable = []
+        
+        # Thuồng Luồng: Only during storms (random event)
+        # 1% - Balanced by rarity of storm events
+        spawnable.append({
+            "key": "thuong_luong",
+            "name": "Thuồng Luồng",
+            "emoji": "🐍🌊",
+            "sell_price": 500,
+            "description": "Quái vật sông nước trong truyền thuyết Việt Nam.",
+            "condition": "river_storm",
+            "image_url": "https://i.imgur.com/placeholder1.png",
+            "spawn_chance": 0.01,  # 1% - Balanced by storm rarity
+            "achievement": "river_lord",
+        })
+        
+        # Cá Ngân Hà: Only at night (00:00-04:00) in clear weather
+        # Reduced from 2% to 0.8% for better balance
+        if 0 <= current_hour < 4:
+            spawnable.append({
+                "key": "ca_ngan_ha",
+                "name": "Cá Ngân Hà",
+                "emoji": "🌌✨",
+                "sell_price": 600,
+                "description": "Cơ thể nó chứa đựng cả một vũ trụ thu nhỏ.",
+                "condition": "clear_night",
+                "image_url": "https://i.imgur.com/placeholder2.png",
+                "spawn_chance": 0.008,  # 0.8% at night (reduced from 2%)
+                "achievement": "star_walker",
+            })
+        
+        # Cá Phượng Hoàng: Only at noon (12:00-14:00) in sunny weather
+        # Reduced from 1.5% to 0.8% for better balance
+        if 12 <= current_hour < 14:
+            spawnable.append({
+                "key": "ca_phuong_hoang",
+                "name": "Cá Phượng Hoàng",
+                "emoji": "🔥🦅",
+                "sell_price": 550,
+                "description": "Sinh vật kỳ bí rực cháy dưới nước.",
+                "condition": "noon_sun",
+                "image_url": "https://i.imgur.com/placeholder3.png",
+                "spawn_chance": 0.008,  # 0.8% at noon (reduced from 1.5%)
+                "achievement": "sun_guardian",
+            })
+        
+        # Cthulhu Non: Always available but ultra rare
+        # Reduced from 0.5% to 0.15% for better balance
+        spawnable.append({
+            "key": "cthulhu_con",
+            "name": "Cthulhu Non",
+            "emoji": "🐙👁️",
+            "sell_price": 666,
+            "description": "Một thực thể cổ xưa đang say ngủ.",
+            "condition": "deep_sea",
+            "image_url": "https://i.imgur.com/placeholder4.png",
+            "spawn_chance": 0.0015,  # 0.15% (reduced from 0.5%)
+            "achievement": "void_gazer",
+        })
+        
+        # Cá Voi 52Hz: Ultra rare, emotional theme
+        # Adjusted to 0.05% for extreme rarity (1/2000 casts)
+        spawnable.append({
+            "key": "ca_voi_52hz",
+            "name": "Cá Voi 52Hz",
+            "emoji": "🐋💔",
+            "sell_price": 800,
+            "description": "Chú cá voi cô đơn nhất thế giới.",
+            "condition": "silence",
+            "image_url": "https://i.imgur.com/placeholder5.png",
+            "spawn_chance": 0.0005,  # 0.05% (1/2000 - rarest)
+            "achievement": "lonely_frequency",
+        })
+        
+        # Roll to see if any legendary spawns
+        for legendary in spawnable:
+            if random.random() < legendary["spawn_chance"]:
+                return legendary
+        
+        return None
+    
+    async def add_legendary_fish_to_user(self, user_id: int, legendary_key: str):
+        """Add legendary fish to user's collection"""
+        import json
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get current legendary fish list
+                async with db.execute(
+                    "SELECT legendary_fish, legendary_fish_count FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        legendary_list = json.loads(row[0] or "[]")
+                        count = row[1] or 0
+                    else:
+                        legendary_list = []
+                        count = 0
+                
+                # Add to list
+                legendary_list.append(legendary_key)
+                count += 1
+                
+                # Update database
+                await db.execute(
+                    "UPDATE economy_users SET legendary_fish = ?, legendary_fish_count = ? WHERE user_id = ?",
+                    (json.dumps(legendary_list), count, user_id)
+                )
+                await db.commit()
+                print(f"[LEGENDARY] User {user_id} obtained {legendary_key}")
+        except Exception as e:
+            print(f"[LEGENDARY] Error adding legendary fish: {e}")
+    
+    async def has_legendary_fish(self, user_id: int, fish_key: str = None) -> bool:
+        """Check if user has legendary fish"""
+        import json
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        legendary_list = json.loads(row[0] or "[]")
+                        if fish_key:
+                            return fish_key in legendary_list
+                        return len(legendary_list) > 0
+        except:
+            pass
+        return False
+    
     # ==================== COMMANDS ====================
     
     @app_commands.command(name="cauca", description="Câu cá - thời gian chờ 30s")
@@ -1382,6 +2074,27 @@ class FishingCog(commands.Cog):
         # --- GET ROD DATA ---
         rod_lvl, rod_durability = await self.get_rod_data(user_id)
         rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
+        
+        # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
+        # Get current fish count
+        current_inventory = await get_inventory(user_id)
+        fish_count = sum(v for k, v in current_inventory.items() if k in ALL_FISH)
+        
+        # If bucket is full (15+ fish), block fishing immediately
+        if fish_count >= 15:
+            username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            embed = discord.Embed(
+                title=f"⚠️ XÔ ĐÃ ĐẦY - {username_display}!",
+                description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa 15).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
+                color=discord.Color.orange()
+            )
+            embed.set_footer(text="Hãy dùng lệnh bán cá để bán bớt nhé.")
+            if is_slash:
+                await ctx.followup.send(embed=embed, ephemeral=True)
+            else:
+                await ctx.send(embed=embed)
+            print(f"[FISHING] {username_display} blocked: bucket full ({fish_count}/15 fish)")
+            return
         
         # --- CHECK DURABILITY & AUTO REPAIR ---
         repair_msg = ""
@@ -1464,24 +2177,6 @@ class FishingCog(commands.Cog):
             f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}"
         )
         await asyncio.sleep(wait_time)
-        
-        # ==================== CHECK FISH BUCKET LIMIT ====================
-        # Get current fish count
-        current_inventory = await get_inventory(user_id)
-        fish_count = sum(v for k, v in current_inventory.items() if k in ALL_FISH)
-        
-        # If bucket is full (15+ fish), block fishing
-        if fish_count >= 15:
-            embed = discord.Embed(
-                title=f"⚠️ XÔ ĐÃ ĐẦY - {username}!",
-                description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa 15).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
-                color=discord.Color.orange()
-            )
-            embed.set_footer(text="Hãy dùng lệnh bán cá để bán bớt nhé.")
-            await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
-            # Remove worm cost from refund check - it was already consumed
-            print(f"[FISHING] {username} blocked: bucket full ({fish_count}/15 fish)")
-            return
         
         # ==================== TRIGGER RANDOM EVENTS ====================
         
@@ -1751,6 +2446,11 @@ class FishingCog(commands.Cog):
                 caught_rare_this_turn = True  # Đánh dấu đã bắt rare
                 print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
                 await self.add_inventory_item(user_id, fish['key'], "fish")
+                
+                # Check boss_hunter achievement
+                if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
+                    await self.check_achievement(user_id, "boss_hunter", channel, guild_id)
+                
                 # Track in collection
                 is_new_collection = await self.track_caught_fish(user_id, fish['key'])
                 if is_new_collection:
@@ -1840,6 +2540,54 @@ class FishingCog(commands.Cog):
         
         # Update caught items for sell button
         self.caught_items[user_id] = fish_only_items
+        
+        # ==================== CHECK FOR LEGENDARY FISH ====================
+        current_hour = datetime.now().hour
+        legendary_fish = await self.check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour)
+        
+        if legendary_fish:
+            # Legendary fish spawned! Show boss fight minigame
+            legendary_key = legendary_fish['key']
+            print(f"[LEGENDARY] {username} encountered {legendary_key}!")
+            
+            # Create warning embed
+            legendary_embed = discord.Embed(
+                title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
+                description=f"🌊 Có một con quái vật đang cắn câu!\n"
+                           f"💥 Nó đang kéo bạn xuống nước!\n\n"
+                           f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n"
+                           f"_{legendary_fish['description']}_",
+                color=discord.Color.dark_red()
+            )
+            legendary_embed.add_field(
+                name="⚔️ CHUẨN BỊ ĐẤU BOSS!",
+                value=f"Độ bền cần câu: {rod_durability}/{rod_config['durability']}\n"
+                     f"Cấp độ cần: {rod_level}/5",
+                inline=False
+            )
+            legendary_embed.set_image(url=legendary_fish.get('image_url', ''))
+            legendary_embed.set_footer(text="Chọn chiến thuật chinh phục quái vật! ⏱️ 60 giây")
+            
+            # Create boss fight view
+            boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_level, channel, guild_id)
+            
+            # Send boss fight message
+            boss_msg = await channel.send(f"<@{user_id}>", embed=legendary_embed, view=boss_view)
+            
+            # Wait for interaction or timeout
+            try:
+                await asyncio.sleep(60)  # 60 second timeout
+            except:
+                pass
+            
+            # Check if battle was fought
+            if boss_view.fought:
+                print(f"[LEGENDARY] {username} fought the boss!")
+                # Continue to show normal fishing results as well
+            else:
+                print(f"[LEGENDARY] {username} didn't choose - boss escaped!")
+        
+        # ==================== END LEGENDARY CHECK ====================
         
         # Check if collection is complete and award title if needed
         is_complete = await self.check_collection_complete(user_id)
@@ -1940,6 +2688,28 @@ class FishingCog(commands.Cog):
         
         # Filter fish items by type
         fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
+        
+        # ==================== CHECK FOR LEGENDARY FISH ====================
+        # Remove legendary fish from sellable items
+        legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS}
+        if legendary_fish_in_inventory:
+            # Show warning that legendary fish cannot be sold
+            legend_names = ", ".join([ALL_FISH[k]['name'] for k in legendary_fish_in_inventory.keys()])
+            msg = f"❌ **CÁ HỮU HẠNG KHÔNG ĐƯỢC BÁN!** 🏆\n\n"
+            msg += f"Bạn có: {legend_names}\n\n"
+            msg += "Các loại cá huyền thoại này là biểu tượng của danh tiếng của bạn. Chúng không được phép bán!\n\n"
+            msg += "💎 Hãy xem `/huyen_thoai` để xem Bảng Vàng những con cá huyền thoại!"
+            
+            if is_slash:
+                await ctx.followup.send(msg, ephemeral=False)
+            else:
+                await ctx.send(msg)
+            
+            # Remove legendary fish from sellable list
+            fish_items = {k: v for k, v in fish_items.items() if k not in LEGENDARY_FISH_KEYS}
+            
+            if not fish_items:
+                return  # No other fish to sell
         
         if not fish_items:
             msg = "❌ Bạn không có cá nào để bán!"
@@ -2375,6 +3145,11 @@ class FishingCog(commands.Cog):
         # When upgrading, restore full durability
         await self.update_rod_data(user_id, rod_info["durability"], next_lvl)
         
+        # Check rod_tycoon achievement if level 5
+        if next_lvl == 5:
+            guild_id = ctx_or_interaction.guild.id if hasattr(ctx_or_interaction, 'guild') else ctx_or_interaction.guild.id
+            await self.check_achievement(user_id, "rod_tycoon", ctx_or_interaction.channel, guild_id)
+        
         # Build response embed
         embed = discord.Embed(
             title="✅ Nâng Cấp Cần Câu Thành Công!",
@@ -2727,6 +3502,84 @@ class FishingCog(commands.Cog):
             view.message = await ctx.followup.send(embed=embed_common, view=view)
         else:
             view.message = await ctx.send(embed=embed_common, view=view)
+    
+    # ==================== LEGENDARY FISH HALL OF FAME ====================
+    
+    @app_commands.command(name="huyen_thoai", description="🏆 Xem Bảng Vàng Huyền Thoại - Người Đầu Tiên Bắt Được Các Cá Huyền Thoại")
+    async def legendary_hall_of_fame(self, interaction: discord.Interaction):
+        """Show the legendary fish hall of fame for the server"""
+        is_slash = isinstance(interaction, discord.Interaction)
+        
+        if is_slash:
+            await interaction.response.defer(ephemeral=False)
+        
+        guild_id = interaction.guild.id
+        
+        # Collect all legendary fish caught by users in this server
+        import json
+        legendary_catches = {}  # {fish_key: {user_id, username, timestamp}}
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get all users with legendary fish
+                async with db.execute(
+                    "SELECT user_id, legendary_fish FROM economy_users WHERE user_id IN (SELECT user_id FROM economy_users WHERE legendary_fish_count > 0)"
+                ) as cursor:
+                    rows = await cursor.fetchall()
+                    
+                    for user_id, legendary_json in rows:
+                        if legendary_json:
+                            try:
+                                legendary_list = json.loads(legendary_json)
+                                for fish_key in legendary_list:
+                                    if fish_key not in legendary_catches:
+                                        # Get user info for first catch
+                                        try:
+                                            user = await interaction.client.fetch_user(user_id)
+                                            legendary_catches[fish_key] = {
+                                                "user_id": user_id,
+                                                "username": user.name,
+                                                "avatar_url": user.avatar.url if user.avatar else None
+                                            }
+                                        except:
+                                            legendary_catches[fish_key] = {
+                                                "user_id": user_id,
+                                                "username": f"User {user_id}",
+                                                "avatar_url": None
+                                            }
+                            except:
+                                pass
+        except Exception as e:
+            print(f"[LEGENDARY] Error fetching hall of fame: {e}")
+        
+        # Build embed
+        embed = discord.Embed(
+            title="🏆 BẢNG VÀNG HUYỀN THOẠI 🏆",
+            description="🌟 Những người anh hùng đầu tiên chinh phục các cá huyền thoại:\n",
+            color=discord.Color.gold()
+        )
+        
+        # Add each legendary fish if caught
+        for legendary_fish in LEGENDARY_FISH:
+            fish_key = legendary_fish['key']
+            emoji = legendary_fish['emoji']
+            name = legendary_fish['name']
+            
+            if fish_key in legendary_catches:
+                catcher = legendary_catches[fish_key]
+                value = f"⭐ **{catcher['username']}**\n💎 Người đầu tiên bắt được!"
+                embed.add_field(name=f"{emoji} {name}", value=value, inline=False)
+            else:
+                value = "❓ Chưa ai bắt được...\n🎯 Bạn có thể là người đầu tiên!"
+                embed.add_field(name=f"{emoji} {name}", value=value, inline=False)
+        
+        embed.set_footer(text="🎣 Câu cá và trở thành một phần của lịch sử!")
+        
+        if is_slash:
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(FishingCog(bot))
+

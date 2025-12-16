@@ -33,6 +33,8 @@ class GameNoiTu(commands.Cog):
         self.dict_loaded = False
         # Lock for dictionary loading to prevent race conditions
         self.dict_load_lock = asyncio.Lock()
+        # Co-op Streak tracking: {guild_id: current_streak_count}
+        self.streak = {}
 
     async def _load_dictionary(self):
         """Load words dictionary from file"""
@@ -225,6 +227,15 @@ class GameNoiTu(commands.Cog):
             game_state = json.loads(row[0])
             
             # Restore game state
+            # Convert old players format (just usernames) to new format (with word counts)
+            old_players = game_state.get("players", {})
+            new_players = {}
+            for user_id, username in old_players.items():
+                if isinstance(username, dict):
+                    new_players[int(user_id)] = username
+                else:
+                    new_players[int(user_id)] = {"username": username, "correct_words": 0}
+            
             self.games[guild_id] = {
                 "channel_id": channel.id,
                 "current_word": game_state.get("current_word"),
@@ -232,11 +243,11 @@ class GameNoiTu(commands.Cog):
                 "last_author_id": game_state.get("last_author_id"),
                 "timer_task": None,
                 "timer_message": None,
-                "player_count": len(game_state.get("players", {})),
+                "player_count": len(new_players),
                 "last_message_time": None,
                 "start_message": None,
                 "start_message_content": f"Từ hiện tại: **{game_state.get('current_word')}**\n[Game được resume từ lần restart trước]",
-                "players": game_state.get("players", {})
+                "players": new_players
             }
             
             # Send resume message
@@ -279,6 +290,94 @@ class GameNoiTu(commands.Cog):
         except Exception as e:
             log(f"ERROR updating player stats: {e}")
     
+    
+    async def distribute_streak_rewards(self, guild_id, all_players, final_streak, channel):
+        """Distribute rewards based on community streak (Co-op system)
+        - Base reward: 2 hạt × streak (minimum 10 hạt)
+        - Bonus: 1 hạt per correct word per player
+        - All rewards multiplied by buff if active
+        """
+        try:
+            economy_cog = self.bot.get_cog("EconomyCog")
+            if not economy_cog:
+                log(f"ERROR: EconomyCog not found")
+                return
+            
+            # Check if harvest buff is active
+            is_buff_active = await economy_cog.is_harvest_buff_active(guild_id)
+            buff_multiplier = 2 if is_buff_active else 1
+            
+            # Calculate base reward: 2 seeds per word in final streak
+            base_reward = max(10, final_streak * 2) * buff_multiplier
+            
+            # Distribute rewards to all participants
+            player_display_list = []
+            for user_id, player_data in all_players.items():
+                try:
+                    # Handle both old format (string) and new format (dict)
+                    if isinstance(player_data, dict):
+                        username = player_data.get("username", "Unknown")
+                        correct_words = player_data.get("correct_words", 0)
+                    else:
+                        username = player_data
+                        correct_words = 0
+                    
+                    # Calculate reward: base + bonus for each correct word
+                    bonus_reward = correct_words * buff_multiplier
+                    total_reward = base_reward + bonus_reward
+                    
+                    await economy_cog.add_seeds_local(user_id, total_reward)
+                    
+                    # Format for display: @mention - X từ (Y Hạt)
+                    try:
+                        user = await self.bot.fetch_user(user_id)
+                        player_display_list.append(f"{user.mention} - {correct_words} từ")
+                    except:
+                        player_display_list.append(f"{username} - {correct_words} từ")
+                    
+                    log(f"REWARD [Guild {guild_id}] {username}: {base_reward} base + {bonus_reward} bonus = {total_reward} total")
+                except Exception as e:
+                    log(f"ERROR distributing reward: {e}")
+            
+            # Create reward notification embed
+            embed = discord.Embed(
+                title="🎮 Phần Thưởng Nối Từ - Cộng Đồng",
+                description=f"Chuỗi {final_streak} từ kết thúc! Mọi người được thưởng.",
+                colour=discord.Colour.gold()
+            )
+            
+            # Display all players with their word counts and mentions
+            if player_display_list:
+                embed.add_field(
+                    name="👥 Tất cả tham gia",
+                    value="\n".join(player_display_list),
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="🌱 Phần Thưởng Cơ Bản/Người",
+                value=f"+{base_reward} Hạt (từ chuỗi {final_streak})",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="💚 Phần Thưởng Bổ Sung",
+                value=f"+{buff_multiplier} Hạt mỗi từ nối đúng",
+                inline=False
+            )
+            
+            if is_buff_active:
+                embed.add_field(
+                    name="🔥 Cộng Hưởng Sinh Lực (Harvest Buff)",
+                    value=f"Tất cả phần thưởng được nhân 2x!",
+                    inline=False
+                )
+            
+            await channel.send(embed=embed)
+        
+        except Exception as e:
+            log(f"ERROR distributing streak rewards: {e}")
+    
     async def distribute_rewards(self, guild_id, winner_id, all_players, channel):
         """Distribute seeds rewards after game ends"""
         try:
@@ -301,10 +400,10 @@ class GameNoiTu(commands.Cog):
             # Distribute rewards
             for user_id, username in all_players.items():
                 if user_id == winner_id:
-                    await economy_cog.add_seeds(user_id, winner_reward)
+                    await economy_cog.add_seeds_local(user_id, winner_reward)
                     winner_name = username
                 else:
-                    await economy_cog.add_seeds(user_id, loser_reward)
+                    await economy_cog.add_seeds_local(user_id, loser_reward)
                     loser_names.append(username)
             
             # Create reward notification embed
@@ -455,7 +554,7 @@ class GameNoiTu(commands.Cog):
             "last_message_time": None,
             "start_message": None,  # Track the start message for sticky behavior
             "start_message_content": f"Từ khởi đầu: **{word}**\nChờ người chơi nhập vào...",
-            "players": {}  # Track players: {user_id: username}
+            "players": {}  # Track players: {user_id: {'username': name, 'correct_words': count}}
         }
         
         log(f"GAME_START [Guild {guild_id}] Starting word: '{word}'")
@@ -475,16 +574,16 @@ class GameNoiTu(commands.Cog):
             # Record the time when timer starts
             timer_start_time = time.time()
             
-            # Send initial 25 second countdown message
+            # Send initial 60 second countdown message
             game_data = self.games.get(guild_id)
             if not game_data:
                 return
             
-            timer_msg = await channel.send("25 giây...")
+            timer_msg = await channel.send("60 giây...")
             game_data['timer_message'] = timer_msg
             
             # Countdown loop
-            for countdown in range(24, -1, -1):
+            for countdown in range(59, -1, -1):
                 await asyncio.sleep(1)
                 
                 game_data = self.games.get(guild_id)
@@ -514,30 +613,42 @@ class GameNoiTu(commands.Cog):
             # Timer ended - calculate winner
             game_data = self.games.get(guild_id)
             if game_data and game_data['last_author_id']:
-                winner_id = game_data['last_author_id']
+                current_streak = self.streak.get(guild_id, 0)
                 word = game_data['current_word']
                 
-                log(f"TIMEOUT [Guild {guild_id}] Winner: {winner_id} with word '{word}'")
+                log(f"TIMEOUT [Guild {guild_id}] Streak ended at {current_streak} words, last word: '{word}'")
                 
-                # Edit timer message to show timeout
+                # Delete old timer message
                 try:
-                    await timer_msg.edit(content="Hết giờ!")
+                    await timer_msg.delete()
                 except:
                     pass
                 
-                # Send new message with winner info
-                winner = await self.bot.fetch_user(winner_id)
-                await channel.send(f"Hết giờ! <@{winner_id}> win với từ **{word}**")
+                # Create timeout embed
+                embed = discord.Embed(
+                    title="⌛ HẾT GIỜ!",
+                    description=f"Không ai nối được từ **{word}**!",
+                    color=discord.Color.red()
+                )
                 
-                # Update winner stats
-                await self.update_player_stats(winner_id, winner.name, is_winner=True)
+                try:
+                    last_player = await self.bot.fetch_user(game_data['last_author_id'])
+                    embed.add_field(name="👤 Người giữ lượt cuối", value=last_player.mention, inline=False)
+                except:
+                    pass
                 
-                # Distribute rewards
+                embed.add_field(name="🔥 Chuỗi Cộng Đồng", value=f"**{current_streak}** từ nối thành công", inline=False)
+                
+                # Send embed
+                await channel.send(embed=embed)
+                
+                # Give rewards to all players who participated
                 if game_data.get('players'):
-                    await self.distribute_rewards(guild_id, winner_id, game_data['players'], channel)
+                    await self.distribute_streak_rewards(guild_id, game_data['players'], current_streak, channel)
                 
+                # Reset streak and start new round
+                self.streak[guild_id] = 0
                 await self.start_new_round(guild_id, channel)
-                # Save game state after starting new round
                 await self.save_game_state(guild_id, channel.id)
             
         except asyncio.CancelledError:
@@ -549,7 +660,8 @@ class GameNoiTu(commands.Cog):
                     await game_data['timer_message'].delete()
             except:
                 pass
-            pass
+        except Exception as e:
+            log(f"Timer error [Guild {guild_id}]: {e}")
 
     # --- Events (Core Logic) ---
     @commands.Cog.listener()
@@ -679,18 +791,30 @@ class GameNoiTu(commands.Cog):
                         await message.add_reaction("✅")
                 except:
                     pass
-                log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (player #{game['player_count'] + 1})")
                 
-                # Track player
-                game['players'][message.author.id] = message.author.name
+                # Initialize streak counter if not exists
+                if guild_id not in self.streak:
+                    self.streak[guild_id] = 0
+                
+                # Increment streak on valid move
+                self.streak[guild_id] += 1
+                current_streak = self.streak[guild_id]
+                
+                log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (Streak: {current_streak}, Players: {game['player_count'] + 1})")
+                
+                # Track player with word count
+                if message.author.id not in game['players']:
+                    game['players'][message.author.id] = {"username": message.author.name, "correct_words": 0}
+                
+                # Increment correct word count for this player (only for end-of-game bonus, not for immediate reward)
+                game['players'][message.author.id]["correct_words"] += 1
                 
                 # Update player stats (correct word count)
                 await self.update_player_stats(message.author.id, message.author.name, is_winner=False)
                 
-                # 1. Cancel old timer and delete timer message
+                # Cancel old timer
                 if game['timer_task']:
                     game['timer_task'].cancel()
-                    # Delete timer message
                     try:
                         if game.get('timer_message'):
                             await game['timer_message'].delete()
@@ -699,60 +823,86 @@ class GameNoiTu(commands.Cog):
                         pass
                     log(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
                 
-                # 2. Update player count
+                # Update player count
                 game['player_count'] += 1
                 
                 # Notify when Player 2 joins
                 if game['player_count'] == 2:
                     try:
-                        await message.channel.send("Nối từ bắt đầu!")
+                        await message.channel.send("🎮 Nối từ bắt đầu!")
                     except:
                         pass
                 
-                # 3. Update State trước (add từ vào used_words)
+                # Update game state
                 game['current_word'] = content
                 game['used_words'].add(content)
                 game['last_author_id'] = message.author.id
-                
-                # 4. Update last_message_time
                 game['last_message_time'] = time.time()
                 
-                # Save game state after each valid move
+                # === MILESTONE REWARD (Cứ 10 từ thành công) ===
+                if current_streak > 0 and current_streak % 10 == 0:
+                    try:
+                        economy_cog = self.bot.get_cog("EconomyCog")
+                        is_buff_active = await economy_cog.is_harvest_buff_active(guild_id)
+                        milestone_reward = 20 * (2 if is_buff_active else 1)
+                        
+                        await message.channel.send(f"🔥 **MILESTONE! Chuỗi {current_streak}!** Cả phòng nhận được **{milestone_reward} Hạt**! 🎉")
+                        # Distribute milestone reward to all players
+                        for player_id in game['players'].keys():
+                            await economy_cog.add_seeds_local(player_id, milestone_reward)
+                    except Exception as e:
+                        log(f"ERROR awarding milestone: {e}")
+                
+                # Save game state
                 await self.save_game_state(guild_id, message.channel.id)
                 
-                # 5. Check Dead End (kiểm tra với từ mới đã thêm vào used_words)
+                # Check Dead End
                 has_next = await self.check_if_word_has_next(content, game['used_words'])
                 
                 if not has_next:
-                    log(f"DEAD_END [Guild {guild_id}] No words starting with '{content.split()[-1]}' - Winner: {message.author.name}")
+                    last_syllable = content.split()[-1]
+                    log(f"DEAD_END [Guild {guild_id}] No words starting with '{last_syllable}' - Streak ended at {current_streak}")
                     
-                    # Update winner stats
-                    await self.update_player_stats(message.author.id, message.author.name, is_winner=True)
+                    # Embed for end-of-streak
+                    embed = discord.Embed(
+                        title="🛑 BÍ TỪ!",
+                        description=f"Không có từ nào bắt đầu bằng **{last_syllable}**.",
+                        color=discord.Color.orange()
+                    )
+                    embed.add_field(
+                        name="🔥 Chuỗi Cộng Đồng",
+                        value=f"Chuỗi **{current_streak}** từ kết thúc!",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="👤 Người cuối cùng",
+                        value=message.author.mention,
+                        inline=False
+                    )
                     
-                    # Special message if player count is 1 (first player)
-                    if game['player_count'] == 1:
-                        await message.channel.send(f"Chơi 1 mình luôn đi ba! {message.author.mention} win")
-                    else:
-                        await message.channel.send(f"Bí từ! Ko có từ nào bắt đầu bằng **{content.split()[-1]}**. {message.author.mention} win")
+                    await message.channel.send(embed=embed)
                     
-                    # Distribute rewards (same as timeout)
+                    # Distribute rewards to all participants
                     if game.get('players'):
-                        await self.distribute_rewards(guild_id, message.author.id, game['players'], message.channel)
+                        await self.distribute_streak_rewards(guild_id, game['players'], current_streak, message.channel)
                     
-                    # Cleanup lock before starting new round
+                    # Reset and start new round
+                    self.streak[guild_id] = 0
                     self.cleanup_game_lock(guild_id)
                     await self.start_new_round(guild_id, message.channel)
-                    # Save game state after starting new round
                     await self.save_game_state(guild_id, message.channel.id)
                     return
                 
-                # 6. Start timer only after 2nd player joins
+                # Start timer only after 2nd player joins
                 if game['player_count'] >= 2:
                     log(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
-                    game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, game['last_message_time']))
+                    game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
                 else:
                     log(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
-                    await message.channel.send(f"Chờ người chơi thứ 2 vào nha ({game['player_count']}/2)")
+                    try:
+                        await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
+                    except:
+                        pass
             
             except Exception as e:
                 log(f"ERROR [Guild {guild_id}] Exception: {str(e)}")

@@ -5,8 +5,6 @@ import subprocess
 import logging
 from discord.ext import commands
 from dotenv import load_dotenv
-from setup_data import setup_folder, init_database
-from concurrent.futures import ThreadPoolExecutor
 
 # Load biến môi trường từ file .env
 load_dotenv()
@@ -123,13 +121,9 @@ async def load_cogs():
 
 # Chạy bot
 async def main():
-    # Initialize database and folders BEFORE starting bot (run in thread pool to avoid blocking)
-    print("[INITIALIZING DATA]")
-    loop = asyncio.get_event_loop()
-    executor = ThreadPoolExecutor(max_workers=1)
-    await loop.run_in_executor(executor, setup_folder)
-    await loop.run_in_executor(executor, init_database)
-    print("[DATA INITIALIZED]")
+    # Note: Database initialization is now done manually via command, not automatically on startup
+    # This prevents data loss from repeated migrations on bot restart
+    # To initialize database manually, run: python3 setup_data.py
     
     async with bot:
         # Rebuild words dictionary before starting
