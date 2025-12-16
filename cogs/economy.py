@@ -11,7 +11,7 @@ DB_PATH = "./data/database.db"
 # Constants
 DAILY_BONUS = 10  # Hạt nhận từ /chao
 DAILY_WINDOW_START = 5  # 5 AM
-DAILY_WINDOW_END = 10  # 10 AM
+DAILY_WINDOW_END = 12  # 12 AM
 CHAT_REWARD_MIN = 1
 CHAT_REWARD_MAX = 3
 CHAT_REWARD_COOLDOWN = 60  # seconds

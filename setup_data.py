@@ -86,6 +86,17 @@ def init_database():
                     PRIMARY KEY (user_id, guild_id)
                 )''')
     
+    # Game Sessions: Save game state for resume after bot restart
+    c.execute('''CREATE TABLE IF NOT EXISTS game_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    guild_id INTEGER NOT NULL,
+                    game_type TEXT NOT NULL,
+                    channel_id INTEGER NOT NULL,
+                    game_state TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+    
     # Migration: Rename admin_channel_id to logs_channel_id (if table exists with old schema)
     try:
         c.execute("PRAGMA table_info(server_config)")
@@ -241,7 +252,7 @@ def init_database():
     
     conn.commit()
     conn.close()
-    print("✅ Done! Database initialized with all tables ready.")
+    print("Done! Database initialized with all tables ready.")
 
 if __name__ == "__main__":
     setup_folder()

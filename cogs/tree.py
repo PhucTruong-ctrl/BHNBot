@@ -71,14 +71,22 @@ class ContributeModal(discord.ui.Modal):
     
     async def on_submit(self, interaction: discord.Interaction):
         try:
+            # Defer immediately to prevent timeout
+            await interaction.response.defer(ephemeral=True)
+            
             amount = int(self.amount_input.value)
             if amount <= 0:
-                await interaction.response.send_message("Số lượng phải lớn hơn 0!", ephemeral=True)
+                await interaction.followup.send("Số lượng phải lớn hơn 0!", ephemeral=True)
                 return
             
+            # Now call the process method which expects deferred response
+            # Create a mock interaction with already-deferred response
             await self.tree_cog.process_contribution(interaction, amount)
         except ValueError:
-            await interaction.response.send_message("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True)
+            try:
+                await interaction.followup.send("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True)
+            except:
+                pass
 
 class TreeContributeView(discord.ui.View):
     """View with quick contribute buttons"""
@@ -102,6 +110,10 @@ class TreeContributeView(discord.ui.View):
 class CommunityCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # Debounce to prevent excessive tree message updates
+        self.last_tree_update = {}
+        # Lock to prevent concurrent tree message updates
+        self.tree_update_locks = {}
 
     # ==================== HELPER FUNCTIONS ====================
 
@@ -198,7 +210,7 @@ class CommunityCog(commands.Cog):
             footer_text = f"Mùa {season} • Level {lvl}/6 • {prog}/{req} Hạt • Tổng: {total}"
         
         embed = discord.Embed(
-            title="🌳 Cây Hiên Nhà",
+            title="Cây Bên Hiên Nhà",
             description=TREE_DESCRIPTIONS.get(lvl, "..."),
             color=discord.Color.green()
         )
@@ -216,148 +228,208 @@ class CommunityCog(commands.Cog):
         return embed
 
     async def update_or_create_pin_message(self, guild_id: int, tree_channel_id: int):
-        """Update or create pinned tree message"""
-        try:
-            channel = self.bot.get_channel(tree_channel_id)
-            if not channel:
-                print(f"[TREE] Channel {tree_channel_id} not found")
-                return
-            
-            embed = await self.create_tree_embed(guild_id)
-            view = TreeContributeView(self)
-            
-            # Try to get existing pinned message
+        """Delete old tree message and create new one (no pinning)"""
+        # Get or create lock for this guild
+        if guild_id not in self.tree_update_locks:
+            self.tree_update_locks[guild_id] = asyncio.Lock()
+        
+        # Acquire lock to prevent concurrent updates
+        async with self.tree_update_locks[guild_id]:
             try:
-                pinned_messages = await channel.pins()
-                tree_message = None
+                channel = self.bot.get_channel(tree_channel_id)
+                if not channel:
+                    print(f"[TREE] Channel {tree_channel_id} not found")
+                    return
                 
-                for msg in pinned_messages:
-                    if msg.author.id == self.bot.user.id and "🌳 Cây Hiên Nhà" in msg.embeds[0].title if msg.embeds else False:
-                        tree_message = msg
-                        break
+                embed = await self.create_tree_embed(guild_id)
+                view = TreeContributeView(self)
                 
-                if tree_message:
-                    # Edit existing message
-                    await tree_message.edit(embed=embed, view=view)
-                    print(f"[TREE] Updated pinned tree message in {channel.name}")
-                else:
-                    # Create new pinned message
-                    new_message = await channel.send(embed=embed, view=view)
-                    await new_message.pin()
-                    
-                    # Store message ID in database
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        await db.execute(
-                            "UPDATE server_tree SET tree_message_id = ? WHERE guild_id = ?",
-                            (new_message.id, guild_id)
-                        )
-                        await db.commit()
-                    
-                    print(f"[TREE] Pinned new tree message in {channel.name}")
-            except:
-                # Create new pinned message if error
+                # Try to get existing tree message
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT tree_message_id FROM server_tree WHERE guild_id = ?",
+                        (guild_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        tree_message_id = row[0] if row else None
+                
+                # Delete old message if exists
+                if tree_message_id:
+                    try:
+                        old_message = await channel.fetch_message(tree_message_id)
+                        await old_message.delete()
+                        print(f"[TREE] Deleted old tree message in {channel.name}")
+                    except:
+                        pass
+                
+                # Create new message (without pinning)
                 new_message = await channel.send(embed=embed, view=view)
-                await new_message.pin()
                 
+                # Store message ID in database
                 async with aiosqlite.connect(DB_PATH) as db:
                     await db.execute(
                         "UPDATE server_tree SET tree_message_id = ? WHERE guild_id = ?",
                         (new_message.id, guild_id)
                     )
                     await db.commit()
-        
-        except Exception as e:
-            print(f"[TREE] Error updating pin message: {e}")
+                
+                print(f"[TREE] Created new tree message in {channel.name}")
+            
+            except Exception as e:
+                print(f"[TREE] Error updating tree message: {e}")
 
     async def process_contribution(self, interaction: discord.Interaction, amount: int):
         """Process seed contribution"""
-        await interaction.response.defer(ephemeral=True)
+        # Only defer if not already deferred (from modal it's already deferred)
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer(ephemeral=False)
+            except Exception as e:
+                print(f"[TREE] Error deferring response: {e}")
+                return
         
-        user_id = interaction.user.id
-        guild_id = interaction.guild.id
-        
-        # Check user balance
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT seeds FROM economy_users WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-        
-        if not row or row[0] < amount:
-            current = row[0] if row else 0
-            await interaction.followup.send(
-                f"Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current}",
-                ephemeral=True
-            )
-            return
-        
-        # Deduct seeds
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE economy_users SET seeds = seeds - ? WHERE user_id = ?",
-                (amount, user_id)
-            )
-            await db.commit()
-        
-        # Get current tree state
-        lvl, prog, total, season, tree_channel_id, _ = await self.get_tree_data(guild_id)
-        
-        if lvl >= 6:
-            # Refund and show message
-            await interaction.followup.send(
-                "🍎 Cây đã chín rồi! Hãy bảo Admin dùng lệnh `/thuhoach`!",
-                ephemeral=True
-            )
+        try:
+            user_id = interaction.user.id
+            guild_id = interaction.guild.id
+            
+            # Check user balance
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT seeds FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row or row[0] < amount:
+                current = row[0] if row else 0
+                await interaction.followup.send(
+                    f"Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current}",
+                    ephemeral=True
+                )
+                return
+            
+            # Deduct seeds
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute(
-                    "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                    "UPDATE economy_users SET seeds = seeds - ? WHERE user_id = ?",
                     (amount, user_id)
                 )
                 await db.commit()
-            return
-        
-        # Update tree progress
-        level_reqs = self.get_level_reqs(season)
-        req = level_reqs.get(lvl + 1, level_reqs[6])
-        new_progress = prog + amount
-        new_total = total + amount
-        leveled_up = False
-        
-        if new_progress >= req and lvl < 6:
-            lvl += 1
-            new_progress = new_progress - req
-            leveled_up = True
-        
-        await self.update_tree_progress(guild_id, lvl, new_progress, new_total)
-        await self.add_contributor(user_id, guild_id, amount)
-        
-        # Response embed
-        embed = discord.Embed(
-            title="🌱 Góp Hạt Thành Công!",
-            color=discord.Color.green()
-        )
-        embed.add_field(name="👤 Người góp", value=f"**{interaction.user.name}**", inline=False)
-        embed.add_field(name="🌱 Hạt góp", value=f"**+{amount}**", inline=True)
-        embed.add_field(name="💰 Còn lại", value=f"**{row[0] - amount}**", inline=True)
-        
-        if leveled_up:
-            embed.add_field(
-                name="🎉 CÂY LỚN LÊN CẤP!",
-                value=f"**{TREE_NAMES[lvl]}** - Cấp {lvl}/6",
-                inline=False
+            
+            # Get current tree state
+            lvl, prog, total, season, tree_channel_id, _ = await self.get_tree_data(guild_id)
+            
+            if lvl >= 6:
+                # Refund and show message
+                await interaction.followup.send(
+                    "🍎 Cây đã chín rồi! Hãy bảo Admin dùng lệnh `/thuhoach`!",
+                    ephemeral=True
+                )
+                async with aiosqlite.connect(DB_PATH) as db:
+                    await db.execute(
+                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                        (amount, user_id)
+                    )
+                    await db.commit()
+                return
+            
+            # Update tree progress
+            level_reqs = self.get_level_reqs(season)
+            req = level_reqs.get(lvl + 1, level_reqs[6])
+            new_progress = prog + amount
+            new_total = total + amount
+            leveled_up = False
+            
+            if new_progress >= req and lvl < 6:
+                lvl += 1
+                new_progress = new_progress - req
+                leveled_up = True
+            
+            await self.update_tree_progress(guild_id, lvl, new_progress, new_total)
+            await self.add_contributor(user_id, guild_id, amount)
+            
+            # Response embed - PUBLIC announcement
+            embed = discord.Embed(
+                title="Góp Hạt Thành Công!",
+                color=discord.Color.green()
             )
-            embed.color = discord.Color.gold()
+            embed.add_field(name="Người góp", value=f"**{interaction.user.name}**", inline=False)
+            embed.add_field(name="Hạt góp", value=f"**+{amount}**", inline=True)
+            embed.add_field(name="Tiến độ", value=f"**{int((new_progress / req) * 100) if req > 0 else 0}%** ({new_progress}/{req})", inline=True)
+            
+            if leveled_up:
+                embed.add_field(
+                    name="CÂY ĐÃ LÊN CẤP!",
+                    value=f"**{TREE_NAMES[lvl]}** - Cấp {lvl}/6",
+                    inline=False
+                )
+                embed.color = discord.Color.gold()
+            
+            await interaction.followup.send(embed=embed, ephemeral=False)
+            
+            # Update pinned message
+            if tree_channel_id:
+                await self.update_or_create_pin_message(guild_id, tree_channel_id)
+            
+            print(f"[TREE] {interaction.user.name} contributed {amount} seeds (Tree now Level {lvl})")
         
-        await interaction.followup.send(embed=embed, ephemeral=True)
-        
-        # Update pinned message
-        if tree_channel_id:
-            await self.update_or_create_pin_message(guild_id, tree_channel_id)
-        
-        print(f"[TREE] {interaction.user.name} contributed {amount} seeds (Tree now Level {lvl})")
+        except Exception as e:
+            print(f"[TREE] Error in process_contribution: {e}")
+            try:
+                await interaction.followup.send(
+                    f"Có lỗi xảy ra: {str(e)}",
+                    ephemeral=True
+                )
+            except:
+                pass
 
     # ==================== COMMANDS ====================
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Update tree message when any message is sent in tree channel"""
+        # Ignore bot messages
+        if message.author.bot:
+            return
+        
+        # Check if message is in a tree channel
+        guild_id = message.guild.id if message.guild else None
+        if not guild_id:
+            return
+        
+        try:
+            # Get tree channel for this guild
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT tree_channel_id FROM server_tree WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row or not row[0]:
+                return
+            
+            tree_channel_id = row[0]
+            
+            # Check if this message is in the tree channel
+            if message.channel.id != tree_channel_id:
+                return
+            
+            # Debounce: only update tree message every 5 seconds max per guild
+            import time
+            current_time = time.time()
+            last_update = self.last_tree_update.get(guild_id, 0)
+            
+            if current_time - last_update < 5:
+                return
+            
+            self.last_tree_update[guild_id] = current_time
+            
+            # Update tree message (delete old + create new)
+            await self.update_or_create_pin_message(guild_id, tree_channel_id)
+        
+        except Exception as e:
+            print(f"[TREE] Error in on_message: {e}")
 
     @app_commands.command(name="gophat", description="Góp Hạt nuôi cây server")
     @app_commands.describe(amount="Số hạt muốn góp (tuỳ chọn)")
@@ -370,7 +442,7 @@ class CommunityCog(commands.Cog):
         else:
             if amount <= 0:
                 await interaction.response.defer(ephemeral=True)
-                await interaction.followup.send("❌ Số lượng phải lớn hơn 0!", ephemeral=True)
+                await interaction.followup.send("Số lượng phải lớn hơn 0!", ephemeral=True)
                 return
             
             await self.process_contribution(interaction, amount)
@@ -394,7 +466,7 @@ class CommunityCog(commands.Cog):
                 except:
                     contrib_text += f"{idx}. **User #{uid}** - {amt} Hạt\n"
             
-            embed.add_field(name="🏆 Top 3 Người Góp", value=contrib_text, inline=False)
+            embed.add_field(name="Top 3 Người Góp", value=contrib_text, inline=False)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -414,13 +486,13 @@ class CommunityCog(commands.Cog):
         
         if lvl < 6:
             await interaction.followup.send(
-                f"❌ Cây chưa chín! Hiện tại: Level {lvl}/6. Cần thêm {max_req - prog} Hạt.",
+                f"Cây chưa chín! Hiện tại: Level {lvl}/6. Cần thêm {max_req - prog} Hạt.",
                 ephemeral=True
             )
             return
         
         # === CLIMAX EVENT STARTS ===
-        await interaction.followup.send("🍎 **ĐANG THU HOẠCH...** Xin chờ một chút! 🌟")
+        await interaction.followup.send("**ĐANG THU HOẠCH...** Xin chờ một chút! 🌟")
         
         # Get top 3 contributors
         contributors = await self.get_top_contributors(guild_id, 3)
@@ -535,7 +607,7 @@ class CommunityCog(commands.Cog):
                 member = await interaction.guild.fetch_member(top1_user)
                 if member:
                     await member.add_roles(role)
-                    role_mention = f"\n🌟 Đã cấp role **{role_name}** cho **{top1_user_obj.name}**"
+                    role_mention = f"\nĐã cấp role **{role_name}** cho **{top1_user_obj.name}**"
             except Exception as e:
                 print(f"[TREE] Error creating role: {e}")
                 role_mention = ""
@@ -551,8 +623,8 @@ class CommunityCog(commands.Cog):
         # Field 1: Global Buff
         embed.add_field(
             name="✨ TOÀN SERVER BỰC LỪA (24 Giờ)",
-            value=f"🔥 **X2 Hạt** khi chat/voice\n🔥 **X2 Hạt** cho mọi activity\n"
-                  f"💫 Tất cả member nhận **{global_reward} Hạt** ngay lập tức!",
+            value=f"**X2 Hạt** khi chat/voice\n**X2 Hạt** cho mọi activity\n"
+                  f"Tất cả member nhận **{global_reward} Hạt** ngay lập tức!",
             inline=False
         )
         
@@ -573,7 +645,7 @@ class CommunityCog(commands.Cog):
         
         # Field 4: Season Reset
         embed.add_field(
-            name="🌱 MÙA MỚI BẮT ĐẦU",
+            name="MÙA MỚI BẮT ĐẦU",
             value=f"Cây đã tái sinh Level 1\n"
                   f"Mùa {season + 1} chính thức khai mạc!\n"
                   f"Hãy chuẩn bị cho cuộc đua góp hạt mới",
@@ -593,9 +665,9 @@ class CommunityCog(commands.Cog):
             announce_msg = (
                 f"🎊 Yayyyy 🎊\n\n"
                 f"**MÙA THU HOẠCH CÂY HIÊN NHÀ ĐÃ KẾT THÚC!**\n\n"
-                f"🔥 Trong 24 giờ tới, mọi người sẽ nhận **X2 Hạt từ chat/voice**!\n"
-                f"💨 Hãy tranh thủ online để tối đa hóa lợi nhuận!\n\n"
-                f"🏆 Chúc mừng {honor_text.split('**')[1] if honor_text else 'những người đã cống hiến'} 🏆"
+                f"Trong 24 giờ tới, mọi người sẽ nhận **X2 Hạt từ chat/voice**!\n"
+                f"Hãy tranh thủ online để tối đa hóa lợi nhuận!\n\n"
+                f"Chúc mừng {honor_text.split('**')[1] if honor_text else 'những người đã cống hiến'}"
             )
             await interaction.followup.send(announce_msg)
         except:

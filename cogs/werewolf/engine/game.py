@@ -18,6 +18,7 @@ from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
 from .voting import VoteSession
 
+DB_PATH = "./data/database.db"
 CARD_BACK_URL = "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/banner.png"
 # Lowered to 4 for easier local testing; raise back to 6 for production balance
 MIN_PLAYERS = 4
@@ -144,6 +145,32 @@ class WerewolfGame:
                 await self._wolf_thread.delete()
             except discord.HTTPException:
                 pass
+    
+    async def _save_game_state(self) -> None:
+        """Save current game state to database (called by game loop)"""
+        try:
+            from .manager import WerewolfManager
+            # Get manager from bot cog
+            cog = self.bot.get_cog("WerewolfCog")
+            if not cog or not hasattr(cog, 'manager'):
+                return
+            
+            await cog.manager.save_game_state(self.guild.id)
+        except Exception as e:
+            logger.error("Error saving game state: %s", str(e))
+    
+    async def _delete_game_state(self) -> None:
+        """Delete saved game state from database when game finishes"""
+        try:
+            import aiosqlite
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute(
+                    "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                    (self.guild.id, "werewolf")
+                )
+                await db.commit()
+        except Exception as e:
+            logger.error("Error deleting game state: %s", str(e))
 
     def list_players(self) -> Sequence[PlayerState]:
         return list(self.players.values())
@@ -248,6 +275,10 @@ class WerewolfGame:
                     logger.error("Exception in _check_win_condition after night | guild=%s error=%s", 
                                 self.guild.id, str(e), exc_info=True)
                     raise
+                
+                # Save game state after night
+                await self._save_game_state()
+                
                 await self._run_day()
                 logger.info("After day: checking win condition | guild=%s day=%s", 
                             self.guild.id, self.day_number)
@@ -260,6 +291,9 @@ class WerewolfGame:
                     logger.error("Exception in _check_win_condition after day | guild=%s error=%s", 
                                 self.guild.id, str(e), exc_info=True)
                     raise
+                
+                # Save game state after day
+                await self._save_game_state()
         finally:
             # Unmute all players and enable text chat before announcing winner
             await self._force_unmute_all()
@@ -274,6 +308,9 @@ class WerewolfGame:
             if self._sisters_thread:
                 with contextlib.suppress(discord.HTTPException):
                     await self._sisters_thread.delete()
+            
+            # Delete saved game state when game finishes
+            await self._delete_game_state()
 
     async def _run_night(self) -> None:
         self.phase = Phase.NIGHT

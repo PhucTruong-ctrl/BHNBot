@@ -85,8 +85,12 @@ class GameNoiTu(commands.Cog):
                 channel = self.bot.get_channel(channel_id)
                 if channel and guild_id not in self.games:
                     try:
-                        await self.start_new_round(guild_id, channel)
-                        log(f"Game initialized for guild {guild_id}")
+                        # Try to restore game state from database first
+                        is_restored = await self.restore_game_state(guild_id, channel)
+                        if not is_restored:
+                            # If no saved state, start fresh
+                            await self.start_new_round(guild_id, channel)
+                        log(f"Game initialized for guild {guild_id} (restored={is_restored})")
                     except Exception as e:
                         log(f"Failed to initialize game for guild {guild_id}: {e}")
         except Exception as e:
@@ -170,6 +174,78 @@ class GameNoiTu(commands.Cog):
         """Clean up lock after game ends (prevent memory leak)"""
         if guild_id in self.game_locks:
             del self.game_locks[guild_id]
+    
+    async def save_game_state(self, guild_id, channel_id):
+        """Save NoiTu game state to database for resume after restart"""
+        try:
+            if guild_id not in self.games:
+                return
+            
+            game = self.games[guild_id]
+            game_state_json = json.dumps({
+                "current_word": game.get("current_word"),
+                "used_words": list(game.get("used_words", set())),
+                "last_author_id": game.get("last_author_id"),
+                "players": game.get("players", {})
+            })
+            
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Delete old session if exists
+                await db.execute(
+                    "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                    (guild_id, "noitu")
+                )
+                # Insert new session
+                await db.execute(
+                    "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
+                    (guild_id, "noitu", channel_id, game_state_json)
+                )
+                await db.commit()
+            
+            log(f"GAME_SAVED [Guild {guild_id}] Current word: {game.get('current_word')}, Used: {len(game.get('used_words', set()))}")
+        except Exception as e:
+            log(f"ERROR saving game state: {e}")
+    
+    async def restore_game_state(self, guild_id, channel):
+        """Restore NoiTu game state from database after bot restart"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT game_state FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                    (guild_id, "noitu")
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row:
+                log(f"NO_SAVE_FOUND [Guild {guild_id}] Starting fresh game")
+                return False
+            
+            game_state = json.loads(row[0])
+            
+            # Restore game state
+            self.games[guild_id] = {
+                "channel_id": channel.id,
+                "current_word": game_state.get("current_word"),
+                "used_words": set(game_state.get("used_words", [])),
+                "last_author_id": game_state.get("last_author_id"),
+                "timer_task": None,
+                "timer_message": None,
+                "player_count": len(game_state.get("players", {})),
+                "last_message_time": None,
+                "start_message": None,
+                "start_message_content": f"Từ hiện tại: **{game_state.get('current_word')}**\n[Game được resume từ lần restart trước]",
+                "players": game_state.get("players", {})
+            }
+            
+            # Send resume message
+            msg = await channel.send(self.games[guild_id]["start_message_content"])
+            self.games[guild_id]["start_message"] = msg
+            
+            log(f"GAME_RESUMED [Guild {guild_id}] Current word: {game_state.get('current_word')}, Used: {len(game_state.get('used_words', []))}")
+            return True
+        except Exception as e:
+            log(f"ERROR restoring game state: {e}")
+            return False
     
     async def update_player_stats(self, user_id, username, is_winner=False):
         """Update player stats: wins and correct words count"""
@@ -461,6 +537,8 @@ class GameNoiTu(commands.Cog):
                     await self.distribute_rewards(guild_id, winner_id, game_data['players'], channel)
                 
                 await self.start_new_round(guild_id, channel)
+                # Save game state after starting new round
+                await self.save_game_state(guild_id, channel.id)
             
         except asyncio.CancelledError:
             log(f"TIMER_CANCEL [Guild {guild_id}] Next player made move")
@@ -639,6 +717,9 @@ class GameNoiTu(commands.Cog):
                 import time
                 game['last_message_time'] = time.time()
                 
+                # Save game state after each valid move
+                await self.save_game_state(guild_id, message.channel.id)
+                
                 # 5. Check Dead End (kiểm tra với từ mới đã thêm vào used_words)
                 has_next = await self.check_if_word_has_next(content, game['used_words'])
                 
@@ -657,6 +738,8 @@ class GameNoiTu(commands.Cog):
                     # Cleanup lock before starting new round
                     self.cleanup_game_lock(guild_id)
                     await self.start_new_round(guild_id, message.channel)
+                    # Save game state after starting new round
+                    await self.save_game_state(guild_id, message.channel.id)
                     return
                 
                 # 6. Start timer only after 2nd player joins
