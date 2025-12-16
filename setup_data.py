@@ -286,6 +286,28 @@ def init_database():
                 print("✓ Added legendary_hall_of_fame column (JSON dict)")
             except sqlite3.OperationalError:
                 print("ℹ️ legendary_hall_of_fame column already exists")
+        
+        # Additional achievement tracking columns
+        if "worms_used" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN worms_used INTEGER DEFAULT 0")
+                print("✓ Added worms_used column (for worm_destroyer achievement)")
+            except sqlite3.OperationalError:
+                print("ℹ️ worms_used column already exists")
+        
+        if "trash_caught" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN trash_caught INTEGER DEFAULT 0")
+                print("✓ Added trash_caught column (for trash_master achievement)")
+            except sqlite3.OperationalError:
+                print("ℹ️ trash_caught column already exists")
+        
+        if "good_events_encountered" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN good_events_encountered INTEGER DEFAULT 0")
+                print("✓ Added good_events_encountered column (for lucky achievement)")
+            except sqlite3.OperationalError:
+                print("ℹ️ good_events_encountered column already exists")
     
     except Exception as e:
         print(f"⚠️ Economy table check error: {e}")

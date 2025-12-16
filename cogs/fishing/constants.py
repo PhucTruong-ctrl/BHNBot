@@ -782,7 +782,7 @@ RANDOM_EVENT_MESSAGES = {
     "engagement_ring": "Ai đó thất tình ném nhẫn xuống hồ. Nhẫn kim cương xịn nha! 💍",
 
     "school_of_fish":  "Trúng luồng cá di cư! Giật mỏi tay, X3 sản lượng! 🐟🐟🐟",
-    "golden_hook":     "Lưỡi câu của bạn phát sáng hoàng kim! Cá cắn câu gấp đôi! ✨",
+    "golden_hook":     "Lưỡi câu của bạn phát sáng hoàng kim! Có nhiều cá cắn câu hơn! ✨",
     "fish_feeding":    "Đúng giờ cá ăn! Lũ cá tranh nhau đớp mồi. X2 sản lượng! 🍲",
     "friendly_otter":  "Một chú Rái Cá lùa cá vào lưới giúp bạn. X2 cá! 🦦",
     "net_fishing":     "Móc trúng cái lưới của ai bỏ quên, bên trong đầy cá! (X3) 🕸️",
@@ -1090,7 +1090,7 @@ NPC_ENCOUNTERS = {
         "chance": 0.15,
         "rewards": {
             "accept": [
-                {"type": "legendary_buff", "duration": 10, "chance": 0.7, "message": "Ma trả lại cần câu đã được **TẨM PHÉP**!\n✨ 10 lần câu tới tăng **50% tỉ lệ Cá Hiếm**! ✨"},
+                {"type": "legendary_buff", "duration": 10, "chance": 0.7, "message": "Ma tẩm phép sẽ cần câu của bạn!\n✨ **5 phút tới trả lại và tăng 75% tỉ lệ Cá Hiếm** (10 lần câu)! ✨\n👻 Ma lặng lẽ biến mất..."},
                 {"type": "cursed", "chance": 0.3, "message": "👻 Ma cười nham hiểm rồi biến mất!\nCần câu bị **NGUYỀN RỦA** - độ bền giảm 20 điểm! 💀"}
             ],
             "decline": "Bạn hoảng sợ bỏ chạy. Tiếng cười thảm thiết vang lên phía sau..."

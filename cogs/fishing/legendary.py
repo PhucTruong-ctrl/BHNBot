@@ -40,6 +40,22 @@ class LegendaryBossFightView(discord.ui.View):
             )
             result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
             await self.cog.add_legendary_fish_to_user(self.user_id, self.legendary_fish['key'])
+            
+            # Track in collection book
+            from .helpers import track_caught_fish
+            await track_caught_fish(self.user_id, self.legendary_fish['key'])
+            
+            # Check achievement based on legendary fish type
+            legendary_key = self.legendary_fish['key']
+            achievement_map = {
+                "thuong_luong": "river_lord",
+                "ca_ngan_ha": "star_walker",
+                "ca_phuong_hoang": "sun_guardian",
+                "cthulhu_con": "void_gazer",
+                "ca_voi_52hz": "lonely_frequency"
+            }
+            if legendary_key in achievement_map:
+                await self.cog.check_achievement(self.user_id, achievement_map[legendary_key], self.channel, self.guild_id)
         else:
             result_embed = discord.Embed(
                 title="💔 THẤT BẠI! 💔",
@@ -84,6 +100,22 @@ class LegendaryBossFightView(discord.ui.View):
             )
             result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
             await self.cog.add_legendary_fish_to_user(self.user_id, self.legendary_fish['key'])
+            
+            # Track in collection book
+            from .helpers import track_caught_fish
+            await track_caught_fish(self.user_id, self.legendary_fish['key'])
+            
+            # Check achievement based on legendary fish type
+            legendary_key = self.legendary_fish['key']
+            achievement_map = {
+                "thuong_luong": "river_lord",
+                "ca_ngan_ha": "star_walker",
+                "ca_phuong_hoang": "sun_guardian",
+                "cthulhu_con": "void_gazer",
+                "ca_voi_52hz": "lonely_frequency"
+            }
+            if legendary_key in achievement_map:
+                await self.cog.check_achievement(self.user_id, achievement_map[legendary_key], self.channel, self.guild_id)
         else:
             new_durability = max(0, self.rod_durability - 30)
             result_embed = discord.Embed(

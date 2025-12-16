@@ -174,6 +174,16 @@ class FishingCog(commands.Cog):
         else:
             # Có mồi trong túi -> Trừ mồi
             await remove_item(user_id, "worm", 1)
+            # Track worms used for achievement
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    await db.execute(
+                        "UPDATE economy_users SET worms_used = worms_used + 1 WHERE user_id = ?",
+                        (user_id,)
+                    )
+                    await db.commit()
+            except:
+                pass
             print(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
         
         # --- KẾT THÚC LOGIC MỚI ---
@@ -227,6 +237,23 @@ class FishingCog(commands.Cog):
             # Random event occurred!
             event_message = event_result["message"]
             event_type = event_result.get("type")
+            
+            # Track if event is good or bad for achievements
+            is_event_good = event_result.get("gain_money", 0) > 0 or len(event_result.get("gain_items", {})) > 0 or event_result.get("custom_effect") in ["lucky_buff", "sixth_sense", "restore_durability"]
+            if not is_event_good and event_result.get("lose_catch"):
+                is_event_good = False
+            
+            # Update achievement tracking
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    if is_event_good:
+                        await db.execute(
+                            "UPDATE economy_users SET good_events_encountered = good_events_encountered + 1 WHERE user_id = ?",
+                            (user_id,)
+                        )
+                    await db.commit()
+            except:
+                pass
             
             # *** DURABILITY LOSS FROM EVENTS ***
             if event_type == "equipment_break":
@@ -452,7 +479,7 @@ class FishingCog(commands.Cog):
             
             # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
             if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
-                rare_ratio = min(0.95, rare_ratio + 0.5)  # +50% rare chance
+                rare_ratio = min(0.95, rare_ratio + 0.75)  # +75% rare chance
                 print(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
             
             common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
@@ -541,6 +568,17 @@ class FishingCog(commands.Cog):
             for key, qty in trash_items_caught.items():
                 trash_name = key.replace("trash_", "").replace("_", " ").title()
                 fish_display.append(f"🥾 {trash_name} x{qty}")
+            
+            # Track trash caught for achievement
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    await db.execute(
+                        "UPDATE economy_users SET trash_caught = trash_caught + ? WHERE user_id = ?",
+                        (trash_count, user_id)
+                    )
+                    await db.commit()
+            except:
+                pass
             print(f"[FISHING] {username} caught trash: {trash_items_caught}")
         
         # Process chest (độc lập)
@@ -1495,9 +1533,10 @@ class FishingCog(commands.Cog):
         # Get collection
         collection = await get_collection(user_id)
         
-        # Get legendary fish caught
+        # Get legendary fish caught - check both sources (legacy and new)
         try:
             async with aiosqlite.connect(DB_PATH) as db:
+                # Try to get from legendary_fish column (legacy)
                 async with db.execute(
                     "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
                     (user_id,)
@@ -1509,6 +1548,16 @@ class FishingCog(commands.Cog):
                         legendary_caught = []
         except:
             legendary_caught = []
+        
+        # Also check fish_collection for legendary fish (new system)
+        legendary_caught_from_collection = set()
+        for fish_key in collection.keys():
+            if fish_key in LEGENDARY_FISH_KEYS:
+                legendary_caught_from_collection.add(fish_key)
+        
+        # Merge both sources - new system takes priority
+        if legendary_caught_from_collection:
+            legendary_caught = list(legendary_caught_from_collection)
         
         # Separate common and rare
         common_caught = set()
@@ -1613,22 +1662,14 @@ class FishingCog(commands.Cog):
         
         # Add legendary fish section (huyền thoại)
         legendary_display = []
-        caught_count = 0  # Track caught legendary fish count
         for legendary_fish in LEGENDARY_FISH:
             fish_key = legendary_fish['key']
             if fish_key in legendary_caught:
                 # Caught: show name with ✅
                 legendary_display.append(f"✅ {legendary_fish['emoji']} {legendary_fish['name']}")
-                caught_count += 1
             else:
-                # Not caught: only show ???? for first uncaught, hide others
-                if caught_count == 0:
-                    # No legendary caught yet, show one ????
-                    legendary_display.append(f"❓ 🌟 ????")
-                    break  # Only show one ????
-                else:
-                    # Already caught some, don't show remaining uncaught
-                    break
+                # Not caught: show ????
+                legendary_display.append(f"❓ {legendary_fish['emoji']} ????")
         
         embed_rare.add_field(
             name=f"🌟 Cá Huyền Thoại ({len(legendary_caught)}/{len(LEGENDARY_FISH)})",
@@ -1779,11 +1820,6 @@ class FishingCog(commands.Cog):
                 self.caught_list = caught_list
                 self.current_index = current_index
                 self.message = None
-                self.update_buttons()
-            
-            def update_buttons(self):
-                self.prev_button.disabled = self.current_index == 0
-                self.next_button.disabled = self.current_index == len(self.caught_list) - 1
             
             @discord.ui.button(label="← Cá Trước", style=discord.ButtonStyle.primary)
             async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1798,6 +1834,20 @@ class FishingCog(commands.Cog):
                     self.current_index += 1
                     self.update_buttons()
                     await self.update_message(interaction)
+            
+            def update_buttons(self):
+                prev_btn = None
+                next_btn = None
+                for child in self.children:
+                    if isinstance(child, discord.ui.Button):
+                        if child.label and "← " in child.label:
+                            prev_btn = child
+                        elif child.label and " →" in child.label:
+                            next_btn = child
+                if prev_btn:
+                    prev_btn.disabled = self.current_index == 0
+                if next_btn:
+                    next_btn.disabled = self.current_index == len(self.caught_list) - 1
             
             async def update_message(self, interaction: discord.Interaction):
                 fish, catchers = self.caught_list[self.current_index]
@@ -1964,14 +2014,14 @@ class FishingCog(commands.Cog):
                 async with db.execute(
                     """SELECT bad_events_encountered, global_reset_triggered, chests_caught,
                        market_boom_sales, robbed_count, god_of_wealth_encountered, 
-                       rods_repaired, rod_level, trash_recycled FROM economy_users WHERE user_id = ?""",
+                       rods_repaired, rod_level, trash_recycled, worms_used, trash_caught, good_events_encountered FROM economy_users WHERE user_id = ?""",
                     (user_id,)
                 ) as cursor:
                     row = await cursor.fetchone()
                     if not row:
                         return False
                     
-                    bad_events, global_reset, chests, market_boom, robbed, god_wealth, rods_rep, rod_lvl, trash_rec = row
+                    bad_events, global_reset, chests, market_boom, robbed, god_wealth, rods_rep, rod_lvl, trash_rec, worms_used, trash_caught, good_events = row
         except Exception as e:
             print(f"[ACHIEVEMENT] Error fetching stats: {e}")
             return False
@@ -1979,7 +2029,43 @@ class FishingCog(commands.Cog):
         # Check conditions based on achievement type
         condition_met = False
         
-        if achievement_key == "survivor" and bad_events >= achievement["target"]:
+        if achievement_key == "first_catch":
+            # Check if user has caught at least 1 fish (using fish_collection table)
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT COUNT(*) FROM fish_collection WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        count = await cursor.fetchone()
+                        if count and count[0] >= 1:
+                            condition_met = True
+            except:
+                pass
+        elif achievement_key == "worm_destroyer" and worms_used >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "trash_master" and trash_caught >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "millionaire" and (await self._get_user_total_earned(user_id)) >= achievement["target"]:
+            condition_met = True
+        elif achievement_key == "dragon_slayer":
+            # Check if user has caught ca_rong
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'ca_rong'",
+                        (user_id,)
+                    ) as cursor:
+                        count = await cursor.fetchone()
+                        if count and count[0] >= 1:
+                            condition_met = True
+            except:
+                pass
+        elif achievement_key == "unlucky" and bad_events >= 50:
+            condition_met = True
+        elif achievement_key == "lucky" and good_events >= 50:
+            condition_met = True
+        elif achievement_key == "survivor" and bad_events >= achievement["target"]:
             condition_met = True
         elif achievement_key == "child_of_sea" and global_reset >= achievement["target"]:
             condition_met = True
@@ -2010,8 +2096,8 @@ class FishingCog(commands.Cog):
                             condition_met = True
             except:
                 pass
-        elif achievement_key in ["river_lord", "star_walker", "sun_guardian", "void_gazer", "lonely_frequency"]:
-            # Check if user has caught this legendary fish
+        elif achievement_key == "river_lord":
+            # Check if user has caught thuong_luong
             import json
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
@@ -2022,8 +2108,71 @@ class FishingCog(commands.Cog):
                         row = await cursor.fetchone()
                         if row and row[0]:
                             legendary_list = json.loads(row[0])
-                            target_fish = achievement["target"]
-                            if target_fish in legendary_list:
+                            if "thuong_luong" in legendary_list:
+                                condition_met = True
+            except:
+                pass
+        elif achievement_key == "star_walker":
+            # Check if user has caught ca_ngan_ha
+            import json
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0]:
+                            legendary_list = json.loads(row[0])
+                            if "ca_ngan_ha" in legendary_list:
+                                condition_met = True
+            except:
+                pass
+        elif achievement_key == "sun_guardian":
+            # Check if user has caught ca_phuong_hoang
+            import json
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0]:
+                            legendary_list = json.loads(row[0])
+                            if "ca_phuong_hoang" in legendary_list:
+                                condition_met = True
+            except:
+                pass
+        elif achievement_key == "void_gazer":
+            # Check if user has caught cthulhu_con
+            import json
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0]:
+                            legendary_list = json.loads(row[0])
+                            if "cthulhu_con" in legendary_list:
+                                condition_met = True
+            except:
+                pass
+        elif achievement_key == "lonely_frequency":
+            # Check if user has caught ca_voi_52hz
+            import json
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0]:
+                            legendary_list = json.loads(row[0])
+                            if "ca_voi_52hz" in legendary_list:
                                 condition_met = True
             except:
                 pass
@@ -2118,6 +2267,22 @@ class FishingCog(commands.Cog):
         """Add legendary fish to user's collection"""
         await add_legendary_module(user_id, legendary_key)
     
+    async def _get_user_total_earned(self, user_id: int) -> int:
+        """Get total seeds earned by user (from current balance + spent)"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get current balance
+                async with db.execute(
+                    "SELECT seeds FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        return row[0] or 0
+        except:
+            pass
+        return 0
+
     async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: dict, 
                                       fish_key: str, fish_info: dict, username: str):
         """Process NPC acceptance and rewards. Returns result embed. Includes username in title."""
