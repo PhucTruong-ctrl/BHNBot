@@ -96,10 +96,24 @@ class TreeContributeView(discord.ui.View):
     
     @discord.ui.button(label="🌱 10 Hạt", style=discord.ButtonStyle.green, custom_id="tree_10")
     async def contribute_10(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Defer immediately before any await
+        try:
+            await interaction.response.defer(ephemeral=False)
+        except Exception as e:
+            print(f"[TREE] Error deferring response: {e}")
+            return
+        
         await self.tree_cog.process_contribution(interaction, 10)
     
     @discord.ui.button(label="🌿 100 Hạt", style=discord.ButtonStyle.blurple, custom_id="tree_100")
     async def contribute_100(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Defer immediately before any await
+        try:
+            await interaction.response.defer(ephemeral=False)
+        except Exception as e:
+            print(f"[TREE] Error deferring response: {e}")
+            return
+        
         await self.tree_cog.process_contribution(interaction, 100)
     
     @discord.ui.button(label="✏️ Tuỳ ý", style=discord.ButtonStyle.secondary, custom_id="tree_custom")
@@ -338,14 +352,18 @@ class CommunityCog(commands.Cog):
             req = level_reqs.get(lvl + 1, level_reqs[6])
             new_progress = prog + amount
             new_total = total + amount
+            new_level = lvl
             leveled_up = False
             
-            if new_progress >= req and lvl < 6:
-                lvl += 1
+            # Handle level ups (may level up multiple times if large amount)
+            while new_progress >= req and new_level < 6:
+                new_level += 1
                 new_progress = new_progress - req
                 leveled_up = True
+                # Update req for next level
+                req = level_reqs.get(new_level + 1, level_reqs[6])
             
-            await self.update_tree_progress(guild_id, lvl, new_progress, new_total)
+            await self.update_tree_progress(guild_id, new_level, new_progress, new_total)
             await self.add_contributor(user_id, guild_id, amount)
             
             # Response embed - PUBLIC announcement
@@ -360,7 +378,7 @@ class CommunityCog(commands.Cog):
             if leveled_up:
                 embed.add_field(
                     name="CÂY ĐÃ LÊN CẤP!",
-                    value=f"**{TREE_NAMES[lvl]}** - Cấp {lvl}/6",
+                    value=f"**{TREE_NAMES[new_level]}** - Cấp {new_level}/6",
                     inline=False
                 )
                 embed.color = discord.Color.gold()
@@ -371,10 +389,12 @@ class CommunityCog(commands.Cog):
             if tree_channel_id:
                 await self.update_or_create_pin_message(guild_id, tree_channel_id)
             
-            print(f"[TREE] {interaction.user.name} contributed {amount} seeds (Tree now Level {lvl})")
+            print(f"[TREE] {interaction.user.name} contributed {amount} seeds (Tree now Level {new_level})")
         
         except Exception as e:
             print(f"[TREE] Error in process_contribution: {e}")
+            import traceback
+            traceback.print_exc()
             try:
                 await interaction.followup.send(
                     f"Có lỗi xảy ra: {str(e)}",

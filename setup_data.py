@@ -193,6 +193,21 @@ def init_database():
                 print("✓ Removed XP/Level columns from economy_users")
             except Exception as e:
                 print(f"⚠️ Cleanup error: {e}")
+        
+        # Add fishing rod columns if missing
+        if "rod_level" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN rod_level INTEGER DEFAULT 1")
+                print("✓ Added rod_level column to economy_users (fishing rod tier)")
+            except sqlite3.OperationalError:
+                print("ℹ️ rod_level column already exists")
+        
+        if "rod_durability" not in eco_columns:
+            try:
+                c.execute("ALTER TABLE economy_users ADD COLUMN rod_durability INTEGER DEFAULT 30")
+                print("✓ Added rod_durability column to economy_users (fishing rod durability)")
+            except sqlite3.OperationalError:
+                print("ℹ️ rod_durability column already exists")
     
     except Exception as e:
         print(f"⚠️ Economy table check error: {e}")

@@ -54,9 +54,9 @@ CATCH_COUNT_WEIGHTS = [70, 20, 8, 2, 0]  # Cho random.choices() với k=1
 # 1. CÁ THƯỜNG (COMMON) - Tỉ lệ gặp cao (~90-95%)
 # Giá: 5 - 15 Hạt.
 COMMON_FISH = [
-    # --- Nhóm Giá Rẻ (5-7 Hạt) - Dễ dính ---
+    # --- Nhóm Giá Rẻ & Cá Đồng (5-7 Hạt) ---
     {"key": "ca_chep", "name": "Cá Chép", "emoji": "🐠", "sell_price": 5},
-    {"key": "ca_ro", "name": "Cá Rô", "emoji": "🐟", "sell_price": 6},
+    {"key": "ca_ro", "name": "Cá Rô Đồng", "emoji": "🐟", "sell_price": 6},
     {"key": "ca_bong", "name": "Cá Bống", "emoji": "🐟", "sell_price": 5},
     {"key": "ca_com", "name": "Cá Cơm", "emoji": "🐟", "sell_price": 5},
     {"key": "ca_moi", "name": "Cá Mòi", "emoji": "🐟", "sell_price": 5},
@@ -64,7 +64,44 @@ COMMON_FISH = [
     {"key": "ca_sac", "name": "Cá Sặc", "emoji": "🐠", "sell_price": 6},
     {"key": "ca_nuc", "name": "Cá Nục", "emoji": "🐟", "sell_price": 7},
     {"key": "ca_bac_ma", "name": "Cá Bạc Má", "emoji": "🐟", "sell_price": 7},
-    {"key": "ca_chim", "name": "Cá Chim", "emoji": "⬜", "sell_price": 7},
+    {"key": "ca_chim", "name": "Cá Chim Trắng", "emoji": "⬜", "sell_price": 7},
+    {"key": "ca_lau_kinh", "name": "Cá Lau Kính", "emoji": "🧹", "sell_price": 5}, # Đặc sản sông VN
+    {"key": "ca_long_tong", "name": "Cá Lòng Tong", "emoji": "🐟", "sell_price": 5},
+    {"key": "ca_bay_trau", "name": "Cá Bảy Trầu", "emoji": "🌈", "sell_price": 6},
+    {"key": "ca_ro_phi", "name": "Cá Rô Phi", "emoji": "🐟", "sell_price": 6},
+    {"key": "ca_trang", "name": "Cá Trắng", "emoji": "⚪", "sell_price": 5},
+    {"key": "ca_linh", "name": "Cá Linh", "emoji": "🐟", "sell_price": 6},
+    {"key": "ca_chot", "name": "Cá Chốt", "emoji": "🐟", "sell_price": 6},
+    {"key": "ca_diu", "name": "Cá Đù", "emoji": "🐟", "sell_price": 7},
+    {"key": "ca_liet", "name": "Cá Liệt", "emoji": "🐟", "sell_price": 5},
+    {"key": "ca_phen", "name": "Cá Phèn", "emoji": "🐟", "sell_price": 6},
+    {"key": "ca_dong", "name": "Cá Đổng", "emoji": "🐟", "sell_price": 7},
+    {"key": "ca_khoai", "name": "Cá Khoai", "emoji": "🥖", "sell_price": 7},
+    {"key": "ca_bep", "name": "Cá Bớp", "emoji": "🦈", "sell_price": 7},
+    {"key": "ca_son", "name": "Cá Sơn", "emoji": "🔴", "sell_price": 6},
+    {"key": "ca_dia", "name": "Cá Dìa", "emoji": "🍃", "sell_price": 7},
+    {"key": "ca_kinh", "name": "Cá Kình", "emoji": "🐟", "sell_price": 7},
+    {"key": "ca_doi", "name": "Cá Đối", "emoji": "🐟", "sell_price": 6},
+    {"key": "ca_nham", "name": "Cá Nhám", "emoji": "🦈", "sell_price": 7},
+    {"key": "ca_thoi_loi", "name": "Cá Thòi Lòi", "emoji": "👀", "sell_price": 7},
+    {"key": "nong_noc", "name": "Nòng Nọc", "emoji": "⚫", "sell_price": 5},
+
+    # --- Nhóm Tôm/Cua/Ốc Bình Dân (5-8 Hạt) ---
+    {"key": "tep_dong", "name": "Tép Đồng", "emoji": "🦐", "sell_price": 5},
+    {"key": "oc_buou", "name": "Ốc Bươu", "emoji": "🐚", "sell_price": 6},
+    {"key": "oc_lac", "name": "Ốc Lác", "emoji": "🐚", "sell_price": 6},
+    {"key": "oc_gao", "name": "Ốc Gạo", "emoji": "🐚", "sell_price": 5},
+    {"key": "oc_dang", "name": "Ốc Đắng", "emoji": "🐚", "sell_price": 5},
+    {"key": "hen", "name": "Con Hến", "emoji": "🦪", "sell_price": 5},
+    {"key": "ngheu", "name": "Con Nghêu", "emoji": "🦪", "sell_price": 6},
+    {"key": "chem_chep", "name": "Chem Chép", "emoji": "🦪", "sell_price": 6},
+    {"key": "so_long", "name": "Sò Lông", "emoji": "🦪", "sell_price": 7},
+    {"key": "so_huyet", "name": "Sò Huyết", "emoji": "🩸", "sell_price": 8},
+    {"key": "cua_dong", "name": "Cua Đồng", "emoji": "🦀", "sell_price": 6},
+    {"key": "con_ram", "name": "Con Rạm", "emoji": "🦀", "sell_price": 6},
+    {"key": "con_cay", "name": "Con Cáy", "emoji": "🦀", "sell_price": 5},
+    {"key": "ba_khia", "name": "Ba Khía", "emoji": "🦀", "sell_price": 7},
+    {"key": "trung_ca", "name": "Trứng Cá", "emoji": "🫧", "sell_price": 5},
 
     # --- Nhóm Trung Bình (8-10 Hạt) ---
     {"key": "ca_tre", "name": "Cá Trê", "emoji": "🥖", "sell_price": 8},
@@ -77,8 +114,23 @@ COMMON_FISH = [
     {"key": "ca_bay_mau", "name": "Cá 7 Màu", "emoji": "🌈", "sell_price": 10},
     {"key": "ca_nheo", "name": "Cá Nheo", "emoji": "🐟", "sell_price": 10},
     {"key": "ca_ho", "name": "Cá Hố", "emoji": "🎗️", "sell_price": 10},
+    {"key": "ca_tra", "name": "Cá Tra", "emoji": "🐋", "sell_price": 8},
+    {"key": "ca_basa", "name": "Cá Basa", "emoji": "🐋", "sell_price": 8},
+    {"key": "ca_chim_den", "name": "Cá Chim Đen", "emoji": "⬛", "sell_price": 9},
+    {"key": "ca_that_lat", "name": "Cá Thát Lát", "emoji": "🔪", "sell_price": 9},
+    {"key": "ca_nganh", "name": "Cá Ngạnh", "emoji": "🐟", "sell_price": 8},
+    {"key": "ca_muong", "name": "Cá Mương", "emoji": "🐟", "sell_price": 8},
+    {"key": "ca_diec", "name": "Cá Diếc", "emoji": "🐟", "sell_price": 8},
+    {"key": "ca_he_vang", "name": "Cá He Vàng", "emoji": "🟡", "sell_price": 9},
+    {"key": "ca_me_vinh", "name": "Cá Mè Vinh", "emoji": "🐟", "sell_price": 9},
+    {"key": "ca_bup", "name": "Cá Búp", "emoji": "🐟", "sell_price": 8},
+    {"key": "ca_neon", "name": "Cá Neon", "emoji": "🚥", "sell_price": 10},
+    {"key": "ca_ty_ba", "name": "Cá Tỳ Bà", "emoji": "🎸", "sell_price": 10},
+    {"key": "ca_mun", "name": "Cá Mún", "emoji": "🐟", "sell_price": 8},
+    {"key": "ca_duoi_nho", "name": "Cá Đuối Nhỏ", "emoji": "🪁", "sell_price": 10},
+    {"key": "luon", "name": "Con Lươn", "emoji": "🐍", "sell_price": 10},
 
-    # --- Nhóm Ngon (11-15 Hạt) ---
+    # --- Nhóm Ngon & Đặc Sản (11-15 Hạt) ---
     {"key": "ca_thu", "name": "Cá Thu", "emoji": "🐟", "sell_price": 12},
     {"key": "ca_ngu", "name": "Cá Ngừ", "emoji": "🦈", "sell_price": 12},
     {"key": "ca_mu", "name": "Cá Mú", "emoji": "🐡", "sell_price": 13},
@@ -88,34 +140,137 @@ COMMON_FISH = [
     {"key": "muc_ong", "name": "Mực Ống", "emoji": "🦑", "sell_price": 15},
     {"key": "bach_tuoc", "name": "Bạch Tuộc", "emoji": "🐙", "sell_price": 15},
     {"key": "tom_hum_dat", "name": "Tôm Đất", "emoji": "🦐", "sell_price": 15},
-    {"key": "cua_dong", "name": "Cua Đồng", "emoji": "🦀", "sell_price": 12},
+    {"key": "tom_cang_xanh", "name": "Tôm Càng", "emoji": "🦞", "sell_price": 14},
+    {"key": "tom_su", "name": "Tôm Sú", "emoji": "🦐", "sell_price": 13},
+    {"key": "tom_tit", "name": "Tôm Tít", "emoji": "🦐", "sell_price": 12},
+    {"key": "ghe_xanh", "name": "Ghẹ Xanh", "emoji": "🦀", "sell_price": 13},
+    {"key": "oc_huong", "name": "Ốc Hương", "emoji": "🐚", "sell_price": 14},
+    {"key": "oc_mong_tay", "name": "Ốc Móng Tay", "emoji": "💅", "sell_price": 12},
+    {"key": "oc_len", "name": "Ốc Len", "emoji": "🐚", "sell_price": 12},
+    {"key": "ech", "name": "Con Ếch", "emoji": "🐸", "sell_price": 11},
+    {"key": "ca_bop_bien", "name": "Cá Bớp Biển", "emoji": "🦈", "sell_price": 14},
+    {"key": "ca_chach_lau", "name": "Cá Chạch Lấu", "emoji": "🐍", "sell_price": 15},
+    {"key": "ca_bong_tuong", "name": "Cá Bống Tượng", "emoji": "🗿", "sell_price": 15},
+    {"key": "ca_leo", "name": "Cá Leo", "emoji": "🦈", "sell_price": 13},
+    {"key": "ca_chem", "name": "Cá Chẽm", "emoji": "🐟", "sell_price": 13},
+    {"key": "ca_bong_mu", "name": "Cá Bống Mú", "emoji": "🐡", "sell_price": 14},
+    {"key": "ca_khoai", "name": "Cá Khoai", "emoji": "🐟", "sell_price": 11},
+    {"key": "ca_tuyet", "name": "Cá Tuyết", "emoji": "❄️", "sell_price": 15},
+    {"key": "muc_la", "name": "Mực Lá", "emoji": "🦑", "sell_price": 15},
+    {"key": "muc_sim", "name": "Mực Sim", "emoji": "🦑", "sell_price": 14},
+    {"key": "sua", "name": "Con Sứa", "emoji": "🎐", "sell_price": 11},
+    {"key": "sam_bien", "name": "Con Sam", "emoji": "🛸", "sell_price": 15},
+    {"key": "ca_chich", "name": "Cá Trích", "emoji": "🐟", "sell_price": 11},
 ]
 
 # 2. CÁ HIẾM (RARE) - Tỉ lệ gặp thấp (~5-10%)
 # Giá: 35 - 150 Hạt.
 RARE_FISH = [
-    # --- Rare Thường (35-50 Hạt) ---
+    # --- Rare Thường: Cá cảnh & Hải sản cao cấp (35-55 Hạt) ---
     {"key": "ca_koi", "name": "Cá Koi", "emoji": "✨🐠", "sell_price": 35},
     {"key": "ca_he", "name": "Cá Hề (Nemo)", "emoji": "🤡", "sell_price": 35},
     {"key": "ca_hoi", "name": "Cá Hồi", "emoji": "🍣", "sell_price": 40},
     {"key": "ca_thien_than", "name": "Thiên Thần", "emoji": "👼", "sell_price": 40},
-    {"key": "ca_dia", "name": "Cá Đĩa", "emoji": "💿", "sell_price": 45},
+    {"key": "ca_dia_canh", "name": "Cá Đĩa", "emoji": "💿", "sell_price": 45},
     {"key": "ca_ngua", "name": "Cá Ngựa", "emoji": "🐎", "sell_price": 45},
     {"key": "ca_tam", "name": "Cá Tầm", "emoji": "🦈", "sell_price": 50},
     {"key": "ca_betta", "name": "Betta Rồng", "emoji": "🐉", "sell_price": 50},
+    {"key": "ca_la_han", "name": "La Hán", "emoji": "🤯", "sell_price": 55},
+    {"key": "ca_hong_ket", "name": "Hồng Két", "emoji": "🦜", "sell_price": 45},
+    {"key": "ca_phuong_hoang", "name": "Phượng Hoàng", "emoji": "🐦", "sell_price": 40},
+    {"key": "ca_than_tien", "name": "Thần Tiên", "emoji": "🧚", "sell_price": 40},
+    {"key": "tom_hum_bong", "name": "Tôm Hùm Bông", "emoji": "🦞", "sell_price": 55},
+    {"key": "tom_hum_alaska", "name": "Tôm Alaska", "emoji": "🦞", "sell_price": 55},
+    {"key": "cua_hoang_de", "name": "Cua Hoàng Đế", "emoji": "👑", "sell_price": 55},
+    {"key": "cua_tuyet", "name": "Cua Tuyết", "emoji": "❄️", "sell_price": 50},
+    {"key": "bao_ngu", "name": "Bào Ngư", "emoji": "👂", "sell_price": 50},
+    {"key": "hai_sam", "name": "Hải Sâm", "emoji": "🥒", "sell_price": 45},
+    {"key": "cau_gai", "name": "Cầu Gai (Nhum)", "emoji": "⚫", "sell_price": 40},
+    {"key": "oc_voi_voi", "name": "Ốc Vòi Voi", "emoji": "🐘", "sell_price": 55},
+    {"key": "ca_noc", "name": "Cá Nóc", "emoji": "🐡", "sell_price": 50},
+    {"key": "ca_bo_giap", "name": "Cá Bò Giáp", "emoji": "🛡️", "sell_price": 45},
+    {"key": "ca_su_mi", "name": "Cá Napoleon", "emoji": "🎩", "sell_price": 55},
+    {"key": "ca_mo", "name": "Cá Mó (Vẹt)", "emoji": "🦜", "sell_price": 40},
+    {"key": "ca_duoi_gai", "name": "Đuối Gai Độc", "emoji": "💉", "sell_price": 50},
+    {"key": "ca_hong_vy", "name": "Hồng Vỹ Mỏ Vịt", "emoji": "🦆", "sell_price": 55},
+    {"key": "ca_sau_hoa_tien", "name": "Sấu Hỏa Tiễn", "emoji": "🚀", "sell_price": 50},
+    {"key": "axolotl", "name": "Kỳ Giông Axolotl", "emoji": "🦎", "sell_price": 55},
+    {"key": "rua_xanh", "name": "Rùa Xanh", "emoji": "🐢", "sell_price": 45},
+    {"key": "ba_ba", "name": "Con Ba Ba", "emoji": "🐢", "sell_price": 40},
 
-    # --- Rare Xịn (60-90 Hạt) ---
+    # --- Rare Xịn: Đại dương & Săn mồi (60-95 Hạt) ---
     {"key": "ca_duoi_dien", "name": "Đuối Điện", "emoji": "⚡", "sell_price": 60},
     {"key": "ca_long_den", "name": "Cá Lồng Đèn", "emoji": "💡", "sell_price": 65},
-    {"key": "ca_mat_trang", "name": "Mặt Trăng", "emoji": "🌙", "sell_price": 70},
+    {"key": "ca_mat_trang", "name": "Mặt Trăng (Mola)", "emoji": "🌙", "sell_price": 70},
     {"key": "ca_kiem", "name": "Cá Kiếm", "emoji": "⚔️", "sell_price": 75},
-    {"key": "ca_rong", "name": "Cá Rồng", "emoji": "🐲", "sell_price": 80},
+    {"key": "ca_rong_ngan", "name": "Ngân Long", "emoji": "🐲", "sell_price": 70},
+    {"key": "ca_rong_kim", "name": "Kim Long", "emoji": "🐲", "sell_price": 80},
+    {"key": "ca_rong_huyet", "name": "Huyết Long", "emoji": "🐲", "sell_price": 85},
     {"key": "ca_map", "name": "Cá Mập", "emoji": "🦈", "sell_price": 90},
+    {"key": "ca_map_bua", "name": "Cá Mập Búa", "emoji": "🔨", "sell_price": 85},
+    {"key": "ca_map_ho", "name": "Cá Mập Hổ", "emoji": "🐅", "sell_price": 88},
+    {"key": "ca_map_trang", "name": "Cá Mập Trắng", "emoji": "🦷", "sell_price": 95},
+    {"key": "ca_duoi_manta", "name": "Đuối Manta", "emoji": "🛸", "sell_price": 85},
+    {"key": "ca_ngu_dai_duong", "name": "Ngừ Đại Dương", "emoji": "🌊", "sell_price": 80},
+    {"key": "ca_ngu_vay_xanh", "name": "Ngừ Vây Xanh", "emoji": "💎", "sell_price": 95},
+    {"key": "ca_ho_khong_lo", "name": "Cá Hô Khổng Lồ", "emoji": "🤯", "sell_price": 90},
+    {"key": "ca_anh_vu", "name": "Cá Anh Vũ", "emoji": "💋", "sell_price": 90},
+    {"key": "ca_chien", "name": "Cá Chiên Sông Đà", "emoji": "😈", "sell_price": 85},
+    {"key": "ca_tra_dau", "name": "Cá Tra Dầu", "emoji": "⛽", "sell_price": 88},
+    {"key": "ca_lang_khong_lo", "name": "Lăng Khổng Lồ", "emoji": "🥖", "sell_price": 80},
+    {"key": "ca_cop", "name": "Cá Cọp (Tiger)", "emoji": "🐯", "sell_price": 75},
+    {"key": "piranha", "name": "Cá Piranha", "emoji": "😬", "sell_price": 60},
+    {"key": "muc_khong_lo", "name": "Mực Khổng Lồ", "emoji": "🦑", "sell_price": 80},
+    {"key": "bach_tuoc_dom", "name": "Bạch Tuộc Đốm Xanh", "emoji": "☠️", "sell_price": 75},
+    {"key": "sua_hop", "name": "Sứa Hộp", "emoji": "📦", "sell_price": 65},
+    {"key": "ca_mat_quy", "name": "Cá Mặt Quỷ", "emoji": "👺", "sell_price": 70},
+    {"key": "ca_mao_tien", "name": "Cá Mao Tiên", "emoji": "🦁", "sell_price": 65},
+    {"key": "ca_co", "name": "Cá Cờ", "emoji": "🚩", "sell_price": 75},
+    {"key": "ca_buom", "name": "Cá Buồm", "emoji": "⛵", "sell_price": 78},
+    {"key": "luon_dien", "name": "Lươn Điện", "emoji": "⚡", "sell_price": 70},
+    {"key": "ran_bien", "name": "Rắn Biển", "emoji": "🐍", "sell_price": 65},
+    {"key": "ca_hoang_hau", "name": "Cá Hoàng Hậu", "emoji": "👸", "sell_price": 80},
+    {"key": "ca_vampire", "name": "Cá Vampire", "emoji": "🧛", "sell_price": 85},
 
-    # --- LEGENDARY (100+ Hạt) ---
-    {"key": "ca_voi", "name": "Cá Voi Xanh", "emoji": "🐋", "sell_price": 120},
+    # --- LEGENDARY: Thú biển & Thần thoại (100-150+ Hạt) ---
+    {"key": "ca_voi_xanh", "name": "Cá Voi Xanh", "emoji": "🐋", "sell_price": 120},
     {"key": "ca_hai_tuong", "name": "Hải Tượng", "emoji": "🦕", "sell_price": 130},
     {"key": "ca_nha_tang", "name": "Cá Nhà Táng", "emoji": "🐳", "sell_price": 150},
+    {"key": "ca_heo", "name": "Cá Heo", "emoji": "🐬", "sell_price": 110},
+    {"key": "ca_heo_hong", "name": "Cá Heo Hồng", "emoji": "🌸", "sell_price": 115},
+    {"key": "ca_voi_sat_thu", "name": "Cá Voi Sát Thủ", "emoji": "🐼", "sell_price": 140},
+    {"key": "ky_lan_bien", "name": "Kỳ Lân Biển", "emoji": "🦄", "sell_price": 145},
+    {"key": "ca_voi_trang", "name": "Cá Voi Trắng", "emoji": "⚪", "sell_price": 125},
+    {"key": "hai_cau", "name": "Hải Cẩu", "emoji": "🦭", "sell_price": 105},
+    {"key": "su_tu_bien", "name": "Sư Tử Biển", "emoji": "🦁", "sell_price": 110},
+    {"key": "voi_bien", "name": "Voi Biển", "emoji": "🐘", "sell_price": 115},
+    {"key": "chim_canh_cut", "name": "Chim Cánh Cụt", "emoji": "🐧", "sell_price": 100},
+    {"key": "ca_sau", "name": "Cá Sấu Chúa", "emoji": "🐊", "sell_price": 120},
+    {"key": "ha_ma", "name": "Hà Mã", "emoji": "🦛", "sell_price": 130},
+    {"key": "rua_da", "name": "Rùa Da", "emoji": "🐢", "sell_price": 120},
+    {"key": "rua_hoan_kiem", "name": "Rùa Hoàn Kiếm", "emoji": "🗡️", "sell_price": 200}, # Cực hiếm
+    {"key": "megalodon", "name": "Megalodon", "emoji": "🦖", "sell_price": 180},
+    {"key": "thuy_quai_kraken", "name": "Kraken", "emoji": "🦑", "sell_price": 190},
+    {"key": "thuy_quai_nessie", "name": "Quái Vật Nessie", "emoji": "🦕", "sell_price": 190},
+    {"key": "ca_nham_voi", "name": "Cá Nhám Voi", "emoji": "🦈", "sell_price": 135},
+    {"key": "ca_mai_cheo", "name": "Cá Mái Chèo", "emoji": "🚣", "sell_price": 125},
+    {"key": "ca_blob", "name": "Cá Giọt Nước", "emoji": "💧", "sell_price": 110},
+    {"key": "muc_ma", "name": "Mực Ma Cà Rồng", "emoji": "🧛", "sell_price": 130},
+    {"key": "bo_bien", "name": "Bò Biển (Dugong)", "emoji": "🐄", "sell_price": 125},
+    {"key": "ca_coelacanth", "name": "Cá Vây Tay", "emoji": "🦴", "sell_price": 150},
+    {"key": "rong_bien", "name": "Rồng Biển", "emoji": "🐉", "sell_price": 160},
+    {"key": "leviathan", "name": "Leviathan", "emoji": "🌊", "sell_price": 250}, # Boss cuối
+    {"key": "my_nhan_ngu", "name": "Mỹ Nhân Ngư", "emoji": "🧜‍♀️", "sell_price": 300}, # Easter egg
+    {"key": "poseidon", "name": "Đinh Ba Poseidon", "emoji": "🔱", "sell_price": 500}, # Item siêu hiếm
+    {"key": "ngoc_trai_den", "name": "Ngọc Trai Đen", "emoji": "🔮", "sell_price": 150},
+    {"key": "ruong_kho_bau", "name": "Rương Kho Báu", "emoji": "💰", "sell_price": 200},
+    {"key": "ca_than", "name": "Cá Thần", "emoji": "✨", "sell_price": 168},
+    {"key": "ca_chay", "name": "Cá Chuồn", "emoji": "✈️", "sell_price": 100},
+    {"key": "ca_hot_mit", "name": "Cá Hót Mít", "emoji": "🍘", "sell_price": 105},
+    {"key": "ca_vang_khong_lo", "name": "Cá Vàng Giant", "emoji": "🐡", "sell_price": 110},
+    {"key": "ca_map_ma", "name": "Cá Mập Ma", "emoji": "👻", "sell_price": 140},
+    {"key": "ca_rac", "name": "Cá Rác (Dọn Bể)", "emoji": "🗑️", "sell_price": 1}, # Troll: Hiếm nhưng rẻ
+    {"key": "tom_hum_dat_vang", "name": "Tôm Hùm Vàng", "emoji": "🏆", "sell_price": 160},
 ]
 
 # (Đừng quên giữ dòng này để code hoạt động)
@@ -151,6 +306,26 @@ GIFT_ITEMS = ["cafe", "flower", "ring", "gift", "chocolate", "card"]
 
 # Mồi câu (Money Sink)
 WORM_COST = 5  # Giá mua mồi - chống lạm phát bằng cách tiêu tiền trước khi câu
+
+# ==================== TREE NAMES (for level-up notification) ====================
+TREE_NAMES = {
+    1: "🌱 Hạt mầm",
+    2: "🌿 Nảy mầm",
+    3: "🎋 Cây non",
+    4: "🌳 Trưởng thành",
+    5: "🌸 Ra hoa",
+    6: "🍎 Kết trái"
+}
+
+# ==================== CẦN CÂU (ROD SYSTEM) ====================
+# Hệ thống nâng cấp cần câu với Cooldown, Durability, Luck
+ROD_LEVELS = {
+    1: {"name": "Cần Tre", "cost": 0, "durability": 30, "repair": 50, "cd": 30, "luck": 0.0, "emoji": "🎋"},
+    2: {"name": "Cần Thủy Tinh", "cost": 5000, "durability": 50, "repair": 100, "cd": 25, "luck": 0.0, "emoji": "🎣"},
+    3: {"name": "Cần Carbon", "cost": 20000, "durability": 80, "repair": 200, "cd": 20, "luck": 0.02, "emoji": "✨🎣"},
+    4: {"name": "Cần Hợp Kim", "cost": 50000, "durability": 120, "repair": 500, "cd": 15, "luck": 0.05, "emoji": "🔱"},
+    5: {"name": "Cần Poseidon", "cost": 150000, "durability": 200, "repair": 1000, "cd": 10, "luck": 0.10, "emoji": "🔱✨"},
+}
 
 # ==================== ACHIEVEMENTS SYSTEM ====================
 # Hệ thống thành tựu - mục tiêu dài hạn cho người chơi
@@ -757,6 +932,45 @@ class FishingCog(commands.Cog):
         remaining = max(0, cooldown_until - time.time())
         return int(remaining)
     
+    # ==================== ROD SYSTEM HELPERS ====================
+    
+    async def get_rod_data(self, user_id: int) -> tuple:
+        """Get rod level and durability for user (rod_level, rod_durability)"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT rod_level, rod_durability FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row:
+                # Default: level 1, full durability
+                return 1, ROD_LEVELS[1]["durability"]
+            return row[0] or 1, row[1] or ROD_LEVELS[1]["durability"]
+        except Exception as e:
+            print(f"[ROD] Error getting rod data: {e}")
+            return 1, ROD_LEVELS[1]["durability"]
+    
+    async def update_rod_data(self, user_id: int, durability: int, level: int = None):
+        """Update rod durability (and level if provided)"""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                if level is not None:
+                    await db.execute(
+                        "UPDATE economy_users SET rod_durability = ?, rod_level = ? WHERE user_id = ?",
+                        (durability, level, user_id)
+                    )
+                else:
+                    await db.execute(
+                        "UPDATE economy_users SET rod_durability = ? WHERE user_id = ?",
+                        (durability, user_id)
+                    )
+                await db.commit()
+            print(f"[ROD] Updated user {user_id}: durability={durability}, level={level}")
+        except Exception as e:
+            print(f"[ROD] Error updating rod data: {e}")
+    
     # ==================== COMMANDS ====================
     
     @app_commands.command(name="cauca", description="Câu cá - cooldown 30s")
@@ -783,10 +997,35 @@ class FishingCog(commands.Cog):
             channel = ctx_or_interaction.channel
             ctx = ctx_or_interaction
         
-        # Check cooldown
+        # --- GET ROD DATA ---
+        rod_lvl, rod_durability = await self.get_rod_data(user_id)
+        rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
+        
+        # --- CHECK DURABILITY & AUTO REPAIR ---
+        repair_msg = ""
+        is_broken_rod = False  # Flag to treat as no-worm when durability is broken
+        
+        if rod_durability <= 0:
+            repair_cost = rod_config["repair"]
+            balance = await get_user_balance(user_id)
+            
+            if balance >= repair_cost:
+                # Auto repair
+                await add_seeds(user_id, -repair_cost)
+                rod_durability = rod_config["durability"]
+                await self.update_rod_data(user_id, rod_durability)
+                repair_msg = f"\n🛠️ *Cần gãy! Đã tự động sửa (-{repair_cost} Hạt)*"
+                print(f"[FISHING] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} auto-repaired rod (-{repair_cost})")
+            else:
+                # Not enough money to repair - allow fishing but with broken rod penalties
+                is_broken_rod = True
+                repair_msg = f"\n⚠️ **Cần câu đã gãy!** Phí sửa là {repair_cost} Hạt. Bạn đang câu với cần gãy (chỉ 1% cá hiếm, 1 item/lần, không rương)."
+                print(f"[FISHING] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} fishing with broken rod (no funds to repair)")
+        
+        # --- CHECK COOLDOWN (using rod-based cooldown) ---
         remaining = await self.get_fishing_cooldown_remaining(user_id)
         if remaining > 0:
-            msg = f"⏱️ Cần chờ {remaining}s nữa mới được câu lại!"
+            msg = f"⏱️ Cần chờ {remaining}s nữa mới được câu lại! (Cooldown: {rod_config['cd']}s)"
             if is_slash:
                 await ctx.followup.send(msg, ephemeral=True)
             else:
@@ -821,10 +1060,10 @@ class FishingCog(commands.Cog):
         
         # --- KẾT THÚC LOGIC MỚI ---
         
-        print(f"[FISHING] {username} started fishing (user_id={user_id}) [has_worm={has_worm}] [auto_bought={auto_bought}]")
+        print(f"[FISHING] {username} started fishing (user_id={user_id}) [rod_lvl={rod_lvl}] [durability={rod_durability}] [has_worm={has_worm}]")
         
-        # Set cooldown
-        self.fishing_cooldown[user_id] = time.time() + 30
+        # Set cooldown using rod-based cooldown
+        self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
         
         # Casting animation
         wait_time = random.randint(1, 5)
@@ -835,19 +1074,38 @@ class FishingCog(commands.Cog):
             status_text = f"\n💸 *(-{WORM_COST} Hạt mua mồi)*"
         elif not has_worm:
             status_text = "\n⚠️ *Không có mồi (Tỉ lệ rác cao)*"
+        
+        rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Cooldown: {rod_config['cd']}s)*"
 
         casting_msg = await channel.send(
-            f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}"
+            f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}"
         )
         await asyncio.sleep(wait_time)
         
         # ==================== TRIGGER RANDOM EVENTS ====================
         event_result = await self.trigger_random_event(user_id, channel.guild.id)
         
+        # Initialize durability loss (apply after event check)
+        durability_loss = 1  # Default: 1 per cast
+        
         if event_result.get("triggered", False):
             # Random event occurred!
             event_message = event_result["message"]
             event_type = event_result.get("type")
+            
+            # *** DURABILITY LOSS FROM EVENTS ***
+            if event_type == "equipment_break":
+                # Gãy cần: Trừ hết độ bền
+                durability_loss = rod_durability  # Trừ sạch về 0
+                event_message += " (**Cần bị gãy hoàn toàn!**)"
+            elif event_type in ["snapped_line", "plastic_trap"]:
+                # Đứt dây / Vướng rác: Trừ 5 độ bền
+                durability_loss = 5
+                event_message += " (-5 Độ bền cần)"
+            elif event_type == "predator":
+                # Cá dữ: Trừ 3 độ bền
+                durability_loss = 3
+                event_message += " (-3 Độ bền cần)"
             
             # Process event effects
             if event_result.get("lose_worm", False) and has_worm:
@@ -917,9 +1175,9 @@ class FishingCog(commands.Cog):
                     event_message += " (Cooldown xóa sạch!)"
                     print(f"[EVENT] {username} cooldown reset")
                 else:
-                    self.fishing_cooldown[user_id] = time.time() + 30 + event_result["cooldown_increase"]
+                    self.fishing_cooldown[user_id] = time.time() + rod_config["cd"] + event_result["cooldown_increase"]
             else:
-                self.fishing_cooldown[user_id] = time.time() + 30
+                self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
             
             # If lose_catch, don't process fishing
             if event_result.get("lose_catch", False):
@@ -928,8 +1186,12 @@ class FishingCog(commands.Cog):
                     description=event_message,
                     color=discord.Color.red()
                 )
+                # Apply durability loss before returning
+                rod_durability = max(0, rod_durability - durability_loss)
+                await self.update_rod_data(user_id, rod_durability)
+                embed.set_footer(text=f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}")
                 await casting_msg.edit(content="", embed=embed)
-                print(f"[EVENT] {username} triggered {event_type} - fishing cancelled")
+                print(f"[EVENT] {username} triggered {event_type} - fishing cancelled, durability loss: {durability_loss}")
                 return
             
             # Otherwise, display event message and continue fishing
@@ -948,7 +1210,11 @@ class FishingCog(commands.Cog):
         # ==================== NORMAL FISHING PROCESSING ====================
         
         # Roll số lượng cá (1-5) với tỉ lệ giảm dần
-        num_fish = random.choices([1, 2, 3, 4, 5], weights=CATCH_COUNT_WEIGHTS, k=1)[0]
+        # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ được 1 cá hoặc 1 rác (không multiple)
+        if has_worm and not is_broken_rod:
+            num_fish = random.choices([1, 2, 3, 4, 5], weights=CATCH_COUNT_WEIGHTS, k=1)[0]
+        else:
+            num_fish = 1  # Không mồi hoặc cần gãy = 1 cá thôi
         
         # Apply catch multiplier from events (e.g., Golden Hook)
         multiplier = event_result.get("catch_multiplier", 1)
@@ -958,12 +1224,21 @@ class FishingCog(commands.Cog):
             print(f"[EVENT] {username} activated catch_multiplier x{multiplier}: {original_num_fish} → {num_fish} fish")
         
         # Roll trash (độc lập)
-        trash_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
+        # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ roll trash hoặc cá, không vừa cá vừa rác vừa rương
+        if has_worm and not is_broken_rod:
+            trash_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
+        else:
+            # Không mồi hoặc cần gãy: Xác suất cao là rác (50/50 rác hoặc cá)
+            trash_count = random.choices([0, 1], weights=[50, 50], k=1)[0]
         
         # Roll chest (độc lập, tỉ lệ thấp)
+        # NHƯNG: Nếu không có mồi HOẶC cần gãy -> không bao giờ ra rương
         is_boosted = await self.get_tree_boost_status(channel.guild.id)
-        chest_weights = [95, 5] if not is_boosted else [90, 10]
-        chest_count = random.choices([0, 1], weights=chest_weights, k=1)[0]
+        if has_worm and not is_broken_rod:
+            chest_weights = [95, 5] if not is_boosted else [90, 10]
+            chest_count = random.choices([0, 1], weights=chest_weights, k=1)[0]
+        else:
+            chest_count = 0  # Không mồi = không ra rương
         
         results = {"fish": num_fish}
         if trash_count > 0:
@@ -971,7 +1246,7 @@ class FishingCog(commands.Cog):
         if chest_count > 0:
             results["chest"] = chest_count
         
-        print(f"[FISHING] {username} rolled: {num_fish} fish, {trash_count} trash, {chest_count} chest")
+        print(f"[FISHING] {username} rolled: {num_fish} fish, {trash_count} trash, {chest_count} chest [has_worm={has_worm}]")
         
         is_boosted = await self.get_tree_boost_status(channel.guild.id)
         boost_text = " ✨**(CÂY BUFF!)**✨" if is_boosted else ""
@@ -986,12 +1261,12 @@ class FishingCog(commands.Cog):
         # FIX: Track if rare fish already caught this turn (Max 1 rare per cast)
         caught_rare_this_turn = False
         
-        # Chọn loot table dựa trên có worm hay không
-        if has_worm:
+        # Chọn loot table dựa trên có worm hay không, hoặc cần gãy
+        if has_worm and not is_broken_rod:
             # Có mồi = dùng loot table bình thường (có cả cá hiếm)
             loot_table = LOOT_TABLE_BOOST if is_boosted else LOOT_TABLE_NORMAL
         else:
-            # Không có mồi = dùng loot table giảm cực (chỉ rác và cá thường)
+            # Không có mồi HOẶC cần gãy = dùng loot table giảm cực (chỉ rác và cá thường, 1% hiếm)
             loot_table = LOOT_TABLE_NO_WORM
         
         # Process fish - roll loại cá cho mỗi con
@@ -1011,6 +1286,10 @@ class FishingCog(commands.Cog):
                 common_ratio = loot_table["common_fish"] / fish_weights_sum
                 rare_ratio = loot_table["rare_fish"] / fish_weights_sum
             
+            # *** APPLY ROD LUCK BONUS ***
+            rare_ratio = min(0.9, rare_ratio + rod_config["luck"])  # Cap at 90% max
+            common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
+            
             is_rare = random.choices([False, True], weights=[common_ratio, rare_ratio], k=1)[0]
             
             # Check if convert_to_trash event is active (e.g., Pollution)
@@ -1026,7 +1305,7 @@ class FishingCog(commands.Cog):
             if is_rare and not caught_rare_this_turn:
                 fish = random.choice(RARE_FISH)
                 caught_rare_this_turn = True  # Đánh dấu đã bắt rare
-                print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast)")
+                print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
                 await self.add_inventory_item(user_id, fish['key'], "fish")
                 # Track in collection
                 is_new_collection = await self.track_caught_fish(user_id, fish['key'])
@@ -1047,7 +1326,6 @@ class FishingCog(commands.Cog):
                 if fish['key'] not in fish_only_items:
                     fish_only_items[fish['key']] = 0
                 fish_only_items[fish['key']] += 1
-        
         # Display fish grouped
         for key, qty in fish_only_items.items():
             fish = ALL_FISH[key]
@@ -1150,10 +1428,15 @@ class FishingCog(commands.Cog):
         if title_earned:
             title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
         
+        # Build description with broken rod warning if needed
+        desc_parts = ["\n".join(fish_display) if fish_display else "Không có gì"]
+        if is_broken_rod:
+            desc_parts.append("\n⚠️ **CẢNH BÁO: Cần câu gãy!** (Chỉ 1% cá hiếm, 1 item/lần, không rương)")
+        
         embed = discord.Embed(
             title=title,
-            description="\n".join(fish_display) if fish_display else "Không có gì",
-            color=discord.Color.gold() if title_earned else (discord.Color.blue() if total_catches == 1 else discord.Color.gold())
+            description="".join(desc_parts),
+            color=discord.Color.red() if is_broken_rod else (discord.Color.gold() if title_earned else (discord.Color.blue() if total_catches == 1 else discord.Color.gold()))
         )
         
         if title_earned:
@@ -1163,7 +1446,12 @@ class FishingCog(commands.Cog):
                 inline=False
             )
         
-        embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text}")
+        # *** UPDATE DURABILITY AFTER FISHING ***
+        rod_durability = max(0, rod_durability - durability_loss)
+        await self.update_rod_data(user_id, rod_durability)
+        
+        durability_status = f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}"
+        embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}")
         
         # Create view with sell button if there are fish to sell
         view = None
@@ -1199,6 +1487,9 @@ class FishingCog(commands.Cog):
         else:
             user_id = ctx_or_interaction.author.id
             ctx = ctx_or_interaction
+        
+        # Get username
+        username = ctx.user.name if is_slash else ctx.author.name
         
         # Get inventory
         inventory = await get_inventory(user_id)
@@ -1244,17 +1535,25 @@ class FishingCog(commands.Cog):
         event_msg = ""
         event_name = ""
         event_color = discord.Color.green()  # Mặc định màu xanh lá
+        triggered_event = None
         
         # Roll event
         rand = random.random()
         current_chance = 0
-        triggered_event = None
+        
+        # Debug log
+        print(f"[SELL EVENT DEBUG] User: {username}, base_total: {base_total}, random value: {rand:.4f}")
         
         for ev_key, ev_data in SELL_EVENTS.items():
             current_chance += ev_data["chance"]
+            print(f"[SELL EVENT DEBUG] Checking {ev_key}: chance {ev_data['chance']}, cumulative {current_chance:.4f}, trigger? {rand < current_chance}")
             if rand < current_chance:
                 triggered_event = ev_key
+                print(f"[SELL EVENT DEBUG] ✅ TRIGGERED: {triggered_event}")
                 break
+        
+        if not triggered_event:
+            print(f"[SELL EVENT DEBUG] ❌ No event triggered (final cumulative: {current_chance:.4f})")
         
         # Apply event logic
         if triggered_event:
@@ -1282,24 +1581,49 @@ class FishingCog(commands.Cog):
                 
             print(f"[SELL EVENT] {ctx.user.name if is_slash else ctx.author.name} triggered {triggered_event}: {base_total} -> {final_total}")
 
-        # 3. Remove items & Add money
+        # Remove items & Add money
         for fish_key in selected_fish.keys():
             await remove_item(user_id, fish_key, selected_fish[fish_key])
         
         await add_seeds(user_id, final_total)
         
-        # 4. Gửi kết quả
+        # 4. Display sell event notification FIRST (if triggered)
+        if triggered_event:
+            if SELL_EVENTS[triggered_event]["type"] == "good":
+                title = f"🌟 SỰ KIỆN - {username}!"
+                event_embed_color = discord.Color.gold()
+            else:
+                title = f"⚠️ SỰ CỐ - {username}!"
+                event_embed_color = discord.Color.orange()
+            
+            diff = final_total - base_total
+            sign = "+" if diff >= 0 else ""
+            event_detail = f"{SELL_MESSAGES[triggered_event]}\n\n💰 **{event_name}**"
+            
+            event_embed = discord.Embed(
+                title=title,
+                description=event_detail,
+                color=event_embed_color
+            )
+            event_embed.add_field(
+                name="📊 Ảnh hưởng giá bán",
+                value=f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**",
+                inline=False
+            )
+            
+            if is_slash:
+                await ctx.followup.send(embed=event_embed, ephemeral=False)
+            else:
+                await ctx.send(embed=event_embed)
+        
+        # 5. Display main sell result embed
         fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in selected_fish.items()])
-        username = ctx.user.name if is_slash else ctx.author.name
         
         embed = discord.Embed(
             title=f"💰 **{username}** bán {sum(selected_fish.values())} con cá",
-            description=f"{fish_summary}\n\n💵 **Tổng gốc:** {base_total} Hạt{event_msg}",
-            color=event_color
+            description=f"{fish_summary}\n\n💵 **Tổng nhận:** {final_total} Hạt",
+            color=discord.Color.green()
         )
-        
-        # Hiển thị số thực nhận to rõ
-        embed.add_field(name="THỰC NHẬN", value=f"**{final_total} Hạt**", inline=False)
         
         # Check achievement "millionaire" (Tích lũy tiền)
         if hasattr(self, "update_user_stat"):
@@ -1308,7 +1632,7 @@ class FishingCog(commands.Cog):
                 await self.check_achievement(user_id, "millionaire", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
 
         if is_slash:
-            await ctx.followup.send(embed=embed, ephemeral=True)
+            await ctx.followup.send(embed=embed, ephemeral=False)
         else:
             await ctx.send(embed=embed)
     
@@ -1413,7 +1737,7 @@ class FishingCog(commands.Cog):
         await self._recycle_trash_action(ctx, action)
     
     async def _recycle_trash_action(self, ctx_or_interaction, action: str = None):
-        """Recycle trash logic - auto converts 10 trash → 1 fertilizer"""
+        """Recycle trash logic - auto converts 10 trash → 1 fertilizer (recycle ALL trash)"""
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
@@ -1438,7 +1762,7 @@ class FishingCog(commands.Cog):
                 await ctx.send(msg)
             return
         
-        # Check if user has enough trash
+        # Check if user has enough trash (at least 10)
         if trash_count < 10:
             msg = f"❌ Bạn cần 10 rác để tạo phân bón, hiện có {trash_count}"
             if is_slash:
@@ -1447,28 +1771,111 @@ class FishingCog(commands.Cog):
                 await ctx.send(msg)
             return
         
-        # Remove 10 trash items
+        # Calculate how many fertilizers can be created
+        fertilizer_count = trash_count // 10
+        trash_used = fertilizer_count * 10
+        trash_remaining = trash_count - trash_used
+        
+        # Remove all trash items (in groups of 10)
         trash_removed = 0
         for key in list(inventory.keys()):
-            if key.startswith("trash_") and trash_removed < 10:
-                qty_to_remove = min(inventory[key], 10 - trash_removed)
+            if key.startswith("trash_") and trash_removed < trash_used:
+                qty_to_remove = min(inventory[key], trash_used - trash_removed)
                 await remove_item(user_id, key, qty_to_remove)
                 trash_removed += qty_to_remove
         
-        # Add 1 fertilizer
-        await self.add_inventory_item(user_id, "fertilizer", "tool")
+        # Add fertilizers (multiply the count)
+        for _ in range(fertilizer_count):
+            await self.add_inventory_item(user_id, "fertilizer", "tool")
         
         embed = discord.Embed(
             title="✅ Tái Chế Thành Công",
-            description="10 Rác → 1 🌱 Phân Bón",
+            description=f"🗑️ {trash_used} Rác → 🌱 {fertilizer_count} Phân Bón",
             color=discord.Color.green()
         )
-        print(f"[RECYCLE] {ctx.author.name if not is_slash else ctx.user.name} recycled 10 trash → 1 fertilizer")
+        if trash_remaining > 0:
+            embed.add_field(name="Rác còn lại", value=f"{trash_remaining} (cần 10 để tạo 1 phân)", inline=False)
+        
+        username = ctx.user.name if is_slash else ctx.author.name
+        print(f"[RECYCLE] {username} recycled {trash_used} trash → {fertilizer_count} fertilizer")
         
         if is_slash:
             await ctx.followup.send(embed=embed, ephemeral=True)
         else:
             await ctx.send(embed=embed)
+    
+    # ==================== ROD UPGRADE ====================
+    
+    @app_commands.command(name="nangcap", description="Nâng cấp cần câu (Giảm hồi chiêu, tăng bền, tăng may mắn)")
+    async def upgrade_rod_slash(self, interaction: discord.Interaction):
+        """Upgrade rod via slash command"""
+        await self._upgrade_rod_action(interaction)
+    
+    @commands.command(name="nangcap", description="Nâng cấp cần câu")
+    async def upgrade_rod_prefix(self, ctx):
+        """Upgrade rod via prefix command"""
+        await self._upgrade_rod_action(ctx)
+    
+    async def _upgrade_rod_action(self, ctx_or_interaction):
+        """Upgrade rod logic"""
+        is_slash = isinstance(ctx_or_interaction, discord.Interaction)
+        
+        if is_slash:
+            await ctx_or_interaction.response.defer(ephemeral=False)
+            user_id = ctx_or_interaction.user.id
+            ctx = ctx_or_interaction
+        else:
+            user_id = ctx_or_interaction.author.id
+            ctx = ctx_or_interaction
+        
+        # Get current rod
+        cur_lvl, cur_durability = await self.get_rod_data(user_id)
+        
+        if cur_lvl >= 5:
+            msg = "🌟 Cần câu của bạn đã đạt cấp tối đa **(Poseidon)**!"
+            if is_slash:
+                await ctx.followup.send(msg, ephemeral=True)
+            else:
+                await ctx.send(msg)
+            return
+        
+        next_lvl = cur_lvl + 1
+        rod_info = ROD_LEVELS[next_lvl]
+        cost = rod_info["cost"]
+        
+        # Check balance
+        balance = await get_user_balance(user_id)
+        if balance < cost:
+            msg = f"❌ Bạn cần **{cost:,} Hạt** để nâng lên **{rod_info['name']}**!\nHiện có: **{balance:,} Hạt**"
+            if is_slash:
+                await ctx.followup.send(msg, ephemeral=True)
+            else:
+                await ctx.send(msg)
+            return
+        
+        # Deduct seeds and upgrade
+        await add_seeds(user_id, -cost)
+        # When upgrading, restore full durability
+        await self.update_rod_data(user_id, rod_info["durability"], next_lvl)
+        
+        # Build response embed
+        embed = discord.Embed(
+            title="✅ Nâng Cấp Cần Câu Thành Công!",
+            description=f"**{rod_info['emoji']} {rod_info['name']}** (Cấp {next_lvl}/5)",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="⚡ Cooldown", value=f"**{rod_info['cd']}s** (giảm từ {ROD_LEVELS[cur_lvl]['cd']}s)", inline=True)
+        embed.add_field(name="🛡️ Độ Bền", value=f"**{rod_info['durability']}** (tăng từ {ROD_LEVELS[cur_lvl]['durability']})", inline=True)
+        embed.add_field(name="🍀 May Mắn", value=f"**+{int(rod_info['luck']*100)}%** Cá Hiếm" if rod_info['luck'] > 0 else "**Không thay đổi**", inline=True)
+        embed.add_field(name="💰 Chi Phí", value=f"**{cost:,} Hạt**", inline=False)
+        embed.set_footer(text="Độ bền đã được hồi phục hoàn toàn!")
+        
+        if is_slash:
+            await ctx.followup.send(embed=embed)
+        else:
+            await ctx.send(embed=embed)
+        
+        print(f"[ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} upgraded rod to level {next_lvl}")
     
     @app_commands.command(name="bonphan", description="Dùng Phân Bón để nuôi cây (tăng 50-100 điểm)")
     async def use_fertilizer_slash(self, interaction: discord.Interaction):
@@ -1511,19 +1918,78 @@ class FishingCog(commands.Cog):
         boost_amount = random.randint(50, 100)
         
         try:
+            # Get current tree state
+            tree_cog = self.bot.get_cog("CommunityCog")
+            if not tree_cog:
+                raise Exception("CommunityCog not found!")
+            
+            # Get current tree data
+            lvl, prog, total, season, tree_channel_id, _ = await tree_cog.get_tree_data(guild_id)
+            
+            # Calculate new progress and potential level-up
+            level_reqs = tree_cog.get_level_reqs(season)
+            req = level_reqs.get(lvl + 1, level_reqs[6])
+            new_progress = prog + boost_amount
+            new_total = total + boost_amount
+            new_level = lvl
+            leveled_up = False
+            
+            # Handle level ups
+            while new_progress >= req and new_level < 6:
+                new_level += 1
+                new_progress = new_progress - req
+                leveled_up = True
+                req = level_reqs.get(new_level + 1, level_reqs[6])
+            
+            # Update tree in database
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute(
-                    "UPDATE server_tree SET current_progress = current_progress + ? WHERE guild_id = ?",
-                    (boost_amount, guild_id)
+                    "UPDATE server_tree SET current_level = ?, current_progress = ?, total_contributed = ? WHERE guild_id = ?",
+                    (new_level, new_progress, new_total, guild_id)
                 )
                 await db.commit()
             
+            # Build response embed
             embed = discord.Embed(
                 title="🌾 Phân Bón Hiệu Quả!",
-                description=f"**+{boost_amount}** điểm cho Cây Server! (Tổng progress tăng)",
+                description=f"**+{boost_amount}** điểm cho Cây Server!",
                 color=discord.Color.green()
             )
+            
+            # Add level-up notification if applicable
+            if leveled_up:
+                embed.add_field(
+                    name="🌳 CÂY ĐÃ LÊN CẤP!",
+                    value=f"**{TREE_NAMES[new_level]}** (Cấp {new_level}/6)",
+                    inline=False
+                )
+                embed.color = discord.Color.gold()
+            else:
+                embed.add_field(
+                    name="Tiến độ",
+                    value=f"**{int((new_progress / req) * 100) if req > 0 else 0}%** ({new_progress}/{req})",
+                    inline=False
+                )
+            
+            print(f"[FERTILIZER] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} used fertilizer: +{boost_amount} (Tree Level {new_level})")
+            
+            # Update tree embed in the designated channel
+            if tree_channel_id:
+                try:
+                    print(f"[FERTILIZER] Updating tree message in channel {tree_channel_id}")
+                    await tree_cog.update_or_create_pin_message(guild_id, tree_channel_id)
+                    print(f"[FERTILIZER] ✅ Tree embed updated successfully")
+                except Exception as e:
+                    print(f"[FERTILIZER] ❌ Failed to update tree embed: {type(e).__name__}: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print(f"[FERTILIZER] ⚠️ No tree channel configured for guild {guild_id}")
+        
         except Exception as e:
+            print(f"[FERTILIZER] Error: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             embed = discord.Embed(
                 title="❌ Lỗi",
                 description=f"Không thể cộng điểm: {str(e)}",
@@ -1550,7 +2016,7 @@ class FishingCog(commands.Cog):
         await self._view_collection_action(ctx, target_user.id, target_user.name)
     
     async def _view_collection_action(self, ctx_or_interaction, user_id: int, username: str):
-        """View collection logic"""
+        """View collection logic with pagination"""
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
@@ -1585,62 +2051,134 @@ class FishingCog(commands.Cog):
         # Get current title
         current_title = await self.get_title(user_id, guild_id)
         
-        # Build embed
-        embed = discord.Embed(
+        # Build common fish embed (Page 1)
+        embed_common = discord.Embed(
             title=f"📖 Bộ Sưu Tập Cá của {username}",
-            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%) ",
+            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%)\n📄 **Trang 1/2 - Cá Thường**",
             color=discord.Color.gold() if is_complete else discord.Color.blue()
         )
         
-        # Add title if has
         if current_title:
-            embed.description += f"\n👑 **Danh Hiệu: {current_title}**"
+            embed_common.description += f"\n👑 **Danh Hiệu: {current_title}**"
         
-        # Add common fish section
+        # Add common fish section (split into multiple fields to avoid length limit)
         common_display = []
         for fish in COMMON_FISH:
             emoji = "✅" if fish['key'] in common_caught else "❌"
             common_display.append(f"{emoji} {fish['emoji']} {fish['name']}")
         
-        embed.add_field(
-            name=f"🐠 Cá Thường ({len(common_caught)}/{len(COMMON_FISH)})",
-            value="\n".join(common_display) if common_display else "Không có",
-            inline=False
+        # Split common fish into 2 columns if too many
+        if len(common_display) > 30:
+            mid = len(common_display) // 2
+            col1 = "\n".join(common_display[:mid])
+            col2 = "\n".join(common_display[mid:])
+            
+            embed_common.add_field(
+                name=f"🐠 Cá Thường ({len(common_caught)}/{len(COMMON_FISH)}) - Phần 1",
+                value=col1 if col1 else "Không có",
+                inline=True
+            )
+            embed_common.add_field(
+                name="Phần 2",
+                value=col2 if col2 else "Không có",
+                inline=True
+            )
+        else:
+            embed_common.add_field(
+                name=f"🐠 Cá Thường ({len(common_caught)}/{len(COMMON_FISH)})",
+                value="\n".join(common_display) if common_display else "Không có",
+                inline=False
+            )
+        
+        embed_common.set_footer(text="Bấm nút → để xem cá hiếm")
+        
+        # Build rare fish embed (Page 2)
+        embed_rare = discord.Embed(
+            title=f"📖 Bộ Sưu Tập Cá của {username}",
+            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%)\n📄 **Trang 2/2 - Cá Hiếm**",
+            color=discord.Color.gold() if is_complete else discord.Color.blue()
         )
         
-        # Add rare fish section
+        if current_title:
+            embed_rare.description += f"\n👑 **Danh Hiệu: {current_title}**"
+        
+        # Add rare fish section (split into multiple fields to avoid length limit)
         rare_display = []
         for fish in RARE_FISH:
             emoji = "✅" if fish['key'] in rare_caught else "❌"
             rare_display.append(f"{emoji} {fish['emoji']} {fish['name']}")
         
-        embed.add_field(
-            name=f"✨ Cá Hiếm ({len(rare_caught)}/{len(RARE_FISH)})",
-            value="\n".join(rare_display) if rare_display else "Không có",
-            inline=False
-        )
+        # Split rare fish into 2 columns if too many
+        if len(rare_display) > 20:
+            mid = len(rare_display) // 2
+            col1 = "\n".join(rare_display[:mid])
+            col2 = "\n".join(rare_display[mid:])
+            
+            embed_rare.add_field(
+                name=f"✨ Cá Hiếm ({len(rare_caught)}/{len(RARE_FISH)}) - Phần 1",
+                value=col1 if col1 else "Không có",
+                inline=True
+            )
+            embed_rare.add_field(
+                name="Phần 2",
+                value=col2 if col2 else "Không có",
+                inline=True
+            )
+        else:
+            embed_rare.add_field(
+                name=f"✨ Cá Hiếm ({len(rare_caught)}/{len(RARE_FISH)})",
+                value="\n".join(rare_display) if rare_display else "Không có",
+                inline=False
+            )
         
         # Add completion message
         if is_complete:
-            embed.add_field(
+            embed_rare.add_field(
                 name="🏆 HOÀN THÀNH!",
                 value="Bạn đã trở thành **👑 VUA CÂU CÁ 👑**!\nCảm ơn sự kiên trì của bạn! 🎉",
                 inline=False
             )
         else:
             missing_count = total_all_fish - total_caught
-            embed.add_field(
+            embed_rare.add_field(
                 name="📝 Còn Lại",
                 value=f"Bạn còn cần bắt **{missing_count}** loại cá nữa để trở thành Vua Câu Cá! 💪",
                 inline=False
             )
         
-        embed.set_footer(text="Mỗi lần bắt một loại cá mới, nó sẽ được thêm vào sưu tập của bạn!")
+        embed_rare.set_footer(text="Bấm nút ← để xem cá thường • Mỗi lần bắt một loại cá mới, nó sẽ được thêm vào sưu tập!")
+        
+        # Create pagination view
+        class CollectionPaginationView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=300)
+                self.current_page = 0  # 0 = common, 1 = rare
+                self.message = None
+            
+            @discord.ui.button(label="← Cá Thường", style=discord.ButtonStyle.primary, custom_id="collection_prev")
+            async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+                if interaction.user.id != user_id:
+                    await interaction.response.send_message("❌ Bạn không có quyền sử dụng nút này!", ephemeral=True)
+                    return
+                
+                self.current_page = 0
+                await interaction.response.edit_message(embed=embed_common, view=self)
+            
+            @discord.ui.button(label="Cá Hiếm →", style=discord.ButtonStyle.primary, custom_id="collection_next")
+            async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+                if interaction.user.id != user_id:
+                    await interaction.response.send_message("❌ Bạn không có quyền sử dụng nút này!", ephemeral=True)
+                    return
+                
+                self.current_page = 1
+                await interaction.response.edit_message(embed=embed_rare, view=self)
+        
+        view = CollectionPaginationView()
         
         if is_slash:
-            await ctx.followup.send(embed=embed)
+            view.message = await ctx.followup.send(embed=embed_common, view=view)
         else:
-            await ctx.send(embed=embed)
+            view.message = await ctx.send(embed=embed_common, view=view)
 
 async def setup(bot):
     await bot.add_cog(FishingCog(bot))

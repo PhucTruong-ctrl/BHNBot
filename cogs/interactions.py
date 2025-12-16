@@ -106,7 +106,7 @@ class InteractionsCog(commands.Cog):
         )
         embed.add_field(name="Tặng", value=f"**{interaction.user.mention}** tặng", inline=True)
         embed.add_field(name="Nhận", value=f"**{user.mention}**", inline=True)
-        embed.add_field(name="Quà", value=f"{SHOP_ITEMS[item]['emoji']} {SHOP_ITEMS[item]['name']}", inline=False)
+        embed.add_field(name="Quà", value=f"{SHOP_ITEMS[item_key]['emoji']} {SHOP_ITEMS[item_key]['name']}", inline=False)
         embed.add_field(name="💕 Thân thiết", value=f"+10 (cả hai cộng)", inline=False)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
