@@ -113,11 +113,19 @@ class BauCuaCog(commands.Cog):
         return await get_user_balance(user_id)
     
     async def update_seeds(self, user_id: int, amount: int):
-        """Update user's seeds (can be negative)"""
+        """Update user's seeds (can be negative) with logging."""
         # Ensure user exists first
         await get_or_create_user(user_id, f"User#{user_id}")
-        # Then update seeds
+
+        # Track balance before/after for debug
+        balance_before = await get_user_balance(user_id)
         await add_seeds(user_id, amount)
+        balance_after = balance_before + amount
+
+        print(
+            f"[BAUCUA] [SEED_UPDATE] user_id={user_id} seed_change={amount} "
+            f"balance_before={balance_before} balance_after={balance_after}"
+        )
     
     def create_betting_embed(self, time_remaining: int):
         """Create embed for betting phase"""
@@ -215,7 +223,7 @@ class BauCuaCog(commands.Cog):
             f"Bạn đã cược **{bet_amount} hạt** vào **{ANIMALS[animal_key]['name']}** {ANIMALS[animal_key]['emoji']}",
             ephemeral=True
         )
-        print(f"[BAUCUA] {interaction.user.name} bet {bet_amount} seeds on {ANIMALS[animal_key]['name']}")
+        print(f"[BAUCUA] [BET] {interaction.user.name} (user_id={user_id}) seed_change=-{bet_amount} animal={animal_key} action=placed_bet")
     
     async def animate_roll(self, message: discord.Message, duration: float = 6.0):
         """Animate the roll for duration seconds"""
@@ -271,6 +279,7 @@ class BauCuaCog(commands.Cog):
         
         for user_id, bet_list in bets.items():
             user_change = 0
+            bet_details = []
             
             for animal_key, bet_amount in bet_list:
                 matches = sum(1 for r in final_result if r == animal_key)
@@ -279,17 +288,23 @@ class BauCuaCog(commands.Cog):
                     # Formula: bet_amount * (matches + 1)
                     winnings = bet_amount * (matches + 1)
                     user_change += winnings
+                    bet_details.append(f"{animal_key}:{bet_amount}x{matches}")
                 else:
                     # Already deducted at bet time, no additional change
+                    bet_details.append(f"{animal_key}:{bet_amount}x0")
                     user_change += 0
             
             if user_change > 0:
                 updates[user_id] = user_change
+                detail_str = ";".join(bet_details)
+                print(
+                    f"[BAUCUA] [PAYOUT] user_id={user_id} seed_change=+{user_change} bets={len(bet_list)} details={detail_str}"
+                )
         
         # Execute all updates in single batch operation
         if updates:
             await batch_update_seeds(updates)
-            print(f"[BAUCUA] Batch updated {len(updates)} users")
+            print(f"[BAUCUA] [RESULTS] Batch updated {len(updates)} users with seed changes: {updates}")
     
     async def create_summary_text(self, result1: str, result2: str, result3: str, bets_data: dict = None):
         """Create detailed summary text of results per user"""
@@ -430,12 +445,12 @@ class BauCuaCog(commands.Cog):
             # Check if anyone bet
             if not self.active_games[channel_id]['bets']:
                 await channel.send("⚠️ Không ai cược! Game bị hủy.")
-                print(f"[BAUCUA] Game {game_id} cancelled - no bets received")
+                print(f"[BAUCUA] [CANCELLED] Game {game_id} no_bets")
                 del self.active_games[channel_id]
                 return
             
             bets_count = sum(len(bets) for bets in self.active_games[channel_id]['bets'].values())
-            print(f"[BAUCUA] Game {game_id} - Received {len(self.active_games[channel_id]['bets'])} players with {bets_count} total bets")
+            print(f"[BAUCUA] [START] Game {game_id} players={len(self.active_games[channel_id]['bets'])} total_bets={bets_count}")
             
             # Start rolling animation
             await asyncio.sleep(1)  # Small delay before rolling
@@ -464,7 +479,7 @@ class BauCuaCog(commands.Cog):
             )
             summary_send_time = time.time()
             delay_ms = (summary_send_time - result_stop_time) * 1000
-            print(f"[BAUCUA] 📊 Summary sent! Delay: {delay_ms:.1f}ms")
+            print(f"[BAUCUA] [SUMMARY] Displayed results for game {game_id} delay_ms={delay_ms:.1f}")
             
             # Clean up game state immediately
             if channel_id in self.active_games:
@@ -473,7 +488,7 @@ class BauCuaCog(commands.Cog):
             # Update game results in background with bets data (OPTIMIZED: batch update)
             asyncio.create_task(self.update_game_results_batch(channel_id, result1, result2, result3, bets_data))
             
-            print(f"[BAUCUA] Game {game_id} finished in channel {channel.name}")
+            print(f"[BAUCUA] [COMPLETE] game_id={game_id} channel={channel.name}")
         
         except Exception as e:
             print(f"[BAUCUA] Error: {e}")

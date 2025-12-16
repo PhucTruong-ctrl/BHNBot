@@ -279,6 +279,9 @@ RARE_FISH = [
 # Ngọc Trai - Item hiếm từ Tiên Cá (bán giá cao)
 PEARL_INFO = {"key": "pearl", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
 
+# Vật Liệu Nâng Cấp Cần - Item đặc biệt từ Random Events (không bán được, chỉ để nâng cấp)
+ROD_MATERIAL_INFO = {"key": "rod_material", "name": "Vật Liệu Nâng Cấp Cần", "emoji": "⚙️", "sell_price": 0, "description": "Vật liệu quý giá để nâng cấp cần câu. Có thể sử dụng lệnh /nangcap để nâng cấp cần câu (không cần Hạt)"}
+
 # ==================== LEGENDARY FISH ====================
 # Giới hạn: 1 con duy nhất mỗi User (Stardew Valley style)
 # Không thể bán, nhưng có thể hiển thị trong bảng huyền thoại
@@ -292,6 +295,9 @@ LEGENDARY_FISH = [
         "condition": "river_storm",  # Chỉ xuất hiện ở Sông khi trời Mưa Bão
         "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/thuongluong.png",
         "level": 5,  # Cần cần câu level 5 trở lên để có cơ hội catch
+        "spawn_chance": 0.01,  # 1% - Balanced by storm rarity
+        "achievement": "river_lord",
+        "time_restriction": None,  # No time limit
     },
     {
         "key": "ca_ngan_ha",
@@ -302,6 +308,9 @@ LEGENDARY_FISH = [
         "condition": "clear_night",  # Chỉ xuất hiện vào Ban Đêm khi trời Quang Mây (00:00-04:00)
         "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/canganha.png",
         "level": 5,
+        "spawn_chance": 0.008,  # 0.8% at night (reduced from 2%)
+        "achievement": "star_walker",
+        "time_restriction": (0, 4),  # 00:00-04:00
     },
     {
         "key": "ca_phuong_hoang",
@@ -312,6 +321,9 @@ LEGENDARY_FISH = [
         "condition": "noon_sun",  # Chỉ xuất hiện vào 12h trưa (Giờ Ngọ) khi nắng gắt
         "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/caphuonghoang.png",
         "level": 5,
+        "spawn_chance": 0.008,  # 0.8% at noon (reduced from 1.5%)
+        "achievement": "sun_guardian",
+        "time_restriction": (12, 14),  # 12:00-14:00
     },
     {
         "key": "cthulhu_con",
@@ -322,6 +334,9 @@ LEGENDARY_FISH = [
         "condition": "deep_sea",  # Cần dùng mồi đặc biệt hoặc câu ở biển sâu, rare event
         "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/cthulunon.png",
         "level": 5,
+        "spawn_chance": 0.0015,  # 0.15% (reduced from 0.5%)
+        "achievement": "void_gazer",
+        "time_restriction": None,  # Always available
     },
     {
         "key": "ca_voi_52hz",
@@ -332,6 +347,9 @@ LEGENDARY_FISH = [
         "condition": "silence",  # Chỉ xuất hiện khi server vắng vẻ (random cực thấp) hoặc sau sự kiện buồn
         "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/cavoi52hz.png",
         "level": 5,
+        "spawn_chance": 0.0005,  # 0.05% (1/2000 - rarest)
+        "achievement": "lonely_frequency",
+        "time_restriction": None,  # Always available
     }
 ]
 
@@ -340,6 +358,7 @@ LEGENDARY_FISH_KEYS = [f["key"] for f in LEGENDARY_FISH]
 # Create lookup dictionaries
 ALL_FISH = {fish["key"]: fish for fish in COMMON_FISH + RARE_FISH + LEGENDARY_FISH}
 ALL_FISH["pearl"] = PEARL_INFO  # Thêm ngọc trai vào danh sách để có thể bán
+ALL_FISH["rod_material"] = ROD_MATERIAL_INFO  # Thêm vật liệu nâng cấp cần
 COMMON_FISH_KEYS = [f["key"] for f in COMMON_FISH]
 RARE_FISH_KEYS = [f["key"] for f in RARE_FISH]
 
@@ -1909,84 +1928,17 @@ class FishingCog(commands.Cog):
         if len(legendary_list) > 0:
             return None
         
-        # Determine which legendary fish can spawn based on conditions
-        current_time = datetime.now()
-        spawnable = []
-        
-        # Thuồng Luồng: Only during storms (random event)
-        # 1% - Balanced by rarity of storm events
-        spawnable.append({
-            "key": "thuong_luong",
-            "name": "Thuồng Luồng",
-            "emoji": "🐍🌊",
-            "sell_price": 500,
-            "description": "Quái vật sông nước trong truyền thuyết Việt Nam.",
-            "condition": "river_storm",
-            "image_url": "https://i.imgur.com/placeholder1.png",
-            "spawn_chance": 0.01,  # 1% - Balanced by storm rarity
-            "achievement": "river_lord",
-        })
-        
-        # Cá Ngân Hà: Only at night (00:00-04:00) in clear weather
-        # Reduced from 2% to 0.8% for better balance
-        if 0 <= current_hour < 4:
-            spawnable.append({
-                "key": "ca_ngan_ha",
-                "name": "Cá Ngân Hà",
-                "emoji": "🌌✨",
-                "sell_price": 600,
-                "description": "Cơ thể nó chứa đựng cả một vũ trụ thu nhỏ.",
-                "condition": "clear_night",
-                "image_url": "https://i.imgur.com/placeholder2.png",
-                "spawn_chance": 0.008,  # 0.8% at night (reduced from 2%)
-                "achievement": "star_walker",
-            })
-        
-        # Cá Phượng Hoàng: Only at noon (12:00-14:00) in sunny weather
-        # Reduced from 1.5% to 0.8% for better balance
-        if 12 <= current_hour < 14:
-            spawnable.append({
-                "key": "ca_phuong_hoang",
-                "name": "Cá Phượng Hoàng",
-                "emoji": "🔥🦅",
-                "sell_price": 550,
-                "description": "Sinh vật kỳ bí rực cháy dưới nước.",
-                "condition": "noon_sun",
-                "image_url": "https://i.imgur.com/placeholder3.png",
-                "spawn_chance": 0.008,  # 0.8% at noon (reduced from 1.5%)
-                "achievement": "sun_guardian",
-            })
-        
-        # Cthulhu Non: Always available but ultra rare
-        # Reduced from 0.5% to 0.15% for better balance
-        spawnable.append({
-            "key": "cthulhu_con",
-            "name": "Cthulhu Non",
-            "emoji": "🐙👁️",
-            "sell_price": 666,
-            "description": "Một thực thể cổ xưa đang say ngủ.",
-            "condition": "deep_sea",
-            "image_url": "https://i.imgur.com/placeholder4.png",
-            "spawn_chance": 0.0015,  # 0.15% (reduced from 0.5%)
-            "achievement": "void_gazer",
-        })
-        
-        # Cá Voi 52Hz: Ultra rare, emotional theme
-        # Adjusted to 0.05% for extreme rarity (1/2000 casts)
-        spawnable.append({
-            "key": "ca_voi_52hz",
-            "name": "Cá Voi 52Hz",
-            "emoji": "🐋💔",
-            "sell_price": 800,
-            "description": "Chú cá voi cô đơn nhất thế giới.",
-            "condition": "silence",
-            "image_url": "https://i.imgur.com/placeholder5.png",
-            "spawn_chance": 0.0005,  # 0.05% (1/2000 - rarest)
-            "achievement": "lonely_frequency",
-        })
-        
-        # Roll to see if any legendary spawns
-        for legendary in spawnable:
+        # Roll to see if any legendary fish spawns based on time restrictions
+        # Reference consolidated LEGENDARY_FISH dictionary (single source of truth)
+        for legendary in LEGENDARY_FISH:
+            # Check time restriction if exists
+            time_restriction = legendary.get("time_restriction")
+            if time_restriction is not None:
+                start_hour, end_hour = time_restriction
+                if not (start_hour <= current_hour < end_hour):
+                    continue  # Skip this fish due to time restriction
+            
+            # Roll spawn chance
             if random.random() < legendary["spawn_chance"]:
                 return legendary
         
@@ -3104,7 +3056,7 @@ class FishingCog(commands.Cog):
         await self._upgrade_rod_action(ctx)
     
     async def _upgrade_rod_action(self, ctx_or_interaction):
-        """Upgrade rod logic"""
+        """Upgrade rod logic - can use seeds or rod_material"""
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
@@ -3130,19 +3082,34 @@ class FishingCog(commands.Cog):
         rod_info = ROD_LEVELS[next_lvl]
         cost = rod_info["cost"]
         
-        # Check balance
-        balance = await get_user_balance(user_id)
-        if balance < cost:
-            msg = f"❌ Bạn cần **{cost:,} Hạt** để nâng lên **{rod_info['name']}**!\nHiện có: **{balance:,} Hạt**"
-            if is_slash:
-                await ctx.followup.send(msg, ephemeral=True)
-            else:
-                await ctx.send(msg)
-            return
+        # Check if user has rod_material
+        inventory = await get_inventory(user_id)
+        has_material = inventory.get("rod_material", 0) > 0
         
-        # Deduct seeds and upgrade
-        await add_seeds(user_id, -cost)
-        # When upgrading, restore full durability
+        if has_material:
+            # Use rod_material instead of seeds
+            await remove_item(user_id, "rod_material", 1)
+            upgrade_method = "Vật Liệu"
+            cost_display = "1 Vật Liệu Nâng Cấp Cần"
+            use_material = True
+        else:
+            # Check balance for seeds payment
+            balance = await get_user_balance(user_id)
+            if balance < cost:
+                msg = f"❌ Bạn cần **{cost:,} Hạt** hoặc **1 Vật Liệu Nâng Cấp Cần** để nâng lên **{rod_info['name']}**!\n\nHiện có: **{balance:,} Hạt**"
+                if is_slash:
+                    await ctx.followup.send(msg, ephemeral=True)
+                else:
+                    await ctx.send(msg)
+                return
+            
+            # Deduct seeds
+            await add_seeds(user_id, -cost)
+            upgrade_method = "Hạt"
+            cost_display = f"{cost:,} Hạt"
+            use_material = False
+        
+        # Upgrade rod: restore full durability
         await self.update_rod_data(user_id, rod_info["durability"], next_lvl)
         
         # Check rod_tycoon achievement if level 5
@@ -3159,7 +3126,7 @@ class FishingCog(commands.Cog):
         embed.add_field(name="⚡ Thời Gian Chờ", value=f"**{rod_info['cd']}s** (giảm từ {ROD_LEVELS[cur_lvl]['cd']}s)", inline=True)
         embed.add_field(name="🛡️ Độ Bền", value=f"**{rod_info['durability']}** (tăng từ {ROD_LEVELS[cur_lvl]['durability']})", inline=True)
         embed.add_field(name="🍀 May Mắn", value=f"**+{int(rod_info['luck']*100)}%** Cá Hiếm" if rod_info['luck'] > 0 else "**Không thay đổi**", inline=True)
-        embed.add_field(name="💰 Chi Phí", value=f"**{cost:,} Hạt**", inline=False)
+        embed.add_field(name="💰 Chi Phí", value=f"**{cost_display}** ({upgrade_method})", inline=False)
         embed.set_footer(text="Độ bền đã được hồi phục hoàn toàn!")
         
         if is_slash:
@@ -3167,7 +3134,7 @@ class FishingCog(commands.Cog):
         else:
             await ctx.send(embed=embed)
         
-        print(f"[ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} upgraded rod to level {next_lvl}")
+        print(f"[ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} upgraded rod to level {next_lvl} using {upgrade_method}")
     
     @app_commands.command(name="bonphan", description="Dùng Phân Bón để nuôi cây (tăng 50-100 điểm)")
     async def use_fertilizer_slash(self, interaction: discord.Interaction):
@@ -3353,6 +3320,21 @@ class FishingCog(commands.Cog):
         # Get collection
         collection = await self.get_collection(user_id)
         
+        # Get legendary fish caught
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row and row[0]:
+                        legendary_caught = json.loads(row[0])
+                    else:
+                        legendary_caught = []
+        except:
+            legendary_caught = []
+        
         # Separate common and rare
         common_caught = set()
         rare_caught = set()
@@ -3363,13 +3345,13 @@ class FishingCog(commands.Cog):
             elif fish_key in COMMON_FISH_KEYS:
                 common_caught.add(fish_key)
         
-        # Get total count
-        total_all_fish = len(COMMON_FISH_KEYS + RARE_FISH_KEYS)
-        total_caught = len(common_caught) + len(rare_caught)
+        # Get total count (including legendary fish)
+        total_all_fish = len(COMMON_FISH_KEYS + RARE_FISH_KEYS) + len(LEGENDARY_FISH)
+        total_caught = len(common_caught) + len(rare_caught) + len(legendary_caught)
         completion_percent = int((total_caught / total_all_fish) * 100)
         
-        # Check if completed
-        is_complete = await self.check_collection_complete(user_id)
+        # Check if completed (all common + rare + legendary)
+        is_complete = await self.check_collection_complete(user_id) and len(legendary_caught) == len(LEGENDARY_FISH)
         
         # Get current title
         current_title = await self.get_title(user_id, guild_id)
@@ -3418,7 +3400,7 @@ class FishingCog(commands.Cog):
         # Build rare fish embed (Page 2)
         embed_rare = discord.Embed(
             title=f"📖 Bộ Sưu Tập Cá của {username}",
-            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%)\n📄 **Trang 2/2 - Cá Hiếm**",
+            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%)\n📄 **Trang 2/2 - Cá Hiếm & Huyền Thoại**",
             color=discord.Color.gold() if is_complete else discord.Color.blue()
         )
         
@@ -3453,6 +3435,31 @@ class FishingCog(commands.Cog):
                 value="\n".join(rare_display) if rare_display else "Không có",
                 inline=False
             )
+        
+        # Add legendary fish section (huyền thoại)
+        legendary_display = []
+        caught_count = 0  # Track caught legendary fish count
+        for legendary_fish in LEGENDARY_FISH:
+            fish_key = legendary_fish['key']
+            if fish_key in legendary_caught:
+                # Caught: show name with ✅
+                legendary_display.append(f"✅ {legendary_fish['emoji']} {legendary_fish['name']}")
+                caught_count += 1
+            else:
+                # Not caught: only show ???? for first uncaught, hide others
+                if caught_count == 0:
+                    # No legendary caught yet, show one ????
+                    legendary_display.append(f"❓ 🌟 ????")
+                    break  # Only show one ????
+                else:
+                    # Already caught some, don't show remaining uncaught
+                    break
+        
+        embed_rare.add_field(
+            name=f"🌟 Cá Huyền Thoại ({len(legendary_caught)}/{len(LEGENDARY_FISH)})",
+            value="\n".join(legendary_display) if legendary_display else "❓ 🌟 ????",
+            inline=False
+        )
         
         # Add completion message
         if is_complete:
@@ -3579,6 +3586,69 @@ class FishingCog(commands.Cog):
             await interaction.followup.send(embed=embed)
         else:
             await interaction.send(embed=embed)
+    
+    # ==================== DEBUG COMMANDS ====================
+    
+    @commands.command(name="legendarytrigger", description="TEST: Trigger legendary fish encounter (Admin Only)")
+    @commands.has_permissions(administrator=True)
+    async def debug_legendary_trigger(self, ctx, fish_key: str = None):
+        """Debug command to trigger legendary fish encounter"""
+        user_id = ctx.author.id
+        channel = ctx.channel
+        guild_id = ctx.guild.id
+        
+        # Select a legendary fish (random or specified)
+        if fish_key:
+            # Find legendary fish by key
+            legendary_fish = None
+            for fish in LEGENDARY_FISH:
+                if fish['key'].lower() == fish_key.lower():
+                    legendary_fish = fish
+                    break
+            
+            if not legendary_fish:
+                await ctx.send(f"❌ Cá huyền thoại '{fish_key}' không tồn tại!\n\nDanh sách: {', '.join([f['key'] for f in LEGENDARY_FISH])}")
+                return
+        else:
+            # Random legendary fish
+            legendary_fish = random.choice(LEGENDARY_FISH)
+        
+        # Get rod data
+        rod_level, rod_durability = await self.get_rod_data(user_id)
+        rod_config = ROD_LEVELS.get(rod_level, ROD_LEVELS[1])
+        
+        # Create legendary fish embed (same as normal encounter)
+        legendary_embed = discord.Embed(
+            title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
+            description=f"🌊 Có một con quái vật đang cắn câu!\n"
+                       f"💥 Nó đang kéo bạn xuống nước!\n\n"
+                       f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n"
+                       f"_{legendary_fish['description']}_",
+            color=discord.Color.dark_red()
+        )
+        legendary_embed.add_field(
+            name="⚔️ CHUẨN BỊ ĐẤU BOSS!",
+            value=f"Độ bền cần câu: {rod_durability}/{rod_config['durability']}\n"
+                 f"Cấp độ cần: {rod_level}/5",
+            inline=False
+        )
+        legendary_embed.add_field(
+            name="🧪 DEBUG INFO",
+            value=f"Fish Key: `{legendary_fish['key']}`\nSpawn Chance: {legendary_fish['spawn_chance']*100:.2f}%\nAchievement: `{legendary_fish['achievement']}`",
+            inline=False
+        )
+        legendary_embed.set_image(url=legendary_fish.get('image_url', ''))
+        legendary_embed.set_footer(text="[DEBUG] Chọn chiến thuật chinh phục quái vật! ⏱️ 60 giây")
+        
+        # Create boss fight view
+        boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_level, channel, guild_id)
+        
+        # Send boss fight message
+        boss_msg = await channel.send(f"<@{user_id}> [🧪 DEBUG TEST]", embed=legendary_embed, view=boss_view)
+        
+        # Log
+        print(f"[DEBUG] {ctx.author.name} triggered legendary encounter: {legendary_fish['key']}")
+        await ctx.send(f"✅ **DEBUG**: Triggered {legendary_fish['emoji']} {legendary_fish['name']} encounter!")
 
 async def setup(bot):
     await bot.add_cog(FishingCog(bot))

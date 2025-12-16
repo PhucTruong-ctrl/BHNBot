@@ -111,7 +111,11 @@ class InteractionsCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
-        print(f"[GIFT] {interaction.user.name} gifted {item} to {user.name}")
+        print(
+            f"[GIFT] [SEND] sender_id={interaction.user.id} sender={interaction.user.name} "
+            f"receiver_id={user.id} receiver={user.name} item_key={item_key} quantity=1 "
+            f"affinity_change={affinity_gain}"
+        )
 
     @app_commands.command(name="thanthiet", description="Xem mức độ thân thiết với ai")
     @app_commands.describe(user="Người muốn check (để trống để xem người thân nhất)")
@@ -235,7 +239,10 @@ class InteractionsCog(commands.Cog):
                 if not replied_msg.author.bot and replied_msg.author.id != message.author.id:
                     # Add small affinity (2 points)
                     await self.add_affinity(message.author.id, replied_msg.author.id, 2)
-                    print(f"[AFFINITY] {message.author.name} replied to {replied_msg.author.name} (+2)")
+                    print(
+                        f"[AFFINITY] [REPLY] actor_id={message.author.id} actor={message.author.name} "
+                        f"target_id={replied_msg.author.id} target={replied_msg.author.name} affinity_change=+2"
+                    )
             except:
                 pass
         
@@ -244,7 +251,10 @@ class InteractionsCog(commands.Cog):
             if not mentioned_user.bot and mentioned_user.id != message.author.id:
                 # Add small affinity (1 point)
                 await self.add_affinity_local(message.author.id, mentioned_user.id, 1)
-                print(f"[AFFINITY] {message.author.name} mentioned {mentioned_user.name} (+1)")
+                print(
+                    f"[AFFINITY] [MENTION] actor_id={message.author.id} actor={message.author.name} "
+                    f"target_id={mentioned_user.id} target={mentioned_user.name} affinity_change=+1"
+                )
 
 async def setup(bot):
     await bot.add_cog(InteractionsCog(bot))

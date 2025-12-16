@@ -38,7 +38,13 @@ class ShopCog(commands.Cog):
 
     async def reduce_seeds(self, user_id: int, amount: int):
         """Reduce user's seeds"""
+        balance_before = await get_user_balance(user_id)
         await add_seeds(user_id, -amount)
+        balance_after = balance_before - amount
+        print(
+            f"[SHOP] [SEED_UPDATE] user_id={user_id} seed_change=-{amount} "
+            f"balance_before={balance_before} balance_after={balance_after}"
+        )
 
     async def add_item_local(self, user_id: int, item_name: str, quantity: int = 1):
         """Add item to user's inventory"""
@@ -78,7 +84,7 @@ class ShopCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="mua", description="Mua quà - ☕ Cà phê (50), 🌹 Hoa (75), 💍 Nhẫn (150), 🎁 Quà (100), 🍫 Sô cô la (60), 💌 Thiệp (40), 🪱 Giun (10)")
+    @app_commands.command(name="mua", description="Mua quà - Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp, Giun")
     @app_commands.describe(
         item="Tên item tiếng Việt: Cà phê (50), Hoa (75), Nhẫn (150), Quà (100), Sô cô la (60), Thiệp (40), Giun (10)",
         soluong="Số lượng muốn mua (mặc định: 1)"
@@ -135,7 +141,11 @@ class ShopCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
-        print(f"[SHOP] {interaction.user.name} bought {soluong}x {item}")
+        new_balance = seeds - total_cost
+        print(
+            f"[SHOP] [PURCHASE] user_id={user_id} username={interaction.user.name} "
+            f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
+        )
 
     @commands.command(name="mua", description="Mua quà - ☕ Cà phê (50), 🌹 Hoa (75), 💍 Nhẫn (150), 🎁 Quà (100), 🍫 Sô cô la (60), 💌 Thiệp (40), 🪱 Giun (10)")
     async def buy_prefix(self, ctx, soluong: int = 1, *, item: str):
@@ -177,7 +187,11 @@ class ShopCog(commands.Cog):
         embed.add_field(name="💾 Còn lại", value=f"{seeds - total_cost} hạt", inline=True)
         
         await ctx.send(embed=embed)
-        print(f"[SHOP] {ctx.author.name} bought {soluong}x {item}")
+        new_balance = seeds - total_cost
+        print(
+            f"[SHOP] [PURCHASE] user_id={user_id} username={ctx.author.name} "
+            f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
+        )
 
 async def setup(bot):
     await bot.add_cog(ShopCog(bot))

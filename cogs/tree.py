@@ -322,6 +322,9 @@ class CommunityCog(commands.Cog):
                 )
                 return
             
+            balance_before = row[0]
+            new_balance = balance_before - amount
+
             # Deduct seeds
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute(
@@ -329,6 +332,10 @@ class CommunityCog(commands.Cog):
                     (amount, user_id)
                 )
                 await db.commit()
+            print(
+                f"[TREE] [CONTRIBUTE_DEBIT] user_id={user_id} seed_change=-{amount} "
+                f"balance_before={balance_before} balance_after={new_balance}"
+            )
             
             # Get current tree state
             lvl, prog, total, season, tree_channel_id, _ = await self.get_tree_data(guild_id)
@@ -345,6 +352,9 @@ class CommunityCog(commands.Cog):
                         (amount, user_id)
                     )
                     await db.commit()
+                print(
+                    f"[TREE] [REFUND] user_id={user_id} seed_change=+{amount} reason=tree_maxed"
+                )
                 return
             
             # Update tree progress
@@ -389,7 +399,10 @@ class CommunityCog(commands.Cog):
             if tree_channel_id:
                 await self.update_or_create_pin_message(guild_id, tree_channel_id)
             
-            print(f"[TREE] {interaction.user.name} contributed {amount} seeds (Tree now Level {new_level})")
+            print(
+                f"[TREE] [CONTRIBUTE] user_id={user_id} username={interaction.user.name} "
+                f"seed_change=-{amount} balance_after={new_balance} tree_level={new_level} total_contrib={new_total}"
+            )
         
         except Exception as e:
             print(f"[TREE] Error in process_contribution: {e}")

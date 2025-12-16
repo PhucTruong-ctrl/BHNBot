@@ -75,7 +75,7 @@ async def load_cogs():
     for subdir in os.listdir(cogs_dir):
         subdir_path = os.path.join(cogs_dir, subdir)
         if os.path.isdir(subdir_path) and not subdir.startswith('__'):
-            # Try loading cog.py first (for werewolf)
+            # Try loading cog.py first (for werewolf, fishing)
             cog_file = os.path.join(subdir_path, 'cog.py')
             if os.path.exists(cog_file):
                 try:
@@ -84,9 +84,13 @@ async def load_cogs():
                 except Exception as e:
                     print(f'Error loading cogs.{subdir}.cog: {e}')
             
+            # Skip helper files that don't have setup functions
+            skip_files = {'__init__.py', 'cog.py', 'constants.py', 'helpers.py', 'events.py', 
+                         'legendary.py', 'models.py', 'rod_system.py', 'views.py'}
+            
             # Load additional module files in subdirectory (for noi_tu: noitu.py, add_word.py)
             for filename in os.listdir(subdir_path):
-                if filename.endswith('.py') and filename not in ['__init__.py', 'cog.py']:
+                if filename.endswith('.py') and filename not in skip_files:
                     module_name = filename[:-3]
                     try:
                         await bot.load_extension(f'cogs.{subdir}.{module_name}')

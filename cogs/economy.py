@@ -64,7 +64,13 @@ class EconomyCog(commands.Cog):
 
     async def add_seeds_local(self, user_id: int, amount: int):
         """Add seeds to user"""
+        balance_before = await get_user_balance(user_id)
         await add_seeds(user_id, amount)
+        balance_after = balance_before + amount
+        print(
+            f"[ECONOMY] [SEED_UPDATE] user_id={user_id} seed_change={amount} "
+            f"balance_before={balance_before} balance_after={balance_after}"
+        )
 
     async def get_user_balance_local(self, user_id: int) -> int:
         """Get user balance (seeds only)"""
@@ -521,7 +527,10 @@ class EconomyCog(commands.Cog):
         embed.set_footer(text=f"Thực hiện bởi {ctx.author.name}")
         
         await ctx.send(embed=embed)
-        print(f"[ADMIN] {ctx.author.name} added {amount} seeds to {user.name}")
+        print(
+            f"[ADMIN] [SEED_GRANT] actor={ctx.author.name} actor_id={ctx.author.id} "
+            f"target={user.name} target_id={user.id} amount={amount}"
+        )
 
     @app_commands.command(name="themhat", description="Thêm hạt cho user (Admin Only)")
     @app_commands.checks.has_permissions(administrator=True)
@@ -557,7 +566,10 @@ class EconomyCog(commands.Cog):
         embed.set_footer(text=f"Thực hiện bởi {interaction.user.name}")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
-        print(f"[ADMIN] {interaction.user.name} added {amount} seeds to {user.name}")
+        print(
+            f"[ADMIN] [SEED_GRANT] actor={interaction.user.name} actor_id={interaction.user.id} "
+            f"target={user.name} target_id={user.id} amount={amount}"
+        )
 
     # ==================== EVENTS ====================
 
@@ -596,9 +608,11 @@ class EconomyCog(commands.Cog):
         is_buff_active = await self.is_harvest_buff_active(message.guild.id)
         if is_buff_active:
             reward = reward * 2
-            print(f"[ECONOMY] 🔥 HARVEST BUFF ACTIVE! {message.author.name} earned {reward} seeds from chat")
-        else:
-            print(f"[ECONOMY] {message.author.name} earned {reward} seeds from chat")
+        
+        print(
+            f"[ECONOMY] [CHAT_REWARD] user_id={user_id} username={message.author.name} "
+            f"reward={reward} buff_active={is_buff_active}"
+        )
         
         await self.add_seeds_local(user_id, reward)
         await self.update_last_chat_reward(user_id)
@@ -660,11 +674,11 @@ class EconomyCog(commands.Cog):
             reward = reward * 2
         
         # Log with context
-        location = f"forum post" if is_forum_post else "message"
-        if is_buff_active:
-            print(f"[ECONOMY] 🔥 HARVEST BUFF! {message.author.name} earned {reward} seeds from emoji reaction on {location}")
-        else:
-            print(f"[ECONOMY] {message.author.name} earned {reward} seeds from emoji reaction on {location}")
+        location = "forum_post" if is_forum_post else "message"
+        print(
+            f"[ECONOMY] [REACTION_REWARD] user_id={author_id} username={message.author.name} "
+            f"reward={reward} buff_active={is_buff_active} location={location}"
+        )
         
         await self.add_seeds_local(author_id, reward)
         self.reaction_cooldowns[cooldown_key] = now
@@ -690,10 +704,11 @@ class EconomyCog(commands.Cog):
                         reward = VOICE_REWARD
                         if is_buff_active:
                             reward = reward * 2
-                            print(f"[ECONOMY] 🔥 HARVEST BUFF! {member.name} earned {reward} seeds from voice (x2)")
-                        else:
-                            print(f"[ECONOMY] 🎙️ {member.name} earned {reward} seeds from voice (speaking)")
                         
+                        print(
+                            f"[ECONOMY] [VOICE_REWARD] user_id={member.id} username={member.name} "
+                            f"reward={reward} buff_active={is_buff_active}"
+                        )
                         await self.add_seeds_local(member.id, reward)
         
         except Exception as e:
@@ -721,7 +736,10 @@ class EconomyCog(commands.Cog):
                         for member2 in speaking_members[i+1:]:
                             # Add 3 affinity points per person pair in voice
                             await interactions_cog.add_affinity_local(member1.id, member2.id, 3)
-                            print(f"[AFFINITY] 🎙️ {member1.name} & {member2.name} +3 affinity (voice chat)")
+                            print(
+                                f"[AFFINITY] [VOICE] user1_id={member1.id} user1={member1.name} "
+                                f"user2_id={member2.id} user2={member2.name} affinity_change=+3"
+                            )
         
         except Exception as e:
             print(f"[ECONOMY] Voice affinity task error: {e}")
