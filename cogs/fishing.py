@@ -543,7 +543,7 @@ RANDOM_EVENT_MESSAGES = {
     # --- GOOD EVENTS MESSAGES ---
     "found_wallet":    "Vớt được cái ví da cá sấu! Bên trong có kha khá tiền lẻ. 👛",
     "tourist_tip":     "Khách du lịch thấy bạn câu điệu nghệ quá nên tip nóng! 💵",
-    "floating_cash":   "Ai đó đánh rơi tờ 500k trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
+    "floating_cash":   "Ai đó đánh rơi tờ 50k trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
     "ancient_coin":    "Móc lên được đồng xu cổ thời vua Hùng. Bảo tàng mua lại giá cao! 🪙",
     "lottery_win":     "Vớt được tờ vé số trúng giải độc đắc (giải khuyến khích)! 🎫🎉",
     "streamer_gift":   "Độ Mixi đi ngang qua và donate cho bạn tiền mua mồi! 🎥",
@@ -1387,6 +1387,24 @@ class FishingCog(commands.Cog):
         )
         await asyncio.sleep(wait_time)
         
+        # ==================== CHECK FISH BUCKET LIMIT ====================
+        # Get current fish count
+        current_inventory = await get_inventory(user_id)
+        fish_count = sum(v for k, v in current_inventory.items() if k in ALL_FISH)
+        
+        # If bucket is full (15+ fish), block fishing
+        if fish_count >= 15:
+            embed = discord.Embed(
+                title=f"⚠️ XÔ ĐÃ ĐẦY - {username}!",
+                description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa 15).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
+                color=discord.Color.orange()
+            )
+            embed.set_footer(text="Hãy dùng lệnh bán cá để bán bớt nhé.")
+            await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
+            # Remove worm cost from refund check - it was already consumed
+            print(f"[FISHING] {username} blocked: bucket full ({fish_count}/15 fish)")
+            return
+        
         # ==================== TRIGGER RANDOM EVENTS ====================
         
         # Check if user was protected from bad event
@@ -1403,7 +1421,7 @@ class FishingCog(commands.Cog):
                 description="✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\nBạn an toàn thoát khỏi một sự kiện xấu!",
                 color=discord.Color.gold()
             )
-            await casting_msg.edit(content="", embed=embed)
+            await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             await asyncio.sleep(1)
             casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
         
@@ -1520,7 +1538,7 @@ class FishingCog(commands.Cog):
                 rod_durability = max(0, rod_durability - durability_loss)
                 await self.update_rod_data(user_id, rod_durability)
                 embed.set_footer(text=f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}")
-                await casting_msg.edit(content="", embed=embed)
+                await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
                 print(f"[EVENT] {username} triggered {event_type} - fishing cancelled, durability loss: {durability_loss}")
                 return
             
@@ -1534,7 +1552,7 @@ class FishingCog(commands.Cog):
                 description=event_message,
                 color=color
             )
-            await casting_msg.edit(content="", embed=embed)
+            await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             
             # Wait a bit before showing catch
             await asyncio.sleep(1)
@@ -1989,9 +2007,9 @@ class FishingCog(commands.Cog):
                 )
             
             if is_slash:
-                await ctx.followup.send(embed=event_embed, ephemeral=False)
+                await ctx.followup.send(content=f"<@{user_id}>", embed=event_embed, ephemeral=False)
             else:
-                await ctx.send(embed=event_embed)
+                await ctx.send(content=f"<@{user_id}>", embed=event_embed)
         
         # 5. Display main sell result embed
         fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in selected_fish.items()])
