@@ -411,55 +411,170 @@ ACHIEVEMENTS = {
 # 20 sự kiện: 10 xấu + 10 tốt
 
 RANDOM_EVENTS = {
-    # --- BAD EVENTS (Kiếp Nạn - 10 sự kiện) ---
-    "snapped_line": {"chance": 0.008, "name": "Đứt Dây!"},
-    "police_fine": {"chance": 0.005, "name": "Công An Phạt!"},
-    "predator": {"chance": 0.008, "name": "Cá Sư Tử!"},
-    "dropped_slipper": {"chance": 0.01, "name": "Rớt Dép!"},
-    "mom_called": {"chance": 0.005, "name": "Mẹ Gọi!"},
-    "cat_steal": {"chance": 0.008, "name": "Mèo Mun!"},
-    "broken_phone": {"chance": 0.001, "name": "Rớt iPhone!"},
-    "sea_sickness": {"chance": 0.003, "name": "Say Sóng!"},
-    "snake_bite": {"chance": 0.003, "name": "Rắn Nước!"},
-    "plastic_trap": {"chance": 0.005, "name": "Vướng Rác!"},
+    # ================= 30 BAD EVENTS (KIẾP NẠN) =================
+    # effect: Loại hình phạt (lose_worm, lose_catch, lose_money_*, cooldown_*, durability_hit, lose_turn, lose_all_bait, thief)
+    
+    # --- Nhóm 1: Mất Mồi & Dây (Cơ bản) ---
+    "snapped_line":    {"chance": 0.005, "name": "Đứt Dây!", "effect": "lose_worm"},
+    "hook_stuck":      {"chance": 0.005, "name": "Mắc Cây!", "effect": "lose_worm"},
+    "rat_bite":        {"chance": 0.004, "name": "Chuột Cắn!", "effect": "lose_worm"},
+    "poor_knot":       {"chance": 0.005, "name": "Tuột Nút!", "effect": "lose_worm"},
+    "fish_escape":     {"chance": 0.005, "name": "Cá Sẩy!", "effect": "lose_worm"},
 
-    # --- GOOD EVENTS (Nhân Phẩm - 10 sự kiện) ---
-    "found_wallet": {"chance": 0.008, "name": "Vớt Ví!"},
-    "fairy_gift": {"chance": 0.005, "name": "Ông Bụt!"},
-    "double_rainbow": {"chance": 0.003, "name": "Cầu Vồng!"},
-    "tourist_tip": {"chance": 0.008, "name": "Khách Tip!"},
-    "golden_turtle": {"chance": 0.005, "name": "Rùa Vàng!"},
-    "school_of_fish": {"chance": 0.005, "name": "Bão Cá!"},
-    "engagement_ring": {"chance": 0.002, "name": "Nhẫn Cầu!"},
-    "ancient_vase": {"chance": 0.001, "name": "Bình Cổ!"},
-    "sixth_sense": {"chance": 0.004, "name": "Giác Thứ 6!"},
-    "treasure_shipwreck": {"chance": 0.002, "name": "Tàu Nạn!"},
+    # --- Nhóm 2: Mất Cá (Ức chế) ---
+    "predator":        {"chance": 0.005, "name": "Cá Dữ!", "effect": "lose_catch"},
+    "cat_steal":       {"chance": 0.005, "name": "Mèo Mun!", "effect": "thief"},  # Mất cá to nhất
+    "bird_steal":      {"chance": 0.004, "name": "Chim Cướp!", "effect": "lose_catch"},
+    "bucket_leak":     {"chance": 0.003, "name": "Thủng Xô!", "effect": "lose_catch"},
+    "otter_troll":     {"chance": 0.003, "name": "Rái Cá!", "effect": "thief"},
+
+    # --- Nhóm 3: Mất Tiền (Tai nạn tài chính) ---
+    "police_fine":     {"chance": 0.004, "name": "Công An!", "effect": "lose_money_50"},
+    "broken_phone":    {"chance": 0.001, "name": "Rớt ĐT!", "effect": "lose_money_200"},  # Hiếm
+    "wallet_fall":     {"chance": 0.002, "name": "Rớt Ví!", "effect": "lose_money_100"},
+    "snake_bite":      {"chance": 0.002, "name": "Rắn Cắn!", "effect": "lose_money_percent"},  # -5%
+    "hospital_fee":    {"chance": 0.001, "name": "Nhập Viện!", "effect": "lose_money_percent"},
+    "bet_lose":        {"chance": 0.005, "name": "Thua Cược!", "effect": "bet_loss"},
+
+    # --- Nhóm 4: Tăng Cooldown (Tốn thời gian) ---
+    "dropped_slipper": {"chance": 0.005, "name": "Rớt Dép!", "effect": "cooldown_short"},  # +2 phút
+    "tangled_line":    {"chance": 0.005, "name": "Rối Dây!", "effect": "cooldown_short"},
+    "stomach_ache":    {"chance": 0.004, "name": "Đau Bụng!", "effect": "cooldown_medium"},  # +5 phút
+    "heavy_rain":      {"chance": 0.004, "name": "Mưa To!", "effect": "cooldown_medium"},
+    "equipment_break": {"chance": 0.002, "name": "Gãy Cần!", "effect": "cooldown_long"},  # +10 phút
+
+    # --- Nhóm 5: Mất Lượt (Vô tri/Hài hước) ---
+    "mom_called":      {"chance": 0.005, "name": "Mẹ Gọi!", "effect": "lose_turn"},
+    "wife_gank":       {"chance": 0.003, "name": "Vợ Gank!", "effect": "lose_turn"},
+    "sleepy":          {"chance": 0.005, "name": "Ngủ Gật!", "effect": "lose_turn"},
+    "sneeze":          {"chance": 0.005, "name": "Hắt Xì!", "effect": "lose_turn"},
+    "kids_rock":       {"chance": 0.004, "name": "Trẻ Trâu!", "effect": "lose_turn"},
+
+    # --- Nhóm 6: Hại Độ Bền (Phá hoại) ---
+    "plastic_trap":    {"chance": 0.005, "name": "Vướng Rác!", "effect": "durability_hit"},
+    "big_log":         {"chance": 0.004, "name": "Mắc Gỗ!", "effect": "durability_hit"},
+    "crab_cut":        {"chance": 0.004, "name": "Cua Kẹp!", "effect": "durability_hit"},
+    "electric_eel":    {"chance": 0.002, "name": "Lươn Điện!", "effect": "durability_hit"},
+    "sea_sickness":    {"chance": 0.002, "name": "Say Sóng!", "effect": "lose_all_bait"},  # Đặc biệt
+
+    # ================= 30 GOOD EVENTS (NHÂN PHẨM) =================
+    # effect: gain_money_*, gain_worm_*, gain_chest_*, gain_pearl, gain_ring, multiply_catch_*, reset_cooldown, restore_durability, lucky_buff, avoid_bad_event
+    
+    # --- Nhóm 1: Nhặt Được Tiền (Lộc trời cho) ---
+    "found_wallet":    {"chance": 0.005, "name": "Vớt Ví!", "effect": "gain_money_medium"},  # 100-200
+    "tourist_tip":     {"chance": 0.005, "name": "Tiền Tip!", "effect": "gain_money_medium"},
+    "floating_cash":   {"chance": 0.005, "name": "Tiền Trôi!", "effect": "gain_money_small"},  # 50-100
+    "ancient_coin":    {"chance": 0.003, "name": "Xu Cổ!", "effect": "gain_money_large"},  # 300-500
+    "lottery_win":     {"chance": 0.001, "name": "Trúng Số!", "effect": "gain_money_huge"},  # 1000
+    "streamer_gift":   {"chance": 0.004, "name": "Donate!", "effect": "gain_money_medium"},
+    "bet_win":         {"chance": 0.005, "name": "Thắng Cược!", "effect": "bet_win"},
+
+    # --- Nhóm 2: Nhận Vật Phẩm (Mồi/Rương/Ngọc) ---
+    "fairy_gift":      {"chance": 0.005, "name": "Ông Bụt!", "effect": "gain_worm_5"},
+    "worm_nest":       {"chance": 0.004, "name": "Ổ Giun!", "effect": "gain_worm_10"},
+    "treasure_chest":  {"chance": 0.003, "name": "Rương Báu!", "effect": "gain_chest_1"},
+    "shipwreck":       {"chance": 0.001, "name": "Tàu Đắm!", "effect": "gain_chest_2"},
+    "mermaid_gift":    {"chance": 0.002, "name": "Tiên Cá!", "effect": "gain_pearl"},  # Ngọc trai
+    "message_bottle":  {"chance": 0.003, "name": "Thư Chai!", "effect": "gain_chest_1"},
+    "engagement_ring": {"chance": 0.002, "name": "Nhẫn Cưới!", "effect": "gain_ring"},  # Bán giá cao
+
+    # --- Nhóm 3: X2, X3 Cá (Trúng mánh) ---
+    "school_of_fish":  {"chance": 0.005, "name": "Bão Cá!", "effect": "multiply_catch_3"},
+    "golden_hook":     {"chance": 0.006, "name": "Lưỡi Vàng!", "effect": "multiply_catch_2"},
+    "fish_feeding":    {"chance": 0.005, "name": "Cá Ăn Rộ!", "effect": "multiply_catch_2"},
+    "friendly_otter":  {"chance": 0.004, "name": "Rái Cá Giúp!", "effect": "multiply_catch_2"},
+    "net_fishing":     {"chance": 0.002, "name": "Vớt Lưới!", "effect": "multiply_catch_3"},
+
+    # --- Nhóm 4: Hồi Phục & Cooldown (Tiện ích) ---
+    "golden_turtle":   {"chance": 0.005, "name": "Rùa Vàng!", "effect": "reset_cooldown"},
+    "favorable_wind":  {"chance": 0.005, "name": "Gió Thuận!", "effect": "reset_cooldown"},
+    "blacksmith_ghost":{"chance": 0.003, "name": "Ma Thợ Rèn!", "effect": "restore_durability"},  # Hồi độ bền
+    "maintenance_kit": {"chance": 0.003, "name": "Dầu Máy!", "effect": "restore_durability"},
+    "energy_drink":    {"chance": 0.004, "name": "Tăng Lực!", "effect": "reset_cooldown"},
+
+    # --- Nhóm 5: Buff May Mắn (Tâm linh) ---
+    "double_rainbow":  {"chance": 0.003, "name": "Cầu Vồng!", "effect": "lucky_buff"},  # Lần sau chắc chắn Rare
+    "shooting_star":   {"chance": 0.003, "name": "Sao Băng!", "effect": "lucky_buff"},
+    "ancestor_bless":  {"chance": 0.004, "name": "Ông Bà Độ!", "effect": "lucky_buff"},
+    "sixth_sense":     {"chance": 0.004, "name": "Giác Quan 6!", "effect": "avoid_bad_event"},  # Tránh xui lần sau
+    "lucky_underwear": {"chance": 0.002, "name": "Quần Đỏ!", "effect": "lucky_buff"},  # Hài hước
+    "temple_pray":     {"chance": 0.003, "name": "Đi Chùa!", "effect": "avoid_bad_event"},
 }
 
 RANDOM_EVENT_MESSAGES = {
-    # --- BAD EVENTS ---
-    "snapped_line": "Dây đứt phựt! Mất toi cái mồi. 😭",
-    "police_fine": "O e o e! 🚔 Công an phạt 50 Hạt vì câu trộm!",
-    "predator": "Cá Sư Tử lao tới đớp sạch mẻ cá của bạn! 😱",
+    # --- BAD EVENTS MESSAGES ---
+    "snapped_line":    "Dây câu căng quá... PẶT! Mất toi cái mồi rồi. 😭",
+    "hook_stuck":      "Lưỡi câu mắc vào rễ cây dưới đáy hồ. Phải cắt dây bỏ mồi. ✂️",
+    "rat_bite":        "Một con chuột cống chạy qua cắn đứt dây câu của bạn! 🐀",
+    "poor_knot":       "Do buộc nút không chặt, lưỡi câu tuột mất tiêu. Gà quá! 🐔",
+    "fish_escape":     "Cá đã cắn câu nhưng quẫy mạnh quá nên thoát được. Tiếc hùi hụi! 🐟💨",
+    "bet_lose": "Một tay câu mới đến thách đấu. Bạn tự tin nhận kèo và... thua sấp mặt! 💸",
+
+    "predator":        "Cá Sư Tử lao tới đớp trọn mẻ cá của bạn rồi bỏ chạy! 😱",
+    "cat_steal":       "Meow! 🐈 Một con mèo đen nhanh tay cướp mất con cá to nhất của bạn!",
+    "bird_steal":      "Một con Hải Âu sà xuống cắp mất con cá ngon nhất. Cay thế nhở! 🦅",
+    "bucket_leak":     "Xô đựng cá bị thủng đáy! Mấy con cá bé chui ra ngoài hết rồi. 🕳️",
+    "otter_troll":     "Một chú Rái Cá trêu ngươi bạn, thò tay bốc trộm cá rồi lặn mất. 🦦",
+
+    "police_fine":     "O e o e! 🚔 Công an phường phạt 50 Hạt vì tội câu cá trái phép!",
+    "broken_phone":    "Tõm! Chiếc iPhone 15 Promax rơi xuống nước. Tốn 200 Hạt sửa chữa. 📱💦",
+    "wallet_fall":     "Cúi xuống gỡ cá, ví tiền rơi tõm xuống hồ. Mất 100 Hạt. 💸",
+    "snake_bite":      "Kéo lên không phải cá mà là Rắn Nước! Bị cắn chảy máu (-5% tiền thuốc men) 🐍",
+    "hospital_fee":    "Trượt chân ngã sấp mặt! Phải đi trạm xá khâu vết thương (-5% tiền). 🏥",
+
     "dropped_slipper": "Mải giật cần làm rớt dép lào. Phải bơi đi nhặt mất 2 phút! 🩴",
-    "mom_called": "Mẹ gọi về ăn cơm! Bạn vội chạy về, bỏ lỡ mẻ cá này. 🍚",
-    "cat_steal": "Meow! 🐈 Một con mèo đen nhảy ra cướp mất con cá to nhất của bạn!",
-    "broken_phone": "Tõm! Chiếc điện thoại rơi xuống nước. Tốn 200 Hạt sửa chữa. 📱💦",
-    "sea_sickness": "Sóng đánh tụt quần! Bạn nôn thốc nôn tháo... nôn hết cả túi mồi ra biển. 🤢",
-    "snake_bite": "Kéo lên không phải cá mà là con Rắn Nước! Bị cắn chảy máu 😱 (-5% tài sản)",
-    "plastic_trap": "Lưỡi câu mắc vào bao tải rác khổng lồ. Cần câu gãy, chờ thêm 3 phút. 🗑️",
+    "tangled_line":    "Dây câu rối như tơ vò. Ngồi gỡ mất cả thanh xuân (2 phút). 🧶",
+    "stomach_ache":    "Tào Tháo đuổi! 🚽 Bạn phải chạy đi giải quyết nỗi buồn (Chờ 5 phút).",
+    "heavy_rain":      "Mưa to gió lớn! Phải trú mưa chờ tạnh (Chờ 5 phút). ⛈️",
+    "equipment_break": "Rắc! Cần câu bị gãy gập. Phải đem đi hàn lại (Chờ 10 phút). 🛠️",
+
+    "mom_called":      "Alo? Mẹ gọi về ăn cơm! Bạn vội chạy về, bỏ lỡ mẻ cá này. 🍚",
+    "wife_gank":       "Vợ/Người yêu xuất hiện gank! 'Suốt ngày câu với kéo!'. Bạn phải trốn ngay. 🏃",
+    "sleepy":          "Gió mát quá... Zzz... Bạn ngủ gật và cá ăn hết mồi lúc nào không hay. 😴",
+    "sneeze":          "Hắt xì!!! 🤧 Tiếng hắt hơi làm đàn cá giật mình bơi đi hết.",
+    "kids_rock":       "Lũ trẻ trâu ném đá xuống hồ làm cá sợ chạy mất dép. 🗿",
+
+    "plastic_trap":    "Lưỡi câu móc vào bao tải rác. Kéo nặng trịch làm hại độ bền cần. 🗑️",
+    "big_log":         "Tưởng cá to, hóa ra là khúc gỗ mục. Cần câu bị cong vòng (-Độ bền). 🪵",
+    "crab_cut":        "Con Cua kẹp vào dây câu làm xước dây và mòn cần. 🦀",
+    "electric_eel":    "Câu trúng Lươn Điện! Nó phóng điện làm bạn tê tay, rơi cần xuống đất. ⚡",
+    "sea_sickness":    "Sóng đánh tụt quần! Bạn nôn thốc nôn tháo... nôn hết cả túi mồi ra biển. 🤢",
     
-    # --- GOOD EVENTS ---
-    "found_wallet": "Vớt được cái ví da cá sấu! Bên trong có 150 Hạt. 👛✨",
-    "fairy_gift": "Ông Bụt hiện lên: 'Ta tặng con 5 con Giun vì sự kiên trì'. 🎅",
-    "double_rainbow": "Cầu vồng đôi xuất hiện! 🌈 May mắn tràn trề (Lần sau chắc chắn ra Cá Hiếm)!",
-    "tourist_tip": "Khách du lịch thấy bạn câu đỉnh quá nên tip nóng 100 Hạt. 💵",
-    "golden_turtle": "Cụ Rùa Vàng nổi lên! 🐢✨ Bạn cảm thấy khỏe khoắn (Xóa cooldown lượt này).",
-    "school_of_fish": "Trúng ổ cá rồi! 🐟🐟🐟 Số lượng cá nhân 3!",
-    "engagement_ring": "Vớt được chiếc nhẫn kim cương! Bán được 300 Hạt. 💍",
-    "ancient_vase": "Vớt được bình gốm thời Lý! Bán cho bảo tàng được 500 Hạt! 🏺💰",
-    "sixth_sense": "Tự nhiên linh tính mách bảo... ✨ Bạn tránh được xui xẻo lần sau!",
-    "treasure_shipwreck": "Một xác tàu chìm hiện lên! 🏴‍☠️ Bạn vớt được 2 Rương Kho Báu!",
+    # --- GOOD EVENTS MESSAGES ---
+    "found_wallet":    "Vớt được cái ví da cá sấu! Bên trong có kha khá tiền lẻ. 👛",
+    "tourist_tip":     "Khách du lịch thấy bạn câu điệu nghệ quá nên tip nóng! 💵",
+    "floating_cash":   "Ai đó đánh rơi tờ 500k trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
+    "ancient_coin":    "Móc lên được đồng xu cổ thời vua Hùng. Bảo tàng mua lại giá cao! 🪙",
+    "lottery_win":     "Vớt được tờ vé số trúng giải độc đắc (giải khuyến khích)! 🎫🎉",
+    "streamer_gift":   "Độ Mixi đi ngang qua và donate cho bạn tiền mua mồi! 🎥",
+    "bet_win":  "Một tay câu mới đến thách đấu. Bạn dạy cho hắn một bài học về kỹ năng! 😎",
+
+    "fairy_gift":      "Ông Bụt hiện lên: 'Ta tặng con 5 con Giun vì con nghèo mà ham cày'. 🎅",
+    "worm_nest":       "Đào trúng ổ giun chúa! Nhặt mỏi tay không hết mồi. 🪱",
+    "treasure_chest":  "Kéo nặng trịch... Là một Rương Kho Báu của cướp biển để lại! 🏴‍☠️",
+    "shipwreck":       "Phát hiện xác tàu đắm! Bạn tìm thấy 2 cái Rương còn nguyên vẹn. 📦📦",
+    "mermaid_gift":    "Nàng Tiên Cá ngoi lên tặng bạn viên Ngọc Trai rồi ngại ngùng bơi đi. 🧜‍♀️",
+    "message_bottle":  "Một cái chai trôi dạt, bên trong có bản đồ dẫn tới Kho Báu! 🗺️",
+    "engagement_ring": "Ai đó thất tình ném nhẫn xuống hồ. Nhẫn kim cương xịn nha! 💍",
+
+    "school_of_fish":  "Trúng luồng cá di cư! Giật mỏi tay, X3 sản lượng! 🐟🐟🐟",
+    "golden_hook":     "Lưỡi câu của bạn phát sáng hoàng kim! Cá cắn câu gấp đôi! ✨",
+    "fish_feeding":    "Đúng giờ cá ăn! Lũ cá tranh nhau đớp mồi. X2 sản lượng! 🍲",
+    "friendly_otter":  "Một chú Rái Cá lùa cá vào lưới giúp bạn. X2 cá! 🦦",
+    "net_fishing":     "Móc trúng cái lưới của ai bỏ quên, bên trong đầy cá! (X3) 🕸️",
+
+    "golden_turtle":   "Cụ Rùa Vàng nổi lên thở. Bạn cảm thấy tràn trề sinh lực (Xóa Cooldown)! 🐢",
+    "favorable_wind":  "Gió đông thổi tới! Câu nhanh hơn hẳn (Xóa Cooldown). 🌬️",
+    "blacksmith_ghost":"Hồn ma thợ rèn hiện về: 'Để ta sửa cần cho con'. (+20 Độ bền) 🔨👻",
+    "maintenance_kit": "Vớt được hộp dầu máy. Tra dầu vào cần câu chạy mượt hẳn! (+20 Độ bền) 🛢️",
+    "energy_drink":    "Làm lon bò húc! Tỉnh cả người, quăng cần liên tục (Xóa Cooldown). 🐂",
+
+    "double_rainbow":  "Cầu vồng đôi! 🌈 Nhân phẩm bùng nổ (Lần sau chắc chắn ra Cá Hiếm).",
+    "shooting_star":   "Sao băng lướt qua! 🌠 Ước gì được nấy (Buff may mắn).",
+    "ancestor_bless":  "Ông bà gánh còng lưng! Lần câu sau auto đỏ. 🙏",
+    "sixth_sense":     "Mắt phải giật liên hồi... Linh tính mách bảo bạn sẽ tránh được kiếp nạn sắp tới. 👁️",
+    "lucky_underwear": "Bạn mặc chiếc quần chip đỏ may mắn hôm nay. Cá to tự tìm đến! 🩲",
+    "temple_pray":     "Hôm qua mới đi chùa thắp hương. Thần linh phù hộ tránh xui xẻo. 🏯",
 }
 
 
@@ -467,55 +582,196 @@ RANDOM_EVENT_MESSAGES = {
 # Tỉ lệ xảy ra khi bán: khoảng 15-20%
 
 SELL_EVENTS = {
-    # --- BAD EVENTS (Xui xẻo - Giảm tiền) ---
-    "market_crash":   {"chance": 0.01, "type": "bad", "mul": 0.7, "flat": 0, "name": "Chợ Ế!"},
-    "rotten_fish":    {"chance": 0.01, "type": "bad", "mul": 0.8, "flat": 0, "name": "Cá Ươn!"},
-    "tax_collector":  {"chance": 0.01, "type": "bad", "mul": 0.85, "flat": 0, "name": "Thuế Chợ!"},
-    "broken_scale":   {"chance": 0.01, "type": "bad", "mul": 0.9, "flat": 0, "name": "Cân Điêu!"},
-    "dropped_money":  {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -50, "name": "Rớt Tiền!"},
-    "gangster_fee":   {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -100, "name": "Phí Bảo Kê!"},
-    "hole_in_bag":    {"chance": 0.01, "type": "bad", "mul": 0.95, "flat": 0, "name": "Túi Thủng!"},
-    "rainy_day":      {"chance": 0.01, "type": "bad", "mul": 0.75, "flat": 0, "name": "Mưa Giông!"},
-    "pickpocket":     {"chance": 0.005, "type": "bad", "mul": 0.6, "flat": 0, "name": "Móc Túi!"},
-    "fake_money":     {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -20, "name": "Tiền Giả!"},
+    # ================= 30 BAD EVENTS (KIẾP NẠN THƯƠNG TRƯỜNG) =================
+    # mul: Nhân doanh thu (< 1.0)
+    # flat: Trừ thẳng tiền (< 0)
 
-    # --- GOOD EVENTS (May mắn - Tăng tiền) ---
-    "market_boom":    {"chance": 0.01, "type": "good", "mul": 1.3, "flat": 0, "name": "Được Giá!"},
-    "sushi_chef":     {"chance": 0.005, "type": "good", "mul": 1.5, "flat": 0, "name": "Đầu Bếp VIP!"},
-    "rich_customer":  {"chance": 0.01, "type": "good", "mul": 1.2, "flat": 0, "name": "Khách Sộp!"},
-    "tip_money":      {"chance": 0.01, "type": "good", "mul": 1.0, "flat": 50, "name": "Tiền Tip!"},
-    "golden_scale":   {"chance": 0.01, "type": "good", "mul": 1.1, "flat": 0, "name": "Cân Thừa!"},
-    "bidding_war":    {"chance": 0.005, "type": "good", "mul": 1.4, "flat": 0, "name": "Tranh Mua!"},
-    "festival":       {"chance": 0.01, "type": "good", "mul": 1.25, "flat": 0, "name": "Lễ Hội!"},
-    "charity":        {"chance": 0.01, "type": "good", "mul": 1.0, "flat": 100, "name": "Lì Xì!"},
-    "fresh_bonus":    {"chance": 0.01, "type": "good", "mul": 1.15, "flat": 0, "name": "Tươi Roi Rói!"},
-    "god_of_wealth":  {"chance": 0.002, "type": "good", "mul": 2.0, "flat": 0, "name": "Thần Tài!"},
+    # --- Nhóm 1: Thị Trường & Giá Cả (Ép giá) ---
+    "market_crash":       {"chance": 0.01, "type": "bad", "mul": 0.7, "flat": 0, "name": "Sập Giá!"},
+    "aggressive_haggler": {"chance": 0.008, "type": "bad", "mul": 0.85, "flat": 0, "name": "Trả Giá!"},
+    "competitor_sale":    {"chance": 0.008, "type": "bad", "mul": 0.9, "flat": 0, "name": "Cạnh Tranh!"},
+    "deflation":          {"chance": 0.005, "type": "bad", "mul": 0.8, "flat": 0, "name": "Mất Giá!"},
+    "wrong_season":       {"chance": 0.005, "type": "bad", "mul": 0.75, "flat": 0, "name": "Nghịch Mùa!"},
+    "oversupply":         {"chance": 0.008, "type": "bad", "mul": 0.85, "flat": 0, "name": "Dư Thừa!"},
+
+    # --- Nhóm 2: Chất Lượng Kém (Hư hỏng) ---
+    "rotten_fish":        {"chance": 0.008, "type": "bad", "mul": 0.6, "flat": 0, "name": "Cá Ươn!"},
+    "bad_smell":          {"chance": 0.008, "type": "bad", "mul": 0.9, "flat": 0, "name": "Mùi Hôi!"},
+    "flies_swarm":        {"chance": 0.005, "type": "bad", "mul": 0.95, "flat": -20, "name": "Ruồi Bu!"},
+    "melting_ice":        {"chance": 0.008, "type": "bad", "mul": 0.9, "flat": -10, "name": "Tan Đá!"},
+    "skinny_fish":        {"chance": 0.005, "type": "bad", "mul": 0.85, "flat": 0, "name": "Cá Còi!"},
+    "parasite_found":     {"chance": 0.003, "type": "bad", "mul": 0.5, "flat": 0, "name": "Ký Sinh!"},
+
+    # --- Nhóm 3: Chính Quyền & Thuế (Phạt tiền) ---
+    "tax_collector":      {"chance": 0.008, "type": "bad", "mul": 0.85, "flat": 0, "name": "Thuế Chợ!"},
+    "market_management":  {"chance": 0.004, "type": "bad", "mul": 1.0, "flat": -200, "name": "QLTT Phạt!"},
+    "sanitation_fine":    {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -100, "name": "Vệ Sinh!"},
+    "parking_fee":        {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -10, "name": "Gửi Xe!"},
+    "rent_increase":      {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -50, "name": "Tăng Rent!"},
+
+    # --- Nhóm 4: Tội Phạm & Lừa Đảo (Mất mát) ---
+    "fake_money":         {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -100, "name": "Tiền Giả!"},
+    "pickpocket":         {"chance": 0.004, "type": "bad", "mul": 0.7, "flat": 0, "name": "Móc Túi!"},
+    "gangster_fee":       {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -150, "name": "Bảo Kê!"},
+    "scammer":            {"chance": 0.005, "type": "bad", "mul": 0.8, "flat": 0, "name": "Lừa Đảo!"},
+    "thief_run":          {"chance": 0.002, "type": "bad", "mul": 0.0, "flat": 0, "name": "Cướp!"},
+
+    # --- Nhóm 5: Tai Nạn & Đen Đủi (Hài hước) ---
+    "dropped_money":      {"chance": 0.008, "type": "bad", "mul": 1.0, "flat": -50, "name": "Rớt Tiền!"},
+    "hole_in_bag":        {"chance": 0.008, "type": "bad", "mul": 0.9, "flat": 0, "name": "Túi Thủng!"},
+    "broken_scale":       {"chance": 0.008, "type": "bad", "mul": 0.9, "flat": 0, "name": "Cân Điêu!"},
+    "cat_steal_sell":     {"chance": 0.008, "type": "bad", "mul": 1.0, "flat": -30, "name": "Mèo Cướp!"},
+    "stray_dog":          {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -40, "name": "Chó Dữ!"},
+    "rainy_day":          {"chance": 0.008, "type": "bad", "mul": 0.8, "flat": 0, "name": "Mưa Giông!"},
+    "slip_fall":          {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -80, "name": "Trượt Ngã!"},
+    "plastic_bag_fee":    {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -5, "name": "Tiền Túi!"},
+    "maybach_crash":      {"chance": 0.002, "type": "bad", "mul": 1.0, "flat": -500, "name": "Tông Maybach!"},
+    "rollroyce_crash":    {"chance": 0.001, "type": "bad", "mul": 1.0, "flat": -1000, "name": "Tông Rolls-Royce!"},
+    "ferrari_crash":      {"chance": 0.001, "type": "bad", "mul": 1.0, "flat": -1000, "name": "Tông Ferrari!"},
+    "porsche_crash":      {"chance": 0.002, "type": "bad", "mul": 1.0, "flat": -800, "name": "Tông Porsche!"},
+    "mercedes_g63":       {"chance": 0.003, "type": "bad", "mul": 1.0, "flat": -600, "name": "Tông G63!"},
+    "lamborghini_crash":  {"chance": 0.001, "type": "bad", "mul": 1.0, "flat": -1200, "name": "Tông Bò Tót!"},
+    "bentley_crash":      {"chance": 0.002, "type": "bad", "mul": 1.0, "flat": -900, "name": "Tông Bentley!"},
+    "bugatti_crash":      {"chance": 0.0005, "type": "bad", "mul": 1.0, "flat": -2000, "name": "Tông Bugatti!"},
+    "vinfast_crash":      {"chance": 0.004, "type": "bad", "mul": 1.0, "flat": -300, "name": "Tông VinFast!"},
+
+    # --- GOOD EVENTS (May mắn - Tăng tiền - 30 events) ---
+    # Nhóm 1: Tăng giá bán
+    "market_boom":         {"chance": 0.01, "type": "good", "mul": 1.2, "flat": 0, "name": "Chợ Sôi!"},
+    "sushi_chef":          {"chance": 0.005, "type": "good", "mul": 1.3, "flat": 0, "name": "Đầu Bếp!"},
+    "tourist_group":       {"chance": 0.008, "type": "good", "mul": 1.15, "flat": 0, "name": "Khách Du!"},
+    "festival":            {"chance": 0.01, "type": "good", "mul": 1.25, "flat": 0, "name": "Lễ Hội!"},
+    "fresh_bonus":         {"chance": 0.01, "type": "good", "mul": 1.1, "flat": 0, "name": "Tươi Roi!"},
+    "bidding_war":         {"chance": 0.005, "type": "good", "mul": 1.35, "flat": 0, "name": "Tranh Mua!"},
+    "supportive_friend":   {"chance": 0.008, "type": "good", "mul": 1.1, "flat": 50, "name": "Bạn Ủng!"},
+    "golden_scale":        {"chance": 0.01, "type": "good", "mul": 1.1, "flat": 0, "name": "Cân Thừa!"},
+    "sold_out":            {"chance": 0.008, "type": "good", "mul": 1.15, "flat": 0, "name": "Cháy Hàng!"},
+    "compliment":          {"chance": 0.008, "type": "good", "mul": 1.1, "flat": 20, "name": "Khen Ngợi!"},
+    "loyal_customer":      {"chance": 0.008, "type": "good", "mul": 1.15, "flat": 0, "name": "Khách Quen!"},
+    "good_weather":        {"chance": 0.01, "type": "good", "mul": 1.1, "flat": 0, "name": "Trời Đẹp!"},
+    "unexpected_luck":     {"chance": 0.005, "type": "good", "mul": 1.2, "flat": 50, "name": "May Mắn!"},
+    "big_fish_auction":    {"chance": 0.003, "type": "good", "mul": 2.0, "flat": 0, "name": "Đấu Giá!"},
+    "newspaper_feature":   {"chance": 0.002, "type": "good", "mul": 1.5, "flat": 0, "name": "Lên Báo!"},
+    
+    # Nhóm 2: Nhận thêm tiền
+    "tip_money":           {"chance": 0.01, "type": "good", "mul": 1.0, "flat": 50, "name": "Tiền Tip!"},
+    "charity":             {"chance": 0.01, "type": "good", "mul": 1.0, "flat": 100, "name": "Lì Xì!"},
+    "found_money":         {"chance": 0.005, "type": "good", "mul": 1.0, "flat": 200, "name": "Tiền Rơi!"},
+    "lucky_money":         {"chance": 0.005, "type": "good", "mul": 1.0, "flat": 100, "name": "May Mắn!"},
+    "golden_hour":         {"chance": 0.005, "type": "good", "mul": 1.4, "flat": 0, "name": "Giờ Vàng!"},
+    "rich_customer":       {"chance": 0.01, "type": "good", "mul": 1.2, "flat": 0, "name": "Khách Sộp!"},
+    "buy_one_get_one":     {"chance": 0.008, "type": "good", "mul": 1.2, "flat": 0, "name": "Khuyến Mãi!"},
+    "double_joy":          {"chance": 0.003, "type": "good", "mul": 1.3, "flat": 100, "name": "Niềm Vui!"},
+    
+    # Nhóm 3: Nhận vật phẩm/special
+    "gift_received":       {"chance": 0.003, "type": "good", "mul": 1.0, "flat": 0, "name": "Quà Tặng!", "special": "chest"},
+    "found_bait":          {"chance": 0.005, "type": "good", "mul": 1.0, "flat": 0, "name": "Tìm Mồi!", "special": "worm"},
+    "lottery_ticket":      {"chance": 0.003, "type": "good", "mul": 1.0, "flat": 0, "name": "Vé Số!", "special": "lottery"},
+    "pearl_in_fish":       {"chance": 0.001, "type": "good", "mul": 1.0, "flat": 0, "name": "Ngọc Trai!", "special": "pearl"},
+    "free_breakfast":      {"chance": 0.005, "type": "good", "mul": 1.0, "flat": 0, "name": "Ăn Sáng!", "special": "durability"},
+    "old_rod_gift":        {"chance": 0.001, "type": "good", "mul": 1.0, "flat": 0, "name": "Tặng Cần!", "special": "rod"},
+    "god_of_wealth":       {"chance": 0.002, "type": "good", "mul": 2.0, "flat": 0, "name": "Thần Tài!"},
 }
 
 SELL_MESSAGES = {
-    # Bad
-    "market_crash": "Hôm nay chợ vắng hoe, tiểu thương ép giá thê thảm. 📉 (Giá giảm 30%)",
-    "rotten_fish": "Bảo quản không kỹ, một số cá bị ươn nên phải bán rẻ. 🤢 (Giá giảm 20%)",
-    "tax_collector": "Ban quản lý chợ đi thu thuế chỗ ngồi. 💸 (Mất 15% doanh thu)",
-    "broken_scale": "Cân của bà chủ bị 'lỗi', cân điêu cho bạn. ⚖️ (Mất 10% doanh thu)",
-    "dropped_money": "Bán xong hí hửng đi về, bạn làm rớt mất 50 Hạt. 😭",
-    "gangster_fee": "Giang hồ chợ cá chặn đường thu 'phí bảo kê'. 🕶️ (Mất 100 Hạt)",
-    "hole_in_bag": "Túi đựng tiền bị thủng lỗ nhỏ, rơi rớt dọc đường. 🧵 (Mất 5%)",
-    "rainy_day": "Trời mưa to quá, phải bán tháo để chạy mưa. 🌧️ (Giá giảm 25%)",
-    "pickpocket": "Ơ! Ví đâu rồi? Kẻ gian đã móc túi bạn lúc đông người! 🕵️ (Mất 40% doanh thu)",
-    "fake_money": "Về nhà đếm lại mới phát hiện có tờ tiền giả. 💸 (Mất 20 Hạt)",
+    # --- 30 BAD EVENTS MESSAGES ---
+    # Nhóm 1: Thị Trường & Giá Cả
+    "market_crash": "Cả chợ ai cũng bán cá này, giá rớt thê thảm! 📉 (Giá giảm 30%)",
+    "aggressive_haggler": "Gặp bà thím mặc cả kinh hoàng: 'Bớt đi cháu, không cô đi hàng khác!'. 👵 (Giá giảm 15%)",
+    "competitor_sale": "Sạp bên cạnh xả hàng tồn kho giá rẻ bèo, bạn buộc phải giảm giá theo. 🏷️ (Giá giảm 10%)",
+    "deflation": "Kinh tế khó khăn, người dân thắt chặt chi tiêu, ép giá bạn. 💸 (Giá giảm 20%)",
+    "wrong_season": "Mùa này không ai ăn cá này cả, phải năn nỉ mãi mới bán được. 🍂 (Giá giảm 25%)",
+    "oversupply": "Thuyền về bến quá nhiều, cá ngập chợ, giá rẻ như cho. 🐟 (Giá giảm 15%)",
 
-    # Good
-    "market_boom": "Thị trường đang khan hiếm, thương lái tranh nhau mua! 📈 (Giá tăng 30%)",
-    "sushi_chef": "Một đầu bếp nhà hàng 5 sao đi chợ và mua hết cá của bạn! 🍣 (Giá tăng 50%)",
-    "rich_customer": "Gặp đại gia mua cá về làm hồ thủy sinh, không cần nhìn giá. 🎩 (Giá tăng 20%)",
-    "tip_money": "Khách thấy bạn bán hàng duyên dáng nên bo thêm tiền. 💵 (+50 Hạt)",
-    "golden_scale": "Cân nhà này bị hỏng, cân thừa cho bạn! ⚖️ (Lời thêm 10%)",
-    "bidding_war": "Hai bà bán cá tranh nhau mua mẻ cá ngon của bạn. 🗣️ (Giá tăng 40%)",
-    "festival": "Lễ hội ẩm thực đang diễn ra, nhu cầu cá tăng cao! 🏮 (Giá tăng 25%)",
-    "charity": "Hôm nay bà chủ trúng số nên lì xì cho bạn. 🧧 (+100 Hạt)",
-    "fresh_bonus": "Cá bạn tươi quá, được đánh giá 5 sao! ⭐ (Giá tăng 15%)",
-    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay là ngày may mắn nhất đời bạn! (X2 DOANH THU)",
+    # Nhóm 2: Chất Lượng Kém
+    "rotten_fish": "Trời nóng quá làm cá bị ươn, bốc mùi. Phải bán đổ bán tháo. 🤢 (Giá giảm 40%)",
+    "bad_smell": "Sạp cá của bạn bốc mùi lạ, khách hàng bịt mũi bỏ đi. 👃 (Giá giảm 10%)",
+    "flies_swarm": "Ruồi bu kiến đậu, bạn phải tốn tiền mua nhang muỗi để đuổi. 🪰 (Mất 20 Hạt)",
+    "melting_ice": "Đá ướp tan hết sạch, cá mất độ tươi ngon. 🧊 (Giá giảm 10% + Tốn 10 Hạt)",
+    "skinny_fish": "Khách chê: 'Cá gì mà toàn xương với đầu', ép giá bạn. 🦴 (Giá giảm 15%)",
+    "parasite_found": "Khách phát hiện có sán trong mang cá! Bạn phải đền bù danh dự. 😱 (Giá giảm 50%)",
+
+    # Nhóm 3: Chính Quyền & Thuế
+    "tax_collector": "Ban quản lý chợ đi thu thuế chỗ ngồi và phí vệ sinh. 🧾 (Mất 15% doanh thu)",
+    "market_management": "Quản lý thị trường kiểm tra: 'Cân chưa kiểm định!'. Phạt nóng! 👮 (Phạt 200 Hạt)",
+    "sanitation_fine": "Vứt rác bừa bãi bị tổ dân phố bắt quả tang. Phạt cảnh cáo. 🧹 (Phạt 100 Hạt)",
+    "parking_fee": "Hôm nay bãi xe tăng giá, tốn thêm tiền gửi xe tải cá. 🛵 (Mất 10 Hạt)",
+    "rent_increase": "Chủ sạp thông báo tăng tiền thuê mặt bằng đột xuất. 🏘️ (Mất 50 Hạt)",
+
+    # Nhóm 4: Tội Phạm & Lừa Đảo
+    "fake_money": "Về nhà đếm lại tiền mới phát hiện bị kẹp tờ tiền âm phủ. 💸 (Mất 100 Hạt)",
+    "pickpocket": "Chen chúc đông người, kẻ gian đã rạch túi lấy mất ví tiền của bạn! 🕵️ (Mất 30% doanh thu)",
+    "gangster_fee": "Giang hồ 'Hắc Long Bang' đi thu phí bảo kê khu vực này. 🕶️ (Mất 150 Hạt)",
+    "scammer": "Bị khách dùng thủ thuật 'tráo tiền' lừa mất một khoản. 🃏 (Mất 20% doanh thu)",
+    "thief_run": "CƯỚP! Một tên cướp giật phăng túi tiền của bạn và chạy mất! 🏃💨 (Mất TRẮNG doanh thu)",
+
+    # Nhóm 5: Tai Nạn & Đen Đủi
+    "dropped_money": "Đang đếm tiền thì gió thổi bay mất một tờ 50 Hạt xuống cống. 🌬️ (Mất 50 Hạt)",
+    "hole_in_bag": "Túi đựng tiền bị thủng lỗ nhỏ, rơi rớt tiền lẻ dọc đường. 🧵 (Mất 10% doanh thu)",
+    "broken_scale": "Cái cân lò xo bị giãn, cân 1kg mà chỉ hiện 9 lạng. ⚖️ (Mất 10% doanh thu)",
+    "cat_steal_sell": "Đang bận bán hàng, con mèo hoang nhảy lên quầy cướp mất con cá ngon. 🐈 (Mất 30 Hạt)",
+    "stray_dog": "Con chó hàng xóm chạy qua tè vào xô cá. Phải đền tiền cho khách. 🐕 (Mất 40 Hạt)",
+    "rainy_day": "Mưa to quá, chợ vắng tanh, phải bán lỗ vốn để về sớm. 🌧️ (Giá giảm 20%)",
+    "slip_fall": "Sàn chợ trơn trượt, bạn ngã sấp mặt làm đổ hết tiền ra sàn. 🤕 (Mất 80 Hạt)",
+    "plastic_bag_fee": "Khách đòi nhiều túi ni lông quá, tốn tiền mua bao bì. 🛍️ (Mất 5 Hạt)",
+    "maybach_crash": "Mải bấm điện thoại check giá cá, bạn tông phải đuôi xe Maybach của chủ tịch xã. Đền ốm đòn! 🚗💥 (-500 Hạt)",
+    "maybach_crash": "Mải check giá cá trên điện thoại, bạn tông móp đuôi chiếc **Maybach S680** của chủ tịch huyện. Bán cả sạp cá cũng không đủ đền! 😭 (-500 Hạt)",
+    "rollroyce_crash": "Đang phi xe ba gác thì tạt đầu trúng chiếc **Rolls-Royce Phantom**. Cái logo 'Spirit of Ecstasy' bay mất tiêu. Bạn xác định ra đê ở! 💸 (-1000 Hạt)",
+    "ferrari_crash": "Thấy đèn vàng cố vượt, bạn quẹt xước sườn siêu xe **Ferrari 488** đang dừng. Tiếng 'két' nghe mà xót xa cõi lòng. 🏎️💔 (-1000 Hạt)",
+    "porsche_crash": "Mắt nhắm mắt mở thế nào mà húc thẳng vào đuôi em **Porsche Panamera**. Chủ xe bước xuống nhìn bạn ngao ngán... Chuẩn bị tiền đi! 🚗💥 (-1000 Hạt)",
+    "mercedes_g63": "Lùi xe không quan sát, bạn húc vỡ đèn hậu chiếc **Mercedes G63** mới cóng. Chủ xe nhìn bạn bằng nửa con mắt. 🚙 (-600 Hạt)",
+    "lamborghini_crash": "Nghe tiếng nẹt pô giật mình, bạn tay lái lụa quẹt luôn vào cánh cửa chiếc **Lamborghini Aventador**. Bò tót húc thủng ví rồi! 🐂💸 (-1200 Hạt)",
+    "bentley_crash": "Tránh ổ gà, bạn lạng tay lái va phải chiếc **Bentley** sang trọng. Tiền sơn xe bằng cả tháng đi câu! 🎩 (-900 Hạt)",
+    "bugatti_crash": "😱 **THẢM HỌA!** Bạn vừa tông phải siêu phẩm **Bugatti Chiron** độc nhất vô nhị. Bán nhà, bán đất, bán cả server cũng không đủ đền! ☠️ (-2000 Hạt)",
+    "vinfast_crash": "Ủng hộ hàng Việt nhưng hơi sai cách. Bạn vừa hôn vào đuôi chiếc **VinFast President**. Mãnh liệt tinh thần... đền tiền. 🇻🇳 (-300 Hạt)",
+
+    # --- 30 GOOD EVENTS MESSAGES ---
+    # Nhóm 1: Tăng giá bán
+    "market_boom": "Thị trường sôi động, giá cá tăng vọt! 📈 (Tăng 20%)",
+    "sushi_chef": "Đầu bếp nhà hàng 5 sao mua cá với giá cao! 🍣 (Tăng 30%)",
+    "tourist_group": "Khách du lịch ghé chợ, mua cá với giá hời. 🎒 (Tăng 15%)",
+    "festival": "Lễ hội ẩm thực đang diễn ra, nhu cầu tăng! 🏮 (Tăng 25%)",
+    "fresh_bonus": "Cá của bạn tươi quá! Được đánh giá 5 sao. ⭐ (Tăng 10%)",
+    "bidding_war": "Thương lái tranh nhau mua mẻ cá của bạn! 🗣️ (Tăng 35%)",
+    "supportive_friend": "Gặp bạn quen, họ mua ủng hộ với giá cao. 💚 (Tăng 10% + 50 Hạt)",
+    "golden_scale": "Cân của bà chủ bị hỏng, cân thừa cho bạn! ⚖️ (Tăng 10%)",
+    "sold_out": "Bạn bán hết sạch cá trong tích tắc! 🔥 (Tăng 15%)",
+    "compliment": "Mọi người khen cá bạn ngon nhất chợ! 👍 (Tăng 10% + 20 Hạt)",
+    "loyal_customer": "Khách quen quay lại mua ủng hộ. 🤝 (Tăng 15%)",
+    "good_weather": "Trời đẹp, chợ đông, bán đắt hàng! ☀️ (Tăng 10%)",
+    "unexpected_luck": "Hôm nay bạn cảm thấy thật may mắn! 🍀 (Tăng 20% + 50 Hạt)",
+    "big_fish_auction": "Con cá to nhất được đấu giá! 🏆 (Giá cực cao)",
+    "newspaper_feature": "Báo đưa tin về mẻ cá tuyệt vời của bạn! 📰 (Tăng 50%)",
+    
+    # Nhóm 2: Nhận thêm tiền
+    "tip_money": "Khách hàng thấy bạn vui vẻ nên tip thêm tiền. 💵 (+50 Hạt)",
+    "charity": "Hôm nay bà chủ trúng số, lì xì cho bạn. 🧧 (+100 Hạt)",
+    "found_money": "Bạn nhặt được tiền rơi ở chợ! 💸 (+200 Hạt)",
+    "lucky_money": "Bà chủ cảm thấy vui nên lì xì thêm. 🎉 (+100 Hạt)",
+    "golden_hour": "Bạn bán cá đúng giờ vàng, giá cao nhất! ⏰ (Tăng 40%)",
+    "rich_customer": "Gặp đại gia, không cần nhìn giá. 🎩 (Tăng 20%)",
+    "buy_one_get_one": "Khách hàng vui vẻ mua thêm vì khuyến mãi. 🎁 (Tăng 20%)",
+    "double_joy": "Bán được giá cao lại còn được khen! 😊 (Tăng 30% + 100 Hạt)",
+    
+    # Nhóm 3: Nhận vật phẩm
+    "gift_received": "Khách hàng tặng bạn một rương báu nhỏ. 📦 (+1 Rương)",
+    "found_bait": "Bạn tìm thấy mồi câu bị bỏ quên! 🪱 (+5 Mồi)",
+    "lottery_ticket": "Ai đó tặng bạn vé số! 🎫 (Cơ hội trúng thưởng)",
+    "pearl_in_fish": "Phát hiện ngọc trai trong bụng cá! 🔮 (+1 Ngọc Trai)",
+    "free_breakfast": "Bà chủ mời bạn ăn sáng miễn phí! 🍜 (+Độ bền)",
+    "old_rod_gift": "Ngư dân già tặng cần câu cũ của ông! 🎣 (+Vật liệu)",
+    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)",
+    "buy_one_get_one": "Khách hàng vui vẻ mua thêm vì khuyến mãi. 🎁 (Tăng 20%)",
+    "double_joy": "Bán được giá cao lại còn được khen! 😊 (Tăng 30% + 100 Hạt)",
+    
+    # Nhóm 3: Nhận vật phẩm
+    "gift_received": "Khách hàng tặng bạn một rương báu nhỏ. 📦 (+1 Rương)",
+    "found_bait": "Bạn tìm thấy mồi câu bị bỏ quên! 🪱 (+5 Mồi)",
+    "lottery_ticket": "Ai đó tặng bạn vé số! 🎫 (Cơ hội trúng thưởng)",
+    "pearl_in_fish": "Phát hiện ngọc trai trong bụng cá! 🔮 (+1 Ngọc Trai)",
+    "free_breakfast": "Bà chủ mời bạn ăn sáng miễn phí! 🍜 (+Độ bền)",
+    "old_rod_gift": "Ngư dân già tặng cần câu cũ của ông! 🎣 (+Vật liệu)",
+    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)",
 }
 
 # ==================== UI COMPONENTS ====================
@@ -731,7 +987,8 @@ class FishingCog(commands.Cog):
             "catch_multiplier": 1,  # Mặc định x1
             "convert_to_trash": False,  # Mặc định False
             "gain_items": {},  # Item nhận được thêm
-            "custom_effect": None  # Cho các effect đặc biệt
+            "custom_effect": None,  # Cho các effect đặc biệt
+            "durability_loss": 0  # Mất độ bền riêng
         }
         
         # Roll for random event
@@ -747,73 +1004,103 @@ class FishingCog(commands.Cog):
                 # Build result dict with event data
                 result["triggered"] = True
                 result["type"] = event_type
-                result["message"] = f"{event_data['name']} {RANDOM_EVENT_MESSAGES[event_type]}"
+                result["message"] = f"**{event_data['name']}** {RANDOM_EVENT_MESSAGES[event_type]}"
                 
-                # --- BAD EVENTS (10) ---
-                if event_type == "snapped_line":
+                effect = event_data.get("effect")
+                
+                # === XỬ LÝ BAD EVENTS THEO NHÓM ===
+                if effect == "lose_worm":
                     result["lose_worm"] = True
+                    result["lose_catch"] = True  # Mất mồi thì thường mất luôn cá
+                
+                elif effect == "lose_catch":
+                    result["lose_worm"] = True  # Vẫn mất mồi đã dùng
                     result["lose_catch"] = True
-                    
-                elif event_type == "police_fine":
-                    result["lose_money"] = 50
-                    
-                elif event_type == "predator":
-                    result["lose_worm"] = True
-                    result["lose_catch"] = True
-                    
-                elif event_type == "dropped_slipper":
-                    result["cooldown_increase"] = 120  # Phạt thêm 2 phút
-                    
-                elif event_type == "mom_called":
-                    result["lose_catch"] = True  # Mất cá nhưng ko mất mồi thêm
-                    
-                elif event_type == "cat_steal":
+                
+                elif effect == "thief":
                     result["custom_effect"] = "cat_steal"  # Xử lý riêng: mất cá to nhất
-                    
-                elif event_type == "broken_phone":
-                    result["lose_money"] = 200
-                    
-                elif event_type == "sea_sickness":
-                    result["custom_effect"] = "lose_all_bait"  # Xóa sạch mồi
-                    
-                elif event_type == "snake_bite":
-                    # Trừ 5% tài sản
-                    result["custom_effect"] = "snake_bite"
-                    
-                elif event_type == "plastic_trap":
-                    result["lose_catch"] = True
-                    result["cooldown_increase"] = 180  # Thêm 3 phút
+                    result["lose_worm"] = True  # Mất mồi
                 
-                # --- GOOD EVENTS (10) ---
-                elif event_type == "found_wallet":
-                    result["gain_money"] = random.randint(50, 150)
-                    
-                elif event_type == "fairy_gift":
+                elif effect == "lose_money_50":
+                    result["lose_money"] = 50
+                elif effect == "lose_money_100":
+                    result["lose_money"] = 100
+                elif effect == "lose_money_200":
+                    result["lose_money"] = 200
+                elif effect == "lose_money_percent":
+                    result["custom_effect"] = "snake_bite"  # Trừ 5%
+                    result["lose_money"] = -1  # Flag: tính % trong xử lý
+                
+                elif effect == "cooldown_short":
+                    result["cooldown_increase"] = 120  # 2 phút
+                elif effect == "cooldown_medium":
+                    result["cooldown_increase"] = 300  # 5 phút
+                elif effect == "cooldown_long":
+                    result["cooldown_increase"] = 600  # 10 phút
+                
+                elif effect == "lose_turn":
+                    result["lose_catch"] = True  # Mất cá
+                    # Không phạt thêm gì khác
+                
+                elif effect == "durability_hit":
+                    result["custom_effect"] = "durability_hit"  # Trừ độ bền nặng
+                    result["durability_loss"] = -5  # Trừ 5 độ bền
+                    result["lose_catch"] = True  # Thường vướng rác thì ko có cá
+                
+                elif effect == "lose_all_bait":
+                    result["custom_effect"] = "lose_all_bait"
+                
+                # === XỬ LÝ GOOD EVENTS THEO NHÓM ===
+                elif effect == "gain_money_small":
+                    result["gain_money"] = random.randint(30, 80)
+                elif effect == "gain_money_medium":
+                    result["gain_money"] = random.randint(100, 200)
+                elif effect == "gain_money_large":
+                    result["gain_money"] = random.randint(300, 500)
+                elif effect == "gain_money_huge":
+                    result["gain_money"] = 1000  # Jackpot
+
+                elif effect == "bet_loss":
+                    # Random số tiền thua từ 100 đến 300
+                    amount = random.randint(100, 300)
+                    result["lose_money"] = amount
+
+                elif effect == "bet_win":
+                    # Random số tiền thắng từ 100 đến 300
+                    amount = random.randint(100, 300)
+                    result["gain_money"] = amount
+
+                elif effect == "gain_worm_5":
                     result["gain_items"] = {"worm": 5}
-                    
-                elif event_type == "double_rainbow":
-                    result["custom_effect"] = "lucky_buff"  # Buff may mắn lần sau
-                    
-                elif event_type == "tourist_tip":
-                    result["gain_money"] = 100
-                    
-                elif event_type == "golden_turtle":
-                    result["cooldown_increase"] = -30  # Xóa cooldown (về 0)
-                    
-                elif event_type == "school_of_fish":
-                    result["catch_multiplier"] = 3
-                    
-                elif event_type == "engagement_ring":
-                    result["gain_money"] = 300
-                    
-                elif event_type == "ancient_vase":
-                    result["gain_money"] = 500
-                    
-                elif event_type == "sixth_sense":
-                    result["custom_effect"] = "sixth_sense"  # Tránh được xui lần sau
-                    
-                elif event_type == "treasure_shipwreck":
+                elif effect == "gain_worm_10":
+                    result["gain_items"] = {"worm": 10}
+                
+                elif effect == "gain_chest_1":
+                    result["gain_items"] = {"treasure_chest": 1}
+                elif effect == "gain_chest_2":
                     result["gain_items"] = {"treasure_chest": 2}
+                
+                elif effect == "gain_pearl":
+                    result["gain_items"] = {"pearl": 1}
+                elif effect == "gain_ring":
+                    result["gain_items"] = {"ring": 1}
+
+                elif effect == "multiply_catch_2":
+                    result["catch_multiplier"] = 2
+                elif effect == "multiply_catch_3":
+                    result["catch_multiplier"] = 3
+
+                elif effect == "reset_cooldown":
+                    result["cooldown_increase"] = -999  # Trừ số lớn để về 0
+
+                elif effect == "restore_durability":
+                    result["custom_effect"] = "restore_durability"  # Xử lý ngoài _fish_action
+
+                elif effect == "lucky_buff":
+                    result["custom_effect"] = "lucky_buff"
+
+                elif effect == "avoid_bad_event":
+                    result["custom_effect"] = "sixth_sense"
                 
                 return result
         
@@ -1025,7 +1312,8 @@ class FishingCog(commands.Cog):
         # --- CHECK COOLDOWN (using rod-based cooldown) ---
         remaining = await self.get_fishing_cooldown_remaining(user_id)
         if remaining > 0:
-            msg = f"⏱️ Cần chờ {remaining}s nữa mới được câu lại! (Cooldown: {rod_config['cd']}s)"
+            username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            msg = f"⏱️ **{username_display}** chờ chút nhen! Cần chờ {remaining}s nữa mới được câu lại! (Cooldown: {rod_config['cd']}s)"
             if is_slash:
                 await ctx.followup.send(msg, ephemeral=True)
             else:
@@ -1166,6 +1454,14 @@ class FishingCog(commands.Cog):
                 self.avoid_event_users[user_id] = True
                 event_message += " (Lần sau tránh xui!)"
                 print(f"[EVENT] {username} will avoid bad event on next cast")
+            
+            elif event_result.get("custom_effect") == "restore_durability":
+                # Hồi độ bền: +20 độ bền (không vượt quá max)
+                max_durability = rod_config["durability"]
+                rod_durability = min(max_durability, rod_durability + 20)
+                await self.update_rod_data(user_id, rod_durability)
+                event_message += f" (Độ bền +20: {rod_durability}/{max_durability})"
+                print(f"[EVENT] {username} restored rod durability to {rod_durability}")
             
             # Adjust cooldown (golden_turtle có thể là -30 để reset)
             if event_result.get("cooldown_increase", 0) != 0:
@@ -1556,6 +1852,7 @@ class FishingCog(commands.Cog):
             print(f"[SELL EVENT DEBUG] ❌ No event triggered (final cumulative: {current_chance:.4f})")
         
         # Apply event logic
+        special_rewards = []
         if triggered_event:
             ev_data = SELL_EVENTS[triggered_event]
             event_name = ev_data["name"]
@@ -1564,12 +1861,47 @@ class FishingCog(commands.Cog):
             # Công thức: (Gốc * Multiplier) + Flat Bonus
             final_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
             
-            # Đảm bảo không bị âm tiền
-            if final_total < 0: 
-                final_total = 0
+            # Cho phép âm tiền nếu sự kiện xấu quá nghiêm trọng
             
             diff = final_total - base_total
             sign = "+" if diff >= 0 else ""
+            
+            # Xử lý special effects (vật phẩm thưởng)
+            if "special" in ev_data:
+                special_type = ev_data["special"]
+                
+                if special_type == "chest":
+                    await self.add_inventory_item(user_id, "treasure_chest", "tool")
+                    special_rewards.append("🎁 +1 Rương Kho Báu")
+                
+                elif special_type == "worm":
+                    await self.add_inventory_item(user_id, "worm", "bait")
+                    special_rewards.append("🪱 +5 Mồi Câu")
+                
+                elif special_type == "pearl":
+                    await self.add_inventory_item(user_id, "pearl", "tool")
+                    special_rewards.append("🔮 +1 Ngọc Trai")
+                
+                elif special_type == "durability":
+                    # Thêm độ bền cho cần câu hiện tại
+                    user_rod_level, user_rod_durability = await self.get_rod_data(user_id)
+                    max_durability = ROD_LEVELS[user_rod_level]["durability"]
+                    new_durability = min(max_durability, user_rod_durability + 10)
+                    await self.update_rod_data(user_id, new_durability)
+                    special_rewards.append("🛠️ +10 Độ Bền Cần Câu")
+                
+                elif special_type == "rod":
+                    await self.add_inventory_item(user_id, "rod_material", "material")
+                    special_rewards.append("🎣 +1 Vật Liệu Nâng Cấp Cần")
+                
+                elif special_type == "lottery":
+                    if random.random() < 0.1:  # 10% win chance
+                        lottery_reward = 500
+                        await add_seeds(user_id, lottery_reward)
+                        final_total += lottery_reward
+                        special_rewards.append(f"🎉 **TRÚNG SỐ! +{lottery_reward} Hạt!**")
+                    else:
+                        special_rewards.append("❌ Vé số không trúng")
             
             # Formatting message
             if ev_data["type"] == "good":
@@ -1610,6 +1942,14 @@ class FishingCog(commands.Cog):
                 value=f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**",
                 inline=False
             )
+            
+            # Add special rewards if any
+            if special_rewards:
+                event_embed.add_field(
+                    name="🎁 Phần Thưởng Đặc Biệt",
+                    value="\n".join(special_rewards),
+                    inline=False
+                )
             
             if is_slash:
                 await ctx.followup.send(embed=event_embed, ephemeral=False)
