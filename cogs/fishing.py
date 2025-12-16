@@ -563,11 +563,11 @@ RANDOM_EVENT_MESSAGES = {
     "friendly_otter":  "Một chú Rái Cá lùa cá vào lưới giúp bạn. X2 cá! 🦦",
     "net_fishing":     "Móc trúng cái lưới của ai bỏ quên, bên trong đầy cá! (X3) 🕸️",
 
-    "golden_turtle":   "Cụ Rùa Vàng nổi lên thở. Bạn cảm thấy tràn trề sinh lực (Xóa Cooldown)! 🐢",
-    "favorable_wind":  "Gió đông thổi tới! Câu nhanh hơn hẳn (Xóa Cooldown). 🌬️",
+    "golden_turtle":   "Cụ Rùa Vàng nổi lên thở. Bạn cảm thấy tràn trề sinh lực! 🐢",
+    "favorable_wind":  "Gió đông thổi tới! Câu nhanh hơn hẳn. 🌬️",
     "blacksmith_ghost":"Hồn ma thợ rèn hiện về: 'Để ta sửa cần cho con'. (+20 Độ bền) 🔨👻",
     "maintenance_kit": "Vớt được hộp dầu máy. Tra dầu vào cần câu chạy mượt hẳn! (+20 Độ bền) 🛢️",
-    "energy_drink":    "Làm lon bò húc! Tỉnh cả người, quăng cần liên tục (Xóa Cooldown). 🐂",
+    "energy_drink":    "Làm lon bò húc! Tỉnh cả người, quăng cần liên tục. 🐂",
 
     "double_rainbow":  "Cầu vồng đôi! 🌈 Nhân phẩm bùng nổ (Lần sau chắc chắn ra Cá Hiếm).",
     "shooting_star":   "Sao băng lướt qua! 🌠 Ước gì được nấy (Buff may mắn).",
@@ -1773,7 +1773,7 @@ class FishingCog(commands.Cog):
         title = f"🎣 {username} Câu Được {summary_text}"
         
         if num_fish > 2:
-            title = f"🎣 BIG HAUL! {username} Bắt {num_fish} Con Cá! 🎉"
+            title = f"🎣 THỜI TỚI! {username} Bắt {num_fish} Con Cá! 🎉"
         
         # Add title-earned message if applicable
         if title_earned:
@@ -2085,11 +2085,33 @@ class FishingCog(commands.Cog):
             piece = random.choice(pieces)
             await self.add_inventory_item(user_id, piece, "tool")
             piece_display = piece.split("_")[1].upper()
-            embed = discord.Embed(
-                title="🎁 Rương Kho Báu",
-                description=f"**🧩 Mảnh Ghép {piece_display}** (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)",
-                color=discord.Color.blue()
-            )
+            
+            # Check if user now has all 4 pieces (A, B, C, D)
+            inventory = await get_inventory(user_id)
+            has_all_pieces = all(inventory.get(f"puzzle_{p}", 0) > 0 for p in ["a", "b", "c", "d"])
+            
+            if has_all_pieces:
+                # Remove all 4 pieces from inventory
+                await remove_item(user_id, "puzzle_a", 1)
+                await remove_item(user_id, "puzzle_b", 1)
+                await remove_item(user_id, "puzzle_c", 1)
+                await remove_item(user_id, "puzzle_d", 1)
+                
+                # Award random 5000-10000 seeds
+                reward = random.randint(5000, 10000)
+                await add_seeds(user_id, reward)
+                
+                embed = discord.Embed(
+                    title="🎁 Rương Kho Báu",
+                    description=f"**🧩 Mảnh Ghép {piece_display}**\n\n🎉 **ĐỦ 4 MẢNH - TỰ ĐỘNG GHÉP!**\n💰 **Bạn nhận được {reward} Hạt!**",
+                    color=discord.Color.gold()
+                )
+            else:
+                embed = discord.Embed(
+                    title="🎁 Rương Kho Báu",
+                    description=f"**🧩 Mảnh Ghép {piece_display}** (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)",
+                    color=discord.Color.blue()
+                )
         
         elif loot_type == "coin_pouch":
             coins = random.randint(100, 200)

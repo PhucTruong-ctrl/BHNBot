@@ -79,10 +79,21 @@ class ShopCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="mua", description="Mua quà")
-    @app_commands.describe(item="Tên item tiếng Việt (Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp)")
-    async def buy_slash(self, interaction: discord.Interaction, item: str):
+    @app_commands.describe(
+        item="Tên item tiếng Việt (Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp, Giun)",
+        soluong="Số lượng muốn mua (mặc định: 1)"
+    )
+    async def buy_slash(self, interaction: discord.Interaction, item: str, soluong: int = 1):
         """Buy item from shop"""
         await interaction.response.defer(ephemeral=True)
+        
+        # Validate quantity
+        if soluong < 1:
+            await interaction.followup.send(
+                f"❌ Số lượng phải >= 1!",
+                ephemeral=True
+            )
+            return
         
         # Try to match Vietnamese name to item key
         item_key = VIETNAMESE_TO_ITEM_KEY.get(item)
@@ -95,38 +106,45 @@ class ShopCog(commands.Cog):
             return
         
         item_info = SHOP_ITEMS[item_key]
-        cost = item_info['cost']
+        cost_per_item = item_info['cost']
+        total_cost = cost_per_item * soluong
         user_id = interaction.user.id
         
         # Check balance
         seeds = await self.get_seeds(user_id)
-        if seeds < cost:
+        if seeds < total_cost:
             await interaction.followup.send(
                 f"❌ Bạn không đủ hạt!\n"
-                f"Cần: {cost} hạt | Hiện có: {seeds} hạt",
+                f"Cần: {total_cost} hạt | Hiện có: {seeds} hạt",
                 ephemeral=True
             )
             return
         
         # Process purchase
-        await self.reduce_seeds(user_id, cost)
-        await self.add_item_local(user_id, item_key, 1)
+        await self.reduce_seeds(user_id, total_cost)
+        await self.add_item_local(user_id, item_key, soluong)
         
+        quantity_text = f" x{soluong}" if soluong > 1 else ""
         embed = discord.Embed(
             title="✅ Mua thành công!",
-            description=f"Bạn vừa mua **{item}**",
+            description=f"Bạn vừa mua **{item}{quantity_text}**",
             color=discord.Color.green()
         )
-        embed.add_field(name="💰 Trừ", value=f"{cost} hạt", inline=True)
-        embed.add_field(name="💾 Còn lại", value=f"{seeds - cost} hạt", inline=True)
+        embed.add_field(name="💰 Trừ", value=f"{total_cost} hạt", inline=True)
+        embed.add_field(name="💾 Còn lại", value=f"{seeds - total_cost} hạt", inline=True)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
-        print(f"[SHOP] {interaction.user.name} bought {item}")
+        print(f"[SHOP] {interaction.user.name} bought {soluong}x {item}")
 
     @commands.command(name="mua", description="Mua quà")
-    async def buy_prefix(self, ctx, *, item: str):
-        """Buy item from shop via prefix"""
+    async def buy_prefix(self, ctx, soluong: int = 1, *, item: str):
+        """Buy item from shop via prefix - Usage: !mua [quantity] [item_name]"""
+        # Validate quantity
+        if soluong < 1:
+            await ctx.send(f"❌ Số lượng phải >= 1!")
+            return
+        
         # Try to match Vietnamese name to item key
         item_key = VIETNAMESE_TO_ITEM_KEY.get(item)
         if not item_key:
@@ -135,29 +153,31 @@ class ShopCog(commands.Cog):
             return
         
         item_info = SHOP_ITEMS[item_key]
-        cost = item_info['cost']
+        cost_per_item = item_info['cost']
+        total_cost = cost_per_item * soluong
         user_id = ctx.author.id
         
         # Check balance
         seeds = await self.get_seeds(user_id)
-        if seeds < cost:
-            await ctx.send(f"❌ Bạn không đủ hạt!\nCần: {cost} hạt | Hiện có: {seeds} hạt")
+        if seeds < total_cost:
+            await ctx.send(f"❌ Bạn không đủ hạt!\nCần: {total_cost} hạt | Hiện có: {seeds} hạt")
             return
         
         # Process purchase
-        await self.reduce_seeds(user_id, cost)
-        await self.add_item_local(user_id, item_key, 1)
+        await self.reduce_seeds(user_id, total_cost)
+        await self.add_item_local(user_id, item_key, soluong)
         
+        quantity_text = f" x{soluong}" if soluong > 1 else ""
         embed = discord.Embed(
             title="✅ Mua thành công!",
-            description=f"Bạn vừa mua **{item}**",
+            description=f"Bạn vừa mua **{item}{quantity_text}**",
             color=discord.Color.green()
         )
-        embed.add_field(name="💰 Trừ", value=f"{cost} hạt", inline=True)
-        embed.add_field(name="💾 Còn lại", value=f"{seeds - cost} hạt", inline=True)
+        embed.add_field(name="💰 Trừ", value=f"{total_cost} hạt", inline=True)
+        embed.add_field(name="💾 Còn lại", value=f"{seeds - total_cost} hạt", inline=True)
         
         await ctx.send(embed=embed)
-        print(f"[SHOP] {ctx.author.name} bought {item}")
+        print(f"[SHOP] {ctx.author.name} bought {soluong}x {item}")
 
 async def setup(bot):
     await bot.add_cog(ShopCog(bot))

@@ -439,6 +439,60 @@ class EconomyCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="top", description="Xem bảng xếp hạng 10 người có nhiều hạt nhất")
+    async def top_leaderboard_slash(self, interaction: discord.Interaction):
+        """Show top 10 leaderboard (slash command)"""
+        await interaction.response.defer(ephemeral=False)
+        
+        top_users = await self.get_leaderboard_local(10)
+        
+        if not top_users:
+            await interaction.followup.send("❌ Chưa có ai trong bảng xếp hạng!", ephemeral=True)
+            return
+        
+        embed = discord.Embed(
+            title="🏆 Bảng Xếp Hạng Top 10 Hạt",
+            color=discord.Color.gold()
+        )
+        
+        ranking_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for idx, (user_id, username, seeds) in enumerate(top_users, 1):
+            medal = medals[idx - 1] if idx <= 3 else f"{idx}️⃣"
+            ranking_text += f"{medal} **{username}** - {seeds} 🌱\n"
+        
+        embed.description = ranking_text
+        embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")
+        
+        await interaction.followup.send(embed=embed, ephemeral=False)
+
+    @commands.command(name="top", description="Xem bảng xếp hạng top 10")
+    async def top_leaderboard_prefix(self, ctx):
+        """Show top 10 leaderboard (prefix command)"""
+        top_users = await self.get_leaderboard_local(10)
+        
+        if not top_users:
+            await ctx.send("❌ Chưa có ai trong bảng xếp hạng!")
+            return
+        
+        embed = discord.Embed(
+            title="🏆 Bảng Xếp Hạng Top 10 Hạt",
+            color=discord.Color.gold()
+        )
+        
+        ranking_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for idx, (user_id, username, seeds) in enumerate(top_users, 1):
+            medal = medals[idx - 1] if idx <= 3 else f"{idx}️⃣"
+            ranking_text += f"{medal} **{username}** - {seeds} 🌱\n"
+        
+        embed.description = ranking_text
+        embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")
+        
+        await ctx.send(embed=embed)
+
     @commands.command(name="themhat", description="Thêm hạt cho user (Admin Only)")
     @commands.has_permissions(administrator=True)
     async def add_seeds_admin(self, ctx, user: discord.User, amount: int):
