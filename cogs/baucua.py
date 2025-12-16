@@ -129,9 +129,8 @@ class BauCuaCog(commands.Cog):
         
         embed.add_field(
             name="💡 Cách chơi",
-            value="Bấm vào 1 nút để chọn linh vật cần cược, rồi nhập số lượng hạt muốn cược.\n"
-                  "Nếu linh vật bạn cược xuất hiện trong 3 kết quả → THẮNG!\n"
-                  "Số lần xuất hiện = số lần nhân hạt cược (vd: 2 lần = 2x tiền cược)",
+            value="Bấm vào 1 nút để chọn linh vật, nhập số hạt muốn cược (max 250k)\n"
+                  "Ví dụ: Cược 100 thì xuất hiện 1 lần = nhận 200 (lời 100) | 2 lần = nhận 300 (lời 200) | 3 lần = nhận 400 (lời 300)",
             inline=False
         )
         

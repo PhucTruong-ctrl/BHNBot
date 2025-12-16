@@ -202,12 +202,154 @@ class EconomyCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="tuido", description="Xem số hạt hiện tại (alias của /bal)")
-    async def balance_alias(self, interaction: discord.Interaction):
-        """Alias for /bal command"""
-        await self.balance(interaction)
+    @app_commands.command(name="tuido", description="Xem số hạt và túi đồ của bạn")
+    @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
+    async def balance_alias(self, interaction: discord.Interaction, user: discord.User = None):
+        """Check balance and inventory"""
+        await interaction.response.defer(ephemeral=False)
+        
+        target_user = user or interaction.user
+        await self.get_or_create_user_local(target_user.id, target_user.name)
+        
+        seeds = await self.get_user_balance_local(target_user.id)
+        
+        # Get inventory
+        from database_manager import get_inventory
+        inventory = await get_inventory(target_user.id)
+        
+        embed = discord.Embed(
+            title=f"💰 Thông tin của {target_user.name}",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
+        
+        # Display inventory items
+        if inventory:
+            inv_text = ""
+            # Import fish names for display
+            from cogs.fishing import ALL_FISH, GIFT_ITEMS
+            
+            # Fish items
+            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
+            if fish_items:
+                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in sorted(fish_items.items())])
+                inv_text += f"**🐟 Cá:**\n{fish_text}\n\n"
+            
+            # Gift items
+            gift_lookup = {
+                "cafe": ("☕ Cà Phê", "☕"),
+                "flower": ("🌹 Hoa", "🌹"),
+                "ring": ("💍 Nhẫn", "💍"),
+                "gift": ("🎁 Quà", "🎁"),
+                "chocolate": ("🍫 Sô Cô La", "🍫"),
+                "card": ("💌 Thiệp", "💌"),
+            }
+            gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
+            if gift_items:
+                gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
+                inv_text += f"**💝 Quà Tặng:**\n{gift_text}\n\n"
+            
+            # Tool items
+            tool_lookup = {
+                "treasure_chest": ("🎁 Rương Kho Báu", "🎁"),
+                "fertilizer": ("🌾 Phân Bón", "🌾"),
+                "puzzle_a": ("🧩 Mảnh Ghép A", "🧩"),
+                "puzzle_b": ("🧩 Mảnh Ghép B", "🧩"),
+                "puzzle_c": ("🧩 Mảnh Ghép C", "🧩"),
+                "puzzle_d": ("🧩 Mảnh Ghép D", "🧩"),
+            }
+            tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
+            if tool_items:
+                tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
+                inv_text += f"**🛠️ Công Cụ:**\n{tool_text}\n\n"
+            
+            # Trash items
+            trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
+            if trash_items:
+                trash_text = "\n".join([f"🗑️ **{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                inv_text += f"**🗑️ Rác:**\n{trash_text}"
+            
+            if inv_text:
+                embed.add_field(name="🎒 Túi Đồ", value=inv_text, inline=False)
+        else:
+            embed.add_field(name="🎒 Túi Đồ", value="Trống rỗng", inline=False)
+        
+        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
+        
+        await interaction.followup.send(embed=embed, ephemeral=False)
 
-    @app_commands.command(name="top", description="Xem bảng xếp hạng hạt")
+    @commands.command(name="tuido", description="Xem số hạt và túi đồ")
+    async def balance_alias_prefix(self, ctx, user: discord.User = None):
+        """Check balance and inventory via prefix"""
+        target_user = user or ctx.author
+        await self.get_or_create_user_local(target_user.id, target_user.name)
+        
+        seeds = await self.get_user_balance_local(target_user.id)
+        
+        # Get inventory
+        from database_manager import get_inventory
+        inventory = await get_inventory(target_user.id)
+        
+        embed = discord.Embed(
+            title=f"💰 Thông tin của {target_user.name}",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
+        
+        # Display inventory items
+        if inventory:
+            inv_text = ""
+            # Import fish names for display
+            from cogs.fishing import ALL_FISH, GIFT_ITEMS
+            
+            # Fish items
+            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
+            if fish_items:
+                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in sorted(fish_items.items())])
+                inv_text += f"**🐟 Cá:**\n{fish_text}\n\n"
+            
+            # Gift items
+            gift_lookup = {
+                "cafe": ("☕ Cà Phê", "☕"),
+                "flower": ("🌹 Hoa", "🌹"),
+                "ring": ("💍 Nhẫn", "💍"),
+                "gift": ("🎁 Quà", "🎁"),
+                "chocolate": ("🍫 Sô Cô La", "🍫"),
+                "card": ("💌 Thiệp", "💌"),
+            }
+            gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
+            if gift_items:
+                gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
+                inv_text += f"**💝 Quà Tặng:**\n{gift_text}\n\n"
+            
+            # Tool items
+            tool_lookup = {
+                "treasure_chest": ("🎁 Rương Kho Báu", "🎁"),
+                "fertilizer": ("🌾 Phân Bón", "🌾"),
+                "puzzle_a": ("🧩 Mảnh Ghép A", "🧩"),
+                "puzzle_b": ("🧩 Mảnh Ghép B", "🧩"),
+                "puzzle_c": ("🧩 Mảnh Ghép C", "🧩"),
+                "puzzle_d": ("🧩 Mảnh Ghép D", "🧩"),
+            }
+            tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
+            if tool_items:
+                tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
+                inv_text += f"**🛠️ Công Cụ:**\n{tool_text}\n\n"
+            
+            # Trash items
+            trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
+            if trash_items:
+                trash_text = "\n".join([f"🗑️ **{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                inv_text += f"**🗑️ Rác:**\n{trash_text}"
+            
+            if inv_text:
+                embed.add_field(name="🎒 Túi Đồ", value=inv_text, inline=False)
+        else:
+            embed.add_field(name="🎒 Túi Đồ", value="Trống rỗng", inline=False)
+        
+        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
+        
+        await ctx.send(embed=embed)
     async def leaderboard(self, interaction: discord.Interaction):
         """Show leaderboard"""
         await interaction.response.defer(ephemeral=True)

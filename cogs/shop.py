@@ -121,35 +121,5 @@ class ShopCog(commands.Cog):
         
         print(f"[SHOP] {interaction.user.name} bought {item}")
 
-    @app_commands.command(name="inventory", description="Xem túi đồ của bạn")
-    @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
-    async def inventory(self, interaction: discord.Interaction, user: discord.User = None):
-        """Check inventory"""
-        await interaction.response.defer(ephemeral=True)
-        
-        target_user = user or interaction.user
-        inventory = await self.get_inventory(target_user.id)
-        
-        embed = discord.Embed(
-            title=f"🎒 Túi đồ của {target_user.name}",
-            color=discord.Color.blue()
-        )
-        
-        if not inventory:
-            embed.description = "Túi đồ trống rỗng 😢"
-        else:
-            inv_text = ""
-            for item_key, quantity in inventory.items():
-                if item_key in SHOP_ITEMS:
-                    emoji = SHOP_ITEMS[item_key]['emoji']
-                    name = SHOP_ITEMS[item_key]['name']
-                    inv_text += f"{emoji} **{name}** x{quantity}\n"
-            
-            embed.description = inv_text if inv_text else "Túi đồ trống rỗng 😢"
-        
-        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
 async def setup(bot):
     await bot.add_cog(ShopCog(bot))

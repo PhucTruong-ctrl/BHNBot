@@ -250,6 +250,20 @@ def init_database():
     except Exception as e:
         print(f"⚠️ Relationships table check error: {e}")
     
+    # Add type column to inventory table (for item classification)
+    try:
+        c.execute("PRAGMA table_info(inventory)")
+        inv_columns = [row[1] for row in c.fetchall()]
+        
+        if "type" not in inv_columns:
+            try:
+                c.execute("ALTER TABLE inventory ADD COLUMN type TEXT DEFAULT 'gift'")
+                print("✓ Added type column to inventory table (fish, gift, tool, trash)")
+            except sqlite3.OperationalError:
+                print("ℹ️ type column already exists in inventory table")
+    except Exception as e:
+        print(f"⚠️ Inventory table check error: {e}")
+    
     conn.commit()
     
     # ==================== CREATE INDEXES FOR OPTIMIZATION ====================
