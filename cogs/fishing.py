@@ -49,22 +49,77 @@ LOOT_TABLE_NO_WORM = {
 # Trung bình: ~1.4 con/lần (giảm từ 2.0)
 CATCH_COUNT_WEIGHTS = [70, 20, 8, 2, 0]  # Cho random.choices() với k=1
 
-# Cá thường - key format: "ca_chep" (lowercase, no spaces)
-# GIÁ ĐÃ GIẢM để chống lạm phát (Original: 10-12)
+# ==================== FISH DATABASE ====================
+
+# 1. CÁ THƯỜNG (COMMON) - Tỉ lệ gặp cao (~90-95%)
+# Giá: 5 - 15 Hạt.
 COMMON_FISH = [
+    # --- Nhóm Giá Rẻ (5-7 Hạt) - Dễ dính ---
     {"key": "ca_chep", "name": "Cá Chép", "emoji": "🐠", "sell_price": 5},
     {"key": "ca_ro", "name": "Cá Rô", "emoji": "🐟", "sell_price": 6},
-    {"key": "ca_tre", "name": "Cá Trê", "emoji": "🐟", "sell_price": 8},
+    {"key": "ca_bong", "name": "Cá Bống", "emoji": "🐟", "sell_price": 5},
+    {"key": "ca_com", "name": "Cá Cơm", "emoji": "🐟", "sell_price": 5},
+    {"key": "ca_moi", "name": "Cá Mòi", "emoji": "🐟", "sell_price": 5},
+    {"key": "ca_me", "name": "Cá Mè", "emoji": "⚪", "sell_price": 6},
+    {"key": "ca_sac", "name": "Cá Sặc", "emoji": "🐠", "sell_price": 6},
+    {"key": "ca_nuc", "name": "Cá Nục", "emoji": "🐟", "sell_price": 7},
+    {"key": "ca_bac_ma", "name": "Cá Bạc Má", "emoji": "🐟", "sell_price": 7},
+    {"key": "ca_chim", "name": "Cá Chim", "emoji": "⬜", "sell_price": 7},
+
+    # --- Nhóm Trung Bình (8-10 Hạt) ---
+    {"key": "ca_tre", "name": "Cá Trê", "emoji": "🥖", "sell_price": 8},
+    {"key": "ca_loc", "name": "Cá Lóc", "emoji": "🦈", "sell_price": 9},
+    {"key": "ca_tram", "name": "Cá Trắm", "emoji": "🐟", "sell_price": 9},
+    {"key": "ca_chach", "name": "Cá Chạch", "emoji": "🐍", "sell_price": 8},
+    {"key": "ca_keo", "name": "Cá Kèo", "emoji": "🥢", "sell_price": 8},
+    {"key": "ca_dieu_hong", "name": "Diêu Hồng", "emoji": "🌸", "sell_price": 9},
+    {"key": "ca_vang", "name": "Cá Vàng", "emoji": "🐡", "sell_price": 10},
+    {"key": "ca_bay_mau", "name": "Cá 7 Màu", "emoji": "🌈", "sell_price": 10},
+    {"key": "ca_nheo", "name": "Cá Nheo", "emoji": "🐟", "sell_price": 10},
+    {"key": "ca_ho", "name": "Cá Hố", "emoji": "🎗️", "sell_price": 10},
+
+    # --- Nhóm Ngon (11-15 Hạt) ---
+    {"key": "ca_thu", "name": "Cá Thu", "emoji": "🐟", "sell_price": 12},
+    {"key": "ca_ngu", "name": "Cá Ngừ", "emoji": "🦈", "sell_price": 12},
+    {"key": "ca_mu", "name": "Cá Mú", "emoji": "🐡", "sell_price": 13},
+    {"key": "ca_lang", "name": "Cá Lăng", "emoji": "🥖", "sell_price": 14},
+    {"key": "ca_chinh", "name": "Cá Chình", "emoji": "🐍", "sell_price": 14},
+    {"key": "ca_tai_tuong", "name": "Tai Tượng", "emoji": "👂", "sell_price": 13},
+    {"key": "muc_ong", "name": "Mực Ống", "emoji": "🦑", "sell_price": 15},
+    {"key": "bach_tuoc", "name": "Bạch Tuộc", "emoji": "🐙", "sell_price": 15},
+    {"key": "tom_hum_dat", "name": "Tôm Đất", "emoji": "🦐", "sell_price": 15},
+    {"key": "cua_dong", "name": "Cua Đồng", "emoji": "🦀", "sell_price": 12},
 ]
 
-# Cá hiếm
-# GIÁ ĐÃ GIẢM để chống lạm phát (Original: 50-100)
+# 2. CÁ HIẾM (RARE) - Tỉ lệ gặp thấp (~5-10%)
+# Giá: 35 - 150 Hạt.
 RARE_FISH = [
-    {"key": "ca_koi", "name": "Cá Koi", "emoji": "✨🐠", "sell_price": 30},
-    {"key": "ca_hoi", "name": "Cá Hồi", "emoji": "✨🐟", "sell_price": 40},
-    {"key": "ca_tam", "name": "Cá Tầm", "emoji": "✨🐟", "sell_price": 50},
-    {"key": "ca_rong", "name": "Cá Rồng", "emoji": "🐲", "sell_price": 80}
+    # --- Rare Thường (35-50 Hạt) ---
+    {"key": "ca_koi", "name": "Cá Koi", "emoji": "✨🐠", "sell_price": 35},
+    {"key": "ca_he", "name": "Cá Hề (Nemo)", "emoji": "🤡", "sell_price": 35},
+    {"key": "ca_hoi", "name": "Cá Hồi", "emoji": "🍣", "sell_price": 40},
+    {"key": "ca_thien_than", "name": "Thiên Thần", "emoji": "👼", "sell_price": 40},
+    {"key": "ca_dia", "name": "Cá Đĩa", "emoji": "💿", "sell_price": 45},
+    {"key": "ca_ngua", "name": "Cá Ngựa", "emoji": "🐎", "sell_price": 45},
+    {"key": "ca_tam", "name": "Cá Tầm", "emoji": "🦈", "sell_price": 50},
+    {"key": "ca_betta", "name": "Betta Rồng", "emoji": "🐉", "sell_price": 50},
+
+    # --- Rare Xịn (60-90 Hạt) ---
+    {"key": "ca_duoi_dien", "name": "Đuối Điện", "emoji": "⚡", "sell_price": 60},
+    {"key": "ca_long_den", "name": "Cá Lồng Đèn", "emoji": "💡", "sell_price": 65},
+    {"key": "ca_mat_trang", "name": "Mặt Trăng", "emoji": "🌙", "sell_price": 70},
+    {"key": "ca_kiem", "name": "Cá Kiếm", "emoji": "⚔️", "sell_price": 75},
+    {"key": "ca_rong", "name": "Cá Rồng", "emoji": "🐲", "sell_price": 80},
+    {"key": "ca_map", "name": "Cá Mập", "emoji": "🦈", "sell_price": 90},
+
+    # --- LEGENDARY (100+ Hạt) ---
+    {"key": "ca_voi", "name": "Cá Voi Xanh", "emoji": "🐋", "sell_price": 120},
+    {"key": "ca_hai_tuong", "name": "Hải Tượng", "emoji": "🦕", "sell_price": 130},
+    {"key": "ca_nha_tang", "name": "Cá Nhà Táng", "emoji": "🐳", "sell_price": 150},
 ]
+
+# (Đừng quên giữ dòng này để code hoạt động)
+# PEARL_INFO = {"key": "pearl", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
 
 # Ngọc Trai - Item hiếm từ Tiên Cá (bán giá cao)
 PEARL_INFO = {"key": "pearl", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
@@ -97,37 +152,195 @@ GIFT_ITEMS = ["cafe", "flower", "ring", "gift", "chocolate", "card"]
 # Mồi câu (Money Sink)
 WORM_COST = 5  # Giá mua mồi - chống lạm phát bằng cách tiêu tiền trước khi câu
 
-# ==================== RANDOM EVENTS ====================
-# Tổng tỉ lệ event khoảng 8-10% là đẹp
+# ==================== ACHIEVEMENTS SYSTEM ====================
+# Hệ thống thành tựu - mục tiêu dài hạn cho người chơi
+# Format: {"key": {"name": "Tên", "description": "Mô tả", "condition_type": "type", "target": value, "reward_coins": x, "role_id": ROLE_ID}}
+
+ACHIEVEMENTS = {
+    "first_catch": {
+        "name": "Tân Thủ Tập Sự",
+        "description": "Câu được con cá đầu tiên",
+        "condition_type": "first_catch",
+        "target": 1,
+        "reward_coins": 50,
+        "emoji": "🎣",
+        "role_id": None  # Để trống - không cấp role cho thành tựu này
+    },
+    "worm_destroyer": {
+        "name": "Kẻ Hủy Diệt Giun",
+        "description": "Tiêu thụ tổng cộng 500 Giun",
+        "condition_type": "worms_used",
+        "target": 500,
+        "reward_coins": 1000,
+        "emoji": "🪱",
+        "role_id": None  # Để trống hoặc thay bằng role_id của server
+    },
+    "trash_master": {
+        "name": "Hiệp Sĩ Môi Trường",
+        "description": "Câu được 100 loại Rác",
+        "condition_type": "trash_caught",
+        "target": 100,
+        "reward_coins": 500,
+        "emoji": "🗑️",
+        "role_id": None
+    },
+    "millionaire": {
+        "name": "Tỷ Phú",
+        "description": "Kiếm được 100,000 Hạt từ bán cá",
+        "condition_type": "coins_earned",
+        "target": 100000,
+        "reward_coins": 5000,
+        "emoji": "💰",
+        "role_id": None
+    },
+    "dragon_slayer": {
+        "name": "Long Vương",
+        "description": "Câu được Cá Rồng (Cá hiếm nhất)",
+        "condition_type": "caught_fish",
+        "target": "ca_rong",
+        "reward_coins": 1000,
+        "emoji": "🐲",
+        "role_id": None
+    },
+    "unlucky": {
+        "name": "Thánh Nhọ",
+        "description": "Gặp sự kiện xấu 50 lần",
+        "condition_type": "bad_events",
+        "target": 50,
+        "reward_coins": 500,
+        "emoji": "😭",
+        "role_id": None
+    },
+    "lucky": {
+        "name": "Bạn Của Thần Tài",
+        "description": "Gặp sự kiện tốt 50 lần",
+        "condition_type": "good_events",
+        "target": 50,
+        "reward_coins": 2000,
+        "emoji": "✨",
+        "role_id": None
+    },
+    "collection_master": {
+        "name": "Vua Câu Cá",
+        "description": "Hoàn thành bộ sưu tập (câu được tất cả loại cá)",
+        "condition_type": "collection_complete",
+        "target": 1,
+        "reward_coins": 10000,
+        "emoji": "👑",
+        "role_id": 1450409414111658024  # Dùng role "Vua Câu Cá" hiện tại
+    }
+}
+
+# ==================== RANDOM EVENTS EXPANDED ====================
+# Tỉ lệ tổng nên giữ ở mức 14-16% để game không bị loạn
+# 20 sự kiện: 10 xấu + 10 tốt
 
 RANDOM_EVENTS = {
-    # --- BAD EVENTS ---
-    "snapped_line": {"chance": 0.01, "name": "Đứt Cước!"},
-    "police_fine": {"chance": 0.01, "name": "Công An Phạt!"},
-    "predator": {"chance": 0.01, "name": "Cá sấu cắn!"},
-    "equipment_break": {"chance": 0.005, "name": "Gãy Cần!"},
-    "flood": {"chance": 0.005, "name": "Sóng Thần!"},
-    "pollution": {"chance": 0.01, "name": "Ô Nhiễm!"},  # NEW: Biến cá thành rác
+    # --- BAD EVENTS (Kiếp Nạn - 10 sự kiện) ---
+    "snapped_line": {"chance": 0.008, "name": "Đứt Dây!"},
+    "police_fine": {"chance": 0.005, "name": "Công An Phạt!"},
+    "predator": {"chance": 0.008, "name": "Cá Sư Tử!"},
+    "dropped_slipper": {"chance": 0.01, "name": "Rớt Dép!"},
+    "mom_called": {"chance": 0.005, "name": "Mẹ Gọi!"},
+    "cat_steal": {"chance": 0.008, "name": "Mèo Mun!"},
+    "broken_phone": {"chance": 0.001, "name": "Rớt iPhone!"},
+    "sea_sickness": {"chance": 0.003, "name": "Say Sóng!"},
+    "snake_bite": {"chance": 0.003, "name": "Rắn Nước!"},
+    "plastic_trap": {"chance": 0.005, "name": "Vướng Rác!"},
 
-    # --- GOOD EVENTS ---
-    "ghost_blessing": {"chance": 0.005, "name": "Ma Ban Phước!"},
-    "mermaid_gift": {"chance": 0.005, "name": "Tiên Cá!"},  # NEW: Tặng Ngọc Trai
-    "golden_hook": {"chance": 0.01, "name": "Lưỡi Câu Vàng!"},  # NEW: X2 Cá
-    "turtle_gift": {"chance": 0.01, "name": "Rùa Thần!"},  # NEW: Tặng Mồi
+    # --- GOOD EVENTS (Nhân Phẩm - 10 sự kiện) ---
+    "found_wallet": {"chance": 0.008, "name": "Vớt Ví!"},
+    "fairy_gift": {"chance": 0.005, "name": "Ông Bụt!"},
+    "double_rainbow": {"chance": 0.003, "name": "Cầu Vồng!"},
+    "tourist_tip": {"chance": 0.008, "name": "Khách Tip!"},
+    "golden_turtle": {"chance": 0.005, "name": "Rùa Vàng!"},
+    "school_of_fish": {"chance": 0.005, "name": "Bão Cá!"},
+    "engagement_ring": {"chance": 0.002, "name": "Nhẫn Cầu!"},
+    "ancient_vase": {"chance": 0.001, "name": "Bình Cổ!"},
+    "sixth_sense": {"chance": 0.004, "name": "Giác Thứ 6!"},
+    "treasure_shipwreck": {"chance": 0.002, "name": "Tàu Nạn!"},
 }
 
 RANDOM_EVENT_MESSAGES = {
-    "snapped_line": "Dây câu bị căng quá mạnh và đứt phựt! 😭 (Mất mồi)",
-    "police_fine": "O e o e! 🚔 Công an phường bắt phạt vì câu trộm! (Mất 50 Hạt)",
-    "predator": "Một bóng đen lớn lao tới đớp trọn mẻ cá của bạn! 😱 (Mất cá + Mồi)",
-    "equipment_break": "Rắc! Cần câu gãy đôi rồi. Cần 5 phút để sửa. 🛠️ (Cooldown tăng)",
-    "flood": "Sóng lớn đánh úp! Mọi thứ bị cuốn trôi ra biển. 🌊(Mất hết)",
-    "pollution": "Nước ở đây ô nhiễm quá! Cá biến dị hết rồi. 🤢 (Cá biến thành Rác)",
+    # --- BAD EVENTS ---
+    "snapped_line": "Dây đứt phựt! Mất toi cái mồi. 😭",
+    "police_fine": "O e o e! 🚔 Công an phạt 50 Hạt vì câu trộm!",
+    "predator": "Cá Sư Tử lao tới đớp sạch mẻ cá của bạn! 😱",
+    "dropped_slipper": "Mải giật cần làm rớt dép lào. Phải bơi đi nhặt mất 2 phút! 🩴",
+    "mom_called": "Mẹ gọi về ăn cơm! Bạn vội chạy về, bỏ lỡ mẻ cá này. 🍚",
+    "cat_steal": "Meow! 🐈 Một con mèo đen nhảy ra cướp mất con cá to nhất của bạn!",
+    "broken_phone": "Tõm! Chiếc điện thoại rơi xuống nước. Tốn 200 Hạt sửa chữa. 📱💦",
+    "sea_sickness": "Sóng đánh tụt quần! Bạn nôn thốc nôn tháo... nôn hết cả túi mồi ra biển. 🤢",
+    "snake_bite": "Kéo lên không phải cá mà là con Rắn Nước! Bị cắn chảy máu 😱 (-5% tài sản)",
+    "plastic_trap": "Lưỡi câu mắc vào bao tải rác khổng lồ. Cần câu gãy, chờ thêm 3 phút. 🗑️",
     
-    "ghost_blessing": "Một linh hồn lang thang mỉm cười với bạn. ✨ (+100 Hạt)",
-    "mermaid_gift": "🧜‍♀️ Nàng Tiên Cá ngoi lên và tặng bạn một viên **Ngọc Trai** lấp lánh!",
-    "golden_hook": "Lưỡi câu phát sáng! ✨ **X2 SỐ LƯỢNG CÁ** trong lượt này!",
-    "turtle_gift": "🐢 Rùa Thần hiện lên: 'Ta trả lại mồi cho con'. (+2 Giun)",
+    # --- GOOD EVENTS ---
+    "found_wallet": "Vớt được cái ví da cá sấu! Bên trong có 150 Hạt. 👛✨",
+    "fairy_gift": "Ông Bụt hiện lên: 'Ta tặng con 5 con Giun vì sự kiên trì'. 🎅",
+    "double_rainbow": "Cầu vồng đôi xuất hiện! 🌈 May mắn tràn trề (Lần sau chắc chắn ra Cá Hiếm)!",
+    "tourist_tip": "Khách du lịch thấy bạn câu đỉnh quá nên tip nóng 100 Hạt. 💵",
+    "golden_turtle": "Cụ Rùa Vàng nổi lên! 🐢✨ Bạn cảm thấy khỏe khoắn (Xóa cooldown lượt này).",
+    "school_of_fish": "Trúng ổ cá rồi! 🐟🐟🐟 Số lượng cá nhân 3!",
+    "engagement_ring": "Vớt được chiếc nhẫn kim cương! Bán được 300 Hạt. 💍",
+    "ancient_vase": "Vớt được bình gốm thời Lý! Bán cho bảo tàng được 500 Hạt! 🏺💰",
+    "sixth_sense": "Tự nhiên linh tính mách bảo... ✨ Bạn tránh được xui xẻo lần sau!",
+    "treasure_shipwreck": "Một xác tàu chìm hiện lên! 🏴‍☠️ Bạn vớt được 2 Rương Kho Báu!",
+}
+
+
+# ==================== SELL EVENTS (Sự kiện khi bán cá) ====================
+# Tỉ lệ xảy ra khi bán: khoảng 15-20%
+
+SELL_EVENTS = {
+    # --- BAD EVENTS (Xui xẻo - Giảm tiền) ---
+    "market_crash":   {"chance": 0.01, "type": "bad", "mul": 0.7, "flat": 0, "name": "Chợ Ế!"},
+    "rotten_fish":    {"chance": 0.01, "type": "bad", "mul": 0.8, "flat": 0, "name": "Cá Ươn!"},
+    "tax_collector":  {"chance": 0.01, "type": "bad", "mul": 0.85, "flat": 0, "name": "Thuế Chợ!"},
+    "broken_scale":   {"chance": 0.01, "type": "bad", "mul": 0.9, "flat": 0, "name": "Cân Điêu!"},
+    "dropped_money":  {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -50, "name": "Rớt Tiền!"},
+    "gangster_fee":   {"chance": 0.005, "type": "bad", "mul": 1.0, "flat": -100, "name": "Phí Bảo Kê!"},
+    "hole_in_bag":    {"chance": 0.01, "type": "bad", "mul": 0.95, "flat": 0, "name": "Túi Thủng!"},
+    "rainy_day":      {"chance": 0.01, "type": "bad", "mul": 0.75, "flat": 0, "name": "Mưa Giông!"},
+    "pickpocket":     {"chance": 0.005, "type": "bad", "mul": 0.6, "flat": 0, "name": "Móc Túi!"},
+    "fake_money":     {"chance": 0.01, "type": "bad", "mul": 1.0, "flat": -20, "name": "Tiền Giả!"},
+
+    # --- GOOD EVENTS (May mắn - Tăng tiền) ---
+    "market_boom":    {"chance": 0.01, "type": "good", "mul": 1.3, "flat": 0, "name": "Được Giá!"},
+    "sushi_chef":     {"chance": 0.005, "type": "good", "mul": 1.5, "flat": 0, "name": "Đầu Bếp VIP!"},
+    "rich_customer":  {"chance": 0.01, "type": "good", "mul": 1.2, "flat": 0, "name": "Khách Sộp!"},
+    "tip_money":      {"chance": 0.01, "type": "good", "mul": 1.0, "flat": 50, "name": "Tiền Tip!"},
+    "golden_scale":   {"chance": 0.01, "type": "good", "mul": 1.1, "flat": 0, "name": "Cân Thừa!"},
+    "bidding_war":    {"chance": 0.005, "type": "good", "mul": 1.4, "flat": 0, "name": "Tranh Mua!"},
+    "festival":       {"chance": 0.01, "type": "good", "mul": 1.25, "flat": 0, "name": "Lễ Hội!"},
+    "charity":        {"chance": 0.01, "type": "good", "mul": 1.0, "flat": 100, "name": "Lì Xì!"},
+    "fresh_bonus":    {"chance": 0.01, "type": "good", "mul": 1.15, "flat": 0, "name": "Tươi Roi Rói!"},
+    "god_of_wealth":  {"chance": 0.002, "type": "good", "mul": 2.0, "flat": 0, "name": "Thần Tài!"},
+}
+
+SELL_MESSAGES = {
+    # Bad
+    "market_crash": "Hôm nay chợ vắng hoe, tiểu thương ép giá thê thảm. 📉 (Giá giảm 30%)",
+    "rotten_fish": "Bảo quản không kỹ, một số cá bị ươn nên phải bán rẻ. 🤢 (Giá giảm 20%)",
+    "tax_collector": "Ban quản lý chợ đi thu thuế chỗ ngồi. 💸 (Mất 15% doanh thu)",
+    "broken_scale": "Cân của bà chủ bị 'lỗi', cân điêu cho bạn. ⚖️ (Mất 10% doanh thu)",
+    "dropped_money": "Bán xong hí hửng đi về, bạn làm rớt mất 50 Hạt. 😭",
+    "gangster_fee": "Giang hồ chợ cá chặn đường thu 'phí bảo kê'. 🕶️ (Mất 100 Hạt)",
+    "hole_in_bag": "Túi đựng tiền bị thủng lỗ nhỏ, rơi rớt dọc đường. 🧵 (Mất 5%)",
+    "rainy_day": "Trời mưa to quá, phải bán tháo để chạy mưa. 🌧️ (Giá giảm 25%)",
+    "pickpocket": "Ơ! Ví đâu rồi? Kẻ gian đã móc túi bạn lúc đông người! 🕵️ (Mất 40% doanh thu)",
+    "fake_money": "Về nhà đếm lại mới phát hiện có tờ tiền giả. 💸 (Mất 20 Hạt)",
+
+    # Good
+    "market_boom": "Thị trường đang khan hiếm, thương lái tranh nhau mua! 📈 (Giá tăng 30%)",
+    "sushi_chef": "Một đầu bếp nhà hàng 5 sao đi chợ và mua hết cá của bạn! 🍣 (Giá tăng 50%)",
+    "rich_customer": "Gặp đại gia mua cá về làm hồ thủy sinh, không cần nhìn giá. 🎩 (Giá tăng 20%)",
+    "tip_money": "Khách thấy bạn bán hàng duyên dáng nên bo thêm tiền. 💵 (+50 Hạt)",
+    "golden_scale": "Cân nhà này bị hỏng, cân thừa cho bạn! ⚖️ (Lời thêm 10%)",
+    "bidding_war": "Hai bà bán cá tranh nhau mua mẻ cá ngon của bạn. 🗣️ (Giá tăng 40%)",
+    "festival": "Lễ hội ẩm thực đang diễn ra, nhu cầu cá tăng cao! 🏮 (Giá tăng 25%)",
+    "charity": "Hôm nay bà chủ trúng số nên lì xì cho bạn. 🧧 (+100 Hạt)",
+    "fresh_bonus": "Cá bạn tươi quá, được đánh giá 5 sao! ⭐ (Giá tăng 15%)",
+    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay là ngày may mắn nhất đời bạn! (X2 DOANH THU)",
 }
 
 # ==================== UI COMPONENTS ====================
@@ -208,6 +421,12 @@ class FishingCog(commands.Cog):
         self.fishing_cooldown = {}  # {user_id: timestamp}
         self.caught_items = {}  # {user_id: {item_key: quantity}} - temporarily store caught items
         self.user_titles = {}  # {user_id: title} - cache danh hiệu người dùng
+        
+        # Achievement tracking
+        self.user_stats = {}  # {user_id: {stat_key: value}} - track user statistics
+        self.user_achievements = {}  # {user_id: [achievement_keys]} - unlocked achievements
+        self.lucky_buff_users = {}  # {user_id: True} - sixth_sense buff cache
+        self.avoid_event_users = {}  # {user_id: True} - lucky buff cache
     
     # ==================== HELPER FUNCTIONS ====================
     
@@ -336,7 +555,8 @@ class FishingCog(commands.Cog):
             "cooldown_increase": 0,
             "catch_multiplier": 1,  # Mặc định x1
             "convert_to_trash": False,  # Mặc định False
-            "gain_items": {}  # Item nhận được thêm
+            "gain_items": {},  # Item nhận được thêm
+            "custom_effect": None  # Cho các effect đặc biệt
         }
         
         # Roll for random event
@@ -354,37 +574,137 @@ class FishingCog(commands.Cog):
                 result["type"] = event_type
                 result["message"] = f"{event_data['name']} {RANDOM_EVENT_MESSAGES[event_type]}"
                 
-                # --- BAD EVENTS ---
+                # --- BAD EVENTS (10) ---
                 if event_type == "snapped_line":
                     result["lose_worm"] = True
-                    result["lose_catch"] = True  # Dây đứt = không câu được gì
+                    result["lose_catch"] = True
+                    
                 elif event_type == "police_fine":
                     result["lose_money"] = 50
+                    
                 elif event_type == "predator":
                     result["lose_worm"] = True
                     result["lose_catch"] = True
-                elif event_type == "equipment_break":
-                    result["cooldown_increase"] = 300
-                elif event_type == "flood":
-                    result["lose_worm"] = True
+                    
+                elif event_type == "dropped_slipper":
+                    result["cooldown_increase"] = 120  # Phạt thêm 2 phút
+                    
+                elif event_type == "mom_called":
+                    result["lose_catch"] = True  # Mất cá nhưng ko mất mồi thêm
+                    
+                elif event_type == "cat_steal":
+                    result["custom_effect"] = "cat_steal"  # Xử lý riêng: mất cá to nhất
+                    
+                elif event_type == "broken_phone":
+                    result["lose_money"] = 200
+                    
+                elif event_type == "sea_sickness":
+                    result["custom_effect"] = "lose_all_bait"  # Xóa sạch mồi
+                    
+                elif event_type == "snake_bite":
+                    # Trừ 5% tài sản
+                    result["custom_effect"] = "snake_bite"
+                    
+                elif event_type == "plastic_trap":
                     result["lose_catch"] = True
-                elif event_type == "pollution":
-                    result["convert_to_trash"] = True
+                    result["cooldown_increase"] = 180  # Thêm 3 phút
                 
-                # --- GOOD EVENTS ---
-                elif event_type == "ghost_blessing":
+                # --- GOOD EVENTS (10) ---
+                elif event_type == "found_wallet":
+                    result["gain_money"] = random.randint(50, 150)
+                    
+                elif event_type == "fairy_gift":
+                    result["gain_items"] = {"worm": 5}
+                    
+                elif event_type == "double_rainbow":
+                    result["custom_effect"] = "lucky_buff"  # Buff may mắn lần sau
+                    
+                elif event_type == "tourist_tip":
                     result["gain_money"] = 100
-                elif event_type == "mermaid_gift":
-                    result["gain_items"] = {"pearl": 1}
-                elif event_type == "golden_hook":
-                    result["catch_multiplier"] = 2
-                elif event_type == "turtle_gift":
-                    result["gain_items"] = {"worm": 2}
+                    
+                elif event_type == "golden_turtle":
+                    result["cooldown_increase"] = -30  # Xóa cooldown (về 0)
+                    
+                elif event_type == "school_of_fish":
+                    result["catch_multiplier"] = 3
+                    
+                elif event_type == "engagement_ring":
+                    result["gain_money"] = 300
+                    
+                elif event_type == "ancient_vase":
+                    result["gain_money"] = 500
+                    
+                elif event_type == "sixth_sense":
+                    result["custom_effect"] = "sixth_sense"  # Tránh được xui lần sau
+                    
+                elif event_type == "treasure_shipwreck":
+                    result["gain_items"] = {"treasure_chest": 2}
                 
                 return result
         
         # No event
         return {"triggered": False}
+    
+    async def check_achievement(self, user_id: int, achievement_key: str, channel: discord.TextChannel = None, guild_id: int = None):
+        """Check and award achievement if conditions are met"""
+        if user_id not in self.user_achievements:
+            self.user_achievements[user_id] = []
+        
+        # Skip if already earned
+        if achievement_key in self.user_achievements[user_id]:
+            return False
+        
+        achievement = ACHIEVEMENTS.get(achievement_key)
+        if not achievement:
+            return False
+        
+        # Check if conditions are met (simplified version)
+        # Full implementation would check self.user_stats[user_id]
+        if achievement_key == "collection_master":
+            # This is checked separately in _fish_action
+            self.user_achievements[user_id].append(achievement_key)
+            
+            # Award role if specified
+            if achievement.get("role_id") and guild_id:
+                try:
+                    guild = self.bot.get_guild(guild_id)
+                    if guild:
+                        user = guild.get_member(user_id)
+                        role = guild.get_role(achievement["role_id"])
+                        if user and role:
+                            await user.add_roles(role)
+                            print(f"[ACHIEVEMENT] {user_id} awarded role '{role.name}' for achievement '{achievement_key}'")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error awarding role for {achievement_key}: {e}")
+            
+            # Send announcement
+            if channel:
+                embed = discord.Embed(
+                    title=f"🏆 THÀNH TỰU: {achievement['emoji']} {achievement['name']}",
+                    description=achievement['description'],
+                    color=discord.Color.gold()
+                )
+                embed.add_field(name="Phần Thưởng", value=f"+{achievement['reward_coins']} Hạt", inline=False)
+                if achievement.get("role_id"):
+                    embed.add_field(name="🎖️ Role Cấp", value=f"Bạn đã nhận được role thành tựu!", inline=False)
+                await channel.send(embed=embed)
+            return True
+        
+        return False
+    
+    async def update_user_stat(self, user_id: int, stat_key: str, value: int, operation: str = "add"):
+        """Update user statistics for achievements"""
+        if user_id not in self.user_stats:
+            self.user_stats[user_id] = {}
+        
+        current_value = self.user_stats[user_id].get(stat_key, 0)
+        
+        if operation == "add":
+            self.user_stats[user_id][stat_key] = current_value + value
+        elif operation == "set":
+            self.user_stats[user_id][stat_key] = value
+        
+        return self.user_stats[user_id][stat_key]
     
     async def get_tree_boost_status(self, guild_id: int) -> bool:
         """Check if server tree is at max level (nở hoa/kết trái)"""
@@ -527,6 +847,7 @@ class FishingCog(commands.Cog):
         if event_result.get("triggered", False):
             # Random event occurred!
             event_message = event_result["message"]
+            event_type = event_result.get("type")
             
             # Process event effects
             if event_result.get("lose_worm", False) and has_worm:
@@ -541,35 +862,82 @@ class FishingCog(commands.Cog):
                 await add_seeds(user_id, event_result["gain_money"])
                 event_message += f" (+{event_result['gain_money']} Hạt)"
             
-            # Process gain_items (Mermaid gift pearls, Turtle gift worms)
+            # Process gain_items (pearls, worms, chests, etc.)
             if event_result.get("gain_items", {}):
                 for item_key, item_count in event_result["gain_items"].items():
                     await add_item(user_id, item_key, item_count)
                     item_name = ALL_FISH.get(item_key, {}).get("name", item_key)
                     event_message += f" (+{item_count} {item_name})"
             
-            # Increase cooldown if needed
-            if event_result.get("cooldown_increase", 0) > 0:
-                self.fishing_cooldown[user_id] = time.time() + 30 + event_result["cooldown_increase"]
+            # Handle special effects
+            if event_result.get("custom_effect") == "lose_all_bait":
+                # sea_sickness: Mất hết mồi
+                inventory = await get_inventory(user_id)
+                worm_count = inventory.get("worm", 0)
+                if worm_count > 0:
+                    await remove_item(user_id, "worm", worm_count)
+                    event_message += f" (Nôn hết {worm_count} Giun)"
+                    print(f"[EVENT] {username} lost all {worm_count} worms from sea_sickness")
+            
+            elif event_result.get("custom_effect") == "cat_steal":
+                # Mèo Mun: Cướp con cá to nhất (giá cao nhất)
+                # Điều này sẽ xử lý ở phần sau trong catch result
+                pass
+            
+            elif event_result.get("custom_effect") == "snake_bite":
+                # Rắn Nước: Trừ 5% tài sản
+                balance = await get_user_balance(user_id)
+                penalty = max(10, int(balance * 0.05))  # Min 10 Hạt
+                await add_seeds(user_id, -penalty)
+                event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
+                print(f"[EVENT] {username} lost 5% assets ({penalty} Hạt) from snake_bite")
+            
+            elif event_result.get("custom_effect") == "lucky_buff":
+                # Cầu Vồng Đôi: Buff may mắn cho lần sau (cá hiếm chắc chắn)
+                # Lưu vào cache (tạm thời cho lần tiếp theo)
+                if not hasattr(self, "lucky_buff_users"):
+                    self.lucky_buff_users = {}
+                self.lucky_buff_users[user_id] = True
+                event_message += " (Lần câu sau chắc ra Cá Hiếm!)"
+                print(f"[EVENT] {username} received lucky buff for next cast")
+            
+            elif event_result.get("custom_effect") == "sixth_sense":
+                # Giác Thứ 6: Tránh xui lần sau (bỏ qua event tiếp theo)
+                if not hasattr(self, "avoid_event_users"):
+                    self.avoid_event_users = {}
+                self.avoid_event_users[user_id] = True
+                event_message += " (Lần sau tránh xui!)"
+                print(f"[EVENT] {username} will avoid bad event on next cast")
+            
+            # Adjust cooldown (golden_turtle có thể là -30 để reset)
+            if event_result.get("cooldown_increase", 0) != 0:
+                if event_result["cooldown_increase"] < 0:
+                    # Reset cooldown (golden_turtle)
+                    self.fishing_cooldown[user_id] = time.time()
+                    event_message += " (Cooldown xóa sạch!)"
+                    print(f"[EVENT] {username} cooldown reset")
+                else:
+                    self.fishing_cooldown[user_id] = time.time() + 30 + event_result["cooldown_increase"]
             else:
                 self.fishing_cooldown[user_id] = time.time() + 30
             
             # If lose_catch, don't process fishing
             if event_result.get("lose_catch", False):
                 embed = discord.Embed(
-                    title="⚠️ THẢM HỌA!",
+                    title=f"⚠️ THẢM HỌA - {username}!",
                     description=event_message,
                     color=discord.Color.red()
                 )
                 await casting_msg.edit(content="", embed=embed)
-                print(f"[EVENT] {username} triggered {event_result.get('type')} - fishing cancelled")
+                print(f"[EVENT] {username} triggered {event_type} - fishing cancelled")
                 return
             
             # Otherwise, display event message and continue fishing
+            color = discord.Color.green() if "gain" in event_type or event_type in ["double_rainbow", "sixth_sense", "golden_turtle", "school_of_fish"] else discord.Color.orange()
             embed = discord.Embed(
-                title="⚠️ SỰ KIỆN!",
+                title=f"⚠️ SỰ KIỆN - {username}!",
                 description=event_message,
-                color=discord.Color.orange()
+                color=color
             )
             await casting_msg.edit(content="", embed=embed)
             
@@ -714,6 +1082,43 @@ class FishingCog(commands.Cog):
         self.caught_items[user_id] = fish_only_items
         print(f"[FISHING] {username} final caught items: {fish_only_items}")
         
+        # Handle cat_steal event: Remove most valuable fish
+        if event_result.get("custom_effect") == "cat_steal" and fish_only_items:
+            # Find the fish with highest price
+            most_valuable_fish = None
+            highest_price = -1
+            for fish_key, qty in fish_only_items.items():
+                fish_info = ALL_FISH.get(fish_key, {})
+                price = fish_info.get('sell_price', 0)
+                if price > highest_price and qty > 0:
+                    highest_price = price
+                    most_valuable_fish = fish_key
+            
+            if most_valuable_fish:
+                # Remove 1 of the most valuable fish
+                await remove_item(user_id, most_valuable_fish, 1)
+                fish_info = ALL_FISH[most_valuable_fish]
+                fish_display = [line for line in fish_display if fish_info['name'] not in line]
+                fish_only_items[most_valuable_fish] -= 1
+                if fish_only_items[most_valuable_fish] == 0:
+                    del fish_only_items[most_valuable_fish]
+                
+                # Update display
+                if fish_only_items:
+                    for key, qty in fish_only_items.items():
+                        if qty > 0:
+                            fish = ALL_FISH[key]
+                            total_price = fish['sell_price'] * qty
+                            fish_display.append(f"{fish['emoji']} {fish['name']} x{qty} ({total_price} Hạt)")
+                
+                print(f"[EVENT] {username} lost {fish_info['name']} to cat_steal")
+                # Add cat message to display
+                if fish_display:
+                    fish_display[0] = fish_display[0] + f"\n(🐈 Mèo cướp mất {fish_info['name']} giá {highest_price} Hạt!)"
+        
+        # Update caught items for sell button
+        self.caught_items[user_id] = fish_only_items
+        
         # Check if collection is complete and award title if needed
         is_complete = await self.check_collection_complete(user_id)
         title_earned = False
@@ -758,7 +1163,7 @@ class FishingCog(commands.Cog):
                 inline=False
             )
         
-        embed.set_footer(text=f"Tổng câu được: {total_catches} cá{boost_text}")
+        embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text}")
         
         # Create view with sell button if there are fish to sell
         view = None
@@ -784,7 +1189,7 @@ class FishingCog(commands.Cog):
         await self._sell_fish_action(ctx, fish_types)
     
     async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None):
-        """Sell all fish or specific types logic"""
+        """Sell all fish or specific types logic with RANDOM EVENTS"""
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
@@ -812,7 +1217,6 @@ class FishingCog(commands.Cog):
         # Parse fish_types if specified
         selected_fish = None
         if fish_types:
-            # Parse comma-separated fish types
             requested = [f.strip().lower().replace(" ", "_") for f in fish_types.split(",")]
             selected_fish = {k: v for k, v in fish_items.items() if k in requested}
             
@@ -825,38 +1229,84 @@ class FishingCog(commands.Cog):
                     await ctx.send(msg)
                 return
         else:
-            # Sell all fish
             selected_fish = fish_items
         
-        # Calculate total money
-        total_money = 0
-        # FIX: Boost không nhân đôi giá bán (chống lạm phát), giá cố định
-        is_boosted = await self.get_tree_boost_status(ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
-        
-        # Calculate money from selected fish (NO multiplier on boost anymore)
+        # 1. Tính tổng tiền gốc
+        base_total = 0
         for fish_key, quantity in selected_fish.items():
             fish_info = ALL_FISH.get(fish_key)
             if fish_info:
                 base_price = fish_info['sell_price']
-                total_money += base_price * quantity
+                base_total += base_price * quantity
         
-        # Remove selected fish from inventory
+        # 2. Xử lý sự kiện bán hàng (Sell Event)
+        final_total = base_total
+        event_msg = ""
+        event_name = ""
+        event_color = discord.Color.green()  # Mặc định màu xanh lá
+        
+        # Roll event
+        rand = random.random()
+        current_chance = 0
+        triggered_event = None
+        
+        for ev_key, ev_data in SELL_EVENTS.items():
+            current_chance += ev_data["chance"]
+            if rand < current_chance:
+                triggered_event = ev_key
+                break
+        
+        # Apply event logic
+        if triggered_event:
+            ev_data = SELL_EVENTS[triggered_event]
+            event_name = ev_data["name"]
+            
+            # Tính toán tiền sau sự kiện
+            # Công thức: (Gốc * Multiplier) + Flat Bonus
+            final_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
+            
+            # Đảm bảo không bị âm tiền
+            if final_total < 0: 
+                final_total = 0
+            
+            diff = final_total - base_total
+            sign = "+" if diff >= 0 else ""
+            
+            # Formatting message
+            if ev_data["type"] == "good":
+                event_color = discord.Color.gold()
+                event_msg = f"\n🌟 **SỰ KIỆN: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Biến động:** {sign}{diff} Hạt"
+            else:
+                event_color = discord.Color.orange()
+                event_msg = f"\n⚠️ **SỰ CỐ: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Thiệt hại:** {diff} Hạt"
+                
+            print(f"[SELL EVENT] {ctx.user.name if is_slash else ctx.author.name} triggered {triggered_event}: {base_total} -> {final_total}")
+
+        # 3. Remove items & Add money
         for fish_key in selected_fish.keys():
             await remove_item(user_id, fish_key, selected_fish[fish_key])
         
-        # Add money
-        await add_seeds(user_id, total_money)
+        await add_seeds(user_id, final_total)
         
-        # Send result
-        # Boost không còn x2 giá nữa - chỉ tăng drop rate rương thôi
+        # 4. Gửi kết quả
         fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in selected_fish.items()])
-        username = ctx.author.name if hasattr(ctx, 'author') else ctx.user.name
+        username = ctx.user.name if is_slash else ctx.author.name
+        
         embed = discord.Embed(
-                title=f"**{username}** đã bán {sum(selected_fish.values())} con cá",
-                description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**",
-                color=discord.Color.green()
+            title=f"💰 **{username}** bán {sum(selected_fish.values())} con cá",
+            description=f"{fish_summary}\n\n💵 **Tổng gốc:** {base_total} Hạt{event_msg}",
+            color=event_color
         )
         
+        # Hiển thị số thực nhận to rõ
+        embed.add_field(name="THỰC NHẬN", value=f"**{final_total} Hạt**", inline=False)
+        
+        # Check achievement "millionaire" (Tích lũy tiền)
+        if hasattr(self, "update_user_stat"):
+            total_earned = await self.update_user_stat(user_id, "coins_earned", final_total)
+            if total_earned >= 100000:
+                await self.check_achievement(user_id, "millionaire", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+
         if is_slash:
             await ctx.followup.send(embed=embed, ephemeral=True)
         else:
