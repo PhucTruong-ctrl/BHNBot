@@ -3,6 +3,13 @@ from discord import app_commands
 from discord.ext import commands
 import aiosqlite
 from datetime import datetime
+from database_manager import (
+    get_affinity,
+    add_affinity,
+    remove_item,
+    add_item,
+    get_top_affinity_friends
+)
 
 DB_PATH = "./data/database.db"
 
@@ -22,118 +29,25 @@ class InteractionsCog(commands.Cog):
 
     # ==================== HELPER FUNCTIONS ====================
 
-    async def get_affinity(self, user_id_1: int, user_id_2: int) -> int:
-        """Get affinity between two users (normalized to user_id_1 < user_id_2)"""
-        if user_id_1 > user_id_2:
-            user_id_1, user_id_2 = user_id_2, user_id_1
-        
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT affinity FROM relationships WHERE user_id_1 = ? AND user_id_2 = ?",
-                (user_id_1, user_id_2)
-            ) as cursor:
-                row = await cursor.fetchone()
-            return row[0] if row else 0
+    async def get_affinity_local(self, user_id_1: int, user_id_2: int) -> int:
+        """Get affinity between two users"""
+        return await get_affinity(user_id_1, user_id_2)
 
-    async def add_affinity(self, user_id_1: int, user_id_2: int, amount: int):
+    async def add_affinity_local(self, user_id_1: int, user_id_2: int, amount: int):
         """Add affinity between two users"""
-        if user_id_1 > user_id_2:
-            user_id_1, user_id_2 = user_id_2, user_id_1
-        
-        async with aiosqlite.connect(DB_PATH) as db:
-            # Check if relationship exists
-            async with db.execute(
-                "SELECT affinity FROM relationships WHERE user_id_1 = ? AND user_id_2 = ?",
-                (user_id_1, user_id_2)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if row:
-                await db.execute(
-                    "UPDATE relationships SET affinity = affinity + ?, last_interaction = CURRENT_TIMESTAMP WHERE user_id_1 = ? AND user_id_2 = ?",
-                    (amount, user_id_1, user_id_2)
-                )
-            else:
-                await db.execute(
-                    "INSERT INTO relationships (user_id_1, user_id_2, affinity) VALUES (?, ?, ?)",
-                    (user_id_1, user_id_2, amount)
-                )
-            
-            await db.commit()
+        await add_affinity(user_id_1, user_id_2, amount)
 
     async def remove_item(self, user_id: int, item_name: str, quantity: int = 1) -> bool:
         """Remove item from user's inventory"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                (user_id, item_name)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if not row or row[0] < quantity:
-                return False
-            
-            new_quantity = row[0] - quantity
-            if new_quantity <= 0:
-                await db.execute(
-                    "DELETE FROM inventory WHERE user_id = ? AND item_name = ?",
-                    (user_id, item_name)
-                )
-            else:
-                await db.execute(
-                    "UPDATE inventory SET quantity = ? WHERE user_id = ? AND item_name = ?",
-                    (new_quantity, user_id, item_name)
-                )
-            
-            await db.commit()
-            return True
+        return await remove_item(user_id, item_name, quantity)
 
-    async def add_item(self, user_id: int, item_name: str, quantity: int = 1):
+    async def add_item_local(self, user_id: int, item_name: str, quantity: int = 1):
         """Add item to user's inventory"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                (user_id, item_name)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if row:
-                await db.execute(
-                    "UPDATE inventory SET quantity = quantity + ? WHERE user_id = ? AND item_name = ?",
-                    (quantity, user_id, item_name)
-                )
-            else:
-                await db.execute(
-                    "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, ?)",
-                    (user_id, item_name, quantity)
-                )
-            
-            await db.commit()
+        await add_item(user_id, item_name, quantity)
 
     async def get_top_affinity_friends(self, user_id: int, limit: int = 3) -> list:
         """Get top affinity friends for a user"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            # Query as user_id_1
-            async with db.execute(
-                """SELECT user_id_2 as friend_id, affinity FROM relationships 
-                   WHERE user_id_1 = ? ORDER BY affinity DESC LIMIT ?""",
-                (user_id, limit)
-            ) as cursor:
-                rows1 = await cursor.fetchall()
-            
-            # Query as user_id_2
-            async with db.execute(
-                """SELECT user_id_1 as friend_id, affinity FROM relationships 
-                   WHERE user_id_2 = ? ORDER BY affinity DESC LIMIT ?""",
-                (user_id, limit)
-            ) as cursor:
-                rows2 = await cursor.fetchall()
-            
-            # Combine and sort
-            all_rows = rows1 + rows2
-            all_rows.sort(key=lambda x: x[1], reverse=True)
-            
-            return all_rows[:limit]
+        return await get_top_affinity_friends(user_id, limit)
 
     # ==================== COMMANDS ====================
 
@@ -177,10 +91,10 @@ class InteractionsCog(commands.Cog):
             return
         
         # Give item to recipient
-        await self.add_item(user.id, item, 1)
+        await self.add_item_local(user.id, item, 1)
         
         # Add affinity (10 points per gift)
-        await self.add_affinity(interaction.user.id, user.id, 10)
+        await self.add_affinity_local(interaction.user.id, user.id, 10)
         
         embed = discord.Embed(
             title="💝 Tặng quà thành công!",
@@ -207,7 +121,7 @@ class InteractionsCog(commands.Cog):
         
         if user:
             # Check affinity with specific user
-            affinity = await self.get_affinity(interaction.user.id, user.id)
+            affinity = await self.get_affinity_local(interaction.user.id, user.id)
             
             embed = discord.Embed(
                 title="💕 Mức độ Thân thiết",
@@ -278,7 +192,7 @@ class InteractionsCog(commands.Cog):
         for mentioned_user in message.mentions:
             if not mentioned_user.bot and mentioned_user.id != message.author.id:
                 # Add small affinity (1 point)
-                await self.add_affinity(message.author.id, mentioned_user.id, 1)
+                await self.add_affinity_local(message.author.id, mentioned_user.id, 1)
                 print(f"[AFFINITY] {message.author.name} mentioned {mentioned_user.name} (+1)")
 
 async def setup(bot):

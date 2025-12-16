@@ -5,6 +5,14 @@ import aiosqlite
 from datetime import datetime, time
 import random
 import asyncio
+from database_manager import (
+    db_manager,
+    get_user_balance,
+    add_seeds,
+    get_or_create_user,
+    get_leaderboard,
+    batch_update_seeds
+)
 
 DB_PATH = "./data/database.db"
 
@@ -31,98 +39,66 @@ class EconomyCog(commands.Cog):
         self.voice_affinity_task.cancel()
 
     # ==================== HELPER FUNCTIONS ====================
-    async def get_or_create_user(self, user_id: int, username: str):
+    async def get_or_create_user_local(self, user_id: int, username: str):
         """Get or create user in economy_users table"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT * FROM economy_users WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                user = await cursor.fetchone()
-            
-            if not user:
-                await db.execute(
-                    "INSERT INTO economy_users (user_id, username, seeds) VALUES (?, ?, ?)",
-                    (user_id, username, 0)
-                )
-                await db.commit()
-            return user
+        return await get_or_create_user(user_id, username)
 
     async def is_harvest_buff_active(self, guild_id: int) -> bool:
         """Check if 24h harvest buff is active"""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
+            result = await db_manager.fetchone(
+                "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                (guild_id,),
+                use_cache=True,
+                cache_key=f"harvest_buff_{guild_id}",
+                cache_ttl=60
+            )
             
-            if not row or not row[0]:
+            if not result or not result[0]:
                 return False
             
-            buff_until = datetime.fromisoformat(row[0])
+            buff_until = datetime.fromisoformat(result[0])
             return datetime.now() < buff_until
         except:
             return False
 
-    async def add_seeds(self, user_id: int, amount: int):
+    async def add_seeds_local(self, user_id: int, amount: int):
         """Add seeds to user"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE economy_users SET seeds = seeds + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-                (amount, user_id)
-            )
-            await db.commit()
+        await add_seeds(user_id, amount)
 
-    async def get_user_balance(self, user_id: int) -> int:
+    async def get_user_balance_local(self, user_id: int) -> int:
         """Get user balance (seeds only)"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT seeds FROM economy_users WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-            return row[0] if row else 0
+        return await get_user_balance(user_id)
 
-    async def get_leaderboard(self, limit: int = 10) -> list:
+    async def get_leaderboard_local(self, limit: int = 10) -> list:
         """Get top players by seeds"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT user_id, username, seeds FROM economy_users ORDER BY seeds DESC LIMIT ?",
-                (limit,)
-            ) as cursor:
-                return await cursor.fetchall()
+        return await get_leaderboard(limit)
 
     async def update_last_daily(self, user_id: int):
         """Update last daily reward time"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE economy_users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
-                (user_id,)
-            )
-            await db.commit()
+        await db_manager.modify(
+            "UPDATE economy_users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
+            (user_id,)
+        )
+        db_manager.clear_cache_by_prefix(f"user_full_{user_id}")
 
     async def update_last_chat_reward(self, user_id: int):
         """Update last chat reward time"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE economy_users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = ?",
-                (user_id,)
-            )
-            await db.commit()
+        await db_manager.modify(
+            "UPDATE economy_users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = ?",
+            (user_id,)
+        )
+        db_manager.clear_cache_by_prefix(f"user_full_{user_id}")
 
     async def get_last_daily(self, user_id: int) -> datetime:
         """Get last daily reward time"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT last_daily FROM economy_users WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-            if row and row[0]:
-                return datetime.fromisoformat(row[0])
-            return None
+        result = await db_manager.fetchone(
+            "SELECT last_daily FROM economy_users WHERE user_id = ?",
+            (user_id,)
+        )
+        if result and result[0]:
+            return datetime.fromisoformat(result[0])
+        return None
 
     def is_daily_window(self) -> bool:
         """Check if current time is within daily reward window (5 AM - 10 AM)"""
@@ -132,23 +108,24 @@ class EconomyCog(commands.Cog):
     async def get_excluded_channels(self, guild_id: int) -> list:
         """Get list of excluded channels for a guild"""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    config = await cursor.fetchone()
+            result = await db_manager.fetchone(
+                "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = ?",
+                (guild_id,),
+                use_cache=True,
+                cache_key=f"excluded_channels_{guild_id}",
+                cache_ttl=600
+            )
             
             excluded = []
-            if config:
-                if config[0]:  # logs_channel_id
-                    excluded.append(config[0])
+            if result:
+                if result[0]:  # logs_channel_id
+                    excluded.append(result[0])
                 
                 # Parse exclude_chat_channels (JSON format)
-                if config[1]:
+                if result[1]:
                     try:
                         import json
-                        parsed = json.loads(config[1])
+                        parsed = json.loads(result[1])
                         excluded.extend(parsed)
                     except:
                         pass
@@ -176,7 +153,7 @@ class EconomyCog(commands.Cog):
         
         # Get or create user
         user = interaction.user
-        await self.get_or_create_user(user.id, user.name)
+        await self.get_or_create_user_local(user.id, user.name)
         
         # Check if already claimed today
         last_daily = await self.get_last_daily(user.id)
@@ -190,11 +167,11 @@ class EconomyCog(commands.Cog):
                 return
         
         # Award seeds
-        await self.add_seeds(user.id, DAILY_BONUS)
+        await self.add_seeds_local(user.id, DAILY_BONUS)
         await self.update_last_daily(user.id)
         
         # Get new balance
-        seeds = await self.get_user_balance(user.id)
+        seeds = await self.get_user_balance_local(user.id)
         
         embed = discord.Embed(
             title="☀️ Chào buổi sáng!",
@@ -212,9 +189,9 @@ class EconomyCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         target_user = user or interaction.user
-        await self.get_or_create_user(target_user.id, target_user.name)
+        await self.get_or_create_user_local(target_user.id, target_user.name)
         
-        seeds = await self.get_user_balance(target_user.id)
+        seeds = await self.get_user_balance_local(target_user.id)
         
         embed = discord.Embed(
             title=f"💰 Số dư của {target_user.name}",
@@ -235,7 +212,7 @@ class EconomyCog(commands.Cog):
         """Show leaderboard"""
         await interaction.response.defer(ephemeral=True)
         
-        top_users = await self.get_leaderboard(10)
+        top_users = await self.get_leaderboard_local(10)
         
         if not top_users:
             await interaction.followup.send("❌ Chưa có ai trong bảng xếp hạng!", ephemeral=True)
@@ -257,6 +234,72 @@ class EconomyCog(commands.Cog):
         embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @commands.command(name="themhat", description="Thêm hạt cho user (Admin Only)")
+    @commands.has_permissions(administrator=True)
+    async def add_seeds_admin(self, ctx, user: discord.User, amount: int):
+        """Add seeds to a user (Admin only)"""
+        # Validate amount
+        if amount <= 0:
+            await ctx.send("❌ Số lượng phải lớn hơn 0!")
+            return
+        
+        # Get or create user
+        await self.get_or_create_user_local(user.id, user.name)
+        
+        # Add seeds
+        await self.add_seeds_local(user.id, amount)
+        
+        # Get new balance
+        new_balance = await self.get_user_balance_local(user.id)
+        
+        embed = discord.Embed(
+            title="Thêm Hạt Thành Công",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Người nhận", value=f"**{user.name}**", inline=False)
+        embed.add_field(name="Hạt thêm", value=f"**+{amount}**", inline=True)
+        embed.add_field(name="Số dư mới", value=f"**{new_balance}**", inline=True)
+        embed.set_footer(text=f"Thực hiện bởi {ctx.author.name}")
+        
+        await ctx.send(embed=embed)
+        print(f"[ADMIN] {ctx.author.name} added {amount} seeds to {user.name}")
+
+    @app_commands.command(name="themhat", description="Thêm hạt cho user (Admin Only)")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(
+        user="Người nhận hạt",
+        amount="Số lượng hạt muốn thêm"
+    )
+    async def add_seeds_admin_slash(self, interaction: discord.Interaction, user: discord.User, amount: int):
+        """Add seeds to a user (Admin only) - Slash command"""
+        await interaction.response.defer(ephemeral=True)
+        
+        # Validate amount
+        if amount <= 0:
+            await interaction.followup.send("❌ Số lượng phải lớn hơn 0!", ephemeral=True)
+            return
+        
+        # Get or create user
+        await self.get_or_create_user_local(user.id, user.name)
+        
+        # Add seeds
+        await self.add_seeds_local(user.id, amount)
+        
+        # Get new balance
+        new_balance = await self.get_user_balance_local(user.id)
+        
+        embed = discord.Embed(
+            title="Thêm Hạt Thành Công",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Người nhận", value=f"**{user.name}**", inline=False)
+        embed.add_field(name="Hạt thêm", value=f"**+{amount}**", inline=True)
+        embed.add_field(name="Số dư mới", value=f"**{new_balance}**", inline=True)
+        embed.set_footer(text=f"Thực hiện bởi {interaction.user.name}")
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        print(f"[ADMIN] {interaction.user.name} added {amount} seeds to {user.name}")
 
     # ==================== EVENTS ====================
 
@@ -286,7 +329,7 @@ class EconomyCog(commands.Cog):
                 return
         
         # Get or create user
-        await self.get_or_create_user(user_id, message.author.name)
+        await self.get_or_create_user_local(user_id, message.author.name)
         
         # Award random seeds
         reward = random.randint(CHAT_REWARD_MIN, CHAT_REWARD_MAX)
@@ -299,7 +342,7 @@ class EconomyCog(commands.Cog):
         else:
             print(f"[ECONOMY] {message.author.name} earned {reward} seeds from chat")
         
-        await self.add_seeds(user_id, reward)
+        await self.add_seeds_local(user_id, reward)
         await self.update_last_chat_reward(user_id)
         
         # Update cooldown
@@ -348,7 +391,7 @@ class EconomyCog(commands.Cog):
                 return
         
         # Get or create user
-        await self.get_or_create_user(author_id, message.author.name)
+        await self.get_or_create_user_local(author_id, message.author.name)
         
         # Award seeds - same as chat reward
         reward = random.randint(CHAT_REWARD_MIN, CHAT_REWARD_MAX)
@@ -365,7 +408,7 @@ class EconomyCog(commands.Cog):
         else:
             print(f"[ECONOMY] {message.author.name} earned {reward} seeds from emoji reaction on {location}")
         
-        await self.add_seeds(author_id, reward)
+        await self.add_seeds_local(author_id, reward)
         self.reaction_cooldowns[cooldown_key] = now
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
@@ -384,7 +427,7 @@ class EconomyCog(commands.Cog):
                     
                     # Award seeds to each speaking member
                     for member in speaking_members:
-                        await self.get_or_create_user(member.id, member.name)
+                        await self.get_or_create_user_local(member.id, member.name)
                         
                         reward = VOICE_REWARD
                         if is_buff_active:
@@ -393,7 +436,7 @@ class EconomyCog(commands.Cog):
                         else:
                             print(f"[ECONOMY] 🎙️ {member.name} earned {reward} seeds from voice (speaking)")
                         
-                        await self.add_seeds(member.id, reward)
+                        await self.add_seeds_local(member.id, reward)
         
         except Exception as e:
             print(f"[ECONOMY] Voice reward error: {e}")
@@ -419,7 +462,7 @@ class EconomyCog(commands.Cog):
                     for i, member1 in enumerate(speaking_members):
                         for member2 in speaking_members[i+1:]:
                             # Add 3 affinity points per person pair in voice
-                            await interactions_cog.add_affinity(member1.id, member2.id, 3)
+                            await interactions_cog.add_affinity_local(member1.id, member2.id, 3)
                             print(f"[AFFINITY] 🎙️ {member1.name} & {member2.name} +3 affinity (voice chat)")
         
         except Exception as e:

@@ -2468,10 +2468,10 @@ class WerewolfGame:
             for player in self.players.values():
                 player_alignment = player.get_alignment_priority()
                 if player_alignment == winner_alignment:
-                    await economy_cog.add_seeds(player.user_id, winner_reward)
+                    await economy_cog.add_seeds_local(player.user_id, winner_reward)
                     winners_list.append(player.display_name())
                 else:
-                    await economy_cog.add_seeds(player.user_id, loser_reward)
+                    await economy_cog.add_seeds_local(player.user_id, loser_reward)
                     losers_list.append(player.display_name())
             
             # Create reward embed

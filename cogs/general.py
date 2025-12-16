@@ -18,7 +18,37 @@ class General(commands.Cog):
     @commands.command()
     async def ping(self, ctx):
         """Kiểm tra độ trễ của bot"""
-        await ctx.send(f'Pong! Độ trễ: {round(self.bot.latency * 1000)}ms')
+        import time
+        
+        # Measure REST latency (bot response time)
+        start = time.time()
+        msg = await ctx.send("Đang đo...")
+        rest_latency = (time.time() - start) * 1000
+        
+        # Gateway latency (WebSocket)
+        gateway_latency = self.bot.latency * 1000
+        
+        # Database latency
+        db_start = time.time()
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute("SELECT 1")
+        except:
+            pass
+        db_latency = (time.time() - db_start) * 1000
+        
+        # Create detailed embed
+        embed = discord.Embed(
+            title="🏓 Ping Details",
+            color=discord.Color.blue(),
+            description=f"**Discord REST latency:** {rest_latency:.0f}ms\n"
+                       f"**Discord Gateway (WS) latency:** {gateway_latency:.0f}ms\n"
+                       f"**Database response time:** {db_latency:.2f}ms\n"
+                       f"**Bot processing ping:** {(rest_latency - gateway_latency):.0f}ms"
+        )
+        embed.set_footer(text=f"Mèo Béo | Latency: {round(gateway_latency)}ms")
+        
+        await msg.edit(content=None, embed=embed)
 
     @commands.command(name="avatar")
     async def avatar_prefix(self, ctx, user: discord.User = None):

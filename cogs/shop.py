@@ -2,6 +2,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import aiosqlite
+from database_manager import (
+    get_user_balance,
+    add_seeds,
+    get_inventory,
+    add_item,
+    remove_item
+)
 
 DB_PATH = "./data/database.db"
 
@@ -23,90 +30,23 @@ class ShopCog(commands.Cog):
 
     async def get_seeds(self, user_id: int) -> int:
         """Get user's current seeds"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT seeds FROM economy_users WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-            return row[0] if row else 0
+        return await get_user_balance(user_id)
 
     async def reduce_seeds(self, user_id: int, amount: int):
         """Reduce user's seeds"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE economy_users SET seeds = seeds - ? WHERE user_id = ?",
-                (amount, user_id)
-            )
-            await db.commit()
+        await add_seeds(user_id, -amount)
 
-    async def add_item(self, user_id: int, item_name: str, quantity: int = 1):
+    async def add_item_local(self, user_id: int, item_name: str, quantity: int = 1):
         """Add item to user's inventory"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            # Check if item exists
-            async with db.execute(
-                "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                (user_id, item_name)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if row:
-                # Update quantity
-                await db.execute(
-                    "UPDATE inventory SET quantity = quantity + ? WHERE user_id = ? AND item_name = ?",
-                    (quantity, user_id, item_name)
-                )
-            else:
-                # Insert new item
-                await db.execute(
-                    "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, ?)",
-                    (user_id, item_name, quantity)
-                )
-            
-            await db.commit()
+        await add_item(user_id, item_name, quantity)
 
     async def remove_item(self, user_id: int, item_name: str, quantity: int = 1) -> bool:
         """Remove item from user's inventory. Return True if successful"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            # Check current quantity
-            async with db.execute(
-                "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                (user_id, item_name)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if not row or row[0] < quantity:
-                return False
-            
-            # Update quantity
-            new_quantity = row[0] - quantity
-            if new_quantity <= 0:
-                await db.execute(
-                    "DELETE FROM inventory WHERE user_id = ? AND item_name = ?",
-                    (user_id, item_name)
-                )
-            else:
-                await db.execute(
-                    "UPDATE inventory SET quantity = ? WHERE user_id = ? AND item_name = ?",
-                    (new_quantity, user_id, item_name)
-                )
-            
-            await db.commit()
-            return True
+        return await remove_item(user_id, item_name, quantity)
 
     async def get_inventory(self, user_id: int) -> dict:
         """Get user's inventory"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT item_name, quantity FROM inventory WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-            
-            inventory = {}
-            for item_name, quantity in rows:
-                inventory[item_name] = quantity
-            return inventory
+        return await get_inventory(user_id)
 
     # ==================== COMMANDS ====================
 
@@ -167,7 +107,7 @@ class ShopCog(commands.Cog):
         
         # Process purchase
         await self.reduce_seeds(user_id, cost)
-        await self.add_item(user_id, item, 1)
+        await self.add_item_local(user_id, item, 1)
         
         embed = discord.Embed(
             title="✅ Mua thành công!",

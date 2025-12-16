@@ -91,7 +91,7 @@ class QuickAddWordView(discord.ui.View):
             
             # Get admin channel from config
             async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT admin_channel_id FROM server_config WHERE guild_id = ?", (interaction.guild.id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id FROM server_config WHERE guild_id = ?", (interaction.guild.id,)) as cursor:
                     row = await cursor.fetchone()
             
             if not row or not row[0]:
@@ -310,7 +310,7 @@ class AddWordCog(commands.Cog):
             
             # Get admin channel from config
             async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT admin_channel_id FROM server_config WHERE guild_id = ?", (guild.id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id FROM server_config WHERE guild_id = ?", (guild.id,)) as cursor:
                     row = await cursor.fetchone()
             
             if not row or not row[0]:

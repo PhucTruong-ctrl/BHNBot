@@ -251,8 +251,103 @@ def init_database():
         print(f"⚠️ Relationships table check error: {e}")
     
     conn.commit()
+    
+    # ==================== CREATE INDEXES FOR OPTIMIZATION ====================
+    print("\n[CREATING INDEXES FOR OPTIMIZATION]")
+    
+    # Economy indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_economy_seeds ON economy_users(seeds DESC)")
+        print("✓ Created index: economy_users(seeds)")
+    except:
+        pass
+    
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_economy_last_daily ON economy_users(last_daily)")
+        print("✓ Created index: economy_users(last_daily)")
+    except:
+        pass
+    
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_economy_username ON economy_users(username)")
+        print("✓ Created index: economy_users(username)")
+    except:
+        pass
+    
+    # Tree indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tree_contributors_amount ON tree_contributors(amount DESC)")
+        print("✓ Created index: tree_contributors(amount)")
+    except:
+        pass
+    
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tree_guild ON server_tree(guild_id)")
+        print("✓ Created index: server_tree(guild_id)")
+    except:
+        pass
+    
+    # Relationship indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_relationships_affinity ON relationships(affinity DESC)")
+        print("✓ Created index: relationships(affinity)")
+    except:
+        pass
+    
+    # Inventory indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_inventory_user ON inventory(user_id)")
+        print("✓ Created index: inventory(user_id)")
+    except:
+        pass
+    
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_inventory_item ON inventory(item_name)")
+        print("✓ Created index: inventory(item_name)")
+    except:
+        pass
+    
+    # Server config indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_server_config_guild ON server_config(guild_id)")
+        print("✓ Created index: server_config(guild_id)")
+    except:
+        pass
+    
+    # Player stats indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_player_stats_wins ON player_stats(wins DESC)")
+        print("✓ Created index: player_stats(wins)")
+    except:
+        pass
+    
+    # Game sessions indexes
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_game_sessions_guild_game ON game_sessions(guild_id, game_type)")
+        print("✓ Created index: game_sessions(guild_id, game_type)")
+    except:
+        pass
+    
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_game_sessions_created ON game_sessions(created_at DESC)")
+        print("✓ Created index: game_sessions(created_at)")
+    except:
+        pass
+    
+    conn.commit()
+    
+    # ==================== VACUUM DATABASE ====================
+    print("\n[OPTIMIZING DATABASE]")
+    c.execute("VACUUM")
+    print("✓ Database vacuumed and optimized")
+    
+    # Enable query optimization
+    c.execute("PRAGMA optimize")
+    print("✓ Query optimization enabled")
+    
+    conn.commit()
     conn.close()
-    print("Done! Database initialized with all tables ready.")
+    print("\n✅ Done! Database initialized with all tables and indexes ready.")
 
 if __name__ == "__main__":
     setup_folder()
