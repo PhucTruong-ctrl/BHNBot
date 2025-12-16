@@ -979,6 +979,23 @@ class FishingCog(commands.Cog):
     
     async def trigger_random_event(self, user_id: int, guild_id: int) -> dict:
         """Trigger random event during fishing - returns event_type and result"""
+        # Check if user has avoid_bad_event protection
+        if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
+            # Clear the protection flag
+            self.avoid_event_users[user_id] = False
+            print(f"[EVENT PROTECTION] User {user_id} avoided bad event (protection active)")
+            # Return no event
+            return {
+                "triggered": False, "type": None, "message": "",
+                "lose_worm": False, "lose_catch": False, "lose_money": 0, "gain_money": 0,
+                "cooldown_increase": 0,
+                "catch_multiplier": 1,
+                "convert_to_trash": False,
+                "gain_items": {},
+                "custom_effect": None,
+                "durability_loss": 0
+            }
+        
         # Default result dict
         result = {
             "triggered": False, "type": None, "message": "",
@@ -1371,7 +1388,24 @@ class FishingCog(commands.Cog):
         await asyncio.sleep(wait_time)
         
         # ==================== TRIGGER RANDOM EVENTS ====================
+        
+        # Check if user was protected from bad event
+        was_protected = False
+        if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
+            was_protected = True
+        
         event_result = await self.trigger_random_event(user_id, channel.guild.id)
+        
+        # If user was protected, show protection message
+        if was_protected:
+            embed = discord.Embed(
+                title=f"🛡️ BẢO VỆ - {username}!",
+                description="✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\nBạn an toàn thoát khỏi một sự kiện xấu!",
+                color=discord.Color.gold()
+            )
+            await casting_msg.edit(content="", embed=embed)
+            await asyncio.sleep(1)
+            casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
         
         # Initialize durability loss (apply after event check)
         durability_loss = 1  # Default: 1 per cast
