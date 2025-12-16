@@ -225,7 +225,6 @@ class EconomyCog(commands.Cog):
         
         # Display inventory items
         if inventory:
-            inv_text = ""
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
             
@@ -233,7 +232,16 @@ class EconomyCog(commands.Cog):
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
             if fish_items:
                 fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in sorted(fish_items.items())])
-                inv_text += f"**🐟 Cá:**\n{fish_text}\n\n"
+                # Split into multiple fields if too long (max 1024 chars per field)
+                if len(fish_text) > 1024:
+                    fish_list = sorted(fish_items.items())
+                    mid = len(fish_list) // 2
+                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in fish_list[:mid]])
+                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in fish_list[mid:]])
+                    embed.add_field(name="🐟 Cá (1/2)", value=part1, inline=False)
+                    embed.add_field(name="🐟 Cá (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="🐟 Cá", value=fish_text, inline=False)
             
             # Gift items
             gift_lookup = {
@@ -247,12 +255,22 @@ class EconomyCog(commands.Cog):
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
                 gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
-                inv_text += f"**💝 Quà Tặng:**\n{gift_text}\n\n"
+                if len(gift_text) > 1024:
+                    gift_list = sorted(gift_items.items())
+                    mid = len(gift_list) // 2
+                    part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
+                    part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
+                    embed.add_field(name="💝 Quà Tặng (1/2)", value=part1, inline=False)
+                    embed.add_field(name="💝 Quà Tặng (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="💝 Quà Tặng", value=gift_text, inline=False)
             
             # Tool items
             tool_lookup = {
                 "treasure_chest": ("Rương Kho Báu", "🎁"),
                 "fertilizer": ("Phân Bón", "🌾"),
+                "pearl": ("Ngọc Trai", "🔮"),
+                "rod_material": ("Vật Liệu Cân", "⚙️"),
                 "puzzle_a": ("Mảnh Ghép A", "🧩"),
                 "puzzle_b": ("Mảnh Ghép B", "🧩"),
                 "puzzle_c": ("Mảnh Ghép C", "🧩"),
@@ -261,16 +279,29 @@ class EconomyCog(commands.Cog):
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
                 tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
-                inv_text += f"**🛠️ Công Cụ:**\n{tool_text}\n\n"
+                if len(tool_text) > 1024:
+                    tool_list = sorted(tool_items.items())
+                    mid = len(tool_list) // 2
+                    part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
+                    part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
+                    embed.add_field(name="🛠️ Công Cụ (1/2)", value=part1, inline=False)
+                    embed.add_field(name="🛠️ Công Cụ (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="🛠️ Công Cụ", value=tool_text, inline=False)
             
             # Trash items
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
                 trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
-                inv_text += f"**🗑️Rác:**\n{trash_text}"
-            
-            if inv_text:
-                embed.add_field(name="🎒 Túi Đồ", value=inv_text, inline=False)
+                if len(trash_text) > 1024:
+                    trash_list = sorted(trash_items.items())
+                    mid = len(trash_list) // 2
+                    part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
+                    part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
+                    embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
+                    embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="🗑️ Rác", value=trash_text, inline=False)
         else:
             embed.add_field(name="🎒 Túi Đồ", value="Trống rỗng", inline=False)
         
@@ -298,7 +329,6 @@ class EconomyCog(commands.Cog):
         
         # Display inventory items
         if inventory:
-            inv_text = ""
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
             
@@ -306,7 +336,16 @@ class EconomyCog(commands.Cog):
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
             if fish_items:
                 fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in sorted(fish_items.items())])
-                inv_text += f"**🐟 Cá:**\n{fish_text}\n\n"
+                # Split into multiple fields if too long (max 1024 chars per field)
+                if len(fish_text) > 1024:
+                    fish_list = sorted(fish_items.items())
+                    mid = len(fish_list) // 2
+                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in fish_list[:mid]])
+                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v}" for k, v in fish_list[mid:]])
+                    embed.add_field(name="🐟 Cá (1/2)", value=part1, inline=False)
+                    embed.add_field(name="🐟 Cá (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="🐟 Cá", value=fish_text, inline=False)
             
             # Gift items
             gift_lookup = {
@@ -320,12 +359,22 @@ class EconomyCog(commands.Cog):
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
                 gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
-                inv_text += f"**💝 Quà Tặng:**\n{gift_text}\n\n"
+                if len(gift_text) > 1024:
+                    gift_list = sorted(gift_items.items())
+                    mid = len(gift_list) // 2
+                    part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
+                    part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
+                    embed.add_field(name="💝 Quà Tặng (1/2)", value=part1, inline=False)
+                    embed.add_field(name="💝 Quà Tặng (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="💝 Quà Tặng", value=gift_text, inline=False)
             
             # Tool items
             tool_lookup = {
                 "treasure_chest": ("Rương Kho Báu", "🎁"),
                 "fertilizer": ("Phân Bón", "🌾"),
+                "pearl": ("Ngọc Trai", "🔮"),
+                "rod_material": ("Vật Liệu Cân", "⚙️"),
                 "puzzle_a": ("Mảnh Ghép A", "🧩"),
                 "puzzle_b": ("Mảnh Ghép B", "🧩"),
                 "puzzle_c": ("Mảnh Ghép C", "🧩"),
@@ -334,16 +383,29 @@ class EconomyCog(commands.Cog):
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
                 tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
-                inv_text += f"**🛠️ Công Cụ:**\n{tool_text}\n\n"
+                if len(tool_text) > 1024:
+                    tool_list = sorted(tool_items.items())
+                    mid = len(tool_list) // 2
+                    part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
+                    part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
+                    embed.add_field(name="🛠️ Công Cụ (1/2)", value=part1, inline=False)
+                    embed.add_field(name="🛠️ Công Cụ (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="🛠️ Công Cụ", value=tool_text, inline=False)
             
             # Trash items
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
                 trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
-                inv_text += f"**🗑️Rác:**\n{trash_text}"
-            
-            if inv_text:
-                embed.add_field(name="🎒 Túi Đồ", value=inv_text, inline=False)
+                if len(trash_text) > 1024:
+                    trash_list = sorted(trash_items.items())
+                    mid = len(trash_list) // 2
+                    part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
+                    part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
+                    embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
+                    embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
+                else:
+                    embed.add_field(name="🗑️ Rác", value=trash_text, inline=False)
         else:
             embed.add_field(name="🎒 Túi Đồ", value="Trống rỗng", inline=False)
         

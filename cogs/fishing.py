@@ -2319,6 +2319,37 @@ class FishingCog(commands.Cog):
                     print(f"[FERTILIZER] Updating tree message in channel {tree_channel_id}")
                     await tree_cog.update_or_create_pin_message(guild_id, tree_channel_id)
                     print(f"[FERTILIZER] ✅ Tree embed updated successfully")
+                    
+                    # Send notification embed to tree channel
+                    tree_channel = self.bot.get_channel(tree_channel_id)
+                    if tree_channel:
+                        user_name = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                        notification_embed = discord.Embed(
+                            title="🌾 Phân Bón Được Sử Dụng!",
+                            description=f"**{user_name}** đã dùng Phân Bón",
+                            color=discord.Color.green()
+                        )
+                        notification_embed.add_field(
+                            name="📈 Mức tăng",
+                            value=f"**+{boost_amount}** điểm",
+                            inline=False
+                        )
+                        
+                        if leveled_up:
+                            notification_embed.add_field(
+                                name="🎉 Cây đã lên cấp!",
+                                value=f"**{TREE_NAMES[new_level]}** (Cấp {new_level}/6)",
+                                inline=False
+                            )
+                            notification_embed.color = discord.Color.gold()
+                        else:
+                            notification_embed.add_field(
+                                name="📊 Tiến độ",
+                                value=f"**{int((new_progress / req) * 100) if req > 0 else 0}%** ({new_progress}/{req})",
+                                inline=False
+                            )
+                        
+                        await tree_channel.send(embed=notification_embed)
                 except Exception as e:
                     print(f"[FERTILIZER] ❌ Failed to update tree embed: {type(e).__name__}: {str(e)}")
                     import traceback
