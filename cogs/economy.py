@@ -237,12 +237,12 @@ class EconomyCog(commands.Cog):
             
             # Gift items
             gift_lookup = {
-                "cafe": ("☕ Cà Phê", "☕"),
-                "flower": ("🌹 Hoa", "🌹"),
-                "ring": ("💍 Nhẫn", "💍"),
-                "gift": ("🎁 Quà", "🎁"),
-                "chocolate": ("🍫 Sô Cô La", "🍫"),
-                "card": ("💌 Thiệp", "💌"),
+                "cafe": ("Cà Phê", "☕"),
+                "flower": ("Hoa", "🌹"),
+                "ring": ("Nhẫn", "💍"),
+                "gift": ("Quà", "🎁"),
+                "chocolate": ("Sô Cô La", "🍫"),
+                "card": ("Thiệp", "💌"),
             }
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
@@ -251,12 +251,12 @@ class EconomyCog(commands.Cog):
             
             # Tool items
             tool_lookup = {
-                "treasure_chest": ("🎁 Rương Kho Báu", "🎁"),
-                "fertilizer": ("🌾 Phân Bón", "🌾"),
-                "puzzle_a": ("🧩 Mảnh Ghép A", "🧩"),
-                "puzzle_b": ("🧩 Mảnh Ghép B", "🧩"),
-                "puzzle_c": ("🧩 Mảnh Ghép C", "🧩"),
-                "puzzle_d": ("🧩 Mảnh Ghép D", "🧩"),
+                "treasure_chest": ("Rương Kho Báu", "🎁"),
+                "fertilizer": ("Phân Bón", "🌾"),
+                "puzzle_a": ("Mảnh Ghép A", "🧩"),
+                "puzzle_b": ("Mảnh Ghép B", "🧩"),
+                "puzzle_c": ("Mảnh Ghép C", "🧩"),
+                "puzzle_d": ("Mảnh Ghép D", "🧩"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
@@ -266,8 +266,8 @@ class EconomyCog(commands.Cog):
             # Trash items
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
-                trash_text = "\n".join([f"🗑️ **{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
-                inv_text += f"**🗑️ Rác:**\n{trash_text}"
+                trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                inv_text += f"**🗑️Rác:**\n{trash_text}"
             
             if inv_text:
                 embed.add_field(name="🎒 Túi Đồ", value=inv_text, inline=False)
@@ -310,12 +310,12 @@ class EconomyCog(commands.Cog):
             
             # Gift items
             gift_lookup = {
-                "cafe": ("☕ Cà Phê", "☕"),
-                "flower": ("🌹 Hoa", "🌹"),
-                "ring": ("💍 Nhẫn", "💍"),
-                "gift": ("🎁 Quà", "🎁"),
-                "chocolate": ("🍫 Sô Cô La", "🍫"),
-                "card": ("💌 Thiệp", "💌"),
+                "cafe": ("Cà Phê", "☕"),
+                "flower": ("Hoa", "🌹"),
+                "ring": ("Nhẫn", "💍"),
+                "gift": ("Quà", "🎁"),
+                "chocolate": ("Sô Cô La", "🍫"),
+                "card": ("Thiệp", "💌"),
             }
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
@@ -324,12 +324,12 @@ class EconomyCog(commands.Cog):
             
             # Tool items
             tool_lookup = {
-                "treasure_chest": ("🎁 Rương Kho Báu", "🎁"),
-                "fertilizer": ("🌾 Phân Bón", "🌾"),
-                "puzzle_a": ("🧩 Mảnh Ghép A", "🧩"),
-                "puzzle_b": ("🧩 Mảnh Ghép B", "🧩"),
-                "puzzle_c": ("🧩 Mảnh Ghép C", "🧩"),
-                "puzzle_d": ("🧩 Mảnh Ghép D", "🧩"),
+                "treasure_chest": ("Rương Kho Báu", "🎁"),
+                "fertilizer": ("Phân Bón", "🌾"),
+                "puzzle_a": ("Mảnh Ghép A", "🧩"),
+                "puzzle_b": ("Mảnh Ghép B", "🧩"),
+                "puzzle_c": ("Mảnh Ghép C", "🧩"),
+                "puzzle_d": ("Mảnh Ghép D", "🧩"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
@@ -339,8 +339,8 @@ class EconomyCog(commands.Cog):
             # Trash items
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
-                trash_text = "\n".join([f"🗑️ **{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
-                inv_text += f"**🗑️ Rác:**\n{trash_text}"
+                trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                inv_text += f"**🗑️Rác:**\n{trash_text}"
             
             if inv_text:
                 embed.add_field(name="🎒 Túi Đồ", value=inv_text, inline=False)

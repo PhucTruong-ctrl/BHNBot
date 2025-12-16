@@ -307,7 +307,7 @@ class General(commands.Cog):
 
     # ==================== PROFILE CARD ====================
 
-    @app_commands.command(name="profile", description="Xem profile card")
+    @app_commands.command(name="hoso", description="Xem profile card")
     @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
     async def profile_slash(self, interaction: discord.Interaction, user: discord.User = None):
         """View profile card"""
@@ -344,6 +344,43 @@ class General(commands.Cog):
         
         except Exception as e:
             await interaction.followup.send(f"Lỗi tạo profile: {e}")
+            print(f"[PROFILE] Error: {e}")
+            import traceback
+            traceback.print_exc()
+
+    @commands.command(name="hoso", description="Xem profile card")
+    async def profile_prefix(self, ctx, user: discord.User = None):
+        """View profile card via prefix"""
+        target_user = user or ctx.author
+        
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get seeds
+                async with db.execute(
+                    "SELECT seeds FROM economy_users WHERE user_id = ?",
+                    (target_user.id,)
+                ) as cursor:
+                    economy_row = await cursor.fetchone()
+                
+                # Get rank
+                async with db.execute(
+                    "SELECT COUNT(*) FROM economy_users WHERE seeds > (SELECT seeds FROM economy_users WHERE user_id = ?)",
+                    (target_user.id,)
+                ) as cursor:
+                    rank_row = await cursor.fetchone()
+                    rank = rank_row[0] + 1 if rank_row else 999
+            
+            seeds = economy_row[0] if economy_row else 0
+            
+            # Create profile card image
+            profile_img = await self._create_profile_card_new(target_user, seeds, rank)
+            
+            # Send as file
+            file = discord.File(profile_img, filename="profile.png")
+            await ctx.send(file=file)
+        
+        except Exception as e:
+            await ctx.send(f"Lỗi tạo profile: {e}")
             print(f"[PROFILE] Error: {e}")
             import traceback
             traceback.print_exc()

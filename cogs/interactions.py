@@ -15,13 +15,16 @@ DB_PATH = "./data/database.db"
 
 # Shop Items (imported from shop.py)
 SHOP_ITEMS = {
-    "cafe": {"name": "☕ Cà phê", "cost": 50, "emoji": "☕"},
-    "flower": {"name": "🌹 Hoa", "cost": 75, "emoji": "🌹"},
-    "ring": {"name": "💍 Nhẫn", "cost": 150, "emoji": "💍"},
-    "gift": {"name": "🎁 Quà", "cost": 100, "emoji": "🎁"},
-    "chocolate": {"name": "🍫 Sô cô la", "cost": 60, "emoji": "🍫"},
-    "card": {"name": "💌 Thiệp", "cost": 40, "emoji": "💌"},
+    "cafe": {"name": "Cà phê", "cost": 50, "emoji": "☕"},
+    "flower": {"name": "Hoa", "cost": 75, "emoji": "🌹"},
+    "ring": {"name": "Nhẫn", "cost": 150, "emoji": "💍"},
+    "gift": {"name": "Quà", "cost": 100, "emoji": "🎁"},
+    "chocolate": {"name": "Sô cô la", "cost": 60, "emoji": "🍫"},
+    "card": {"name": "Thiệp", "cost": 40, "emoji": "💌"},
 }
+
+# Reverse mapping: Vietnamese name -> item key
+VIETNAMESE_TO_ITEM_KEY = {item_info['name']: key for key, item_info in SHOP_ITEMS.items()}
 
 class InteractionsCog(commands.Cog):
     def __init__(self, bot):
@@ -54,7 +57,7 @@ class InteractionsCog(commands.Cog):
     @app_commands.command(name="tangqua", description="Tặng quà cho ai đó")
     @app_commands.describe(
         user="Người nhận quà",
-        item="Item tặng (cafe, flower, ring, gift, chocolate, card)"
+        item="Item tặng (Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp)"
     )
     async def gift_item(self, interaction: discord.Interaction, user: discord.User, item: str):
         """Gift an item to another user"""
@@ -70,11 +73,10 @@ class InteractionsCog(commands.Cog):
             await interaction.followup.send("❌ Bạn không thể tặng quà cho bot!", ephemeral=True)
             return
         
-        item = item.lower()
-        
-        # Check if item exists
-        if item not in SHOP_ITEMS:
-            available = ", ".join(SHOP_ITEMS.keys())
+        # Try to match Vietnamese name to item key
+        item_key = VIETNAMESE_TO_ITEM_KEY.get(item)
+        if not item_key:
+            available = ", ".join(VIETNAMESE_TO_ITEM_KEY.keys())
             await interaction.followup.send(
                 f"❌ Item không tồn tại!\nCác item có sẵn: {available}",
                 ephemeral=True
@@ -82,19 +84,21 @@ class InteractionsCog(commands.Cog):
             return
         
         # Check if sender has item
-        success = await self.remove_item(interaction.user.id, item, 1)
+        success = await self.remove_item(interaction.user.id, item_key, 1)
         if not success:
             await interaction.followup.send(
-                f"❌ Bạn không có **{SHOP_ITEMS[item]['name']}** để tặng!",
+                f"❌ Bạn không có **{item}** để tặng!",
                 ephemeral=True
             )
             return
         
         # Give item to recipient
-        await self.add_item_local(user.id, item, 1)
+        await self.add_item_local(user.id, item_key, 1)
         
-        # Add affinity (10 points per gift)
-        await self.add_affinity_local(interaction.user.id, user.id, 10)
+        # Add affinity based on item cost (cost // 5, minimum 5 points)
+        cost = SHOP_ITEMS[item_key]['cost']
+        affinity_gain = max(5, cost // 5)
+        await self.add_affinity_local(interaction.user.id, user.id, affinity_gain)
         
         embed = discord.Embed(
             title="💝 Tặng quà thành công!",
@@ -109,9 +113,9 @@ class InteractionsCog(commands.Cog):
         
         print(f"[GIFT] {interaction.user.name} gifted {item} to {user.name}")
 
-    @app_commands.command(name="affinity", description="Xem mức độ thân thiết với ai")
+    @app_commands.command(name="thanthiet", description="Xem mức độ thân thiết với ai")
     @app_commands.describe(user="Người muốn check (để trống để xem người thân nhất)")
-    async def check_affinity(self, interaction: discord.Interaction, user: discord.User = None):
+    async def check_affinity_slash(self, interaction: discord.Interaction, user: discord.User = None):
         """Check affinity with another user"""
         await interaction.response.defer(ephemeral=True)
         
@@ -165,6 +169,53 @@ class InteractionsCog(commands.Cog):
                 embed.description = friends_text if friends_text else "Bạn chưa có ai thân cả 😢"
             
             await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @commands.command(name="thanthiet", description="Xem mức độ thân thiết với ai")
+    async def check_affinity_prefix(self, ctx, user: discord.User = None):
+        """Check affinity with another user via prefix"""
+        if user and user.id == ctx.author.id:
+            await ctx.send("❌ Bạn không thể check thân thiết với chính mình!")
+            return
+        
+        if user:
+            affinity = await self.get_affinity_local(ctx.author.id, user.id)
+            embed = discord.Embed(
+                title="💕 Mức độ Thân thiết",
+                color=discord.Color.pink()
+            )
+            embed.add_field(name="Giữa", value=f"{ctx.author.mention} ❤️ {user.mention}", inline=False)
+            embed.add_field(name="Điểm", value=f"**{affinity}**", inline=False)
+            
+            if affinity >= 100:
+                embed.set_footer(text="💑 Bạn bè tốt nhất!")
+            elif affinity >= 50:
+                embed.set_footer(text="🤝 Bạn tốt!")
+            elif affinity >= 10:
+                embed.set_footer(text="👋 Quen biết nhau")
+            else:
+                embed.set_footer(text="👤 Chưa thân")
+            await ctx.send(embed=embed)
+        else:
+            top_friends = await self.get_top_affinity_friends(ctx.author.id, 5)
+            embed = discord.Embed(
+                title="💕 Top người thân nhất của bạn",
+                color=discord.Color.pink()
+            )
+            
+            if not top_friends:
+                embed.description = "Bạn chưa có ai thân cả 😢"
+            else:
+                friends_text = ""
+                for idx, (friend_id, affinity) in enumerate(top_friends, 1):
+                    try:
+                        friend = await self.bot.fetch_user(friend_id)
+                        medals = ["🥇", "🥈", "🥉"]
+                        medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
+                        friends_text += f"{medal} **{friend.name}** - {affinity} điểm\n"
+                    except:
+                        pass
+                embed.description = friends_text if friends_text else "Bạn chưa có ai thân cả 😢"
+            await ctx.send(embed=embed)
 
     # ==================== EVENTS ====================
 

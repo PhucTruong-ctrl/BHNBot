@@ -4,6 +4,8 @@ import aiosqlite
 import asyncio
 import random
 import json
+import time
+import traceback
 from datetime import datetime
 
 DB_PATH = "./data/database.db"
@@ -470,8 +472,6 @@ class GameNoiTu(commands.Cog):
     async def game_timer(self, guild_id, channel, start_time):
         """Timer 25s từ tin nhắn cuối cùng với visual countdown"""
         try:
-            import time
-            
             # Record the time when timer starts
             timer_start_time = time.time()
             
@@ -662,7 +662,7 @@ class GameNoiTu(commands.Cog):
                     
                     # Import QuickAddWordView from add_word cog
                     try:
-                        from cogs.add_word import QuickAddWordView
+                        from cogs.noi_tu.add_word import QuickAddWordView
                         view = QuickAddWordView(content, message.author, self.bot)
                         await message.reply(
                             f"Từ **{content}** không có trong từ điển. Bạn muốn gửi admin thêm từ này?",
@@ -670,6 +670,7 @@ class GameNoiTu(commands.Cog):
                             delete_after=10
                         )
                     except Exception as e:
+                        log(f"ERROR showing add word view: {e}")
                         await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)
                     return
 
@@ -714,7 +715,6 @@ class GameNoiTu(commands.Cog):
                 game['last_author_id'] = message.author.id
                 
                 # 4. Update last_message_time
-                import time
                 game['last_message_time'] = time.time()
                 
                 # Save game state after each valid move
@@ -734,6 +734,10 @@ class GameNoiTu(commands.Cog):
                         await message.channel.send(f"Chơi 1 mình luôn đi ba! {message.author.mention} win")
                     else:
                         await message.channel.send(f"Bí từ! Ko có từ nào bắt đầu bằng **{content.split()[-1]}**. {message.author.mention} win")
+                    
+                    # Distribute rewards (same as timeout)
+                    if game.get('players'):
+                        await self.distribute_rewards(guild_id, message.author.id, game['players'], message.channel)
                     
                     # Cleanup lock before starting new round
                     self.cleanup_game_lock(guild_id)
