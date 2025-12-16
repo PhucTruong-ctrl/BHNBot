@@ -662,7 +662,7 @@ RANDOM_EVENTS = {
     "sea_sickness":    {"chance": 0.002, "type": "bad", "name": "Say Sóng!", "effect": "lose_all_bait"},  # Đặc biệt
 
     # ================= 30 GOOD EVENTS (NHÂN PHẨM) =================
-    # effect: gain_money_*, gain_worm_*, gain_chest_*, gain_pearl, gain_ring, multiply_catch_*, reset_cooldown, restore_durability, lucky_buff, avoid_bad_event
+    # effect: gain_money_*, gain_worm_*, gain_chest_*, gain_pearl, gain_ring, bonus_catch_*, duplicate_catch_*, reset_cooldown, restore_durability, lucky_buff, avoid_bad_event
     
     # --- Nhóm 1: Nhặt Được Tiền (Lộc trời cho) ---
     "found_wallet":    {"chance": 0.005, "type": "good", "name": "Vớt Ví!", "effect": "gain_money_medium"},  # 100-200
@@ -682,12 +682,17 @@ RANDOM_EVENTS = {
     "message_bottle":  {"chance": 0.003, "type": "good", "name": "Thư Chai!", "effect": "gain_chest_1"},
     "engagement_ring": {"chance": 0.002, "type": "good", "name": "Nhẫn Cưới!", "effect": "gain_ring"},  # Bán giá cao
 
-    # --- Nhóm 3: X2, X3 Cá (Trúng mánh) ---
-    "school_of_fish":  {"chance": 0.005, "type": "good", "name": "Bão Cá!", "effect": "multiply_catch_3"},
-    "golden_hook":     {"chance": 0.006, "type": "good", "name": "Lưỡi Vàng!", "effect": "multiply_catch_2"},
-    "fish_feeding":    {"chance": 0.005, "type": "good", "name": "Cá Ăn Rộ!", "effect": "multiply_catch_2"},
-    "friendly_otter":  {"chance": 0.004, "type": "good", "name": "Rái Cá Giúp!", "effect": "multiply_catch_2"},
-    "net_fishing":     {"chance": 0.002, "type": "good", "name": "Vớt Lưới!", "effect": "multiply_catch_3"},
+    # --- Nhóm 3A: Câu Thêm Cá Ngẫu Nhiên (Bonus Catch) ---
+    "school_of_fish":  {"chance": 0.005, "type": "good", "name": "Bão Cá!", "effect": "bonus_catch_3"},
+    "golden_hook":     {"chance": 0.006, "type": "good", "name": "Lưỡi Vàng!", "effect": "bonus_catch_2"},
+    "fish_feeding":    {"chance": 0.005, "type": "good", "name": "Cá Ăn Rộ!", "effect": "bonus_catch_2"},
+    "friendly_otter":  {"chance": 0.004, "type": "good", "name": "Rái Cá Giúp!", "effect": "bonus_catch_2"},
+    "net_fishing":     {"chance": 0.002, "type": "good", "name": "Vớt Lưới!", "effect": "bonus_catch_3"},
+    
+    # --- Nhóm 3B: Nhân Cá Giống Nhau (Duplicate Catch) ---
+    "magic_bait":      {"chance": 0.003, "type": "good", "name": "Mồi Thần Kỳ!", "effect": "duplicate_catch_2"},
+    "twin_fish":       {"chance": 0.002, "type": "good", "name": "Cá Song Sinh!", "effect": "duplicate_catch_2"},
+    "mirror_water":    {"chance": 0.001, "type": "good", "name": "Mặt Nước Gương!", "effect": "duplicate_catch_3"},
 
     # --- Nhóm 4: Hồi Phục & Cooldown (Tiện ích) ---
     "golden_turtle":   {"chance": 0.005, "type": "good", "name": "Rùa Vàng!", "effect": "reset_cooldown"},
@@ -758,6 +763,9 @@ RANDOM_EVENT_MESSAGES = {
     
     # --- GOOD EVENTS MESSAGES ---
     "found_wallet":    "Vớt được cái ví da cá sấu! Bên trong có kha khá tiền lẻ. 👛",
+    "magic_bait":      "Mồi của bạn tỏa sáng kỳ lạ! Cá đến thành đàn! ✨🐟",
+    "twin_fish":       "Bạn câu được cá song sinh! Mỗi con lại kéo thêm anh em! 👯",
+    "mirror_water":    "Mặt nước như gương phản chiếu - cá bị ảo giác và cắn nhiều lần! 🪞",
     "tourist_tip":     "Khách du lịch thấy bạn câu điệu nghệ quá nên tip nóng! 💵",
     "floating_cash":   "Ai đó đánh rơi tờ tiền trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
     "ancient_coin":    "Móc lên được đồng xu cổ thời vua Hùng. Bảo tàng mua lại giá cao! 🪙",
@@ -1000,4 +1008,93 @@ SELL_MESSAGES = {
     "free_breakfast": "Bà chủ mời bạn ăn sáng miễn phí! 🍜 (+Độ bền)",
     "old_rod_gift": "Ngư dân già tặng cần câu cũ của ông! 🎣 (+Vật liệu)",
     "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)",
+}
+
+# ==================== NPC ENCOUNTERS (Khách Vãng Lai) ====================
+# Tỉ lệ xuất hiện: 5% sau khi câu cá thành công
+
+NPC_ENCOUNTERS = {
+    "stray_cat": {
+        "name": "🐈 Mèo Hoang Đói Bụng",
+        "description": "Một chú mèo hoang gầy gò nhìn chằm chằm vào con cá bạn vừa câu.\nNó kêu 'Meow~' vẻ đói bụng.",
+        "question": "**Bạn có muốn cho nó con cá này không?**",
+        "image_url": "https://i.imgur.com/QfzKZYH.png",
+        "chance": 0.25,
+        "rewards": {
+            "accept": [
+                {"type": "worm", "amount": 5, "chance": 0.3, "message": "Mèo ăn xong vui vẻ nhả lại **5 Mồi Câu** rồi bỏ đi! 🪱"},
+                {"type": "lucky_buff", "chance": 0.4, "message": "Mèo dụi đầu vào chân bạn. Bạn cảm thấy **May Mắn** hơn! ✨"},
+                {"type": "nothing", "chance": 0.3, "message": "Mèo ăn xong rồi bỏ đi một mạch. Đồ vô ơn! 😿"}
+            ],
+            "decline": "Bạn đuổi mèo đi. Nó liếc bạn một cái đầy oán hận rồi chạy mất."
+        },
+        "cost": "fish"  # Mất con cá vừa câu
+    },
+    
+    "beggar": {
+        "name": "👴 Ông Lão Ăn Xin",
+        "description": "Một cụ già rách rưới đi qua:\n'Cậu ơi, cho già xin **50 Hạt** mua bánh mì...'",
+        "question": "**Bạn có muốn làm việc thiện không?**",
+        "image_url": "https://i.imgur.com/3mKxPLH.png",
+        "chance": 0.2,
+        "rewards": {
+            "accept": [
+                {"type": "chest", "amount": 1, "chance": 0.5, "message": "👴: 'Cảm ơn con! Ta thực ra là **Thổ Địa**. Tặng con **1 Rương Kho Báu**!' 🎁"},
+                {"type": "rod_durability", "amount": 999, "chance": 0.3, "message": "👴: 'Ta là **Tiên Ông**! Cần câu của con được hồi phục **Hoàn Toàn**!' 🔨✨"},
+                {"type": "money", "amount": 150, "chance": 0.2, "message": "👴: 'Lương thiện được trời thương! Của cho không bằng cách cho!' (+150 Hạt) 🙏"}
+            ],
+            "decline": "Ông lão thở dài bỏ đi. Bạn cảm thấy hơi áy náy..."
+        },
+        "cost": 50  # Mất 50 Hạt
+    },
+    
+    "otter_trader": {
+        "name": "🦦 Rái Cá Trao Đổi",
+        "description": "Một con Rái Cá trồi lên, tay cầm một viên đá sáng lấp lánh.\nNó chỉ vào con cá của bạn, tỏ ý muốn trao đổi.",
+        "question": "**Bạn có muốn đổi cá lấy vật phẩm bí ẩn không?**",
+        "image_url": "https://i.imgur.com/9Ky7XzR.png",
+        "chance": 0.25,
+        "rewards": {
+            "accept": [
+                {"type": "pearl", "amount": 1, "chance": 0.25, "message": "Rái cá trao cho bạn **1 Ngọc Trai** lấp lánh! 🔮"},
+                {"type": "rod_material", "amount": 2, "chance": 0.3, "message": "Rái cá tặng bạn **2 Vật Liệu Cần Câu**! 🛠️"},
+                {"type": "worm", "amount": 10, "chance": 0.2, "message": "Rái cá cho bạn **10 Mồi Câu** từ kho của nó! 🪱"},
+                {"type": "rock", "chance": 0.25, "message": "Rái cá đưa cho bạn... một cục đá cuội thôi. Bị lừa rồi! 🪨"}
+            ],
+            "decline": "Rái cá tức giận tát nước vào mặt bạn rồi lặn mất! 💦"
+        },
+        "cost": "fish"
+    },
+    
+    "black_market": {
+        "name": "🕵️ Thương Buôn Chợ Đen",
+        "description": "Một gã mặc áo choàng đen thì thầm:\n'Con cá này nhìn được đấy, ta mua **GẤP 3 LẦN** giá thị trường, bán không?'",
+        "question": "**Rủi ro:** Có 20% bị Công An bắt!",
+        "image_url": "https://i.imgur.com/zQx3YmH.png",
+        "chance": 0.15,
+        "rewards": {
+            "accept": [
+                {"type": "triple_money", "chance": 0.8, "message": "Giao dịch trót lọt! Bạn nhận được tiền gấp 3! 💰"},
+                {"type": "caught", "fine": 200, "chance": 0.2, "message": "🚔 **O e o e!** Công an ập tới bắt quả tang!\nBạn mất cá và bị phạt **200 Hạt**! 😱"}
+            ],
+            "decline": "Gã bí ẩn gật đầu rồi biến vào bóng tối."
+        },
+        "cost": "fish"
+    },
+    
+    "drowned_ghost": {
+        "name": "👻 Hồn Ma Chết Đuối",
+        "description": "Không khí lạnh toát... Một bóng trắng lướt qua:\n'Ta lạnh quá... Cần câu của ngươi có vẻ ấm... Cho ta mượn chút...'",
+        "question": "**Bạn có dám cho ma mượn cần câu không?**",
+        "image_url": "https://i.imgur.com/kX9Tz4L.png",
+        "chance": 0.15,
+        "rewards": {
+            "accept": [
+                {"type": "legendary_buff", "duration": 10, "chance": 0.7, "message": "Ma trả lại cần câu đã được **TẨM PHÉP**!\n✨ 10 lần câu tới tăng **50% tỉ lệ Cá Hiếm**! ✨"},
+                {"type": "cursed", "chance": 0.3, "message": "👻 Ma cười nham hiểm rồi biến mất!\nCần câu bị **NGUYỀN RỦA** - độ bền giảm 20 điểm! 💀"}
+            ],
+            "decline": "Bạn hoảng sợ bỏ chạy. Tiếng cười thảm thiết vang lên phía sau..."
+        },
+        "cost": "cooldown_5min"  # Mất lượt câu trong 5 phút
+    }
 }

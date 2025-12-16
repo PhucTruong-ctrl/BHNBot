@@ -20,6 +20,41 @@ from database_manager import (
     get_user_balance, get_or_create_user
 )
 
+# ==================== NPC ENCOUNTER VIEW ====================
+
+class NPCEncounterView(discord.ui.View):
+    """View for NPC encounter interactions."""
+    def __init__(self, user_id: int, npc_type: str, npc_data: dict, fish_key: str = None):
+        super().__init__(timeout=15)
+        self.user_id = user_id
+        self.npc_type = npc_type
+        self.npc_data = npc_data
+        self.fish_key = fish_key
+        self.value = None
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Ensure only the fisher can interact."""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Đây không phải chuyện của bạn!", ephemeral=True)
+            return False
+        return True
+    
+    @discord.ui.button(label="✅ Đồng Ý", style=discord.ButtonStyle.success)
+    async def agree(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Accept NPC offer."""
+        self.value = "agree"
+        await interaction.response.defer()
+        self.stop()
+    
+    @discord.ui.button(label="❌ Từ Chối", style=discord.ButtonStyle.danger)
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Decline NPC offer."""
+        self.value = "decline"
+        await interaction.response.defer()
+        self.stop()
+
+# ==================== FISHING COG ====================
+
 class FishingCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -30,6 +65,7 @@ class FishingCog(commands.Cog):
         self.user_achievements = {}
         self.lucky_buff_users = {}
         self.avoid_event_users = {}
+        self.legendary_buff_users = {}  # For ghost NPC buff
     
     # ==================== COMMANDS ====================
     
@@ -341,12 +377,12 @@ class FishingCog(commands.Cog):
         else:
             num_fish = 1  # Không mồi hoặc cần gãy = 1 cá thôi
         
-        # Apply catch multiplier from events (e.g., Golden Hook)
-        multiplier = event_result.get("catch_multiplier", 1)
-        original_num_fish = num_fish
-        num_fish = num_fish * multiplier
-        if multiplier > 1:
-            print(f"[EVENT] {username} activated catch_multiplier x{multiplier}: {original_num_fish} → {num_fish} fish")
+        # Apply bonus catch from events (e.g., Bão Cá - câu thêm cá ngẫu nhiên)
+        bonus_catch = event_result.get("bonus_catch", 0)
+        if bonus_catch > 0:
+            original_num_fish = num_fish
+            num_fish = num_fish + bonus_catch
+            print(f"[EVENT] {username} activated bonus_catch +{bonus_catch}: {original_num_fish} → {num_fish} fish")
         
         # Roll trash (độc lập)
         # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ roll trash hoặc cá, không vừa cá vừa rác vừa rương
@@ -413,6 +449,12 @@ class FishingCog(commands.Cog):
             
             # *** APPLY ROD LUCK BONUS ***
             rare_ratio = min(0.9, rare_ratio + rod_config["luck"])  # Cap at 90% max
+            
+            # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
+            if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
+                rare_ratio = min(0.95, rare_ratio + 0.5)  # +50% rare chance
+                print(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
+            
             common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
             
             is_rare = random.choices([False, True], weights=[common_ratio, rare_ratio], k=1)[0]
@@ -456,6 +498,28 @@ class FishingCog(commands.Cog):
                 if fish['key'] not in fish_only_items:
                     fish_only_items[fish['key']] = 0
                 fish_only_items[fish['key']] += 1
+        
+        # Decrease legendary buff counter
+        if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
+            self.legendary_buff_users[user_id] -= 1
+            if self.legendary_buff_users[user_id] <= 0:
+                del self.legendary_buff_users[user_id]
+                print(f"[NPC_BUFF] {username} legendary buff expired")
+            else:
+                print(f"[NPC_BUFF] {username} has {self.legendary_buff_users[user_id]} legendary buff uses left")
+        
+        # Apply duplicate multiplier from events (e.g., Cá Song Sinh - nhân cá giống nhau)
+        duplicate_multiplier = event_result.get("duplicate_multiplier", 1)
+        if duplicate_multiplier > 1:
+            duplicated_items = {}
+            for fish_key, qty in fish_only_items.items():
+                new_qty = qty * duplicate_multiplier
+                duplicated_items[fish_key] = new_qty
+                # Add duplicated fish to inventory
+                await add_item(user_id, fish_key, new_qty - qty)
+                print(f"[EVENT] {username} activated duplicate_multiplier x{duplicate_multiplier}: {fish_key} {qty} → {new_qty}")
+            fish_only_items = duplicated_items
+        
         # Display fish grouped
         for key, qty in fish_only_items.items():
             fish = ALL_FISH[key]
@@ -577,9 +641,18 @@ class FishingCog(commands.Cog):
         if is_complete:
             current_title = await self.get_title(user_id, channel.guild.id)
             if not current_title or "Vua" not in current_title:
-                await add_title(user_id, channel.guild.id, "👑 Vua Câu Cá 👑")
-                title_earned = True
-                print(f"[TITLE] {username} earned 'Vua Câu Cá' title!")
+                # Award "Vua Câu Cá" role
+                try:
+                    guild = channel.guild
+                    member = guild.get_member(user_id)
+                    role_id = 1450409414111658024  # Vua Câu Cá role ID
+                    role = guild.get_role(role_id)
+                    if member and role and role not in member.roles:
+                        await member.add_roles(role)
+                        title_earned = True
+                        print(f"[TITLE] {username} earned 'Vua Câu Cá' role!")
+                except Exception as e:
+                    print(f"[TITLE] Error awarding role: {e}")
         
         # Build embed with item summary
         total_catches = num_fish + trash_count + chest_count
@@ -637,6 +710,80 @@ class FishingCog(commands.Cog):
         
         await casting_msg.edit(content="", embed=embed, view=view)
         print(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
+        
+        # ==================== NPC ENCOUNTER (5% chance) ====================
+        if random.random() < 0.05 and fish_only_items:
+            await asyncio.sleep(2)  # Small delay for dramatic effect
+            
+            # Select random NPC based on weighted chances
+            npc_pool = []
+            for npc_key, npc_data in NPC_ENCOUNTERS.items():
+                npc_pool.extend([npc_key] * int(npc_data["chance"] * 100))
+            
+            npc_type = random.choice(npc_pool)
+            npc_data = NPC_ENCOUNTERS[npc_type]
+            
+            # Get the first fish caught
+            caught_fish_key = list(fish_only_items.keys())[0]
+            caught_fish_info = ALL_FISH[caught_fish_key]
+            
+            # Build NPC embed
+            npc_embed = discord.Embed(
+                title=f"⚠️ {npc_data['name']} - {username}!",
+                description=f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}",
+                color=discord.Color.purple()
+            )
+            
+            if npc_data.get("image_url"):
+                npc_embed.set_thumbnail(url=npc_data["image_url"])
+            
+            # Add cost information
+            cost_text = ""
+            if npc_data["cost"] == "fish":
+                cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
+            elif isinstance(npc_data["cost"], int):
+                cost_text = f"💰 **Chi phí:** {npc_data['cost']} Hạt"
+            elif npc_data["cost"] == "cooldown_5min":
+                cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
+            
+            npc_embed.add_field(name="💸 Giá", value=cost_text, inline=False)
+            
+            # Send NPC message with buttons
+            npc_view = NPCEncounterView(user_id, npc_type, npc_data, caught_fish_key)
+            npc_msg = await channel.send(content=f"<@{user_id}>", embed=npc_embed, view=npc_view)
+            
+            await npc_view.wait()
+            
+            result_text = ""
+            result_color = discord.Color.default()
+            
+            if npc_view.value == "agree":
+                # Process acceptance
+                result_embed = await self._process_npc_acceptance(user_id, npc_type, npc_data, caught_fish_key, caught_fish_info, username)
+                await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+            
+            elif npc_view.value == "decline":
+                # Process decline
+                result_text = npc_data["rewards"]["decline"]
+                result_color = discord.Color.light_grey()
+                result_embed = discord.Embed(
+                    title=f"{npc_data['name']} - {username} - Từ Chối",
+                    description=f"{result_text}",
+                    color=result_color
+                )
+                await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+                print(f"[NPC] {username} declined {npc_type}")
+            
+            else:
+                # Timeout -> auto-decline (no cost, show decline-style embed)
+                result_text = f"⏱️ Hết thời gian phản hồi.\n{npc_data['rewards']['decline']}"
+                result_embed = discord.Embed(
+                    title=f"{npc_data['name']} - {username} - Từ Chối (Hết thời gian)",
+                    description=result_text,
+                    color=discord.Color.light_grey()
+                )
+                await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+                print(f"[NPC] {username} timeout on {npc_type} -> auto-decline")
     
     
     @app_commands.command(name="banca", description="Bán cá - dùng /banca cá_rô hoặc /banca cá_rô, cá_chép")
@@ -1126,7 +1273,7 @@ class FishingCog(commands.Cog):
             # Check balance for seeds payment
             balance = await get_user_balance(user_id)
             if balance < cost:
-                msg = f"❌ Bạn cần **{cost:,} Hạt** hoặc **1 Vật Liệu Nâng Cấp Cần** để nâng lên **{rod_info['name']}**!\n\nHiện có: **{balance:,} Hạt**"
+                msg = f"❌ Bạn cần **{cost:,} Hạt** và **1 Vật Liệu Nâng Cấp Cần** để nâng lên **{rod_info['name']}**!\n\nHiện có: **{balance:,} Hạt**"
                 if is_slash:
                     await ctx.followup.send(msg, ephemeral=True)
                 else:
@@ -1140,7 +1287,7 @@ class FishingCog(commands.Cog):
             use_material = False
         
         # Upgrade rod: restore full durability
-        await update_rod_data(user_id, rod_info["durability"], next_lvl)
+        await self.update_rod_data(user_id, rod_info["durability"], next_lvl)
         
         # Check rod_tycoon achievement if level 5
         if next_lvl == 5:
@@ -1970,6 +2117,160 @@ class FishingCog(commands.Cog):
     async def add_legendary_fish_to_user(self, user_id: int, legendary_key: str):
         """Add legendary fish to user's collection"""
         await add_legendary_module(user_id, legendary_key)
+    
+    async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: dict, 
+                                      fish_key: str, fish_info: dict, username: str):
+        """Process NPC acceptance and rewards. Returns result embed. Includes username in title."""
+        result_text = ""
+        result_color = discord.Color.green()
+        
+        # Pay the cost first
+        cost = npc_data["cost"]
+        
+        if cost == "fish":
+            # Remove the fish
+            await remove_item(user_id, fish_key, 1)
+            print(f"[NPC] User {user_id} gave {fish_key} to {npc_type}")
+        
+        elif isinstance(cost, int):
+            # Check if user has enough money
+            balance = await get_user_balance(user_id)
+            if balance < cost:
+                result_text = f"❌ Bạn không đủ {cost} Hạt!\n\n{npc_data['rewards']['decline']}"
+                result_color = discord.Color.red()
+                result_embed = discord.Embed(
+                    title=f"{npc_data['name']} - Thất Bại",
+                    description=result_text,
+                    color=result_color
+                )
+                return result_embed
+            
+            await add_seeds(user_id, -cost)
+            print(f"[NPC] User {user_id} paid {cost} seeds to {npc_type}")
+        
+        elif cost == "cooldown_5min":
+            # Add cooldown
+            self.fishing_cooldown[user_id] = time.time() + 300
+            print(f"[NPC] User {user_id} got 5min cooldown from {npc_type}")
+        
+        # Roll for reward
+        rewards_list = npc_data["rewards"]["accept"]
+        
+        # Build weighted selection
+        reward_pool = []
+        for reward in rewards_list:
+            weight = int(reward["chance"] * 100)
+            reward_pool.extend([reward] * weight)
+        
+        selected_reward = random.choice(reward_pool)
+        
+        # Process reward
+        reward_type = selected_reward["type"]
+        
+        if reward_type == "worm":
+            amount = selected_reward.get("amount", 5)
+            await add_item(user_id, "worm", amount)
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
+        
+        elif reward_type == "lucky_buff":
+            if not hasattr(self, "lucky_buff_users"):
+                self.lucky_buff_users = {}
+            self.lucky_buff_users[user_id] = True
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received lucky buff from {npc_type}")
+        
+        elif reward_type == "chest":
+            amount = selected_reward.get("amount", 1)
+            await add_item(user_id, "treasure_chest", amount)
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
+        
+        elif reward_type == "rod_durability":
+            amount = selected_reward.get("amount", 999)
+            if amount == 999:
+                # Full restore
+                rod_lvl, _ = await get_rod_data(user_id)
+                rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
+                await self.update_rod_data(user_id, rod_config["durability"])
+            else:
+                rod_lvl, current_durability = await get_rod_data(user_id)
+                rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
+                new_durability = min(rod_config["durability"], current_durability + amount)
+                await self.update_rod_data(user_id, new_durability)
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received durability from {npc_type}")
+        
+        elif reward_type == "money":
+            amount = selected_reward.get("amount", 150)
+            await add_seeds(user_id, amount)
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received {amount} seeds from {npc_type}")
+        
+        elif reward_type == "pearl":
+            amount = selected_reward.get("amount", 1)
+            await add_item(user_id, "pearl", amount)
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received {amount} pearl(s) from {npc_type}")
+        
+        elif reward_type == "rod_material":
+            amount = selected_reward.get("amount", 2)
+            await add_item(user_id, "rod_material", amount)
+            result_text = selected_reward["message"]
+            print(f"[NPC] User {user_id} received {amount} rod material(s) from {npc_type}")
+        
+        elif reward_type == "rock":
+            result_text = selected_reward["message"]
+            result_color = discord.Color.orange()
+            print(f"[NPC] User {user_id} got scammed by {npc_type}")
+        
+        elif reward_type == "nothing":
+            result_text = selected_reward["message"]
+            result_color = discord.Color.light_grey()
+            print(f"[NPC] User {user_id} got nothing from {npc_type}")
+        
+        elif reward_type == "triple_money":
+            # Calculate 3x fish price
+            price = fish_info["sell_price"] * 3
+            await add_seeds(user_id, price)
+            result_text = selected_reward["message"].replace("tiền gấp 3", f"**{price} Hạt**")
+            print(f"[NPC] User {user_id} received {price} seeds (3x) from {npc_type}")
+        
+        elif reward_type == "caught":
+            # Police caught - lose fish and pay fine
+            fine = selected_reward.get("fine", 200)
+            await add_seeds(user_id, -fine)
+            result_text = selected_reward["message"]
+            result_color = discord.Color.red()
+            print(f"[NPC] User {user_id} caught by police, paid {fine} fine")
+        
+        elif reward_type == "legendary_buff":
+            # Grant legendary buff
+            duration = selected_reward.get("duration", 10)
+            if not hasattr(self, "legendary_buff_users"):
+                self.legendary_buff_users = {}
+            self.legendary_buff_users[user_id] = duration
+            result_text = selected_reward["message"]
+            result_color = discord.Color.gold()
+            print(f"[NPC] User {user_id} received legendary buff ({duration} uses) from {npc_type}")
+        
+        elif reward_type == "cursed":
+            # Curse - lose durability
+            rod_lvl, current_durability = await get_rod_data(user_id)
+            new_durability = max(0, current_durability - 20)
+            await self.update_rod_data(user_id, new_durability)
+            result_text = selected_reward["message"]
+            result_color = discord.Color.dark_red()
+            print(f"[NPC] User {user_id} cursed by {npc_type}, lost 20 durability")
+        
+        # Return result embed
+        result_embed = discord.Embed(
+            title=f"{npc_data['name']} - {username} - Kết Quả",
+            description=result_text,
+            color=result_color
+        )
+        
+        return result_embed
 
 async def setup(bot):
     """Setup fishing cog."""

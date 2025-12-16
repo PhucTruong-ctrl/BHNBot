@@ -9,7 +9,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
     result = {
         "triggered": False, "type": None, "message": "",
         "lose_worm": False, "lose_catch": False, "lose_money": 0, "gain_money": 0,
-        "cooldown_increase": 0, "catch_multiplier": 1, "convert_to_trash": False,
+        "cooldown_increase": 0, "bonus_catch": 0, "duplicate_multiplier": 1, "convert_to_trash": False,
         "gain_items": {}, "custom_effect": None, "durability_loss": 0, "avoided": False
     }
     
@@ -124,10 +124,14 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                 result["gain_items"] = {"pearl": 1}
             elif effect == "gain_ring":
                 result["gain_items"] = {"ring": 1}
-            elif effect == "multiply_catch_2":
-                result["catch_multiplier"] = 2
-            elif effect == "multiply_catch_3":
-                result["catch_multiplier"] = 3
+            elif effect == "bonus_catch_2":
+                result["bonus_catch"] = 2
+            elif effect == "bonus_catch_3":
+                result["bonus_catch"] = 3
+            elif effect == "duplicate_catch_2":
+                result["duplicate_multiplier"] = 2
+            elif effect == "duplicate_catch_3":
+                result["duplicate_multiplier"] = 3
             elif effect == "reset_cooldown":
                 result["cooldown_increase"] = -999
             elif effect == "restore_durability":

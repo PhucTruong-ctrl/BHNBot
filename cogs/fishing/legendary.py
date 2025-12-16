@@ -30,7 +30,7 @@ class LegendaryBossFightView(discord.ui.View):
             return
         
         self.fought = True
-        success = random.random() < 0.30
+        success = random.random() < 0.15
         
         if success:
             result_embed = discord.Embed(
@@ -74,7 +74,7 @@ class LegendaryBossFightView(discord.ui.View):
             await interaction.response.edit_message(embed=fail_embed, view=self)
             return
         
-        success = random.random() < 0.60
+        success = random.random() < 0.30
         
         if success:
             result_embed = discord.Embed(
