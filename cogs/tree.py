@@ -593,24 +593,25 @@ class CommunityCog(commands.Cog):
             ) as cursor:
                 contributor_ids = await cursor.fetchall()
             
-            memorabilia_name = f"Quả Ngọt Mùa {season}"
+            # Use consistent item key instead of dynamic string
+            memorabilia_key = f"qua_ngot_mua_{season}"
             for (cid,) in contributor_ids:
                 # Check if already has this item
                 async with db.execute(
                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                    (cid, memorabilia_name)
+                    (cid, memorabilia_key)
                 ) as cursor:
                     inv_row = await cursor.fetchone()
                 
                 if inv_row:
                     await db.execute(
                         "UPDATE inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_name = ?",
-                        (cid, memorabilia_name)
+                        (cid, memorabilia_key)
                     )
                 else:
                     await db.execute(
                         "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, 1)",
-                        (cid, memorabilia_name)
+                        (cid, memorabilia_key)
                     )
             
             # 4. ACTIVATE 24H BUFF by updating server_config

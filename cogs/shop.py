@@ -28,6 +28,12 @@ SHOP_ITEMS = {
     "tim_yeu_ca": {"name": "Tình Yêu Với Cá", "cost": 14500, "emoji": "❤️", "description": "Tăng 65% lên 88% thắng 'Dìu Cá' (1 lần)"},
     # Wave detector for legendary whale
     "may_do_song": {"name": "Máy Dò Sóng", "cost": 20000, "emoji": "📡", "description": "Phát hiện sóng 52Hz của Cá Voi Buồn Bã (1 lần dùng)"},
+    # Commemorative items (Season rewards - NOT for sale)
+    "qua_ngot_mua_1": {"name": "Quả Ngọt Mùa 1", "cost": None, "emoji": "🍎", "description": "Vật kỉ niệm từ mùa 1 - Chứng tỏ bạn là người lập công xây dựng server!"},
+    "qua_ngot_mua_2": {"name": "Quả Ngọt Mùa 2", "cost": None, "emoji": "🍏", "description": "Vật kỉ niệm từ mùa 2 - Tiếp tục lập công xây dựng server!"},
+    "qua_ngot_mua_3": {"name": "Quả Ngọt Mùa 3", "cost": None, "emoji": "🍊", "description": "Vật kỉ niệm từ mùa 3 - Cộng đồng mạnh mẽ hơn!"},
+    "qua_ngot_mua_4": {"name": "Quả Ngọt Mùa 4", "cost": None, "emoji": "🍋", "description": "Vật kỉ niệm từ mùa 4 - Kiên trì xây dựng!"},
+    "qua_ngot_mua_5": {"name": "Quả Ngọt Mùa 5", "cost": None, "emoji": "🍌", "description": "Vật kỉ niệm từ mùa 5 - Hành trình vĩ đại!"},
 }
 
 # Reverse mapping: Vietnamese name -> item key

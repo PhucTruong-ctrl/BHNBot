@@ -18,7 +18,7 @@ from .events import trigger_random_event
 from .views import FishSellView
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
-    get_user_balance, get_or_create_user
+    get_user_balance, get_or_create_user, db_manager
 )
 
 # ==================== NPC ENCOUNTER VIEW ====================
@@ -111,739 +111,741 @@ class FishingCog(commands.Cog):
             # --- GET ROD DATA ---
             rod_lvl, rod_durability = await get_rod_data(user_id)
             rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
-        
-        # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
+            
+            # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
         # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
-        current_inventory = await get_inventory(user_id)
-        fish_count = sum(v for k, v in current_inventory.items() if k in ALL_FISH and k not in LEGENDARY_FISH_KEYS)
+            current_inventory = await get_inventory(user_id)
+            fish_count = sum(v for k, v in current_inventory.items() if k in ALL_FISH and k not in LEGENDARY_FISH_KEYS)
         
-        # If bucket is full (15+ fish), block fishing immediately
-        if fish_count >= 15:
-            username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
-            embed = discord.Embed(
-                title=f"⚠️ XÔ ĐÃ ĐẦY - {username_display}!",
-                description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa 15).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
-                color=discord.Color.orange()
-            )
-            embed.set_footer(text="Hãy dùng lệnh bán cá để bán bớt nhé.")
-            if is_slash:
-                await ctx.followup.send(embed=embed, ephemeral=True)
-            else:
-                await ctx.send(embed=embed)
-            print(f"[FISHING] [BLOCKED] {username_display} (user_id={user_id}) bucket_full fish_count={fish_count}/15")
-            return
+            # If bucket is full (15+ fish), block fishing immediately
+            if fish_count >= 15:
+                username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                embed = discord.Embed(
+                    title=f"⚠️ XÔ ĐÃ ĐẦY - {username_display}!",
+                    description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa 15).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
+                    color=discord.Color.orange()
+                )
+                embed.set_footer(text="Hãy dùng lệnh bán cá để bán bớt nhé.")
+                if is_slash:
+                    await ctx.followup.send(embed=embed, ephemeral=True)
+                else:
+                    await ctx.send(embed=embed)
+                print(f"[FISHING] [BLOCKED] {username_display} (user_id={user_id}) bucket_full fish_count={fish_count}/15")
+                return
         
-        # --- CHECK DURABILITY & AUTO REPAIR ---
-        repair_msg = ""
-        is_broken_rod = False  # Flag to treat as no-worm when durability is broken
+            # --- CHECK DURABILITY & AUTO REPAIR ---
+            repair_msg = ""
+            is_broken_rod = False  # Flag to treat as no-worm when durability is broken
         
-        if rod_durability <= 0:
-            repair_cost = rod_config["repair"]
-            balance = await get_user_balance(user_id)
+            if rod_durability <= 0:
+                repair_cost = rod_config["repair"]
+                balance = await get_user_balance(user_id)
             
-            if balance >= repair_cost:
-                # Auto repair
-                await add_seeds(user_id, -repair_cost)
-                rod_durability = rod_config["durability"]
-                await update_rod_data(user_id, rod_durability)
-                repair_msg = f"\n🛠️ *Cần gãy! Đã tự động sửa (-{repair_cost} Hạt)*"
-                print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} new_durability={rod_durability}")
-            else:
-                # Not enough money to repair - allow fishing but with broken rod penalties
-                is_broken_rod = True
-                repair_msg = f"\n⚠️ **Cần câu đã gãy!** Phí sửa là {repair_cost} Hạt. Bạn đang câu với cần gãy (chỉ 1% cá hiếm, 1 item/lần, không rương)."
-                print(f"[FISHING] [BROKEN_ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) cannot_afford_repair cost={repair_cost}")
+                if balance >= repair_cost:
+                    # Auto repair
+                    await add_seeds(user_id, -repair_cost)
+                    rod_durability = rod_config["durability"]
+                    await update_rod_data(user_id, rod_durability)
+                    repair_msg = f"\n🛠️ *Cần gãy! Đã tự động sửa (-{repair_cost} Hạt)*"
+                    print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} new_durability={rod_durability}")
+                else:
+                    # Not enough money to repair - allow fishing but with broken rod penalties
+                    is_broken_rod = True
+                    repair_msg = f"\n⚠️ **Cần câu đã gãy!** Phí sửa là {repair_cost} Hạt. Bạn đang câu với cần gãy (chỉ 1% cá hiếm, 1 item/lần, không rương)."
+                    print(f"[FISHING] [BROKEN_ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) cannot_afford_repair cost={repair_cost}")
         
-        # --- CHECK COOLDOWN (using rod-based cooldown) ---
-        remaining = await self.get_fishing_cooldown_remaining(user_id)
-        if remaining > 0:
-            username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
-            msg = f"⏱️ **{username_display}** chờ chút nhen! Cần chờ {remaining}s nữa mới được câu lại!"
-            if is_slash:
-                await ctx.followup.send(msg, ephemeral=True)
-            else:
-                await ctx.send(msg)
-            return
+            # --- CHECK COOLDOWN (using rod-based cooldown) ---
+            remaining = await self.get_fishing_cooldown_remaining(user_id)
+            if remaining > 0:
+                username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                msg = f"⏱️ **{username_display}** chờ chút nhen! Cần chờ {remaining}s nữa mới được câu lại!"
+                if is_slash:
+                    await ctx.followup.send(msg, ephemeral=True)
+                else:
+                    await ctx.send(msg)
+                return
         
-        # Ensure user exists
-        username = ctx.author.name if not is_slash else ctx_or_interaction.user.name
-        await get_or_create_user(user_id, username)
+            # Ensure user exists
+            username = ctx.author.name if not is_slash else ctx_or_interaction.user.name
+            await get_or_create_user(user_id, username)
         
-        # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
-        inventory = await get_inventory(user_id)
-        has_worm = inventory.get("worm", 0) > 0
-        auto_bought = False  # Biến check xem có tự mua không
+            # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
+            inventory = await get_inventory(user_id)
+            has_worm = inventory.get("worm", 0) > 0
+            auto_bought = False  # Biến check xem có tự mua không
 
-        # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
-        if not has_worm:
-            balance = await get_user_balance(user_id)
-            if balance >= WORM_COST:
-                # Tự động trừ tiền coi như mua mồi dùng ngay
-                await add_seeds(user_id, -WORM_COST)
-                has_worm = True
-                auto_bought = True
-                print(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} action=purchased_bait")
+            # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
+            if not has_worm:
+                balance = await get_user_balance(user_id)
+                if balance >= WORM_COST:
+                    # Tự động trừ tiền coi như mua mồi dùng ngay
+                    await add_seeds(user_id, -WORM_COST)
+                    has_worm = True
+                    auto_bought = True
+                    print(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} action=purchased_bait")
+                else:
+                    # Không có mồi, cũng không đủ tiền -> Chấp nhận câu rác
+                    has_worm = False
             else:
-                # Không có mồi, cũng không đủ tiền -> Chấp nhận câu rác
-                has_worm = False
-        else:
-            # Có mồi trong túi -> Trừ mồi
-            await remove_item(user_id, "worm", 1)
-            # Track worms used for achievement
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute(
-                        "UPDATE economy_users SET worms_used = worms_used + 1 WHERE user_id = ?",
-                        (user_id,)
-                    )
-                    await db.commit()
-            except:
-                pass
-            print(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
-        
-        # --- KẾT THÚC LOGIC MỚI ---
-        
-        print(f"[FISHING] [START] {username} (user_id={user_id}) rod_level={rod_lvl} rod_durability={rod_durability} has_bait={has_worm}")
-        
-        # Set cooldown using rod-based cooldown
-        self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
-        
-        # Casting animation
-        wait_time = random.randint(1, 5)
-        
-        # Thêm thông báo nhỏ nếu tự mua mồi hoặc không có mồi
-        status_text = ""
-        if auto_bought:
-            status_text = f"\n💸 *(-{WORM_COST} Hạt mua mồi)*"
-        elif not has_worm:
-            status_text = "\n⚠️ *Không có mồi (Tỉ lệ rác cao)*"
-        
-        rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Thời gian chờ: {rod_config['cd']}s)*"
-
-        casting_msg = await channel.send(
-            f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}"
-        )
-        await asyncio.sleep(wait_time)
-        
-        # ==================== TRIGGER RANDOM EVENTS ====================
-        
-        event_result = await trigger_random_event(self, user_id, channel.guild.id, rod_lvl)
-        
-        # If user avoided a bad event, show what they avoided
-        if event_result.get("avoided", False):
-            embed = discord.Embed(
-                title=f"🛡️ BẢO VỆ - {username}!",
-                description=f"✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\n{event_result['message']}\n\n**Bạn an toàn thoát khỏi sự kiện này!**",
-                color=discord.Color.gold()
-            )
-            await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
-            await asyncio.sleep(1)
-            casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
-        
-        # Check if user was protected from bad event
-        was_protected = False
-        if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
-            was_protected = True
-        
-        # Initialize durability loss (apply after event check)
-        durability_loss = 1  # Default: 1 per cast
-        
-        if event_result.get("triggered", False):
-            # Random event occurred!
-            event_message = event_result["message"]
-            event_type = event_result.get("type")
-            
-            # Track if event is good or bad for achievements
-            is_event_good = event_result.get("gain_money", 0) > 0 or len(event_result.get("gain_items", {})) > 0 or event_result.get("custom_effect") in ["lucky_buff", "sixth_sense", "restore_durability"]
-            if not is_event_good and event_result.get("lose_catch"):
-                is_event_good = False
-            
-            # Update achievement tracking
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    if is_event_good:
+                # Có mồi trong túi -> Trừ mồi
+                await remove_item(user_id, "worm", 1)
+                # Track worms used for achievement
+                try:
+                    async with aiosqlite.connect(DB_PATH) as db:
                         await db.execute(
-                            "UPDATE economy_users SET good_events_encountered = good_events_encountered + 1 WHERE user_id = ?",
+                            "UPDATE economy_users SET worms_used = worms_used + 1 WHERE user_id = ?",
                             (user_id,)
                         )
-                    await db.commit()
-            except:
-                pass
-            
-            # *** DURABILITY LOSS FROM EVENTS ***
-            if event_type == "equipment_break":
-                # Gãy cần: Trừ hết độ bền
-                durability_loss = rod_durability  # Trừ sạch về 0
-            elif event_type in ["snapped_line", "plastic_trap", "big_log", "crab_cut", "electric_eel"]:
-                # Đứt dây / Vướng rác / Mắc gỗ / Cua kẹp / Lươn Điện: Trừ 5 độ bền
-                durability_loss = 5
-            elif event_type == "predator":
-                # Cá dữ: Trừ 3 độ bền
-                durability_loss = 3
-            
-            # Process event effects
-            if event_result.get("lose_worm", False) and has_worm:
-                await remove_item(user_id, "worm", 1)
-                event_message += " (Mất 1 Giun)"
-            
-            if event_result.get("lose_money", 0) > 0:
-                await add_seeds(user_id, -event_result["lose_money"])
-                event_message += f" (-{event_result['lose_money']} Hạt)"
-            
-            if event_result.get("gain_money", 0) > 0:
-                await add_seeds(user_id, event_result["gain_money"])
-                event_message += f" (+{event_result['gain_money']} Hạt)"
-            
-            # Process gain_items (pearls, worms, chests, etc.)
-            if event_result.get("gain_items", {}):
-                for item_key, item_count in event_result["gain_items"].items():
-                    await add_item(user_id, item_key, item_count)
-                    item_name = ALL_FISH.get(item_key, {}).get("name", item_key)
-                    event_message += f" (+{item_count} {item_name})"
-            
-            # Handle special effects
-            if event_result.get("custom_effect") == "lose_all_bait":
-                # sea_sickness: Mất hết mồi
-                inventory = await get_inventory(user_id)
-                worm_count = inventory.get("worm", 0)
-                if worm_count > 0:
-                    await remove_item(user_id, "worm", worm_count)
-                    event_message += f" (Nôn hết {worm_count} Giun)"
-                    print(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=sea_sickness inventory_change=-{worm_count} item=worm")
-            
-            elif event_result.get("custom_effect") == "cat_steal":
-                # Mèo Mun: Cướp con cá to nhất (giá cao nhất)
-                # Điều này sẽ xử lý ở phần sau trong catch result
-                pass
-            
-            elif event_result.get("custom_effect") == "snake_bite":
-                # Rắn Nước: Trừ 5% tài sản
-                balance = await get_user_balance(user_id)
-                penalty = max(10, int(balance * 0.05))  # Min 10 Hạt
-                await add_seeds(user_id, -penalty)
-                event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
-                print(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
-            
-            elif event_result.get("custom_effect") == "lucky_buff":
-                # Cầu Vồng Đôi: Buff may mắn cho lần sau (cá hiếm chắc chắn)
-                # Lưu vào cache (tạm thời cho lần tiếp theo)
-                if not hasattr(self, "lucky_buff_users"):
-                    self.lucky_buff_users = {}
-                self.lucky_buff_users[user_id] = True
-                event_message += " (Lần câu sau chắc ra Cá Hiếm!)"
-                print(f"[EVENT] {username} received lucky buff for next cast")
-            
-            elif event_result.get("custom_effect") == "sixth_sense":
-                # Giác Thứ 6: Tránh xui lần sau (bỏ qua event tiếp theo)
-                if not hasattr(self, "avoid_event_users"):
-                    self.avoid_event_users = {}
-                self.avoid_event_users[user_id] = True
-                event_message += " (Lần sau tránh xui!)"
-                print(f"[EVENT] {username} will avoid bad event on next cast")
-            
-            elif event_result.get("custom_effect") == "restore_durability":
-                # Hồi độ bền: +20 độ bền (không vượt quá max)
-                max_durability = rod_config["durability"]
-                rod_durability = min(max_durability, rod_durability + 20)
-                await self.update_rod_data(user_id, rod_durability)
-                event_message += f" (Độ bền +20: {rod_durability}/{max_durability})"
-                print(f"[EVENT] {username} restored rod durability to {rod_durability}")
-            
-            # Note: global_reset is handled after event embed display below
-            
-            # Adjust cooldown (golden_turtle có thể là -30 để reset)
-            if event_result.get("cooldown_increase", 0) != 0:
-                if event_result["cooldown_increase"] < 0:
-                    # Reset cooldown (golden_turtle)
-                    self.fishing_cooldown[user_id] = time.time()
-                    event_message += " (Thời gian chờ xóa sạch!)"
-                    print(f"[EVENT] {username} Thời gian chờ reset")
-                else:
-                    self.fishing_cooldown[user_id] = time.time() + rod_config["cd"] + event_result["cooldown_increase"]
-            else:
-                self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
-            
-            # If lose_catch, don't process fishing
-            if event_result.get("lose_catch", False):
+                        await db.commit()
+                except:
+                    pass
+                print(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
+        
+            # --- KẾT THÚC LOGIC MỚI ---
+        
+            print(f"[FISHING] [START] {username} (user_id={user_id}) rod_level={rod_lvl} rod_durability={rod_durability} has_bait={has_worm}")
+        
+            # Set cooldown using rod-based cooldown
+            self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
+        
+            # Casting animation
+            wait_time = random.randint(1, 5)
+        
+            # Thêm thông báo nhỏ nếu tự mua mồi hoặc không có mồi
+            status_text = ""
+            if auto_bought:
+                status_text = f"\n💸 *(-{WORM_COST} Hạt mua mồi)*"
+            elif not has_worm:
+                status_text = "\n⚠️ *Không có mồi (Tỉ lệ rác cao)*"
+        
+            rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Thời gian chờ: {rod_config['cd']}s)*"
+
+            casting_msg = await channel.send(
+                f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}"
+            )
+            await asyncio.sleep(wait_time)
+        
+            # ==================== TRIGGER RANDOM EVENTS ====================
+        
+            event_result = await trigger_random_event(self, user_id, channel.guild.id, rod_lvl)
+        
+            # If user avoided a bad event, show what they avoided
+            if event_result.get("avoided", False):
                 embed = discord.Embed(
-                    title=f"⚠️ KIẾP NẠN - {username}!",
-                    description=event_message,
-                    color=discord.Color.red()
+                    title=f"🛡️ BẢO VỆ - {username}!",
+                    description=f"✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\n{event_result['message']}\n\n**Bạn an toàn thoát khỏi sự kiện này!**",
+                    color=discord.Color.gold()
                 )
-                # Apply durability loss before returning
-                rod_durability = max(0, rod_durability - durability_loss)
-                await self.update_rod_data(user_id, rod_durability)
-                embed.set_footer(text=f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}")
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
-                print(f"[EVENT] {username} triggered {event_type} - fishing cancelled, durability loss: {durability_loss}")
-                return
+                await asyncio.sleep(1)
+                casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
+        
+            # Check if user was protected from bad event
+            was_protected = False
+            if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
+                was_protected = True
+        
+            # Initialize durability loss (apply after event check)
+            durability_loss = 1  # Default: 1 per cast
+        
+            if event_result.get("triggered", False):
+                # Random event occurred!
+                event_message = event_result["message"]
+                event_type = event_result.get("type")
             
-            # Otherwise, display event message and continue fishing
-            event_type_data = RANDOM_EVENTS.get(event_type, {})
-            is_good_event = event_type_data.get("type") == "good"
-            color = discord.Color.green() if is_good_event else discord.Color.orange()
-            event_title = f"🌟 PHƯỚC LÀNH - {username}!" if is_good_event else f"⚠️ KIẾP NẠN - {username}!"
-            embed = discord.Embed(
-                title=event_title,
-                description=event_message,
-                color=color
-            )
-            await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
+                # Track if event is good or bad for achievements
+                is_event_good = event_result.get("gain_money", 0) > 0 or len(event_result.get("gain_items", {})) > 0 or event_result.get("custom_effect") in ["lucky_buff", "sixth_sense", "restore_durability"]
+                if not is_event_good and event_result.get("lose_catch"):
+                    is_event_good = False
             
-            # Handle global reset events
-            if event_result.get("custom_effect") == "global_reset":
-                # Clear all fishing cooldowns
-                self.fishing_cooldown.clear()
-                
-                # Send server-wide announcement
-                announcement_embed = discord.Embed(
-                    title="🌟🌟🌟 SỰ KIỆN TOÀN SERVER! 🌟🌟🌟",
-                    description=f"⚡ **{username}** đã kích hoạt **{event_type_data.get('name', event_type)}**!\n\n"
-                                f"✨ **TẤT CẢ MỌI NGƯỜI ĐÃ ĐƯỢC HỒI PHỤC COOLDOWN!**\n"
-                                f"🚀 Mau vào câu ngay nào các đồng ngư ơi! 🎣🎣🎣",
-                    color=discord.Color.magenta()
-                )
-                await channel.send(embed=announcement_embed)
-                print(f"[GLOBAL EVENT] {username} triggered {event_type} - All fishing cooldowns cleared!")
-            
-            # Wait a bit before showing catch
-            await asyncio.sleep(1)
-            casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
-        
-        # ==================== NORMAL FISHING PROCESSING ====================
-        
-        # Roll số lượng cá (1-5) với tỉ lệ giảm dần
-        # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ được 1 cá hoặc 1 rác (không multiple)
-        if has_worm and not is_broken_rod:
-            num_fish = random.choices([1, 2, 3, 4, 5], weights=CATCH_COUNT_WEIGHTS, k=1)[0]
-        else:
-            num_fish = 1  # Không mồi hoặc cần gãy = 1 cá thôi
-        
-        # Apply bonus catch from events (e.g., Bão Cá - câu thêm cá ngẫu nhiên)
-        bonus_catch = event_result.get("bonus_catch", 0)
-        if bonus_catch > 0:
-            original_num_fish = num_fish
-            num_fish = num_fish + bonus_catch
-            print(f"[EVENT] {username} activated bonus_catch +{bonus_catch}: {original_num_fish} → {num_fish} fish")
-        
-        # Roll trash (độc lập)
-        # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ roll trash hoặc cá, không vừa cá vừa rác vừa rương
-        if has_worm and not is_broken_rod:
-            trash_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
-        else:
-            # Không mồi hoặc cần gãy: Xác suất cao là rác (50/50 rác hoặc cá)
-            trash_count = random.choices([0, 1], weights=[50, 50], k=1)[0]
-        
-        # Roll chest (độc lập, tỉ lệ thấp)
-        # NHƯNG: Nếu không có mồi HOẶC cần gãy -> không bao giờ ra rương
-        # Check for both tree boost AND lucky buff from NPC
-        is_boosted = await self.get_tree_boost_status(channel.guild.id)
-        has_lucky_buff = self.lucky_buff_users.get(user_id, False)
-        is_boosted = is_boosted or has_lucky_buff
-        
-        if has_worm and not is_broken_rod:
-            chest_weights = [95, 5] if not is_boosted else [90, 10]
-            chest_count = random.choices([0, 1], weights=chest_weights, k=1)[0]
-        else:
-            chest_count = 0  # Không mồi = không ra rương
-        
-        results = {"fish": num_fish}
-        if trash_count > 0:
-            results["trash"] = trash_count
-        if chest_count > 0:
-            results["chest"] = chest_count
-        
-        print(f"[FISHING] {username} rolled: {num_fish} fish, {trash_count} trash, {chest_count} chest [has_worm={has_worm}]")
-        
-        # Clear lucky buff after this cast
-        if has_lucky_buff:
-            self.lucky_buff_users[user_id] = False
-        
-        boost_text = " ✨**(BUFF MAY MẮN!)**✨" if has_lucky_buff else (" ✨**(CÂY BUFF!)**✨" if is_boosted else "")
-        
-        # Track caught items for sell button
-        self.caught_items[user_id] = {}
-        
-        # Build summary display and process all results
-        fish_display = []
-        fish_only_items = {}
-        
-        # FIX: Track if rare fish already caught this turn (Max 1 rare per cast)
-        caught_rare_this_turn = False
-        
-        # Chọn loot table dựa trên có worm hay không, hoặc cần gãy
-        if has_worm and not is_broken_rod:
-            # Có mồi = dùng loot table bình thường (có cả cá hiếm)
-            loot_table = LOOT_TABLE_BOOST if is_boosted else LOOT_TABLE_NORMAL
-        else:
-            # Không có mồi HOẶC cần gãy = dùng loot table giảm cực (chỉ rác và cá thường, 1% hiếm)
-            loot_table = LOOT_TABLE_NO_WORM
-        
-        # Process fish - roll loại cá cho mỗi con
-        # CHÚ Ý: Boost KHÔNG tăng tỷ lệ Cá Hiếm, chỉ tăng tỷ lệ Rương để balance
-        for _ in range(num_fish):
-            # Roll từ LOOT_TABLE để xác định loại (Rare vs Common)
-            # Normalize weights để lấy tỉ lệ common vs rare
-            fish_weights_sum = loot_table["common_fish"] + loot_table["rare_fish"]
-            
-            # Nếu không có mồi, fish_weights_sum = 30 + 0 = 30
-            # Lúc này common_ratio = 100%, rare_ratio = 0% (không bao giờ rare)
-            if fish_weights_sum == 0:
-                # Nếu không có cá nào trong loot table (chỉ có rác/rương)
-                common_ratio = 1.0
-                rare_ratio = 0.0
-            else:
-                common_ratio = loot_table["common_fish"] / fish_weights_sum
-                rare_ratio = loot_table["rare_fish"] / fish_weights_sum
-            
-            # *** APPLY ROD LUCK BONUS ***
-            rare_ratio = min(0.9, rare_ratio + rod_config["luck"])  # Cap at 90% max
-            
-            # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
-            if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
-                rare_ratio = min(0.95, rare_ratio + 0.75)  # +75% rare chance
-                print(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
-            
-            common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
-            
-            is_rare = random.choices([False, True], weights=[common_ratio, rare_ratio], k=1)[0]
-            
-            # Check if convert_to_trash event is active (e.g., Pollution)
-            if event_result.get("convert_to_trash", False):
-                # Convert fish to trash
-                trash = random.choice(TRASH_ITEMS)
-                item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
-                await self.add_inventory_item(user_id, item_key, "trash")
-                print(f"[EVENT-POLLUTION] {username} fish converted to trash: {item_key}")
-                continue
-            
-            # FIX: Nếu đã bắt rare rồi hoặc roll ra rare lần này nhưng đã bắt rare trước -> bắt buộc common
-            if is_rare and not caught_rare_this_turn:
-                fish = random.choice(RARE_FISH)
-                caught_rare_this_turn = True  # Đánh dấu đã bắt rare
-                print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
-                await self.add_inventory_item(user_id, fish['key'], "fish")
-                
-                # Check boss_hunter achievement
-                if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
-                    await self.check_achievement(user_id, "boss_hunter", channel, guild_id)
-                
-                # Track in collection
-                is_new_collection = await track_caught_fish(user_id, fish['key'])
-                if is_new_collection:
-                    print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
-                if fish['key'] not in fish_only_items:
-                    fish_only_items[fish['key']] = 0
-                fish_only_items[fish['key']] += 1
-            else:
-                # Bắt cá thường (hoặc roll rare lần 2+ thì buộc common)
-                fish = random.choice(COMMON_FISH)
-                print(f"[FISHING] {username} caught common fish: {fish['key']}")
-                await self.add_inventory_item(user_id, fish['key'], "fish")
-                # Track in collection
-                is_new_collection = await track_caught_fish(user_id, fish['key'])
-                if is_new_collection:
-                    print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
-                if fish['key'] not in fish_only_items:
-                    fish_only_items[fish['key']] = 0
-                fish_only_items[fish['key']] += 1
-        
-        # Decrease legendary buff counter
-        if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
-            self.legendary_buff_users[user_id] -= 1
-            if self.legendary_buff_users[user_id] <= 0:
-                del self.legendary_buff_users[user_id]
-                print(f"[NPC_BUFF] {username} legendary buff expired")
-            else:
-                print(f"[NPC_BUFF] {username} has {self.legendary_buff_users[user_id]} legendary buff uses left")
-        
-        # Apply duplicate multiplier from events (e.g., Cá Song Sinh - nhân cá giống nhau)
-        duplicate_multiplier = event_result.get("duplicate_multiplier", 1)
-        if duplicate_multiplier > 1:
-            duplicated_items = {}
-            for fish_key, qty in fish_only_items.items():
-                new_qty = qty * duplicate_multiplier
-                duplicated_items[fish_key] = new_qty
-                # Add duplicated fish to inventory
-                await add_item(user_id, fish_key, new_qty - qty)
-                print(f"[EVENT] {username} activated duplicate_multiplier x{duplicate_multiplier}: {fish_key} {qty} → {new_qty}")
-            fish_only_items = duplicated_items
-        
-        # Display fish grouped
-        for key, qty in fish_only_items.items():
-            fish = ALL_FISH[key]
-            emoji = fish['emoji']
-            total_price = fish['sell_price'] * qty  # Multiply price by quantity
-            fish_display.append(f"{emoji} {fish['name']} x{qty} ({total_price} Hạt)")
-        
-        # Process trash (độc lập)
-        if trash_count > 0:
-            trash_items_caught = {}
-            for _ in range(trash_count):
-                trash = random.choice(TRASH_ITEMS)
-                item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
-                await self.add_inventory_item(user_id, item_key, "trash")
-                if item_key not in trash_items_caught:
-                    trash_items_caught[item_key] = 0
-                trash_items_caught[item_key] += 1
-            
-            for key, qty in trash_items_caught.items():
-                trash_name = key.replace("trash_", "").replace("_", " ").title()
-                fish_display.append(f"🥾 {trash_name} x{qty}")
-            
-            # Track trash caught for achievement
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute(
-                        "UPDATE economy_users SET trash_caught = trash_caught + ? WHERE user_id = ?",
-                        (trash_count, user_id)
-                    )
-                    await db.commit()
-            except:
-                pass
-            print(f"[FISHING] {username} caught trash: {trash_items_caught}")
-        
-        # Process chest (độc lập)
-        if chest_count > 0:
-            for _ in range(chest_count):
-                await self.add_inventory_item(user_id, "treasure_chest", "tool")
-            fish_display.append(f"🎁 Rương Kho Báu x{chest_count}")
-            print(f"[FISHING] {username} caught {chest_count}x TREASURE CHEST! 🎁")
-        
-        # Store only fish for the sell button
-        self.caught_items[user_id] = fish_only_items
-        print(f"[FISHING] {username} final caught items: {fish_only_items}")
-        
-        # Handle cat_steal event: Remove most valuable fish and rebuild display
-        if event_result.get("custom_effect") == "cat_steal" and fish_only_items:
-            most_valuable_fish = None
-            highest_price = -1
-            for fish_key, qty in fish_only_items.items():
-                fish_info = ALL_FISH.get(fish_key, {})
-                price = fish_info.get('sell_price', 0)
-                if price > highest_price and qty > 0:
-                    highest_price = price
-                    most_valuable_fish = fish_key
-            
-            if most_valuable_fish:
-                await remove_item(user_id, most_valuable_fish, 1)
-                fish_info = ALL_FISH[most_valuable_fish]
-                fish_only_items[most_valuable_fish] -= 1
-                if fish_only_items[most_valuable_fish] == 0:
-                    del fish_only_items[most_valuable_fish]
-                
-                # Rebuild fish_display from remaining items to avoid duplicates
-                fish_display = []
-                for key, qty in fish_only_items.items():
-                    if qty > 0:
-                        fish = ALL_FISH[key]
-                        total_price = fish['sell_price'] * qty
-                        fish_display.append(f"{fish['emoji']} {fish['name']} x{qty} ({total_price} Hạt)")
-                
-                print(f"[EVENT] {username} lost {fish_info['name']} to cat_steal")
-                if fish_display:
-                    fish_display[0] = fish_display[0] + f"\n(🐈 Mèo cướp mất {fish_info['name']} giá {highest_price} Hạt!)"
-        
-        # Update caught items for sell button
-        self.caught_items[user_id] = fish_only_items
-        
-        # ==================== CHECK FOR LEGENDARY FISH ====================
-        current_hour = datetime.now().hour
-        legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=self)
-        
-        if legendary_fish:
-            # Legendary fish spawned! Show boss fight minigame
-            legendary_key = legendary_fish['key']
-            print(f"[LEGENDARY] {username} encountered {legendary_key}!")
-            
-            # Create warning embed
-            legendary_embed = discord.Embed(
-                title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
-                description=f"🌊 Có một con quái vật đang cắn câu!\n"
-                           f"💥 Nó đang kéo bạn xuống nước!\n\n"
-                           f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n"
-                           f"_{legendary_fish['description']}_",
-                color=discord.Color.dark_red()
-            )
-            legendary_embed.add_field(
-                name="⚔️ CHUẨN BỊ ĐẤU BOSS!",
-                value=f"Độ bền cần câu: {rod_durability}/{rod_config['durability']}\n"
-                     f"Cấp độ cần: {rod_lvl}/5",
-                inline=False
-            )
-            legendary_embed.set_image(url=legendary_fish.get('image_url', ''))
-            legendary_embed.set_footer(text="Chọn chiến thuật chinh phục quái vật! ⏱️ 60 giây")
-            
-            # Create boss fight view
-            boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_lvl, channel, guild_id)
-            
-            # Send boss fight message
-            boss_msg = await channel.send(f"<@{user_id}>", embed=legendary_embed, view=boss_view)
-            
-            # Wait for interaction or timeout
-            try:
-                await asyncio.sleep(60)  # 60 second timeout
-            except:
-                pass
-            
-            # Check if battle was fought
-            if boss_view.fought:
-                print(f"[LEGENDARY] {username} fought the boss!")
-                # Continue to show normal fishing results as well
-            else:
-                print(f"[LEGENDARY] {username} didn't choose - boss escaped!")
-        
-        # ==================== END LEGENDARY CHECK ====================
-        
-        # Check if collection is complete and award title if needed
-        is_complete = await check_collection_complete(user_id)
-        title_earned = False
-        if is_complete:
-            current_title = await self.get_title(user_id, channel.guild.id)
-            if not current_title or "Vua" not in current_title:
-                # Award "Vua Câu Cá" role
+                # Update achievement tracking
                 try:
-                    guild = channel.guild
-                    member = guild.get_member(user_id)
-                    role_id = 1450409414111658024  # Vua Câu Cá role ID
-                    role = guild.get_role(role_id)
-                    if member and role and role not in member.roles:
-                        await member.add_roles(role)
-                        title_earned = True
-                        print(f"[TITLE] {username} earned 'Vua Câu Cá' role!")
-                except Exception as e:
-                    print(f"[TITLE] Error awarding role: {e}")
-        
-        # Build embed with item summary
-        total_catches = num_fish + trash_count + chest_count
-        
-        # Create summary text for title
-        summary_parts = []
-        for key, qty in fish_only_items.items():
-            fish = ALL_FISH[key]
-            summary_parts.append(f"{qty} {fish['name']}")
-        if chest_count > 0:
-            summary_parts.append(f"{chest_count} Rương")
-        
-        summary_text = " và ".join(summary_parts) if summary_parts else "Rác"
-        title = f"🎣 {username} Câu Được {summary_text}"
-        
-        if num_fish > 2:
-            title = f"🎣 THỜI TỚI! {username} Bắt {num_fish} Con Cá! 🎉"
-        
-        # Add title-earned message if applicable
-        if title_earned:
-            title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
-        
-        # Build description with broken rod warning if needed
-        desc_parts = ["\n".join(fish_display) if fish_display else "Không có gì"]
-        if is_broken_rod:
-            desc_parts.append("\n⚠️ **CẢNH BÁO: Cần câu gãy!** (Chỉ 1% cá hiếm, 1 item/lần, không rương)")
-        
-        embed = discord.Embed(
-            title=title,
-            description="".join(desc_parts),
-            color=discord.Color.red() if is_broken_rod else (discord.Color.gold() if title_earned else (discord.Color.blue() if total_catches == 1 else discord.Color.gold()))
-        )
-        
-        if title_earned:
-            embed.add_field(
-                name="🏆 HOÀN THÀNH!",
-                value="Bạn đã bắt được **tất cả các loại cá**!\nChúc mừng bạn trở thành **Vua Câu Cá**! 🎉\nXem `/suutapca` để xác nhận!",
-                inline=False
-            )
-        
-        # *** UPDATE DURABILITY AFTER FISHING ***
-        rod_durability = max(0, rod_durability - durability_loss)
-        await self.update_rod_data(user_id, rod_durability)
-        
-        durability_status = f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}"
-        embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}")
-        
-        # Create view with sell button if there are fish to sell
-        view = None
-        if fish_only_items:
-            view = FishSellView(self, user_id, fish_only_items, channel.guild.id)
-            print(f"[FISHING] Created sell button for {username} with {len(fish_only_items)} fish types")
-        else:
-            print(f"[FISHING] No fish to sell, button not shown")
-        
-        await casting_msg.edit(content="", embed=embed, view=view)
-        print(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
-        
-        # ==================== NPC ENCOUNTER (5% chance) ====================
-        if random.random() < 0.05 and fish_only_items:
-            await asyncio.sleep(2)  # Small delay for dramatic effect
+                    async with aiosqlite.connect(DB_PATH) as db:
+                        if is_event_good:
+                            await db.execute(
+                                "UPDATE economy_users SET good_events_encountered = good_events_encountered + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                        await db.commit()
+                except:
+                    pass
             
-            # Select random NPC based on weighted chances
-            npc_pool = []
-            for npc_key, npc_data in NPC_ENCOUNTERS.items():
-                npc_pool.extend([npc_key] * int(npc_data["chance"] * 100))
+                # *** DURABILITY LOSS FROM EVENTS ***
+                if event_type == "equipment_break":
+                    # Gãy cần: Trừ hết độ bền
+                    durability_loss = rod_durability  # Trừ sạch về 0
+                elif event_type in ["snapped_line", "plastic_trap", "big_log", "crab_cut", "electric_eel"]:
+                    # Đứt dây / Vướng rác / Mắc gỗ / Cua kẹp / Lươn Điện: Trừ 5 độ bền
+                    durability_loss = 5
+                elif event_type == "predator":
+                    # Cá dữ: Trừ 3 độ bền
+                    durability_loss = 3
             
-            npc_type = random.choice(npc_pool)
-            npc_data = NPC_ENCOUNTERS[npc_type]
+                # Process event effects
+                if event_result.get("lose_worm", False) and has_worm:
+                    await remove_item(user_id, "worm", 1)
+                    event_message += " (Mất 1 Giun)"
             
-            # Get the first fish caught
-            caught_fish_key = list(fish_only_items.keys())[0]
-            caught_fish_info = ALL_FISH[caught_fish_key]
+                if event_result.get("lose_money", 0) > 0:
+                    await add_seeds(user_id, -event_result["lose_money"])
+                    event_message += f" (-{event_result['lose_money']} Hạt)"
             
-            # Build NPC embed
-            npc_embed = discord.Embed(
-                title=f"⚠️ {npc_data['name']} - {username}!",
-                description=f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}",
-                color=discord.Color.purple()
-            )
+                if event_result.get("gain_money", 0) > 0:
+                    await add_seeds(user_id, event_result["gain_money"])
+                    event_message += f" (+{event_result['gain_money']} Hạt)"
             
-            if npc_data.get("image_url"):
-                npc_embed.set_image(url=npc_data["image_url"])
+                # Process gain_items (pearls, worms, chests, etc.)
+                if event_result.get("gain_items", {}):
+                    for item_key, item_count in event_result["gain_items"].items():
+                        await add_item(user_id, item_key, item_count)
+                        item_name = ALL_FISH.get(item_key, {}).get("name", item_key)
+                        event_message += f" (+{item_count} {item_name})"
             
-            # Add cost information
-            cost_text = ""
-            if npc_data["cost"] == "fish":
-                cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
-            elif isinstance(npc_data["cost"], int):
-                cost_text = f"💰 **Chi phí:** {npc_data['cost']} Hạt"
-            elif npc_data["cost"] == "cooldown_5min":
-                cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
+                # Handle special effects
+                if event_result.get("custom_effect") == "lose_all_bait":
+                    # sea_sickness: Mất hết mồi
+                    inventory = await get_inventory(user_id)
+                    worm_count = inventory.get("worm", 0)
+                    if worm_count > 0:
+                        await remove_item(user_id, "worm", worm_count)
+                        event_message += f" (Nôn hết {worm_count} Giun)"
+                        print(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=sea_sickness inventory_change=-{worm_count} item=worm")
             
-            npc_embed.add_field(name="💸 Giá", value=cost_text, inline=False)
+                elif event_result.get("custom_effect") == "cat_steal":
+                    # Mèo Mun: Cướp con cá to nhất (giá cao nhất)
+                    # Điều này sẽ xử lý ở phần sau trong catch result
+                    pass
             
-            # Send NPC message with buttons
-            npc_view = NPCEncounterView(user_id, npc_type, npc_data, caught_fish_key)
-            npc_msg = await channel.send(content=f"<@{user_id}>", embed=npc_embed, view=npc_view)
+                elif event_result.get("custom_effect") == "snake_bite":
+                    # Rắn Nước: Trừ 5% tài sản
+                    balance = await get_user_balance(user_id)
+                    penalty = max(10, int(balance * 0.05))  # Min 10 Hạt
+                    await add_seeds(user_id, -penalty)
+                    event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
+                    print(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
             
-            await npc_view.wait()
+                elif event_result.get("custom_effect") == "lucky_buff":
+                    # Cầu Vồng Đôi: Buff may mắn cho lần sau (cá hiếm chắc chắn)
+                    # Lưu vào cache (tạm thời cho lần tiếp theo)
+                    if not hasattr(self, "lucky_buff_users"):
+                        self.lucky_buff_users = {}
+                    self.lucky_buff_users[user_id] = True
+                    event_message += " (Lần câu sau chắc ra Cá Hiếm!)"
+                    print(f"[EVENT] {username} received lucky buff for next cast")
             
-            result_text = ""
-            result_color = discord.Color.default()
+                elif event_result.get("custom_effect") == "sixth_sense":
+                    # Giác Thứ 6: Tránh xui lần sau (bỏ qua event tiếp theo)
+                    if not hasattr(self, "avoid_event_users"):
+                        self.avoid_event_users = {}
+                    self.avoid_event_users[user_id] = True
+                    event_message += " (Lần sau tránh xui!)"
+                    print(f"[EVENT] {username} will avoid bad event on next cast")
             
-            if npc_view.value == "agree":
-                # Process acceptance
-                result_embed = await self._process_npc_acceptance(user_id, npc_type, npc_data, caught_fish_key, caught_fish_info, username)
-                await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+                elif event_result.get("custom_effect") == "restore_durability":
+                    # Hồi độ bền: +20 độ bền (không vượt quá max)
+                    max_durability = rod_config["durability"]
+                    rod_durability = min(max_durability, rod_durability + 20)
+                    await self.update_rod_data(user_id, rod_durability)
+                    event_message += f" (Độ bền +20: {rod_durability}/{max_durability})"
+                    print(f"[EVENT] {username} restored rod durability to {rod_durability}")
             
-            elif npc_view.value == "decline":
-                # Process decline
-                result_text = npc_data["rewards"]["decline"]
-                result_color = discord.Color.light_grey()
-                result_embed = discord.Embed(
-                    title=f"{npc_data['name']} - {username} - Từ Chối",
-                    description=f"{result_text}",
-                    color=result_color
+                # Note: global_reset is handled after event embed display below
+            
+                # Adjust cooldown (golden_turtle có thể là -30 để reset)
+                if event_result.get("cooldown_increase", 0) != 0:
+                    if event_result["cooldown_increase"] < 0:
+                        # Reset cooldown (golden_turtle)
+                        self.fishing_cooldown[user_id] = time.time()
+                        event_message += " (Thời gian chờ xóa sạch!)"
+                        print(f"[EVENT] {username} Thời gian chờ reset")
+                    else:
+                        self.fishing_cooldown[user_id] = time.time() + rod_config["cd"] + event_result["cooldown_increase"]
+                else:
+                    self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
+            
+                # If lose_catch, don't process fishing
+                if event_result.get("lose_catch", False):
+                    embed = discord.Embed(
+                        title=f"⚠️ KIẾP NẠN - {username}!",
+                        description=event_message,
+                        color=discord.Color.red()
+                    )
+                    # Apply durability loss before returning
+                    rod_durability = max(0, rod_durability - durability_loss)
+                    await self.update_rod_data(user_id, rod_durability)
+                    embed.set_footer(text=f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}")
+                    await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
+                    print(f"[EVENT] {username} triggered {event_type} - fishing cancelled, durability loss: {durability_loss}")
+                    return
+            
+                # Otherwise, display event message and continue fishing
+                event_type_data = RANDOM_EVENTS.get(event_type, {})
+                is_good_event = event_type_data.get("type") == "good"
+                color = discord.Color.green() if is_good_event else discord.Color.orange()
+                event_title = f"🌟 PHƯỚC LÀNH - {username}!" if is_good_event else f"⚠️ KIẾP NẠN - {username}!"
+                embed = discord.Embed(
+                    title=event_title,
+                    description=event_message,
+                    color=color
                 )
-                await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
-                print(f"[NPC] {username} declined {npc_type}")
+                await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             
+                # Handle global reset events
+                if event_result.get("custom_effect") == "global_reset":
+                    # Clear all fishing cooldowns
+                    self.fishing_cooldown.clear()
+                
+                    # Send server-wide announcement
+                    announcement_embed = discord.Embed(
+                        title="🌟🌟🌟 SỰ KIỆN TOÀN SERVER! 🌟🌟🌟",
+                        description=f"⚡ **{username}** đã kích hoạt **{event_type_data.get('name', event_type)}**!\n\n"
+                                    f"✨ **TẤT CẢ MỌI NGƯỜI ĐÃ ĐƯỢC HỒI PHỤC COOLDOWN!**\n"
+                                    f"🚀 Mau vào câu ngay nào các đồng ngư ơi! 🎣🎣🎣",
+                        color=discord.Color.magenta()
+                    )
+                    await channel.send(embed=announcement_embed)
+                    print(f"[GLOBAL EVENT] {username} triggered {event_type} - All fishing cooldowns cleared!")
+            
+                # Wait a bit before showing catch
+                await asyncio.sleep(1)
+                casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
+        
+            # ==================== NORMAL FISHING PROCESSING ====================
+        
+            # Roll số lượng cá (1-5) với tỉ lệ giảm dần
+            # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ được 1 cá hoặc 1 rác (không multiple)
+            if has_worm and not is_broken_rod:
+                num_fish = random.choices([1, 2, 3, 4, 5], weights=CATCH_COUNT_WEIGHTS, k=1)[0]
             else:
-                # Timeout -> auto-decline (no cost, show decline-style embed)
-                result_text = f"⏱️ Hết thời gian phản hồi.\n{npc_data['rewards']['decline']}"
-                result_embed = discord.Embed(
-                    title=f"{npc_data['name']} - {username} - Từ Chối (Hết thời gian)",
-                    description=result_text,
-                    color=discord.Color.light_grey()
+                num_fish = 1  # Không mồi hoặc cần gãy = 1 cá thôi
+        
+            # Apply bonus catch from events (e.g., Bão Cá - câu thêm cá ngẫu nhiên)
+            bonus_catch = event_result.get("bonus_catch", 0)
+            if bonus_catch > 0:
+                original_num_fish = num_fish
+                num_fish = num_fish + bonus_catch
+                print(f"[EVENT] {username} activated bonus_catch +{bonus_catch}: {original_num_fish} → {num_fish} fish")
+        
+            # Roll trash (độc lập)
+            # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ roll trash hoặc cá, không vừa cá vừa rác vừa rương
+            if has_worm and not is_broken_rod:
+                trash_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
+            else:
+                # Không mồi hoặc cần gãy: Xác suất cao là rác (50/50 rác hoặc cá)
+                trash_count = random.choices([0, 1], weights=[50, 50], k=1)[0]
+        
+            # Roll chest (độc lập, tỉ lệ thấp)
+            # NHƯNG: Nếu không có mồi HOẶC cần gãy -> không bao giờ ra rương
+            # Check for both tree boost AND lucky buff from NPC
+            is_boosted = await self.get_tree_boost_status(channel.guild.id)
+            has_lucky_buff = self.lucky_buff_users.get(user_id, False)
+            is_boosted = is_boosted or has_lucky_buff
+        
+            if has_worm and not is_broken_rod:
+                chest_weights = [95, 5] if not is_boosted else [90, 10]
+                chest_count = random.choices([0, 1], weights=chest_weights, k=1)[0]
+            else:
+                chest_count = 0  # Không mồi = không ra rương
+        
+            results = {"fish": num_fish}
+            if trash_count > 0:
+                results["trash"] = trash_count
+            if chest_count > 0:
+                results["chest"] = chest_count
+        
+            print(f"[FISHING] {username} rolled: {num_fish} fish, {trash_count} trash, {chest_count} chest [has_worm={has_worm}]")
+        
+            # Clear lucky buff after this cast
+            if has_lucky_buff:
+                self.lucky_buff_users[user_id] = False
+        
+            boost_text = " ✨**(BUFF MAY MẮN!)**✨" if has_lucky_buff else ("✨" if is_boosted else "")
+        
+            # Track caught items for sell button
+            self.caught_items[user_id] = {}
+        
+            # Build summary display and process all results
+            fish_display = []
+            fish_only_items = {}
+        
+            # FIX: Track if rare fish already caught this turn (Max 1 rare per cast)
+            caught_rare_this_turn = False
+        
+            # Chọn loot table dựa trên có worm hay không, hoặc cần gãy
+            if has_worm and not is_broken_rod:
+                # Có mồi = dùng loot table bình thường (có cả cá hiếm)
+                loot_table = LOOT_TABLE_BOOST if is_boosted else LOOT_TABLE_NORMAL
+            else:
+                # Không có mồi HOẶC cần gãy = dùng loot table giảm cực (chỉ rác và cá thường, 1% hiếm)
+                loot_table = LOOT_TABLE_NO_WORM
+        
+            # Process fish - roll loại cá cho mỗi con
+            # CHÚ Ý: Boost KHÔNG tăng tỷ lệ Cá Hiếm, chỉ tăng tỷ lệ Rương để balance
+            for _ in range(num_fish):
+                # Roll từ LOOT_TABLE để xác định loại (Rare vs Common)
+                # Normalize weights để lấy tỉ lệ common vs rare
+                fish_weights_sum = loot_table["common_fish"] + loot_table["rare_fish"]
+            
+                # Nếu không có mồi, fish_weights_sum = 30 + 0 = 30
+                # Lúc này common_ratio = 100%, rare_ratio = 0% (không bao giờ rare)
+                if fish_weights_sum == 0:
+                    # Nếu không có cá nào trong loot table (chỉ có rác/rương)
+                    common_ratio = 1.0
+                    rare_ratio = 0.0
+                else:
+                    common_ratio = loot_table["common_fish"] / fish_weights_sum
+                    rare_ratio = loot_table["rare_fish"] / fish_weights_sum
+            
+                # *** APPLY ROD LUCK BONUS ***
+                rare_ratio = min(0.9, rare_ratio + rod_config["luck"])  # Cap at 90% max
+            
+                # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
+                if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
+                    rare_ratio = min(0.95, rare_ratio + 0.75)  # +75% rare chance
+                    print(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
+            
+                common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
+            
+                is_rare = random.choices([False, True], weights=[common_ratio, rare_ratio], k=1)[0]
+            
+                # Check if convert_to_trash event is active (e.g., Pollution)
+                if event_result.get("convert_to_trash", False):
+                    # Convert fish to trash
+                    trash = random.choice(TRASH_ITEMS)
+                    item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
+                    await self.add_inventory_item(user_id, item_key, "trash")
+                    print(f"[EVENT-POLLUTION] {username} fish converted to trash: {item_key}")
+                    continue
+            
+                # FIX: Nếu đã bắt rare rồi hoặc roll ra rare lần này nhưng đã bắt rare trước -> bắt buộc common
+                if is_rare and not caught_rare_this_turn:
+                    fish = random.choice(RARE_FISH)
+                    caught_rare_this_turn = True  # Đánh dấu đã bắt rare
+                    print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
+                    await self.add_inventory_item(user_id, fish['key'], "fish")
+                
+                    # Check boss_hunter achievement
+                    if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
+                        await self.check_achievement(user_id, "boss_hunter", channel, guild_id)
+                
+                    # Track in collection
+                    is_new_collection = await track_caught_fish(user_id, fish['key'])
+                    if is_new_collection:
+                        print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
+                    if fish['key'] not in fish_only_items:
+                        fish_only_items[fish['key']] = 0
+                    fish_only_items[fish['key']] += 1
+                else:
+                    # Bắt cá thường (hoặc roll rare lần 2+ thì buộc common)
+                    fish = random.choice(COMMON_FISH)
+                    print(f"[FISHING] {username} caught common fish: {fish['key']}")
+                    await self.add_inventory_item(user_id, fish['key'], "fish")
+                    # Track in collection
+                    is_new_collection = await track_caught_fish(user_id, fish['key'])
+                    if is_new_collection:
+                        print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
+                    if fish['key'] not in fish_only_items:
+                        fish_only_items[fish['key']] = 0
+                    fish_only_items[fish['key']] += 1
+        
+            # Decrease legendary buff counter
+            if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
+                self.legendary_buff_users[user_id] -= 1
+                if self.legendary_buff_users[user_id] <= 0:
+                    del self.legendary_buff_users[user_id]
+                    print(f"[NPC_BUFF] {username} legendary buff expired")
+                else:
+                    print(f"[NPC_BUFF] {username} has {self.legendary_buff_users[user_id]} legendary buff uses left")
+        
+            # Apply duplicate multiplier from events (e.g., Cá Song Sinh - nhân cá giống nhau)
+            duplicate_multiplier = event_result.get("duplicate_multiplier", 1)
+            if duplicate_multiplier > 1:
+                duplicated_items = {}
+                for fish_key, qty in fish_only_items.items():
+                    new_qty = qty * duplicate_multiplier
+                    duplicated_items[fish_key] = new_qty
+                    # Add duplicated fish to inventory
+                    await add_item(user_id, fish_key, new_qty - qty)
+                    print(f"[EVENT] {username} activated duplicate_multiplier x{duplicate_multiplier}: {fish_key} {qty} → {new_qty}")
+                fish_only_items = duplicated_items
+        
+            # Display fish grouped
+            for key, qty in fish_only_items.items():
+                fish = ALL_FISH[key]
+                emoji = fish['emoji']
+                total_price = fish['sell_price'] * qty  # Multiply price by quantity
+                fish_display.append(f"{emoji} {fish['name']} x{qty} ({total_price} Hạt)")
+        
+            # Process trash (độc lập)
+            if trash_count > 0:
+                trash_items_caught = {}
+                for _ in range(trash_count):
+                    trash = random.choice(TRASH_ITEMS)
+                    item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
+                    await self.add_inventory_item(user_id, item_key, "trash")
+                    if item_key not in trash_items_caught:
+                        trash_items_caught[item_key] = 0
+                    trash_items_caught[item_key] += 1
+            
+                for key, qty in trash_items_caught.items():
+                    trash_name = key.replace("trash_", "").replace("_", " ").title()
+                    fish_display.append(f"🥾 {trash_name} x{qty}")
+            
+                # Track trash caught for achievement
+                try:
+                    async with aiosqlite.connect(DB_PATH) as db:
+                        await db.execute(
+                            "UPDATE economy_users SET trash_caught = trash_caught + ? WHERE user_id = ?",
+                            (trash_count, user_id)
+                        )
+                        await db.commit()
+                except:
+                    pass
+                print(f"[FISHING] {username} caught trash: {trash_items_caught}")
+        
+            # Process chest (độc lập)
+            if chest_count > 0:
+                for _ in range(chest_count):
+                    await self.add_inventory_item(user_id, "treasure_chest", "tool")
+                fish_display.append(f"🎁 Rương Kho Báu x{chest_count}")
+                print(f"[FISHING] {username} caught {chest_count}x TREASURE CHEST! 🎁")
+        
+            # Store only fish for the sell button
+            self.caught_items[user_id] = fish_only_items
+            print(f"[FISHING] {username} final caught items: {fish_only_items}")
+        
+            # Handle cat_steal event: Remove most valuable fish and rebuild display
+            if event_result.get("custom_effect") == "cat_steal" and fish_only_items:
+                most_valuable_fish = None
+                highest_price = -1
+                for fish_key, qty in fish_only_items.items():
+                    fish_info = ALL_FISH.get(fish_key, {})
+                    price = fish_info.get('sell_price', 0)
+                    if price > highest_price and qty > 0:
+                        highest_price = price
+                        most_valuable_fish = fish_key
+            
+                if most_valuable_fish:
+                    await remove_item(user_id, most_valuable_fish, 1)
+                    fish_info = ALL_FISH[most_valuable_fish]
+                    fish_only_items[most_valuable_fish] -= 1
+                    if fish_only_items[most_valuable_fish] == 0:
+                        del fish_only_items[most_valuable_fish]
+                
+                    # Rebuild fish_display from remaining items to avoid duplicates
+                    fish_display = []
+                    for key, qty in fish_only_items.items():
+                        if qty > 0:
+                            fish = ALL_FISH[key]
+                            total_price = fish['sell_price'] * qty
+                            fish_display.append(f"{fish['emoji']} {fish['name']} x{qty} ({total_price} Hạt)")
+                
+                    print(f"[EVENT] {username} lost {fish_info['name']} to cat_steal")
+                    if fish_display:
+                        fish_display[0] = fish_display[0] + f"\n(🐈 Mèo cướp mất {fish_info['name']} giá {highest_price} Hạt!)"
+        
+            # Update caught items for sell button
+            self.caught_items[user_id] = fish_only_items
+        
+            # ==================== CHECK FOR LEGENDARY FISH ====================
+            current_hour = datetime.now().hour
+            legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=self)
+        
+            if legendary_fish:
+                # Legendary fish spawned! Show boss fight minigame
+                legendary_key = legendary_fish['key']
+                print(f"[LEGENDARY] {username} encountered {legendary_key}!")
+            
+                # Create warning embed
+                legendary_embed = discord.Embed(
+                    title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
+                    description=f"🌊 Có một con quái vật đang cắn câu!\n"
+                               f"💥 Nó đang kéo bạn xuống nước!\n\n"
+                               f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n"
+                               f"_{legendary_fish['description']}_",
+                    color=discord.Color.dark_red()
                 )
-                await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
-                print(f"[NPC] {username} timeout on {npc_type} -> auto-decline")
+                legendary_embed.add_field(
+                    name="⚔️ CHUẨN BỊ ĐẤU BOSS!",
+                    value=f"Độ bền cần câu: {rod_durability}/{rod_config['durability']}\n"
+                         f"Cấp độ cần: {rod_lvl}/5",
+                    inline=False
+                )
+                legendary_embed.set_image(url=legendary_fish.get('image_url', ''))
+                legendary_embed.set_footer(text="Chọn chiến thuật chinh phục quái vật! ⏱️ 60 giây")
+            
+                # Create boss fight view
+                boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_lvl, channel, guild_id)
+            
+                # Send boss fight message
+                boss_msg = await channel.send(f"<@{user_id}>", embed=legendary_embed, view=boss_view)
+            
+                # Wait for interaction or timeout
+                try:
+                    await asyncio.sleep(60)  # 60 second timeout
+                except:
+                    pass
+            
+                # Check if battle was fought
+                if boss_view.fought:
+                    print(f"[LEGENDARY] {username} fought the boss!")
+                    # Continue to show normal fishing results as well
+                else:
+                    print(f"[LEGENDARY] {username} didn't choose - boss escaped!")
+        
+            # ==================== END LEGENDARY CHECK ====================
+        
+            # Check if collection is complete and award title if needed
+            is_complete = await check_collection_complete(user_id)
+            title_earned = False
+            if is_complete:
+                current_title = await self.get_title(user_id, channel.guild.id)
+                if not current_title or "Vua" not in current_title:
+                    # Award "Vua Câu Cá" role
+                    try:
+                        guild = channel.guild
+                        member = guild.get_member(user_id)
+                        role_id = 1450409414111658024  # Vua Câu Cá role ID
+                        role = guild.get_role(role_id)
+                        if member and role and role not in member.roles:
+                            await member.add_roles(role)
+                            title_earned = True
+                            print(f"[TITLE] {username} earned 'Vua Câu Cá' role!")
+                    except Exception as e:
+                        print(f"[TITLE] Error awarding role: {e}")
+        
+            # Build embed with item summary
+            # FIX: Calculate total fish AFTER duplicate_multiplier is applied
+            total_fish = sum(fish_only_items.values())
+            total_catches = total_fish + trash_count + chest_count
+        
+            # Create summary text for title
+            summary_parts = []
+            for key, qty in fish_only_items.items():
+                fish = ALL_FISH[key]
+                summary_parts.append(f"{qty} {fish['name']}")
+            if chest_count > 0:
+                summary_parts.append(f"{chest_count} Rương")
+        
+            summary_text = " và ".join(summary_parts) if summary_parts else "Rác"
+            title = f"🎣 {username} Câu Được {summary_text}"
+        
+            if total_fish > 2:
+                title = f"🎣 THỜI TỚI! {username} Bắt {total_fish} Con Cá! 🎉"
+        
+            # Add title-earned message if applicable
+            if title_earned:
+                title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
+        
+            # Build description with broken rod warning if needed
+            desc_parts = ["\n".join(fish_display) if fish_display else "Không có gì"]
+            if is_broken_rod:
+                desc_parts.append("\n⚠️ **CẢNH BÁO: Cần câu gãy!** (Chỉ 1% cá hiếm, 1 item/lần, không rương)")
+        
+            embed = discord.Embed(
+                title=title,
+                description="".join(desc_parts),
+                color=discord.Color.red() if is_broken_rod else (discord.Color.gold() if title_earned else (discord.Color.blue() if total_catches == 1 else discord.Color.gold()))
+            )
+        
+            if title_earned:
+                embed.add_field(
+                    name="🏆 HOÀN THÀNH!",
+                    value="Bạn đã bắt được **tất cả các loại cá**!\nChúc mừng bạn trở thành **Vua Câu Cá**! 🎉\nXem `/suutapca` để xác nhận!",
+                    inline=False
+                )
+        
+            # *** UPDATE DURABILITY AFTER FISHING ***
+            rod_durability = max(0, rod_durability - durability_loss)
+            await self.update_rod_data(user_id, rod_durability)
+        
+            durability_status = f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}"
+            embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}")
+        
+            # Create view with sell button if there are fish to sell
+            view = None
+            if fish_only_items:
+                view = FishSellView(self, user_id, fish_only_items, channel.guild.id)
+                print(f"[FISHING] Created sell button for {username} with {len(fish_only_items)} fish types")
+            else:
+                print(f"[FISHING] No fish to sell, button not shown")
+        
+            await casting_msg.edit(content="", embed=embed, view=view)
+            print(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
+        
+            # ==================== NPC ENCOUNTER (5% chance) ====================
+            if random.random() < 0.05 and fish_only_items:
+                await asyncio.sleep(2)  # Small delay for dramatic effect
+            
+                # Select random NPC based on weighted chances
+                npc_pool = []
+                for npc_key, npc_data in NPC_ENCOUNTERS.items():
+                    npc_pool.extend([npc_key] * int(npc_data["chance"] * 100))
+            
+                npc_type = random.choice(npc_pool)
+                npc_data = NPC_ENCOUNTERS[npc_type]
+            
+                # Get the first fish caught
+                caught_fish_key = list(fish_only_items.keys())[0]
+                caught_fish_info = ALL_FISH[caught_fish_key]
+            
+                # Build NPC embed
+                npc_embed = discord.Embed(
+                    title=f"⚠️ {npc_data['name']} - {username}!",
+                    description=f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}",
+                    color=discord.Color.purple()
+                )
+            
+                if npc_data.get("image_url"):
+                    npc_embed.set_image(url=npc_data["image_url"])
+            
+                # Add cost information
+                cost_text = ""
+                if npc_data["cost"] == "fish":
+                    cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
+                elif isinstance(npc_data["cost"], int):
+                    cost_text = f"💰 **Chi phí:** {npc_data['cost']} Hạt"
+                elif npc_data["cost"] == "cooldown_5min":
+                    cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
+            
+                npc_embed.add_field(name="💸 Giá", value=cost_text, inline=False)
+            
+                # Send NPC message with buttons
+                npc_view = NPCEncounterView(user_id, npc_type, npc_data, caught_fish_key)
+                npc_msg = await channel.send(content=f"<@{user_id}>", embed=npc_embed, view=npc_view)
+            
+                await npc_view.wait()
+            
+                result_text = ""
+                result_color = discord.Color.default()
+            
+                if npc_view.value == "agree":
+                    # Process acceptance
+                    result_embed = await self._process_npc_acceptance(user_id, npc_type, npc_data, caught_fish_key, caught_fish_info, username)
+                    await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+            
+                elif npc_view.value == "decline":
+                    # Process decline
+                    result_text = npc_data["rewards"]["decline"]
+                    result_color = discord.Color.light_grey()
+                    result_embed = discord.Embed(
+                        title=f"{npc_data['name']} - {username} - Từ Chối",
+                        description=f"{result_text}",
+                        color=result_color
+                    )
+                    await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+                    print(f"[NPC] {username} declined {npc_type}")
+            
+                else:
+                    # Timeout -> auto-decline (no cost, show decline-style embed)
+                    result_text = f"⏱️ Hết thời gian phản hồi.\n{npc_data['rewards']['decline']}"
+                    result_embed = discord.Embed(
+                        title=f"{npc_data['name']} - {username} - Từ Chối (Hết thời gian)",
+                        description=result_text,
+                        color=discord.Color.light_grey()
+                    )
+                    await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
+                    print(f"[NPC] {username} timeout on {npc_type} -> auto-decline")
         
         except Exception as e:
             # Catch-all error handler for _fish_action
@@ -950,6 +952,24 @@ class FishingCog(commands.Cog):
             if fish_info:
                 base_price = fish_info['sell_price']
                 base_total += base_price * quantity
+        
+        # Apply harvest boost (x2) if active in the server
+        is_harvest_boosted = False
+        try:
+            guild_id = ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id
+            if guild_id:
+                result = await db_manager.fetchone(
+                    "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                    (guild_id,)
+                )
+                if result and result[0]:
+                    buff_until = datetime.fromisoformat(result[0])
+                    if datetime.now() < buff_until:
+                        base_total = base_total * 2  # Double the base reward
+                        is_harvest_boosted = True
+                        print(f"[FISHING] [SELL_ACTION] Applied harvest boost x2 for user {user_id}")
+        except Exception as e:
+            print(f"[FISHING] [SELL_ACTION] Error checking harvest boost: {e}")
         
         # 2. Xử lý sự kiện bán hàng (Sell Event)
         final_total = base_total
@@ -2326,18 +2346,31 @@ class FishingCog(commands.Cog):
         return int(remaining)
     
     async def get_tree_boost_status(self, guild_id: int) -> bool:
-        """Check if server tree is at max level (nở hoa/kết trái)."""
+        """Check if server has tree harvest boost active (from level 6 harvest or if tree at level 5+)."""
         try:
             async with aiosqlite.connect(DB_PATH) as db:
+                # Check harvest buff timer first (primary source - set when harvest level 6)
+                async with db.execute(
+                    "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row and row[0]:
+                        from datetime import datetime
+                        buff_until = datetime.fromisoformat(row[0])
+                        if datetime.now() < buff_until:
+                            return True  # Harvest buff is active
+                
+                # Fallback: Check if tree is at level 5+ (persistent bonus)
                 async with db.execute(
                     "SELECT level FROM server_tree WHERE guild_id = ?",
                     (guild_id,)
                 ) as cursor:
-                    row = await cursor.fetchone()
-                    if row and row[0] >= 5:
+                    tree_row = await cursor.fetchone()
+                    if tree_row and tree_row[0] >= 5:
                         return True
-        except:
-            pass
+        except Exception as e:
+            print(f"[FISHING] Error checking tree boost: {e}")
         return False
     
     async def add_inventory_item(self, user_id: int, item_name: str, item_type: str):

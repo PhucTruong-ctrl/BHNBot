@@ -290,6 +290,12 @@ class EconomyCog(commands.Cog):
                 "moi_bui_sao": ("Mồi Bụi Sao", "✨🎣"),
                 "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
                 "may_do_song": ("Máy Dò Sóng", "📡"),
+                # Commemorative items (season rewards)
+                "qua_ngot_mua_1": ("Quả Ngọt Mùa 1", "🍎"),
+                "qua_ngot_mua_2": ("Quả Ngọt Mùa 2", "🍏"),
+                "qua_ngot_mua_3": ("Quả Ngọt Mùa 3", "🍊"),
+                "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
+                "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
                 # Consumable buff items
                 "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
                 "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
@@ -408,6 +414,12 @@ class EconomyCog(commands.Cog):
                 "moi_bui_sao": ("Mồi Bụi Sao", "✨🎣"),
                 "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
                 "may_do_song": ("Máy Dò Sóng", "📡"),
+                # Commemorative items (season rewards)
+                "qua_ngot_mua_1": ("Quả Ngọt Mùa 1", "🍎"),
+                "qua_ngot_mua_2": ("Quả Ngọt Mùa 2", "🍏"),
+                "qua_ngot_mua_3": ("Quả Ngọt Mùa 3", "🍊"),
+                "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
+                "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
                 # Consumable buff items
                 "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
                 "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),

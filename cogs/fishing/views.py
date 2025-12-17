@@ -38,6 +38,24 @@ class FishSellView(discord.ui.View):
                     base_price = fish_info['sell_price']
                     total_money += base_price * quantity
             
+            # Apply harvest boost (x2) if active in the server
+            from database_manager import db_manager
+            from datetime import datetime
+            try:
+                guild_id = interaction.guild.id if interaction.guild else None
+                if guild_id:
+                    result = await db_manager.fetchone(
+                        "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                        (guild_id,)
+                    )
+                    if result and result[0]:
+                        buff_until = datetime.fromisoformat(result[0])
+                        if datetime.now() < buff_until:
+                            total_money = total_money * 2  # Double the reward
+                            print(f"[FISHING] [SELL] Applied harvest boost x2 for guild {guild_id}")
+            except:
+                pass
+            
             for fish_key, quantity in self.caught_items.items():
                 await remove_item(self.user_id, fish_key, quantity)
             

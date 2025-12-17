@@ -109,7 +109,7 @@ class InteractionsCog(commands.Cog):
         embed.add_field(name="Quà", value=f"{SHOP_ITEMS[item_key]['emoji']} {SHOP_ITEMS[item_key]['name']}", inline=False)
         embed.add_field(name="💕 Thân thiết", value=f"+10 (cả hai cộng)", inline=False)
         
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=False)
         
         print(
             f"[GIFT] [SEND] sender_id={interaction.user.id} sender={interaction.user.name} "
@@ -121,7 +121,7 @@ class InteractionsCog(commands.Cog):
     @app_commands.describe(user="Người muốn check (để trống để xem người thân nhất)")
     async def check_affinity_slash(self, interaction: discord.Interaction, user: discord.User = None):
         """Check affinity with another user"""
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         if user and user.id == interaction.user.id:
             await interaction.followup.send("❌ Bạn không thể check thân thiết với chính mình!", ephemeral=True)
@@ -147,7 +147,7 @@ class InteractionsCog(commands.Cog):
             else:
                 embed.set_footer(text="👤 Chưa thân")
             
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
             # Show top affinity friends
             top_friends = await self.get_top_affinity_friends(interaction.user.id, 5)
@@ -172,7 +172,7 @@ class InteractionsCog(commands.Cog):
                 
                 embed.description = friends_text if friends_text else "Bạn chưa có ai thân cả 😢"
             
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
 
     @commands.command(name="thanthiet", description="Xem mức độ thân thiết với ai")
     async def check_affinity_prefix(self, ctx, user: discord.User = None):
