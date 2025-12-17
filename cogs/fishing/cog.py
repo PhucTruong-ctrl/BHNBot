@@ -1250,7 +1250,15 @@ class FishingCog(commands.Cog):
         loot_type = random.choices(items, weights=weights, k=1)[0]
         
         # Process loot
-        if loot_type == "fertilizer":
+        if loot_type == "nothing":
+            embed = discord.Embed(
+                title="🎁 Rương Kho Báu",
+                description="**❌ Rương trống không - Không có gì cả!**",
+                color=discord.Color.greyple()
+            )
+            embed.set_footer(text=f"👤 {user_name}")
+        
+        elif loot_type == "fertilizer":
             await self.add_inventory_item(user_id, "fertilizer", "tool")
             embed = discord.Embed(
                 title="🎁 Rương Kho Báu",
@@ -1315,6 +1323,18 @@ class FishingCog(commands.Cog):
                 color=discord.Color.magenta()
             )
             embed.set_footer(text=f"👤 {user_name}")
+        
+        # Check if it's a trash item
+        elif loot_type in [t.get("key") for t in TRASH_ITEMS]:
+            trash_item = next((t for t in TRASH_ITEMS if t.get("key") == loot_type), None)
+            if trash_item:
+                await self.add_inventory_item(user_id, loot_type, "trash")
+                embed = discord.Embed(
+                    title="🎁 Rương Kho Báu",
+                    description=f"**🗑️ {trash_item['name']}** - Rác vô dụng!",
+                    color=discord.Color.greyple()
+                )
+                embed.set_footer(text=f"👤 {user_name}")
         
         if is_slash:
             await ctx.followup.send(embed=embed)

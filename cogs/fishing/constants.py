@@ -104,16 +104,22 @@ ALL_FISH["rod_material"] = {"key": "rod_material", "name": "Vật Liệu Nâng C
 
 # Chest loot
 CHEST_LOOT = {
-    "fertilizer": 25,
-    "puzzle_piece": 15,
-    "coin_pouch": 20,
-    "gift_random": 30,
-    "manh_sao_bang": 10,  # Mảnh Sao Băng (10% từ chest)
-    "manh_ban_do_a": 5,  # Mảnh Bản Đồ A (5% từ chest)
-    "manh_ban_do_b": 5,  # Mảnh Bản Đồ B (5% từ chest)
-    "manh_ban_do_c": 5,  # Mảnh Bản Đồ C (5% từ chest)
-    "manh_ban_do_d": 5,
+    "nothing": 15,  # 15% chance to get nothing
+    "fertilizer": 20,
+    "puzzle_piece": 12,
+    "coin_pouch": 15,
+    "gift_random": 20,
+    "manh_sao_bang": 8,  # Mảnh Sao Băng
+    "manh_ban_do_a": 3,  # Mảnh Bản Đồ A
+    "manh_ban_do_b": 3,  # Mảnh Bản Đồ B
+    "manh_ban_do_c": 3,  # Mảnh Bản Đồ C
+    "manh_ban_do_d": 3,
+    # Trash items from fishing (2% each = 60 total, so ~1% each)
 }
+
+# Add trash items to CHEST_LOOT with small probability
+for trash_key in TRASH_ITEMS:
+    CHEST_LOOT[trash_key.get("key", f"trash_{trash_key}")] = 1
 
 # System values
 WORM_COST = 5
