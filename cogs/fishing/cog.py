@@ -212,8 +212,8 @@ class FishingCog(commands.Cog):
                     await add_seeds(user_id, -repair_cost)
                     rod_durability = rod_config["durability"]
                     await self.update_rod_data(user_id, rod_durability)
-                    repair_msg = f"\n🛠️ *Cần gãy! Đã tự động sửa (-{repair_cost} Hạt)*"
-                    print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} new_durability={rod_durability}")
+                    repair_msg = f"\n🛠️ **Cần câu đã gãy!** Tự động sửa chữa: **-{repair_cost} Hạt** (Độ bền phục hồi: {rod_durability}/{rod_config['durability']})"
+                    print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} action=rod_repaired new_durability={rod_durability}")
                     # Track rods repaired for achievement
                     try:
                         async with aiosqlite.connect(DB_PATH) as db:
@@ -326,9 +326,10 @@ class FishingCog(commands.Cog):
                 status_text = "\n⚠️ *Không có mồi (Tỉ lệ rác cao)*"
         
             rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Thời gian chờ: {rod_config['cd']}s)*"
+            durability_status = f"\n🛡️ **Độ bền còn lại: {rod_durability}/{rod_config['durability']}**"
 
             casting_msg = await channel.send(
-                f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}"
+                f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}{repair_msg}{durability_status}"
             )
             await asyncio.sleep(wait_time)
         
@@ -946,7 +947,9 @@ class FishingCog(commands.Cog):
             rod_durability = max(0, rod_durability - durability_loss)
             await self.update_rod_data(user_id, rod_durability)
         
-            durability_status = f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}"
+            durability_status = f"🛡️ Độ bền còn lại: {rod_durability}/{rod_config['durability']}"
+            if rod_durability <= 0:
+                durability_status += f" ⚠️ CẦN SỬA ({rod_config['repair']} Hạt)"
             embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}")
         
             # Create view with sell button if there are fish to sell
