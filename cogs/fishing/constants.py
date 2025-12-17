@@ -1112,7 +1112,7 @@ NPC_ENCOUNTERS = {
         "name": "👻 Hồn Ma Chết Đuối",
         "description": "Không khí lạnh toát... Một bóng trắng lướt qua:\n'Ta lạnh quá... Cần câu của ngươi có vẻ ấm... Cho ta mượn chút...'",
         "question": "**Bạn có dám cho ma mượn cần câu không?**",
-        "image_url": "https://i.imgur.com/kX9Tz4L.png",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/ghost.png",
         "chance": 0.15,
         "rewards": {
             "accept": [

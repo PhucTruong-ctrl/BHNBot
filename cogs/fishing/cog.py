@@ -8,6 +8,7 @@ from datetime import datetime
 import asyncio
 import random
 import time
+import json
 
 from .constants import *
 from .helpers import track_caught_fish, get_collection, check_collection_complete
@@ -31,6 +32,11 @@ class NPCEncounterView(discord.ui.View):
         self.npc_data = npc_data
         self.fish_key = fish_key
         self.value = None
+    
+    async def on_timeout(self):
+        """View times out if no action taken within 15s"""
+        self.value = "timeout"
+        self.stop()
     
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """Ensure only the fisher can interact."""
@@ -87,23 +93,24 @@ class FishingCog(commands.Cog):
     
     async def _fish_action(self, ctx_or_interaction):
         """Main fishing logic - rút gọn, gọi helpers từ modules khác"""
-        is_slash = isinstance(ctx_or_interaction, discord.Interaction)
-        
-        if is_slash:
-            await ctx_or_interaction.response.defer(ephemeral=False)
-            user_id = ctx_or_interaction.user.id
-            channel = ctx_or_interaction.channel
-            guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
-            ctx = ctx_or_interaction
-        else:
-            user_id = ctx_or_interaction.author.id
-            channel = ctx_or_interaction.channel
-            guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
-            ctx = ctx_or_interaction
-        
-        # --- GET ROD DATA ---
-        rod_lvl, rod_durability = await get_rod_data(user_id)
-        rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
+        try:
+            is_slash = isinstance(ctx_or_interaction, discord.Interaction)
+            
+            if is_slash:
+                await ctx_or_interaction.response.defer(ephemeral=False)
+                user_id = ctx_or_interaction.user.id
+                channel = ctx_or_interaction.channel
+                guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
+                ctx = ctx_or_interaction
+            else:
+                user_id = ctx_or_interaction.author.id
+                channel = ctx_or_interaction.channel
+                guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
+                ctx = ctx_or_interaction
+            
+            # --- GET ROD DATA ---
+            rod_lvl, rod_durability = await get_rod_data(user_id)
+            rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
         
         # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
         # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
@@ -429,7 +436,11 @@ class FishingCog(commands.Cog):
         
         # Roll chest (độc lập, tỉ lệ thấp)
         # NHƯNG: Nếu không có mồi HOẶC cần gãy -> không bao giờ ra rương
+        # Check for both tree boost AND lucky buff from NPC
         is_boosted = await self.get_tree_boost_status(channel.guild.id)
+        has_lucky_buff = self.lucky_buff_users.get(user_id, False)
+        is_boosted = is_boosted or has_lucky_buff
+        
         if has_worm and not is_broken_rod:
             chest_weights = [95, 5] if not is_boosted else [90, 10]
             chest_count = random.choices([0, 1], weights=chest_weights, k=1)[0]
@@ -444,8 +455,11 @@ class FishingCog(commands.Cog):
         
         print(f"[FISHING] {username} rolled: {num_fish} fish, {trash_count} trash, {chest_count} chest [has_worm={has_worm}]")
         
-        is_boosted = await self.get_tree_boost_status(channel.guild.id)
-        boost_text = " ✨**(CÂY BUFF!)**✨" if is_boosted else ""
+        # Clear lucky buff after this cast
+        if has_lucky_buff:
+            self.lucky_buff_users[user_id] = False
+        
+        boost_text = " ✨**(BUFF MAY MẮN!)**✨" if has_lucky_buff else (" ✨**(CÂY BUFF!)**✨" if is_boosted else "")
         
         # Track caught items for sell button
         self.caught_items[user_id] = {}
@@ -781,7 +795,7 @@ class FishingCog(commands.Cog):
             )
             
             if npc_data.get("image_url"):
-                npc_embed.set_thumbnail(url=npc_data["image_url"])
+                npc_embed.set_image(url=npc_data["image_url"])
             
             # Add cost information
             cost_text = ""
@@ -830,6 +844,24 @@ class FishingCog(commands.Cog):
                 )
                 await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
                 print(f"[NPC] {username} timeout on {npc_type} -> auto-decline")
+        
+        except Exception as e:
+            # Catch-all error handler for _fish_action
+            print(f"[FISHING] [ERROR] Unexpected error in _fish_action: {e}")
+            import traceback
+            traceback.print_exc()
+            try:
+                error_embed = discord.Embed(
+                    title="❌ Lỗi Câu Cá",
+                    description=f"Xảy ra lỗi không mong muốn: {str(e)[:100]}\n\nVui lòng thử lại sau.",
+                    color=discord.Color.red()
+                )
+                if is_slash:
+                    await ctx.followup.send(embed=error_embed, ephemeral=True)
+                else:
+                    await ctx.send(embed=error_embed)
+            except:
+                pass
     
     
     @app_commands.command(name="banca", description="Bán cá - Dùng /banca [fish_types]")
@@ -1742,6 +1774,9 @@ class FishingCog(commands.Cog):
                     (new_level, new_progress, new_total, guild_id)
                 )
                 await db.commit()
+            
+            # Add contributor entry for fertilizer
+            await tree_cog.add_contributor(user_id, guild_id, boost_amount, contribution_type="fertilizer")
             
             # Build response embed
             embed = discord.Embed(

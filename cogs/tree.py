@@ -173,33 +173,44 @@ class CommunityCog(commands.Cog):
             )
             await db.commit()
 
-    async def add_contributor(self, user_id: int, guild_id: int, amount: int):
-        """Add to contributor's total"""
+    async def add_contributor(self, user_id: int, guild_id: int, amount: int, contribution_type: str = "seeds"):
+        """Add to contributor's total with experience points.
+        
+        contribution_type: 'seeds' (hạt góp) or 'fertilizer' (bón phân)
+        Seeds: 1 hạt = 1 exp
+        Fertilizer: 1 bón phân = 50-100 exp (tính từ boost_amount)
+        """
+        # Calculate experience based on contribution type
+        if contribution_type == "fertilizer":
+            exp_amount = amount  # amount is boost_amount (50-100)
+        else:  # seeds
+            exp_amount = amount  # 1 seed = 1 exp
+        
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT amount FROM tree_contributors WHERE user_id = ? AND guild_id = ?",
+                "SELECT contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ?",
                 (user_id, guild_id)
             ) as cursor:
                 row = await cursor.fetchone()
             
             if row:
                 await db.execute(
-                    "UPDATE tree_contributors SET amount = amount + ? WHERE user_id = ? AND guild_id = ?",
-                    (amount, user_id, guild_id)
+                    "UPDATE tree_contributors SET contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ?",
+                    (exp_amount, user_id, guild_id)
                 )
             else:
                 await db.execute(
-                    "INSERT INTO tree_contributors (user_id, guild_id, amount) VALUES (?, ?, ?)",
-                    (user_id, guild_id, amount)
+                    "INSERT INTO tree_contributors (user_id, guild_id, contribution_exp) VALUES (?, ?, ?)",
+                    (user_id, guild_id, exp_amount)
                 )
             
             await db.commit()
 
     async def get_top_contributors(self, guild_id: int, limit: int = 3):
-        """Get top 3 contributors"""
+        """Get top 3 contributors by contribution experience"""
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT user_id, amount FROM tree_contributors WHERE guild_id = ? ORDER BY amount DESC LIMIT ?",
+                "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? ORDER BY contribution_exp DESC LIMIT ?",
                 (guild_id, limit)
             ) as cursor:
                 return await cursor.fetchall()
@@ -374,7 +385,7 @@ class CommunityCog(commands.Cog):
                 req = level_reqs.get(new_level + 1, level_reqs[6])
             
             await self.update_tree_progress(guild_id, new_level, new_progress, new_total)
-            await self.add_contributor(user_id, guild_id, amount)
+            await self.add_contributor(user_id, guild_id, amount, contribution_type="seeds")
             
             # Response embed - PUBLIC announcement
             embed = discord.Embed(
@@ -492,14 +503,14 @@ class CommunityCog(commands.Cog):
         
         if contributors:
             contrib_text = ""
-            for idx, (uid, amt) in enumerate(contributors, 1):
+            for idx, (uid, exp) in enumerate(contributors, 1):
                 try:
                     user = await self.bot.fetch_user(uid)
-                    contrib_text += f"{idx}. **{user.name}** - {amt} Hạt\n"
+                    contrib_text += f"{idx}. **{user.name}** - {exp} Kinh Nghiệm\n"
                 except:
-                    contrib_text += f"{idx}. **User #{uid}** - {amt} Hạt\n"
+                    contrib_text += f"{idx}. **User #{uid}** - {exp} Kinh Nghiệm\n"
             
-            embed.add_field(name="Top 3 Người Góp", value=contrib_text, inline=False)
+            embed.add_field(name="🏆 Top 3 Người Góp (Kinh Nghiệm)", value=contrib_text, inline=False)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -540,25 +551,25 @@ class CommunityCog(commands.Cog):
         top1_user = None
         top1_user_obj = None
         
-        for idx, (uid, amt) in enumerate(contributors):
+        for idx, (uid, exp) in enumerate(contributors):
             medal = ["🥇", "🥈", "🥉"][idx]
             reward_amt = top1_reward if idx == 0 else top23_reward
             
             try:
                 user = await self.bot.fetch_user(uid)
-                honor_text += f"{medal} **Top {idx+1}: {user.name}** - Góp {amt} Hạt → Nhận {reward_amt} Hạt 💪\n"
+                honor_text += f"{medal} **Top {idx+1}: {user.name}** - Kinh Nghiệm: {exp} → Nhận {reward_amt} Hạt 💪\n"
                 if idx == 0:
                     top1_user = uid
                     top1_user_obj = user
             except:
-                honor_text += f"{medal} **Top {idx+1}: User #{uid}** - Góp {amt} Hạt → Nhận {reward_amt} Hạt\n"
+                honor_text += f"{medal} **Top {idx+1}: User #{uid}** - Kinh Nghiệm: {exp} → Nhận {reward_amt} Hạt\n"
                 if idx == 0:
                     top1_user = uid
         
         # === DATABASE TRANSACTIONS ===
         async with aiosqlite.connect(DB_PATH) as db:
             # 1. REWARD TOP CONTRIBUTORS
-            for idx, (uid, amt) in enumerate(contributors):
+            for idx, (uid, exp) in enumerate(contributors):
                 reward_amt = top1_reward if idx == 0 else top23_reward
                 await db.execute(
                     "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",

@@ -13,6 +13,15 @@ class FishSellView(discord.ui.View):
         self.caught_items = caught_items
         self.guild_id = guild_id
     
+    async def on_timeout(self):
+        """Cleanup when view times out (after 5 minutes)"""
+        # Remove caught_items cache since user didn't sell
+        if self.user_id in self.cog.caught_items:
+            try:
+                del self.cog.caught_items[self.user_id]
+            except:
+                pass
+    
     @discord.ui.button(label="💰 Bán Cá Vừa Câu", style=discord.ButtonStyle.green)
     async def sell_caught_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:

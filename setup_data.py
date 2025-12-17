@@ -83,6 +83,7 @@ def init_database():
                     user_id INTEGER,
                     guild_id INTEGER,
                     amount INTEGER DEFAULT 0,
+                    contribution_exp INTEGER DEFAULT 0,
                     PRIMARY KEY (user_id, guild_id)
                 )''')
     
@@ -379,6 +380,24 @@ def init_database():
     except Exception as e:
         print(f"⚠️ Inventory table check error: {e}")
     
+    # Check and migrate tree_contributors table - add contribution_exp column
+    try:
+        c.execute("PRAGMA table_info(tree_contributors)")
+        tree_contrib_columns = [row[1] for row in c.fetchall()]
+        
+        if "contribution_exp" not in tree_contrib_columns:
+            print("🔄 Migrating: Adding contribution_exp column to tree_contributors")
+            try:
+                # Add contribution_exp column
+                c.execute("ALTER TABLE tree_contributors ADD COLUMN contribution_exp INTEGER DEFAULT 0")
+                # Migrate old data: copy amount values to contribution_exp (for backward compatibility)
+                c.execute("UPDATE tree_contributors SET contribution_exp = amount WHERE contribution_exp = 0")
+                print("✓ Added contribution_exp column to tree_contributors and migrated data from amount")
+            except Exception as e:
+                print(f"⚠️ Migration error for tree_contributors: {e}")
+    except Exception as e:
+        print(f"⚠️ Tree contributors table check error: {e}")
+    
     conn.commit()
     
     # ==================== CREATE INDEXES FOR OPTIMIZATION ====================
@@ -405,8 +424,8 @@ def init_database():
     
     # Tree indexes
     try:
-        c.execute("CREATE INDEX IF NOT EXISTS idx_tree_contributors_amount ON tree_contributors(amount DESC)")
-        print("✓ Created index: tree_contributors(amount)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_tree_contributors_exp ON tree_contributors(contribution_exp DESC)")
+        print("✓ Created index: tree_contributors(contribution_exp)")
     except:
         pass
     
