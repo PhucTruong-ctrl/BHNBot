@@ -16,6 +16,7 @@ from .rod_system import get_rod_data, update_rod_data as update_rod_data_module
 from .legendary import LegendaryBossFightView, check_legendary_spawn_conditions, add_legendary_fish_to_user as add_legendary_module
 from .events import trigger_random_event
 from .views import FishSellView
+from .glitch import apply_display_glitch as global_apply_display_glitch, set_glitch_state
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
     get_user_balance, get_or_create_user, db_manager
@@ -173,6 +174,10 @@ class FishingCog(commands.Cog):
                     self.disaster_fine_amount = 0
                     self.disaster_display_glitch = False
                     self.disaster_effect_end_time = 0
+                    try:
+                        set_glitch_state(False, 0)
+                    except Exception:
+                        pass
 
             # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
             # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
@@ -209,6 +214,16 @@ class FishingCog(commands.Cog):
                     await self.update_rod_data(user_id, rod_durability)
                     repair_msg = f"\n🛠️ *Cần gãy! Đã tự động sửa (-{repair_cost} Hạt)*"
                     print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} new_durability={rod_durability}")
+                    # Track rods repaired for achievement
+                    try:
+                        async with aiosqlite.connect(DB_PATH) as db:
+                            await db.execute(
+                                "UPDATE economy_users SET rods_repaired = rods_repaired + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                            await db.commit()
+                    except Exception as e:
+                        print(f"[ACHIEVEMENT] Error updating rods_repaired for {user_id}: {e}")
                 else:
                     # Not enough money to repair - allow fishing but with broken rod penalties
                     is_broken_rod = True
@@ -706,7 +721,8 @@ class FishingCog(commands.Cog):
                 fish = ALL_FISH[key]
                 emoji = fish['emoji']
                 total_price = fish['sell_price'] * qty  # Multiply price by quantity
-                fish_display.append(f"{emoji} {fish['name']} x{qty} ({total_price} Hạt)")
+                fish_name = self.apply_display_glitch(fish['name'])
+                fish_display.append(f"{emoji} {fish_name} x{qty} ({total_price} Hạt)")
         
             # Process trash (độc lập)
             if trash_count > 0:
@@ -741,6 +757,16 @@ class FishingCog(commands.Cog):
                     await self.add_inventory_item(user_id, "treasure_chest", "tool")
                 fish_display.append(f"🎁 Rương Kho Báu x{chest_count}")
                 print(f"[FISHING] {username} caught {chest_count}x TREASURE CHEST! 🎁")
+                # Track chests caught for achievement
+                try:
+                    async with aiosqlite.connect(DB_PATH) as db:
+                        await db.execute(
+                            "UPDATE economy_users SET chests_caught = chests_caught + ? WHERE user_id = ?",
+                            (chest_count, user_id)
+                        )
+                        await db.commit()
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error updating chests_caught for {user_id}: {e}")
         
             # Store only fish for the sell button
             self.caught_items[user_id] = fish_only_items
@@ -770,9 +796,20 @@ class FishingCog(commands.Cog):
                         if qty > 0:
                             fish = ALL_FISH[key]
                             total_price = fish['sell_price'] * qty
-                            fish_display.append(f"{fish['emoji']} {fish['name']} x{qty} ({total_price} Hạt)")
+                            fish_name = self.apply_display_glitch(fish['name'])
+                            fish_display.append(f"{fish['emoji']} {fish_name} x{qty} ({total_price} Hạt)")
                 
                     print(f"[EVENT] {username} lost {fish_info['name']} to cat_steal")
+                    # Track robbed count (cat steal counts as being robbed)
+                    try:
+                        async with aiosqlite.connect(DB_PATH) as db:
+                            await db.execute(
+                                "UPDATE economy_users SET robbed_count = robbed_count + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
+                            await db.commit()
+                    except Exception as e:
+                        print(f"[ACHIEVEMENT] Error updating robbed_count for {user_id}: {e}")
                     if fish_display:
                         fish_display[0] = fish_display[0] + f"\n(🐈 Mèo cướp mất {fish_info['name']} giá {highest_price} Hạt!)"
         
@@ -805,7 +842,7 @@ class FishingCog(commands.Cog):
                     title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
                     description=f"🌊 Có một con quái vật đang cắn câu!\n"
                                f"💥 Nó đang kéo bạn xuống nước!\n\n"
-                               f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n"
+                               f"**{legendary_fish['emoji']} {self.apply_display_glitch(legendary_fish['name'])}**\n"
                                f"_{legendary_fish['description']}_",
                     color=discord.Color.dark_red()
                 )
@@ -867,16 +904,17 @@ class FishingCog(commands.Cog):
             summary_parts = []
             for key, qty in fish_only_items.items():
                 fish = ALL_FISH[key]
-                summary_parts.append(f"{qty} {fish['name']}")
+                fish_name = self.apply_display_glitch(fish['name'])
+                summary_parts.append(f"{qty} {fish_name}")
             if chest_count > 0:
                 summary_parts.append(f"{chest_count} Rương")
-        
+            
             summary_text = " và ".join(summary_parts) if summary_parts else "Rác"
             title = f"🎣 {username} Câu Được {summary_text}"
-        
+            
             if total_fish > 2:
                 title = f"🎣 THỜI TỚI! {username} Bắt {total_fish} Con Cá! 🎉"
-        
+            
             # Add title-earned message if applicable
             if title_earned:
                 title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
@@ -1087,7 +1125,8 @@ class FishingCog(commands.Cog):
             legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS}
             if legendary_fish_in_inventory:
                 # Show warning that legendary fish cannot be sold
-                legend_names = ", ".join([ALL_FISH[k]['name'] for k in legendary_fish_in_inventory.keys()])
+                from .glitch import apply_display_glitch as _glitch
+                legend_names = ", ".join([_glitch(ALL_FISH[k]['name']) for k in legendary_fish_in_inventory.keys()])
                 msg = f"❌ **CÁ HỮU HẠNG KHÔNG ĐƯỢC BÁN!** 🏆\n\n"
                 msg += f"Bạn có: {legend_names}\n\n"
                 msg += "Các loại cá huyền thoại này là biểu tượng của danh tiếng của bạn. Chúng không được phép bán!\n\n"
@@ -1202,6 +1241,16 @@ class FishingCog(commands.Cog):
                     if special_type == "chest":
                         await self.add_inventory_item(user_id, "treasure_chest", "tool")
                         special_rewards.append("🎁 +1 Rương Kho Báu")
+                        # Track chest gained from sell event
+                        try:
+                            async with aiosqlite.connect(DB_PATH) as db:
+                                await db.execute(
+                                    "UPDATE economy_users SET chests_caught = chests_caught + 1 WHERE user_id = ?",
+                                    (user_id,)
+                                )
+                                await db.commit()
+                        except Exception as e:
+                            print(f"[ACHIEVEMENT] Error updating chests_caught (sell special) for {user_id}: {e}")
                     
                     elif special_type == "worm":
                         await self.add_inventory_item(user_id, "worm", "bait")
@@ -1267,6 +1316,26 @@ class FishingCog(commands.Cog):
                             "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
                             (final_total, user_id)
                         )
+
+                        # 2.1. Track event-based achievements
+                        try:
+                            if triggered_event == "market_boom":
+                                await db.execute(
+                                    "UPDATE economy_users SET market_boom_sales = market_boom_sales + 1 WHERE user_id = ?",
+                                    (user_id,)
+                                )
+                            elif triggered_event == "god_of_wealth":
+                                await db.execute(
+                                    "UPDATE economy_users SET god_of_wealth_encountered = god_of_wealth_encountered + 1 WHERE user_id = ?",
+                                    (user_id,)
+                                )
+                            elif triggered_event == "thief_run":
+                                await db.execute(
+                                    "UPDATE economy_users SET robbed_count = robbed_count + 1 WHERE user_id = ?",
+                                    (user_id,)
+                                )
+                        except Exception as e:
+                            print(f"[ACHIEVEMENT] Error updating sell-event counters for {user_id}: {e}")
                         
                         # Commit transaction
                         await db.commit()
@@ -1327,7 +1396,8 @@ class FishingCog(commands.Cog):
                     await ctx.send(content=f"<@{user_id}>", embed=event_embed)
             
             # 5. Display main sell result embed
-            fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in selected_fish.items()])
+            from .glitch import apply_display_glitch as _glitch
+            fish_summary = "\n".join([f"  • {_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in selected_fish.items()])
             
             embed = discord.Embed(
                 title=f"💰 **{username}** bán {sum(selected_fish.values())} con cá",
@@ -1559,7 +1629,7 @@ class FishingCog(commands.Cog):
         if fish_sell_price <= 150:
             embed = discord.Embed(
                 title="❌ Cá Không Đủ Tiêu Chuẩn",
-                description=f"Chỉ có thể hiến tế cá có giá bán **trên 150 Hạt**!\n\n**{ALL_FISH[fish_key]['name']}** chỉ bán được **{fish_sell_price} Hạt**.",
+                description=f"Chỉ có thể hiến tế cá có giá bán **trên 150 Hạt**!\n\n**{global_apply_display_glitch(ALL_FISH[fish_key]['name'])}** chỉ bán được **{fish_sell_price} Hạt**.",
                 color=discord.Color.red()
             )
             if is_slash_cmd:
@@ -1573,7 +1643,7 @@ class FishingCog(commands.Cog):
         if inventory.get(fish_key, 0) < 1:
             embed = discord.Embed(
                 title="❌ Không Có Cá",
-                description=f"Bạn không có {ALL_FISH[fish_key]['name']} để hiến tế",
+                description=f"Bạn không có {global_apply_display_glitch(ALL_FISH[fish_key]['name'])} để hiến tế",
                 color=discord.Color.red()
             )
             if is_slash_cmd:
@@ -1591,7 +1661,7 @@ class FishingCog(commands.Cog):
         # Increment sacrifice counter (using database, not RAM)
         current_sacrifices = await self.add_sacrifice_count(user_id, 1)
         
-        fish_name = ALL_FISH[fish_key]['name']
+        fish_name = global_apply_display_glitch(ALL_FISH[fish_key]['name'])
         fish_emoji = ALL_FISH[fish_key]['emoji']
         
         if current_sacrifices < 3:
@@ -1920,6 +1990,17 @@ class FishingCog(commands.Cog):
         # Add fertilizers (multiply the count)
         for _ in range(fertilizer_count):
             await self.add_inventory_item(user_id, "fertilizer", "tool")
+
+        # Track recycled trash for achievement (counts units recycled)
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute(
+                    "UPDATE economy_users SET trash_recycled = trash_recycled + ? WHERE user_id = ?",
+                    (trash_used, user_id)
+                )
+                await db.commit()
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error updating trash_recycled for {user_id}: {e}")
         
         embed = discord.Embed(
             title="✅ Tái Chế Thành Công",
@@ -2353,7 +2434,8 @@ class FishingCog(commands.Cog):
         common_display = []
         for fish in COMMON_FISH:
             emoji = "✅" if fish['key'] in common_caught else "❌"
-            common_display.append(f"{emoji} {fish['emoji']} {fish['name']}")
+            fish_name = self.apply_display_glitch(fish['name'])
+            common_display.append(f"{emoji} {fish['emoji']} {fish_name}")
         
         # Split common fish into 2 columns if too many
         if len(common_display) > 30:
@@ -2394,7 +2476,8 @@ class FishingCog(commands.Cog):
         rare_display = []
         for fish in RARE_FISH:
             emoji = "✅" if fish['key'] in rare_caught else "❌"
-            rare_display.append(f"{emoji} {fish['emoji']} {fish['name']}")
+            fish_name = self.apply_display_glitch(fish['name'])
+            rare_display.append(f"{emoji} {fish['emoji']} {fish_name}")
         
         # Split rare fish into 2 columns if too many
         if len(rare_display) > 20:
@@ -2425,7 +2508,8 @@ class FishingCog(commands.Cog):
             fish_key = legendary_fish['key']
             if fish_key in legendary_caught:
                 # Caught: show name with ✅
-                legendary_display.append(f"✅ {legendary_fish['emoji']} {legendary_fish['name']}")
+                fish_name = self.apply_display_glitch(legendary_fish['name'])
+                legendary_display.append(f"✅ {legendary_fish['emoji']} {fish_name}")
             else:
                 # Not caught: show ????
                 legendary_display.append(f"❓ {legendary_fish['emoji']} ????")
@@ -2690,7 +2774,7 @@ class FishingCog(commands.Cog):
             title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
             description=f"🌊 Có một con quái vật đang cắn câu!\n"
                        f"💥 Nó đang kéo bạn xuống nước!\n\n"
-                       f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n"
+                       f"**{legendary_fish['emoji']} {self.apply_display_glitch(legendary_fish['name'])}**\n"
                        f"_{legendary_fish['description']}_",
             color=discord.Color.dark_red()
         )
@@ -2716,7 +2800,8 @@ class FishingCog(commands.Cog):
         
         # Log
         print(f"[DEBUG] {ctx.author.name} triggered legendary encounter: {legendary_fish['key']}")
-        await ctx.send(f"✅ **DEBUG**: Triggered {legendary_fish['emoji']} {legendary_fish['name']} encounter!")
+        debug_msg = f"✅ **DEBUG**: Triggered {legendary_fish['emoji']} {self.apply_display_glitch(legendary_fish['name'])} encounter!"
+        await ctx.send(debug_msg)
     
     # ==================== HELPER METHODS ====================
     
@@ -2800,6 +2885,11 @@ class FishingCog(commands.Cog):
         self.disaster_cooldown_penalty = effects.get("cooldown_penalty", 0)
         self.disaster_fine_amount = effects.get("fine_amount", 0)
         self.disaster_display_glitch = effects.get("display_glitch", False)
+        # Share glitch state globally for other modules (economy, views, legendary)
+        try:
+            set_glitch_state(self.disaster_display_glitch, self.disaster_effect_end_time)
+        except Exception as e:
+            print(f"[DISASTER] Failed to set global glitch state: {e}")
         
         # Format announcement message
         announcement = disaster["effects"]["message_template"].format(player=username)

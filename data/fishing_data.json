@@ -1248,14 +1248,14 @@
         "category": "rare"
       },
       {
-        "key": "thuy_quai_kraken",
+        "key": "kraken",
         "name": "Kraken",
         "emoji": "🦑",
         "sell_price": 190,
         "category": "rare"
       },
       {
-        "key": "thuy_quai_nessie",
+        "key": "nessie",
         "name": "Thuỷ Quái Nessie",
         "emoji": "🦕",
         "sell_price": 190,

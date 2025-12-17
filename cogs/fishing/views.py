@@ -5,6 +5,7 @@ import random
 import aiosqlite
 from database_manager import remove_item, add_seeds, get_inventory
 from .constants import ALL_FISH, DB_PATH
+from .glitch import apply_display_glitch
 
 class FishSellView(discord.ui.View):
     """View for selling caught fish."""
@@ -128,7 +129,7 @@ class FishSellView(discord.ui.View):
                                 await db.execute("ROLLBACK")
                                 self.sold = False  # Reset flag on insufficient inventory
                                 await interaction.followup.send(
-                                    f"❌ **Khôn vậy má!** Không đủ `{ALL_FISH[fish_key]['name']}` để bán.\n"
+                                    f"❌ **Khôn vậy má!** Không đủ `{apply_display_glitch(ALL_FISH[fish_key]['name'])}` để bán.\n"
                                     f"Cần: {quantity}, Có: {actual_qty}\n"
                                     f"(Đã bán qua `/banca` rồi?)",
                                     ephemeral=True
@@ -173,7 +174,7 @@ class FishSellView(discord.ui.View):
             if self.user_id in self.cog.caught_items:
                 del self.cog.caught_items[self.user_id]
             
-            fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
+            fish_summary = "\n".join([f"  • {apply_display_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in self.caught_items.items()])
             embed = discord.Embed(
                 title=f"**{interaction.user.name}** đã bán {sum(self.caught_items.values())} con cá",
                 description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**{keo_ly_message}",

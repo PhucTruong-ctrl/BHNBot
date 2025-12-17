@@ -6,6 +6,7 @@ import aiosqlite
 import json
 from datetime import datetime
 from .constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
+from .glitch import apply_display_glitch
 
 class LegendaryBossFightView(discord.ui.View):
     """Interactive boss fight for legendary fish with balanced difficulty."""
@@ -37,7 +38,7 @@ class LegendaryBossFightView(discord.ui.View):
         cut_btn.callback = self.cut_line
         self.add_item(cut_btn)
     
-    async def jerk_hard(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def jerk_hard(self, interaction: discord.Interaction):
         """Aggressive method: 10% win rate, breaks rod on failure."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
@@ -52,7 +53,7 @@ class LegendaryBossFightView(discord.ui.View):
         if success:
             result_embed = discord.Embed(
                 title="✨ THÀNH CÔNG! ✨",
-                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n💪 Một cú giật mạnh tuyệt diệu!",
+                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {apply_display_glitch(self.legendary_fish['name'])}**!\n\n💪 Một cú giật mạnh tuyệt diệu!",
                 color=discord.Color.gold()
             )
             result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
@@ -92,7 +93,7 @@ class LegendaryBossFightView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
     
-    async def guide_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def guide_fish(self, interaction: discord.Interaction):
         """Technique method: 65% win rate, high skill requirement (Lv5 only), -40 durability on failure."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
@@ -136,7 +137,7 @@ class LegendaryBossFightView(discord.ui.View):
         if success:
             result_embed = discord.Embed(
                 title="✨ THÀNH CÔNG! ✨",
-                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n🌊 Một động tác dìu cá hoàn hảo!{boost_message}",
+                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {apply_display_glitch(self.legendary_fish['name'])}**!\n\n🌊 Một động tác dìu cá hoàn hảo!{boost_message}",
                 color=discord.Color.gold()
             )
             result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
@@ -177,7 +178,7 @@ class LegendaryBossFightView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
     
-    async def cut_line(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def cut_line(self, interaction: discord.Interaction):
         """Safe method: No penalty but no catch."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
@@ -189,7 +190,7 @@ class LegendaryBossFightView(discord.ui.View):
         self.fought = True
         result_embed = discord.Embed(
             title="🏃 ĐÃ BỎ CUỘC 🏃",
-            description=f"✂️ Bạn cắt dây cá.\n\n{self.legendary_fish['emoji']} **{self.legendary_fish['name']}** thoát khỏi an toàn!\n\n💡 Ít nhất cần của bạn còn nguyên vẹn.",
+            description=f"✂️ Bạn cắt dây cá.\n\n{self.legendary_fish['emoji']} **{apply_display_glitch(self.legendary_fish['name'])}** thoát khỏi an toàn!\n\n💡 Ít nhất cần của bạn còn nguyên vẹn.",
             color=discord.Color.greyple()
         )
         

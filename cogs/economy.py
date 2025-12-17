@@ -233,17 +233,19 @@ class EconomyCog(commands.Cog):
         if inventory:
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
+            from cogs.fishing.glitch import apply_display_glitch
+            from cogs.fishing.glitch import apply_display_glitch
             
             # Fish items
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
             if fish_items:
-                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
+                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
                 # Split into multiple fields if too long (max 1024 chars per field)
                 if len(fish_text) > 1024:
                     fish_list = sorted(fish_items.items())
                     mid = len(fish_list) // 2
-                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[:mid]])
-                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[mid:]])
+                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[:mid]])
+                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[mid:]])
                     embed.add_field(name="🐟 Cá (1/2)", value=part1, inline=False)
                     embed.add_field(name="🐟 Cá (2/2)", value=part2, inline=False)
                 else:
@@ -361,13 +363,13 @@ class EconomyCog(commands.Cog):
             # Fish items
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
             if fish_items:
-                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
+                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
                 # Split into multiple fields if too long (max 1024 chars per field)
                 if len(fish_text) > 1024:
                     fish_list = sorted(fish_items.items())
                     mid = len(fish_list) // 2
-                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[:mid]])
-                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{ALL_FISH[k]['name']}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[mid:]])
+                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[:mid]])
+                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[mid:]])
                     embed.add_field(name="🐟 Cá (1/2)", value=part1, inline=False)
                     embed.add_field(name="🐟 Cá (2/2)", value=part2, inline=False)
                 else:
