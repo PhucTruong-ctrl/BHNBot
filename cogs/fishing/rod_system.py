@@ -1,17 +1,20 @@
 """Rod upgrade and durability system."""
 
 import aiosqlite
-from .constants import DB_PATH, ROD_LEVELS
+from .constants import DB_PATH, ROD_LEVELS, get_db
 
 async def get_rod_data(user_id: int) -> tuple:
     """Get rod level and durability (rod_level, rod_durability)."""
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
+        db = await get_db()
+        try:
             async with db.execute(
                 "SELECT rod_level, rod_durability FROM economy_users WHERE user_id = ?",
                 (user_id,)
             ) as cursor:
                 row = await cursor.fetchone()
+        finally:
+            await db.close()
         
         if not row:
             return 1, ROD_LEVELS[1]["durability"]
@@ -23,7 +26,8 @@ async def get_rod_data(user_id: int) -> tuple:
 async def update_rod_data(user_id: int, durability: int, level: int = None):
     """Update rod durability (and level if provided)."""
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
+        db = await get_db()
+        try:
             if level is not None:
                 await db.execute(
                     "UPDATE economy_users SET rod_durability = ?, rod_level = ? WHERE user_id = ?",
@@ -34,6 +38,9 @@ async def update_rod_data(user_id: int, durability: int, level: int = None):
                     "UPDATE economy_users SET rod_durability = ? WHERE user_id = ?",
                     (durability, user_id)
                 )
+            await db.commit()
+        finally:
+            await db.close()
             await db.commit()
     except Exception as e:
         pass

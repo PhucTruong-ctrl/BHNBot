@@ -106,7 +106,7 @@
         {
           "type": "triple_money",
           "chance": 0.8,
-          "message": "Lão đưa bạn một túi Hạt nặng trĩu! Giao dịch thành công! 💰"
+          "message": "Lão đưa bạn một túi Hạt nặng trĩu! Giao dịch thành công! 💰\n**Nhận được:** {amount}"
         },
         {
           "type": "nothing",

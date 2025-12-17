@@ -2,7 +2,7 @@
 
 import random
 import aiosqlite
-from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
+from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES, get_db
 
 # ==================== EFFECT HANDLERS ====================
 # Each handler function processes one effect type
@@ -234,7 +234,8 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
         if rand < current_chance:
             # Update stats in DB
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
+                db = await get_db()
+                try:
                     if event_data.get("type") == "bad":
                         await db.execute(
                             "UPDATE economy_users SET bad_events_encountered = bad_events_encountered + 1 WHERE user_id = ?",
@@ -249,6 +250,8 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                         if hasattr(cog, 'check_achievement'):
                             await cog.check_achievement(user_id, "child_of_sea", channel, guild_id)
                     await db.commit()
+                finally:
+                    await db.close()
             except:
                 pass
             

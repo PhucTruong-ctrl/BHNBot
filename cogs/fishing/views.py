@@ -4,7 +4,7 @@ import discord
 import random
 import aiosqlite
 from database_manager import remove_item, add_seeds, get_inventory
-from .constants import ALL_FISH, DB_PATH
+from .constants import ALL_FISH, DB_PATH, get_db
 from .glitch import apply_display_glitch
 
 class FishSellView(discord.ui.View):
@@ -180,7 +180,12 @@ class FishSellView(discord.ui.View):
                 description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**{keo_ly_message}",
                 color=discord.Color.green()
             )
-            await interaction.followup.send(embed=embed, ephemeral=False)
+            
+            # Disable all buttons to prevent further interactions
+            for item in self.children:
+                item.disabled = True
+            
+            await interaction.followup.send(embed=embed, ephemeral=False, view=self)
             
             fish_count = sum(self.caught_items.values())
             print(f"[FISHING] [SELL] {interaction.user.name} (user_id={self.user_id}) seed_change=+{total_money} fish_count={fish_count} fish_types={len(self.caught_items)}")

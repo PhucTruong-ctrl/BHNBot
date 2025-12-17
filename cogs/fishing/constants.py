@@ -2,10 +2,18 @@
 
 import json
 import os
+import aiosqlite
 
 DB_PATH = "./data/database.db"
+DB_TIMEOUT = 10.0  # 10 seconds timeout
 FISHING_DATA_PATH = "./data/fishing_data.json"
 LEGENDARY_FISH_PATH = "./data/legendaryFish_data.json"
+
+async def get_db():
+    """Get database connection with timeout and WAL mode for better concurrency"""
+    db = await aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT)
+    await db.execute("PRAGMA journal_mode=WAL")
+    return db
 
 # ==================== LOAD FISH DATA FROM JSON ====================
 def load_fishing_data():

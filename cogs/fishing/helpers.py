@@ -2,13 +2,14 @@
 
 import aiosqlite
 import json
-from .constants import DB_PATH, COMMON_FISH_KEYS, RARE_FISH_KEYS, LEGENDARY_FISH_KEYS, ALL_FISH
+from .constants import DB_PATH, COMMON_FISH_KEYS, RARE_FISH_KEYS, LEGENDARY_FISH_KEYS, ALL_FISH, get_db
 
 async def track_caught_fish(user_id: int, fish_key: str) -> bool:
     """Track that user caught this fish type for collection book.
     Returns True if first time catching this fish."""
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
+        db = await get_db()
+        try:
             async with db.execute(
                 "SELECT id FROM fish_collection WHERE user_id = ? AND fish_key = ?",
                 (user_id, fish_key)
@@ -22,10 +23,14 @@ async def track_caught_fish(user_id: int, fish_key: str) -> bool:
                 )
                 await db.commit()
                 return True
+        finally:
+            await db.close()
     except Exception as e:
-        pass
+        print(f"[COLLECTION] Error tracking fish {fish_key} for user {user_id}: {e}")
+        # Try to create table if it doesn't exist
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
+            db = await get_db()
+            try:
                 await db.execute("""
                     CREATE TABLE IF NOT EXISTS fish_collection (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,23 +41,30 @@ async def track_caught_fish(user_id: int, fish_key: str) -> bool:
                     )
                 """)
                 await db.commit()
-                return await track_caught_fish(user_id, fish_key)
+            finally:
+                await db.close()
+            # Retry after creating table
+            return await track_caught_fish(user_id, fish_key)
         except Exception as e2:
-            pass
+            print(f"[COLLECTION] Failed to create fish_collection table: {e2}")
     
     return False
 
 async def get_collection(user_id: int) -> dict:
     """Get user's fish collection."""
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
+        db = await get_db()
+        try:
             async with db.execute(
                 "SELECT fish_key, caught_at FROM fish_collection WHERE user_id = ? ORDER BY caught_at",
                 (user_id,)
             ) as cursor:
                 rows = await cursor.fetchall()
                 return {row[0]: row[1] for row in rows}
-    except:
+        finally:
+            await db.close()
+    except Exception as e:
+        print(f"[COLLECTION] Error getting collection for user {user_id}: {e}")
         return {}
 
 async def check_collection_complete(user_id: int) -> bool:

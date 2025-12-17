@@ -9,6 +9,13 @@ from typing import Dict, Any, List, Optional, Tuple
 import json
 
 DB_PATH = "./data/database.db"
+DB_TIMEOUT = 10.0  # 10 seconds timeout for database operations
+
+async def get_db_connection(db_path: str = DB_PATH):
+    """Get database connection with proper timeout and WAL mode"""
+    db = await aiosqlite.connect(db_path, timeout=DB_TIMEOUT)
+    await db.execute("PRAGMA journal_mode=WAL")
+    return db
 
 class CacheEntry:
     """Cache entry with TTL (Time To Live)"""
@@ -46,9 +53,12 @@ class DatabaseManager:
             if not entry.is_expired():
                 return entry.data
         
-        async with aiosqlite.connect(self.db_path) as db:
+        db = await get_db_connection(self.db_path)
+        try:
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchall()
+        finally:
+            await db.close()
         
         # Cache if requested
         if use_cache and cache_key:
@@ -64,9 +74,12 @@ class DatabaseManager:
             if not entry.is_expired():
                 return entry.data
         
-        async with aiosqlite.connect(self.db_path) as db:
+        db = await get_db_connection(self.db_path)
+        try:
             async with db.execute(query, params) as cursor:
                 result = await cursor.fetchone()
+        finally:
+            await db.close()
         
         # Cache if requested
         if use_cache and cache_key:
@@ -76,9 +89,12 @@ class DatabaseManager:
     
     async def modify(self, query: str, params: tuple = ()):
         """Execute INSERT/UPDATE/DELETE query"""
-        async with aiosqlite.connect(self.db_path) as db:
+        db = await get_db_connection(self.db_path)
+        try:
             await db.execute(query, params)
             await db.commit()
+        finally:
+            await db.close()
         
         # Invalidate relevant caches
         self._invalidate_cache_pattern(query)
@@ -99,10 +115,13 @@ class DatabaseManager:
     
     async def batch_modify(self, operations: List[Tuple[str, tuple]]):
         """Execute multiple INSERT/UPDATE/DELETE in a single transaction"""
-        async with aiosqlite.connect(self.db_path) as db:
+        db = await get_db_connection(self.db_path)
+        try:
             for query, params in operations:
                 await db.execute(query, params)
             await db.commit()
+        finally:
+            await db.close()
         
         # Invalidate caches
         for query, _ in operations:

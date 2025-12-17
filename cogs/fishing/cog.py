@@ -216,12 +216,15 @@ class FishingCog(commands.Cog):
                     print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} action=rod_repaired new_durability={rod_durability}")
                     # Track rods repaired for achievement
                     try:
-                        async with aiosqlite.connect(DB_PATH) as db:
+                        db = await get_db()
+                        try:
                             await db.execute(
                                 "UPDATE economy_users SET rods_repaired = rods_repaired + 1 WHERE user_id = ?",
                                 (user_id,)
                             )
                             await db.commit()
+                        finally:
+                            await db.close()
                         # Check achievement: diligent_smith (100 repairs)
                         await self.check_achievement(user_id, "diligent_smith", channel, guild_id)
                     except Exception as e:
@@ -3481,6 +3484,11 @@ class FishingCog(commands.Cog):
             amount = selected_reward.get("amount", 150)
             await add_seeds(user_id, amount)
             result_text = selected_reward["message"]
+            # Add amount to message if not already included
+            if "{amount}" in result_text:
+                result_text = result_text.replace("{amount}", f"**{amount} Hạt**")
+            elif "Hạt" not in result_text:
+                result_text += f" (**+{amount} Hạt**)"
             print(f"[NPC] User {user_id} received {amount} seeds from {npc_type}")
         
         elif reward_type == "pearl":
@@ -3509,7 +3517,15 @@ class FishingCog(commands.Cog):
             # Calculate 3x fish price
             price = fish_info["sell_price"] * 3
             await add_seeds(user_id, price)
-            result_text = selected_reward["message"].replace("tiền gấp 3", f"**{price} Hạt**")
+            # Replace placeholder in message with actual amount
+            result_text = selected_reward["message"]
+            if "{amount}" in result_text:
+                result_text = result_text.replace("{amount}", f"**{price} Hạt**")
+            elif "tiền gấp 3" in result_text:
+                result_text = result_text.replace("tiền gấp 3", f"**{price} Hạt**")
+            else:
+                # If no placeholder, append the amount to the message
+                result_text += f" (**+{price} Hạt**)"
             print(f"[NPC] User {user_id} received {price} seeds (3x) from {npc_type}")
         
         elif reward_type == "legendary_buff":
