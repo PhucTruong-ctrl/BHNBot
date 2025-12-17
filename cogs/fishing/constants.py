@@ -148,6 +148,7 @@ SELL_EVENTS_PATH = "./data/sell_events.json"
 NPC_EVENTS_PATH = "./data/npc_events.json"
 FISHING_ACHIEVEMENTS_PATH = "./data/fishing_achievements.json"
 FISHING_ITEMS_PATH = "./data/fishing_items.json"
+DISASTER_EVENTS_PATH = "./data/disaster_events.json"
 
 
 def load_json_config(path: str, default):
@@ -195,3 +196,9 @@ SELL_MESSAGES = _sell_events_data.get("messages", {})
 
 # NPC encounters
 NPC_ENCOUNTERS = load_json_config(NPC_EVENTS_PATH, {})
+
+
+# Disaster events (Server-wide calamities)
+_disaster_events_data = load_json_config(DISASTER_EVENTS_PATH, {"disasters": []})
+DISASTER_EVENTS = _disaster_events_data.get("disasters", [])
+GLOBAL_DISASTER_COOLDOWN = _disaster_events_data.get("global_cooldown", 3600)

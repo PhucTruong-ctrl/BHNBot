@@ -84,6 +84,21 @@ class FishingCog(commands.Cog):
         self.phoenix_buff_active = {}  # {user_id: expiry_time} - For Cá Phượng Hoàng lông vũ buff
         self.thuong_luong_timers = {}  # {user_id: timestamp} - For Thuồng Luồng ritual
         # Note: 52Hz detection flag is now handled by ConsumableCog.detected_52hz
+        
+        # Global Calamity (Disaster) tracking
+        self.is_server_frozen = False
+        self.freeze_end_time = 0
+        self.last_disaster_time = 0  # Timestamp when last disaster ended
+        self.global_disaster_cooldown = GLOBAL_DISASTER_COOLDOWN  # Default 3600s (1 hour)
+        self.current_disaster = None  # Store current disaster info
+        self.disaster_culprit = None  # User who caused the disaster
+        
+        # Disaster effects tracking (expire when disaster ends)
+        self.disaster_catch_rate_penalty = 0.0  # Percentage to reduce catch rate (0.2 = -20%)
+        self.disaster_cooldown_penalty = 0  # Extra seconds to add to cooldown
+        self.disaster_fine_amount = 0  # Amount to deduct from players
+        self.disaster_display_glitch = False  # Whether to show garbled fish names
+        self.disaster_effect_end_time = 0  # When current disaster effects expire
     
     # ==================== COMMANDS ====================
     
@@ -126,6 +141,38 @@ class FishingCog(commands.Cog):
             rod_lvl, rod_durability = await get_rod_data(user_id)
             rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
             inventory = await get_inventory(user_id) # Fetch inventory once
+            
+            # --- CHECK FOR SERVER FREEZE (GLOBAL DISASTER) ---
+            if self.is_server_frozen:
+                remaining_freeze = int(self.freeze_end_time - time.time())
+                if remaining_freeze > 0:
+                    username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                    
+                    # Determine message based on current disaster
+                    if self.current_disaster:
+                        disaster_emoji = self.current_disaster.get("emoji", "🚨")
+                        disaster_name = self.current_disaster.get("name", "Disaster")
+                        culprit_text = f" (Tội đồ: {self.disaster_culprit})" if self.disaster_culprit else ""
+                        message = f"⛔ **SERVER ĐANG BẢO TRÌ ĐỘT XUẤT!**\n\n{disaster_emoji} **{disaster_name}**{culprit_text}\n\nVui lòng chờ **{remaining_freeze}s** nữa để khôi phục hoạt động!"
+                    else:
+                        message = f"⛔ Server đang bị khóa. Vui lòng chờ **{remaining_freeze}s** nữa!"
+                    
+                    if is_slash:
+                        await ctx.followup.send(message, ephemeral=True)
+                    else:
+                        await ctx.send(message)
+                    return
+                else:
+                    # Freeze time expired, reset
+                    self.is_server_frozen = False
+                    self.current_disaster = None
+                    self.disaster_culprit = None
+                    # Clear all disaster effects
+                    self.disaster_catch_rate_penalty = 0.0
+                    self.disaster_cooldown_penalty = 0
+                    self.disaster_fine_amount = 0
+                    self.disaster_display_glitch = False
+                    self.disaster_effect_end_time = 0
 
             # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
             # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
@@ -182,6 +229,18 @@ class FishingCog(commands.Cog):
             # Ensure user exists
             username = ctx.author.name if not is_slash else ctx_or_interaction.user.name
             await get_or_create_user(user_id, username)
+            
+            # --- TRIGGER GLOBAL DISASTER (0.05% chance) ---
+            disaster_result = await self.trigger_global_disaster(user_id, username, channel)
+            if disaster_result.get("triggered"):
+                # Disaster was triggered! User's cast is cancelled
+                culprit_reward = disaster_result["disaster"]["reward_message"]
+                thank_you_msg = f"🎭 {culprit_reward}"
+                if is_slash:
+                    await ctx.followup.send(thank_you_msg)
+                else:
+                    await ctx.send(thank_you_msg)
+                return
         
             # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
             has_worm = inventory.get("worm", 0) > 0
@@ -215,6 +274,16 @@ class FishingCog(commands.Cog):
                 print(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
         
             # --- KẾT THÚC LOGIC MỚI ---
+            
+            # --- APPLY DISASTER FINE (Police Raid effect) ---
+            disaster_fine_msg = ""
+            if self.disaster_fine_amount > 0 and time.time() < self.disaster_effect_end_time:
+                current_balance = await get_user_balance(user_id)
+                if current_balance >= self.disaster_fine_amount:
+                    await add_seeds(user_id, -self.disaster_fine_amount)
+                    disaster_fine_msg = f"\n💰 **PHẠT HÀNH CHÍNH:** -{ self.disaster_fine_amount} Hạt do {self.current_disaster.get('name', 'sự kiện')}"
+                    print(f"[DISASTER_FINE] {username} fined {self.disaster_fine_amount} seeds due to {self.current_disaster.get('key')}")
+
         
             print(f"[FISHING] [START] {username} (user_id={user_id}) rod_level={rod_lvl} rod_durability={rod_durability} has_bait={has_worm}")
         
@@ -222,7 +291,14 @@ class FishingCog(commands.Cog):
             triggers_global_reset = False
             
             # Set cooldown using rod-based cooldown (will be cleared if global_reset triggers)
-            self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
+            cooldown_time = rod_config["cd"]
+            
+            # *** APPLY DISASTER COOLDOWN PENALTY (Shark Bite Cable effect) ***
+            if self.disaster_cooldown_penalty > 0 and time.time() < self.disaster_effect_end_time:
+                cooldown_time += self.disaster_cooldown_penalty
+                print(f"[DISASTER] {username} cooldown increased by {self.disaster_cooldown_penalty}s due to {self.current_disaster.get('name', 'disaster')}")
+            
+            self.fishing_cooldown[user_id] = time.time() + cooldown_time
         
             # Casting animation
             wait_time = random.randint(1, 5)
@@ -553,6 +629,13 @@ class FishingCog(commands.Cog):
                     rare_ratio = min(0.95, rare_ratio + 0.75)  # +75% rare chance
                     print(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
             
+                # *** APPLY DISASTER CATCH RATE PENALTY ***
+                current_time = time.time()
+                if self.disaster_catch_rate_penalty > 0 and current_time < self.disaster_effect_end_time:
+                    # Apply catch rate penalty (e.g., 0.5 = 50% reduction)
+                    rare_ratio = rare_ratio * (1.0 - self.disaster_catch_rate_penalty)
+                    print(f"[DISASTER] {username} catch rate reduced by {int(self.disaster_catch_rate_penalty*100)}% due to {self.current_disaster.get('name', 'disaster')}")
+            
                 common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
             
                 is_rare = random.choices([False, True], weights=[common_ratio, rare_ratio], k=1)[0]
@@ -799,7 +882,12 @@ class FishingCog(commands.Cog):
                 title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
         
             # Build description with broken rod warning if needed
-            desc_parts = ["\n".join(fish_display) if fish_display else "Không có gì"]
+            display_content = "\n".join(fish_display) if fish_display else "Không có gì"
+            
+            # *** APPLY DISPLAY GLITCH EFFECT ***
+            display_content = self.apply_display_glitch(display_content)
+            
+            desc_parts = [display_content]
             if is_broken_rod:
                 desc_parts.append("\n⚠️ **CẢNH BÁO: Cần câu gãy!** (Chỉ 1% cá hiếm, 1 item/lần, không rương)")
         
@@ -2679,6 +2767,96 @@ class FishingCog(commands.Cog):
         except Exception as e:
             print(f"[FISHING] Error checking tree boost: {e}")
         return False
+    
+    async def trigger_global_disaster(self, user_id: int, username: str, channel) -> dict:
+        """
+        Trigger a server-wide disaster event.
+        Returns: {triggered: bool, disaster: dict or None}
+        """
+        current_time = time.time()
+        
+        # Check if server is in global cooldown period
+        if current_time - self.last_disaster_time < self.global_disaster_cooldown:
+            return {"triggered": False, "reason": "global_cooldown"}
+        
+        # Roll for disaster (0.05% chance)
+        if random.random() >= 0.0005:
+            return {"triggered": False, "reason": "no_trigger"}
+        
+        # DISASTER TRIGGERED!
+        disaster = random.choice(DISASTER_EVENTS)
+        disaster_duration = disaster.get("duration", 300)
+        
+        self.is_server_frozen = True
+        self.freeze_end_time = current_time + disaster_duration
+        self.last_disaster_time = self.freeze_end_time
+        self.current_disaster = disaster
+        self.disaster_culprit = username
+        self.disaster_effect_end_time = current_time + disaster_duration
+        
+        # Extract and store disaster effects
+        effects = disaster.get("effects", {})
+        self.disaster_catch_rate_penalty = effects.get("catch_rate_penalty", 0.0)
+        self.disaster_cooldown_penalty = effects.get("cooldown_penalty", 0)
+        self.disaster_fine_amount = effects.get("fine_amount", 0)
+        self.disaster_display_glitch = effects.get("display_glitch", False)
+        
+        # Format announcement message
+        announcement = disaster["effects"]["message_template"].format(player=username)
+        
+        # Create embed for announcement
+        embed = discord.Embed(
+            title=f"{disaster['emoji']} {disaster['name'].upper()}",
+            description=announcement,
+            color=discord.Color.dark_red()
+        )
+        embed.set_footer(text=f"Thời gian phục hồi: {disaster_duration}s")
+        
+        # Send announcement
+        try:
+            await channel.send(embed=embed)
+            print(f"[DISASTER] {disaster['key']} triggered by {username}. Duration: {disaster_duration}s")
+        except Exception as e:
+            print(f"[DISASTER] Error sending announcement: {e}")
+        
+        # Apply specific effects based on disaster type
+        if disaster["effects"].get("freeze_server"):
+            # Server is frozen, no additional action needed (is_server_frozen already set)
+            pass
+        
+        if disaster["effects"].get("fine_applies_to") == "all_online":
+            # Apply fine to all online users
+            fine_amount = disaster["effects"].get("fine_amount", 0)
+            if fine_amount > 0:
+                # This will be applied when users try to fish
+                print(f"[DISASTER] Fine of {fine_amount} seeds will be applied to all online users")
+        
+        return {
+            "triggered": True,
+            "disaster": disaster,
+            "culprit": username,
+            "duration": disaster_duration
+        }
+    
+    def apply_display_glitch(self, text: str) -> str:
+        """Apply display glitch effect to text (garble fish names)."""
+        if not self.disaster_display_glitch or time.time() >= self.disaster_effect_end_time:
+            return text
+        
+        # Create garbled version by replacing some characters
+        import string
+        garble_chars = "▓░█╬▄▀┃┫┬┪◄►▼▲"
+        result = ""
+        for char in text:
+            if char in string.ascii_letters or char in "0123456789":
+                # 40% chance to garble letter/digit
+                if random.random() < 0.4:
+                    result += random.choice(garble_chars)
+                else:
+                    result += char
+            else:
+                result += char
+        return result
     
     async def add_inventory_item(self, user_id: int, item_name: str, item_type: str):
         """Add item to inventory."""

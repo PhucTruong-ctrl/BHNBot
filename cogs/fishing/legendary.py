@@ -19,8 +19,24 @@ class LegendaryBossFightView(discord.ui.View):
         self.channel = channel
         self.guild_id = guild_id
         self.fought = False
+        
+        # Add buttons conditionally
+        # Always add "Giật Mạnh" button
+        jerk_btn = discord.ui.Button(label="🔴 GIẬT MẠNH (10%)", style=discord.ButtonStyle.danger)
+        jerk_btn.callback = self.jerk_hard
+        self.add_item(jerk_btn)
+        
+        # Only add "Dìu Cá" button if rod is level 5
+        if self.rod_level >= 5:
+            guide_btn = discord.ui.Button(label="🌊 DÌU CÁ (65%)", style=discord.ButtonStyle.primary)
+            guide_btn.callback = self.guide_fish
+            self.add_item(guide_btn)
+        
+        # Always add "Cắt Dây" button
+        cut_btn = discord.ui.Button(label="✂️ CẮT DÂY (An Toàn)", style=discord.ButtonStyle.secondary)
+        cut_btn.callback = self.cut_line
+        self.add_item(cut_btn)
     
-    @discord.ui.button(label="🔴 GIẬT MẠNH (10%)", style=discord.ButtonStyle.danger)
     async def jerk_hard(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Aggressive method: 10% win rate, breaks rod on failure."""
         if interaction.user.id != self.user_id:
@@ -76,7 +92,6 @@ class LegendaryBossFightView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
     
-    @discord.ui.button(label="🌊 DÌU CÁ (65%)", style=discord.ButtonStyle.primary)
     async def guide_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Technique method: 65% win rate, high skill requirement (Lv5 only), -40 durability on failure."""
         if interaction.user.id != self.user_id:
@@ -162,7 +177,6 @@ class LegendaryBossFightView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
     
-    @discord.ui.button(label="✂️ CẮT DÂY (An Toàn)", style=discord.ButtonStyle.secondary)
     async def cut_line(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Safe method: No penalty but no catch."""
         if interaction.user.id != self.user_id:
