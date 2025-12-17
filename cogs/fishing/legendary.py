@@ -223,9 +223,10 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
         
         # 1. THUỒNG LUỒNG - Sacrifice condition (3 fish sacrificed)
         if legendary_key == "thuong_luong":
-            if cog.sacrifices.get(user_id, 0) >= 3:
+            sacrifice_count = await cog.get_sacrifice_count(user_id)
+            if sacrifice_count >= 3:
                 # Ritual complete - spawn it and reset counter
-                cog.sacrifices[user_id] = 0
+                await cog.reset_sacrifice_count(user_id)
                 return legendary
             continue
         

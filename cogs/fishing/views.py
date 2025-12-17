@@ -52,6 +52,13 @@ class FishSellView(discord.ui.View):
                     base_price = fish_info['sell_price']
                     total_money += base_price * quantity
             
+            # *** APPLY KECO LỲ BUFF (2x sell price for 10 minutes) ***
+            keo_ly_message = ""
+            if hasattr(self.cog, 'check_emotional_state') and self.cog.check_emotional_state(self.user_id, "keo_ly"):
+                total_money = total_money * 2
+                keo_ly_message = " (💅 **Keo Lỳ Buff x2**)"
+                print(f"[FISHING] [SELL] {interaction.user.name} applied keo_ly buff x2 multiplier")
+            
             # Apply harvest boost (x2) if active in the server
             from database_manager import db_manager
             from datetime import datetime
@@ -140,7 +147,7 @@ class FishSellView(discord.ui.View):
             fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
             embed = discord.Embed(
                 title=f"**{interaction.user.name}** đã bán {sum(self.caught_items.values())} con cá",
-                description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**",
+                description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**{keo_ly_message}",
                 color=discord.Color.green()
             )
             await interaction.followup.send(embed=embed, ephemeral=False)

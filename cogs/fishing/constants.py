@@ -170,7 +170,7 @@ GIFT_ITEMS = [v.get("key") for v in ALL_ITEMS_DATA.values() if v.get("type") == 
 
 # NOW populate CHEST_LOOT with trash items (after TRASH_ITEMS is defined)
 for trash_item in TRASH_ITEMS:
-    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 1
+    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 2
 
 
 # Achievements (fishing-specific)

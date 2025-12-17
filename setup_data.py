@@ -44,7 +44,8 @@ def init_database():
                     last_daily DATETIME,
                     last_chat_reward DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    sacrifice_count INTEGER DEFAULT 0
                 )''')
     
     # Relationships: Track affinity between users

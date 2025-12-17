@@ -74,8 +74,10 @@ class FishingCog(commands.Cog):
         self.legendary_buff_users = {}  # For ghost NPC buff
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
         
-        # Legendary summoning tracking
-        self.sacrifices = {}  # {user_id: count} - For Thuồng Luồng sacrifice ritual
+        # Emotional state tracking
+        self.emotional_states = {}  # {user_id: {type: "suy"|"keo_ly"|"lag", duration: int, start_time: float}}
+        
+        # Legendary summoning tracking (sacrifice count now persisted in database)
         self.dark_map_active = {}  # {user_id: True/False} - For Cthulhu Non
         self.dark_map_casts = {}  # {user_id: remaining_casts} - Track remaining casts with map
         self.dark_map_cast_count = {}  # {user_id: current_cast} - Track current cast number (1-10) with dark map
@@ -353,6 +355,24 @@ class FishingCog(commands.Cog):
                     event_message += " (Lần sau tránh xui!)"
                     print(f"[EVENT] {username} will avoid bad event on next cast")
             
+                elif event_result.get("custom_effect") == "suy_debuff":
+                    # Depression debuff: 50% rare catch reduction for 5 casts
+                    self.apply_emotional_state(user_id, "suy", 5)
+                    event_message += " (Bạn bị 'suy' 😭 - Giảm 50% tỉ lệ cá hiếm trong 5 lần câu)"
+                    print(f"[EVENT] {username} afflicted with suy debuff for 5 casts")
+            
+                elif event_result.get("custom_effect") == "keo_ly_buff":
+                    # Slay buff: 2x sell price for 10 minutes (600 seconds)
+                    self.apply_emotional_state(user_id, "keo_ly", 600)
+                    event_message += " (Keo Lỳ tái châu! 💅 - x2 tiền bán cá trong 10 phút)"
+                    print(f"[EVENT] {username} activated keo_ly buff for 600 seconds")
+            
+                elif event_result.get("custom_effect") == "lag_debuff":
+                    # Lag debuff: 3s delay per cast for 5 minutes (300 seconds)
+                    self.apply_emotional_state(user_id, "lag", 300)
+                    event_message += " (Mạng lag! 📶 - Bot sẽ phản hồi chậm 3s cho mỗi lần câu trong 5 phút)"
+                    print(f"[EVENT] {username} afflicted with lag debuff for 300 seconds")
+            
                 elif event_result.get("custom_effect") == "restore_durability":
                     # Hồi độ bền: +20 độ bền (không vượt quá max)
                     max_durability = rod_config["durability"]
@@ -401,6 +421,11 @@ class FishingCog(commands.Cog):
                     color=color
                 )
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
+            
+                # *** APPLY LAG DEBUFF DELAY ***
+                if self.check_emotional_state(user_id, "lag"):
+                    await asyncio.sleep(3)  # 3 second lag delay
+                    print(f"[EVENT] {username} experienced lag delay (3s)")
             
                 # Handle global reset events
                 if event_result.get("custom_effect") == "global_reset":
@@ -510,6 +535,11 @@ class FishingCog(commands.Cog):
             
                 # *** APPLY ROD LUCK BONUS ***
                 rare_ratio = min(0.9, rare_ratio + rod_config["luck"])  # Cap at 90% max
+            
+                # *** APPLY EMOTIONAL STATE: SUY DEBUFF (50% rare catch reduction) ***
+                if self.check_emotional_state(user_id, "suy"):
+                    rare_ratio = rare_ratio * 0.5  # Reduce by 50%
+                    self.decrement_suy_cast(user_id)
             
                 # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
                 if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
@@ -1421,9 +1451,8 @@ class FishingCog(commands.Cog):
         # Remove fish from inventory
         await remove_item(user_id, fish_key, 1)
         
-        # Increment sacrifice counter
-        self.sacrifices[user_id] = self.sacrifices.get(user_id, 0) + 1
-        current_sacrifices = self.sacrifices[user_id]
+        # Increment sacrifice counter (using database, not RAM)
+        current_sacrifices = await self.add_sacrifice_count(user_id, 1)
         
         fish_name = ALL_FISH[fish_key]['name']
         fish_emoji = ALL_FISH[fish_key]['emoji']
@@ -1436,7 +1465,7 @@ class FishingCog(commands.Cog):
             )
         else:
             # Reset and prepare for spawn
-            self.sacrifices[user_id] = 0
+            await self.reset_sacrifice_count(user_id)
             embed = discord.Embed(
                 title="⚡ LỄ VẬT HOÀN THÀNH ⚡",
                 description=f"Bạn ném {fish_emoji} **{fish_name}** xuống dòng sông lần thứ 3!\n\n🌊 Dòng nước xoáy dữ dội! Lần quăng cần tiếp theo (trong 5 phút) sẽ gặp **THUỒNG LUỒNG**!",
@@ -1752,8 +1781,9 @@ class FishingCog(commands.Cog):
         await self._upgrade_rod_action(ctx)
     
     async def _upgrade_rod_action(self, ctx_or_interaction):
-        """Upgrade rod logic - requires correct amount of rod_material
+        """Upgrade rod logic - requires correct amount of rod_material AND seeds
         1->2: 1 mat | 2->3: 2 mat | 3->4: 3 mat | 4->5: 4 mat
+        Plus seeds cost from ROD_LEVELS[next_lvl]['cost']
         """
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
@@ -1782,10 +1812,12 @@ class FishingCog(commands.Cog):
         # Material requirements based on current level
         # 1->2: 1 | 2->3: 2 | 3->4: 3 | 4->5: 4
         materials_needed = cur_lvl
+        cost_in_seeds = rod_info["cost"]
         
-        # Check if user has enough rod_material
+        # Check if user has enough rod_material AND seeds
         inventory = await get_inventory(user_id)
         has_material = inventory.get("rod_material", 0)
+        user_balance = await get_user_balance(user_id)
         
         if has_material < materials_needed:
             embed = discord.Embed(
@@ -1799,11 +1831,40 @@ class FishingCog(commands.Cog):
                 await ctx.send(embed=embed)
             return
         
-        # Deduct materials
-        await remove_item(user_id, "rod_material", materials_needed)
+        if user_balance < cost_in_seeds:
+            embed = discord.Embed(
+                title="❌ Không Đủ Hạt",
+                description=f"Để nâng **{ROD_LEVELS[cur_lvl]['name']}** lên **{rod_info['name']}** cần **{cost_in_seeds} Hạt**!\n\nBạn có: **{user_balance}/{cost_in_seeds} Hạt**",
+                color=discord.Color.red()
+            )
+            if is_slash:
+                await ctx.followup.send(embed=embed, ephemeral=True)
+            else:
+                await ctx.send(embed=embed)
+            return
         
-        # Upgrade rod: restore full durability
-        await self.update_rod_data(user_id, rod_info["durability"], next_lvl)
+        # ATOMIC TRANSACTION: Deduct materials AND seeds
+        try:
+            # Deduct materials
+            await remove_item(user_id, "rod_material", materials_needed)
+            
+            # Deduct seeds
+            await add_seeds(user_id, -cost_in_seeds)
+            
+            # Upgrade rod: restore full durability
+            await update_rod_data_module(user_id, rod_info["durability"], next_lvl)
+        except Exception as e:
+            # Rollback on error
+            embed = discord.Embed(
+                title="❌ Lỗi Nâng Cấp",
+                description=f"Có lỗi xảy ra: {str(e)}",
+                color=discord.Color.red()
+            )
+            if is_slash:
+                await ctx.followup.send(embed=embed, ephemeral=True)
+            else:
+                await ctx.send(embed=embed)
+            return
         
         # Check rod_tycoon achievement if level 5
         if next_lvl == 5:
@@ -1819,7 +1880,7 @@ class FishingCog(commands.Cog):
         embed.add_field(name="⚡ Thời Gian Chờ", value=f"**{rod_info['cd']}s** (giảm từ {ROD_LEVELS[cur_lvl]['cd']}s)", inline=True)
         embed.add_field(name="🛡️ Độ Bền", value=f"**{rod_info['durability']}** (tăng từ {ROD_LEVELS[cur_lvl]['durability']})", inline=True)
         embed.add_field(name="🍀 May Mắn", value=f"**+{int(rod_info['luck']*100)}%** Cá Hiếm" if rod_info['luck'] > 0 else "**Không thay đổi**", inline=True)
-        embed.add_field(name="💰 Chi Phí", value=f"**{materials_needed} Vật Liệu Nâng Cấp Cần**", inline=False)
+        embed.add_field(name="💰 Chi Phí", value=f"**{materials_needed}** Vật Liệu + **{cost_in_seeds}** Hạt", inline=False)
         embed.set_footer(text="Độ bền đã được hồi phục hoàn toàn!")
         
         if is_slash:
@@ -1827,7 +1888,7 @@ class FishingCog(commands.Cog):
         else:
             await ctx.send(embed=embed)
         
-        print(f"[ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} upgraded rod to level {next_lvl} using {materials_needed} rod_material")
+        print(f"[ROD] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} upgraded rod to level {next_lvl} using {materials_needed} rod_material + {cost_in_seeds} seeds")
     
     @app_commands.command(name="bonphan", description="Dùng Phân Bón để nuôi cây (tăng 50-100 điểm)")
     async def use_fertilizer_slash(self, interaction: discord.Interaction):
@@ -1840,7 +1901,7 @@ class FishingCog(commands.Cog):
         await self._use_fertilizer_action(ctx)
     
     async def _use_fertilizer_action(self, ctx_or_interaction):
-        """Use fertilizer logic"""
+        """Use all fertilizer logic - automatically consumes ALL fertilizer"""
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         guild_id = ctx_or_interaction.guild.id
         
@@ -1855,7 +1916,9 @@ class FishingCog(commands.Cog):
         
         # Check if user has fertilizer
         inventory = await get_inventory(user_id)
-        if inventory.get("fertilizer", 0) <= 0:
+        fertilizer_count = inventory.get("fertilizer", 0)
+        
+        if fertilizer_count <= 0:
             msg = "❌ Bạn không có Phân Bón!"
             if is_slash:
                 await ctx.followup.send(msg, ephemeral=True)
@@ -1863,11 +1926,12 @@ class FishingCog(commands.Cog):
                 await ctx.send(msg)
             return
         
-        # Remove fertilizer
-        await remove_item(user_id, "fertilizer", 1)
+        # Remove ALL fertilizer at once
+        await remove_item(user_id, "fertilizer", fertilizer_count)
         
-        # Add to tree
-        boost_amount = random.randint(50, 100)
+        # Add to tree - EXP per fertilizer is 75 (same as /bophan)
+        exp_per_fertilizer = 75
+        total_exp = fertilizer_count * exp_per_fertilizer
         
         try:
             # Get current tree state
@@ -1881,8 +1945,8 @@ class FishingCog(commands.Cog):
             # Calculate new progress and potential level-up
             level_reqs = tree_cog.get_level_reqs(season)
             req = level_reqs.get(lvl + 1, level_reqs[6])
-            new_progress = prog + boost_amount
-            new_total = total + boost_amount
+            new_progress = prog + total_exp
+            new_total = total + total_exp
             new_level = lvl
             leveled_up = False
             
@@ -1902,31 +1966,55 @@ class FishingCog(commands.Cog):
                 await db.commit()
             
             # Add contributor entry for fertilizer
-            await tree_cog.add_contributor(user_id, guild_id, boost_amount, contribution_type="fertilizer")
+            await tree_cog.add_contributor(user_id, guild_id, total_exp, contribution_type="fertilizer")
             
-            # Build response embed
+            # Build response embed - show breakdown of all fertilizer used
             embed = discord.Embed(
-                title="🌾 Phân Bón Hiệu Quả!",
-                description=f"**+{boost_amount}** điểm cho Cây Server!",
+                title="🌾 Bón Phân Thành Công!",
+                description=f"**Tự động sài hết tất cả Phân Bón**",
                 color=discord.Color.green()
+            )
+            
+            embed.add_field(
+                name="📦 Số Lượng Phân Bón",
+                value=f"**{fertilizer_count}** cái",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="⚡ EXP/cái",
+                value=f"{exp_per_fertilizer} EXP",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📊 Tổng EXP",
+                value=f"**{total_exp}** EXP",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🌳 Cây được cộng",
+                value=f"**+{total_exp}** điểm",
+                inline=False
             )
             
             # Add level-up notification if applicable
             if leveled_up:
                 embed.add_field(
-                    name="🌳 CÂY ĐÃ LÊN CẤP!",
+                    name="🎉 CÂY ĐÃ LÊN CẤP!",
                     value=f"**{TREE_NAMES[new_level]}** (Cấp {new_level}/6)",
                     inline=False
                 )
                 embed.color = discord.Color.gold()
             else:
                 embed.add_field(
-                    name="Tiến độ",
+                    name="📈 Tiến độ",
                     value=f"**{int((new_progress / req) * 100) if req > 0 else 0}%** ({new_progress}/{req})",
                     inline=False
                 )
             
-            print(f"[FERTILIZER] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} used fertilizer: +{boost_amount} (Tree Level {new_level})")
+            print(f"[FERTILIZER] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} used {fertilizer_count} fertilizer: +{total_exp} EXP (Tree Level {new_level})")
             
             # Update tree embed in the designated channel
             if tree_channel_id:
@@ -1940,13 +2028,18 @@ class FishingCog(commands.Cog):
                     if tree_channel:
                         user_name = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
                         notification_embed = discord.Embed(
-                            title="🌾 Phân Bón Được Sử Dụng!",
-                            description=f"**{user_name}** đã dùng Phân Bón",
+                            title="🌾 Bón Phân Cho Cây!",
+                            description=f"**{user_name}** đã sài **{fertilizer_count}** Phân Bón",
                             color=discord.Color.green()
                         )
                         notification_embed.add_field(
-                            name="📈 Mức tăng",
-                            value=f"**+{boost_amount}** điểm",
+                            name="⚡ Tổng EXP",
+                            value=f"**{total_exp}** EXP → **+{total_exp}** điểm cho cây",
+                            inline=False
+                        )
+                        notification_embed.add_field(
+                            name="📋 Chi tiết",
+                            value=f"{fertilizer_count} × {exp_per_fertilizer}",
                             inline=False
                         )
                         
@@ -2731,17 +2824,93 @@ class FishingCog(commands.Cog):
             except:
                 pass
             
-            # Send announcement
+            # Get user info for @mention
+            user = None
+            user_name = f"<@{user_id}>"
+            if guild_id:
+                try:
+                    guild = self.bot.get_guild(guild_id)
+                    if guild:
+                        user = guild.get_member(user_id)
+                        if user:
+                            user_name = user.mention
+                except:
+                    pass
+            
+            # Count total players and players with this achievement for rarity calculation
+            rarity_percent = 0
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    # Get total achievement count for this user to see if they have it
+                    async with db.execute(
+                        f"SELECT COUNT(*) FROM economy_users WHERE achievements LIKE ?",
+                        (f'%"{achievement_key}"%',)
+                    ) as cursor:
+                        count_row = await cursor.fetchone()
+                        achievement_count = count_row[0] if count_row else 0
+                    
+                    # Get total registered users (non-zero seed balance or has played)
+                    async with db.execute(
+                        "SELECT COUNT(*) FROM economy_users WHERE seeds > 0 OR id IS NOT NULL"
+                    ) as cursor:
+                        total_row = await cursor.fetchone()
+                        total_users = total_row[0] if total_row else 1
+                    
+                    # Calculate rarity percentage (now including the new achiever)
+                    rarity_percent = round((achievement_count / total_users * 100), 2) if total_users > 0 else 0
+            except Exception as e:
+                print(f"[ACHIEVEMENT] Error calculating rarity: {e}")
+                rarity_percent = 0
+            
+            # Send announcement with full details
             if channel:
+                from datetime import datetime
+                current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                
                 embed = discord.Embed(
-                    title=f"🏆 THÀNH TỰU: {achievement['emoji']} {achievement['name']}",
-                    description=achievement['description'],
-                    color=discord.Color.gold()
+                    title=f"🏆 THÀNH TỰU MỚI! {achievement['emoji']}",
+                    description=f"**{achievement['name']}**\n\n{achievement['description']}",
+                    color=discord.Color.gold(),
+                    timestamp=datetime.now()
                 )
-                embed.add_field(name="Phần Thưởng", value=f"+{achievement['reward_coins']} Hạt", inline=False)
+                
+                # User info with mention
+                embed.add_field(
+                    name="👤 Người Chơi",
+                    value=user_name,
+                    inline=True
+                )
+                
+                # Rarity
+                rarity_emoji = "🔥" if rarity_percent <= 5 else "⭐" if rarity_percent <= 15 else "✨"
+                embed.add_field(
+                    name=f"{rarity_emoji} Độ Hiếm",
+                    value=f"{rarity_percent}% người chơi sở hữu",
+                    inline=True
+                )
+                
+                # Reward
+                embed.add_field(
+                    name="💰 Phần Thưởng",
+                    value=f"+{achievement['reward_coins']} Hạt",
+                    inline=True
+                )
+                
+                # Role if applicable
                 if achievement.get("role_id"):
-                    embed.add_field(name="🎖️ Role Cấp", value=f"Bạn đã nhận được role thành tựu!", inline=False)
-                await channel.send(embed=embed)
+                    embed.add_field(
+                        name="🎖️ Role Cấp",
+                        value="Nhân được role thành tựu!",
+                        inline=False
+                    )
+                
+                embed.set_footer(text=f"Thời gian: {current_time}")
+                
+                try:
+                    await channel.send(embed=embed)
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error sending announcement: {e}")
+            
             return True
         
         return False
@@ -2944,6 +3113,120 @@ class FishingCog(commands.Cog):
         )
         
         return result_embed
+    
+    # ==================== SACRIFICE SYSTEM (Database Persisted) ====================
+    
+    async def get_sacrifice_count(self, user_id: int) -> int:
+        """Get current sacrifice count from database (persisted)."""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT sacrifice_count FROM economy_users WHERE user_id = ?",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    return row[0] if row and row[0] else 0
+        except Exception as e:
+            print(f"[SACRIFICE] Error getting sacrifice count: {e}")
+            return 0
+    
+    async def add_sacrifice_count(self, user_id: int, amount: int = 1) -> int:
+        """Increment sacrifice count in database and return new count."""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Get current count
+                current = await self.get_sacrifice_count(user_id)
+                new_count = current + amount
+                
+                # Update database
+                await db.execute(
+                    "UPDATE economy_users SET sacrifice_count = ? WHERE user_id = ?",
+                    (new_count, user_id)
+                )
+                await db.commit()
+                print(f"[SACRIFICE] Updated user {user_id} sacrifice count: {current} → {new_count}")
+                return new_count
+        except Exception as e:
+            print(f"[SACRIFICE] Error updating sacrifice count: {e}")
+            return await self.get_sacrifice_count(user_id)
+    
+    async def reset_sacrifice_count(self, user_id: int) -> None:
+        """Reset sacrifice count to 0 in database."""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute(
+                    "UPDATE economy_users SET sacrifice_count = 0 WHERE user_id = ?",
+                    (user_id,)
+                )
+                await db.commit()
+                print(f"[SACRIFICE] Reset user {user_id} sacrifice count to 0")
+        except Exception as e:
+            print(f"[SACRIFICE] Error resetting sacrifice count: {e}")
+
+    # ==================== EMOTIONAL STATE SYSTEM ====================
+    
+    def apply_emotional_state(self, user_id: int, state_type: str, duration: int) -> None:
+        """Apply emotional state (debuff/buff) to user.
+        
+        state_type: "suy" (50% rare reduction for 5 casts), "keo_ly" (2x sell for 10 min), "lag" (3s delay for 5 min)
+        duration: In casts for "suy", in seconds for "keo_ly" and "lag"
+        """
+        import time
+        self.emotional_states[user_id] = {
+            "type": state_type,
+            "duration": duration,
+            "start_time": time.time(),
+            "remaining": duration  # For suy, this is remaining casts
+        }
+    
+    def check_emotional_state(self, user_id: int, state_type: str) -> bool:
+        """Check if user has active emotional state of type."""
+        if user_id not in self.emotional_states:
+            return False
+        
+        state = self.emotional_states[user_id]
+        if state["type"] != state_type:
+            return False
+        
+        import time
+        elapsed = time.time() - state["start_time"]
+        
+        if state_type == "suy":
+            # For suy, check remaining casts
+            return state["remaining"] > 0
+        else:
+            # For keo_ly and lag, check time duration
+            return elapsed < state["duration"]
+    
+    def get_emotional_state(self, user_id: int) -> dict | None:
+        """Get current emotional state or None if expired."""
+        if user_id not in self.emotional_states:
+            return None
+        
+        state = self.emotional_states[user_id]
+        import time
+        elapsed = time.time() - state["start_time"]
+        
+        if state["type"] == "suy":
+            if state["remaining"] <= 0:
+                del self.emotional_states[user_id]
+                return None
+        else:
+            if elapsed >= state["duration"]:
+                del self.emotional_states[user_id]
+                return None
+        
+        return state
+    
+    def decrement_suy_cast(self, user_id: int) -> int:
+        """Decrement suy debuff cast count. Returns remaining casts."""
+        if user_id in self.emotional_states and self.emotional_states[user_id]["type"] == "suy":
+            self.emotional_states[user_id]["remaining"] -= 1
+            remaining = self.emotional_states[user_id]["remaining"]
+            if remaining <= 0:
+                del self.emotional_states[user_id]
+            return remaining
+        return 0
 
 async def setup(bot):
     """Setup fishing cog."""

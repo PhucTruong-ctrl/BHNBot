@@ -449,6 +449,66 @@
       "type": "good",
       "name": "🗺️ Mảnh Bản Đồ Cổ",
       "effect": "gain_map_piece"
+    },
+    "nyc_gank": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "😭 Gặp NYC!",
+      "effect": "suy_debuff"
+    },
+    "diarrhea": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "🚽 Tào Tháo!",
+      "effect": "cooldown_medium"
+    },
+    "tiktok_fail": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "📱 Sống Ảo!",
+      "effect": "lose_catch"
+    },
+    "check_var": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "👊 Check Var!",
+      "effect": "lose_money_100"
+    },
+    "fan_girl": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "💅 Fan Hâm Mộ!",
+      "effect": "gain_money_medium"
+    },
+    "trash_food": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "🤢 Trúng Thực!",
+      "effect": "lose_worm"
+    },
+    "drama_queen": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "👂 Hít Drama!",
+      "effect": "lose_turn"
+    },
+    "crypto_scam": {
+      "chance": 0.001,
+      "type": "bad",
+      "name": "📉 Lùa Gà!",
+      "effect": "crypto_loss"
+    },
+    "sugar_baby": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🤑 Được Bao Nuôi!",
+      "effect": "gain_money_huge"
+    },
+    "wifi_lag": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "📶 Mạng 4 Chữ!",
+      "effect": "lag_debuff"
     }
   },
   "messages": {
@@ -526,6 +586,16 @@
     "monsoon": "Gió mùa về! Cá nổi lên hít thở rợp cả mặt hồ. Cơ hội ngàn năm có một! 🌬️🐟",
     "temple_bell": "Tiếng chuông chùa xa xa vọng lại... Tâm tịnh, tay nhanh, mọi phiền muộn (và cooldown) đều tan biến. 🔔✨",
     "warp_gate": "Lưỡi câu của bạn móc trúng nút 'Refresh' của Vũ Trụ. Hệ thống thời gian bị reset! 🌌🔄",
-    "ancient_map": "Bạn câu được một mảnh bản đồ cổ xưa! Nó có thể là chìa khóa để mở ra những bí ẩn. 🗺️✨"
+    "ancient_map": "Bạn câu được một mảnh bản đồ cổ xưa! Nó có thể là chìa khóa để mở ra những bí ẩn. 🗺️✨",
+    "nyc_gank": "Đang câu thì thấy Người Yêu Cũ đi với ghệ mới. Bạn bị 'suy' ngang, cất cần đi về khóc tiếng Mán. Hiệu ứng: Giảm 50% tỉ lệ ra cá hiếm trong 5 lần câu tiếp theo. 💔🥀",
+    "diarrhea": "Bún đậu mắm tôm hại bạn rồi! Cái bụng nó biểu tình dữ dội. Phải đi 'xả lũ' gấp! 🚽💩 (Chờ 5 phút)",
+    "tiktok_fail": "Vừa câu vừa quay Tóp Tóp tính làm idol. Ai ngờ trượt chân té sấp mặt, cá chạy mất, điện thoại ướt nhẹp. Xu cà na! 📱💦",
+    "check_var": "Lỡ nhìn đểu mấy anh 'báo đời' ở hồ. Bị gọi lại 'check var', tốn 100 Hạt tiền ngu xin lỗi. 👊💸",
+    "fan_girl": "Một em gái Gen Z thấy bạn câu ngầu quá nên xin in-tư và donate tiền trà sữa! Keo lỳ tái châu! 💅✨",
+    "trash_food": "Vừa ăn cái bánh mì ôi thiu. Giờ tay run cầm cần không vững, móc mồi toàn trượt. Mất toi con giun! 🤢",
+    "drama_queen": "Nghe bàn bên cạnh đang bóc phốt 'tiểu tam'. Máu hóng hớt nổi lên, bạn bỏ cần sang hóng chuyện quên cả câu. 👂🔥",
+    "crypto_scam": "Nghe lời thằng bạn rủ đầu tư tiền ảo 'câu cá coin'. Vừa vào lệnh thì sập sàn. Bay màu 50% số tiền hiện có! 📉📉",
+    "sugar_baby": "Một phú bà/phú ông đi ngang qua thấy bạn vất vả quá. Tặng nóng một cục tiền bảo 'Về nhà với chị/anh'. 🤑💋",
+    "wifi_lag": "Nhà mạng 4 chữ bóp băng thông! Ping 999ms, bạn giật cần nhưng server không phản hồi. Bot sẽ delay 5 giây cho mỗi lần câu trong 5 phút tới. Cá ăn no rồi bơi đi. 📶❌"
   }
 }

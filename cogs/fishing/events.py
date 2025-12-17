@@ -133,6 +133,41 @@ async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
     result["lose_money"] = random.randint(50, 150)
     return result
 
+async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Crypto scam - lose 50% current balance."""
+    # Get user balance from kwargs (passed by trigger_random_event)
+    if "user_id" in kwargs:
+        from database_manager import get_user_balance
+        import asyncio
+        balance = asyncio.run(get_user_balance(kwargs["user_id"]))
+        lost = int(balance * 0.5)
+        result["lose_money"] = lost
+    else:
+        result["lose_money"] = 200
+    return result
+
+async def handle_suy_debuff(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Depression debuff - 50% rare catch rate for 5 casts."""
+    result["custom_effect"] = "suy_debuff"
+    result["debuff_type"] = "suy"
+    result["debuff_duration"] = 5  # 5 casts
+    return result
+
+async def handle_keo_ly_buff(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Slay buff - 2x sell price for 10 minutes."""
+    result["custom_effect"] = "keo_ly_buff"
+    result["buff_type"] = "keo_ly"
+    result["buff_duration"] = 600  # 10 minutes in seconds
+    return result
+
+async def handle_lag_debuff(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Lag debuff - 3s delay per cast for 5 minutes."""
+    result["custom_effect"] = "lag_debuff"
+    result["debuff_type"] = "lag"
+    result["debuff_duration"] = 300  # 5 minutes in seconds
+    result["lag_delay"] = 3  # 3 second delay
+    return result
+
 # ==================== EFFECT HANDLERS MAPPING ====================
 # Dictionary mapping effect names to their handlers
 # EASY TO EXTEND: Just add a new handler + add entry to this dict
@@ -172,6 +207,10 @@ EFFECT_HANDLERS = {
     "avoid_bad_event": handle_avoid_bad_event,
     "global_reset": handle_global_reset,
     "bet_win": handle_bet_win,
+    "crypto_loss": handle_crypto_loss,
+    "suy_debuff": handle_suy_debuff,
+    "keo_ly_buff": handle_keo_ly_buff,
+    "lag_debuff": handle_lag_debuff,
 }
 
 async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1) -> dict:
