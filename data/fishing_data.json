@@ -121,7 +121,7 @@
         "category": "common"
       },
       {
-        "key": "ca_diu",
+        "key": "ca_du",
         "name": "Cá Đù",
         "emoji": "🐟",
         "sell_price": 7,
@@ -156,7 +156,7 @@
         "category": "common"
       },
       {
-        "key": "ca_bep",
+        "key": "ca_bop",
         "name": "Cá Bớp",
         "emoji": "🦈",
         "sell_price": 7,
@@ -366,7 +366,7 @@
         "category": "common"
       },
       {
-        "key": "ca_bay_mau",
+        "key": "ca_7_mau",
         "name": "Cá 7 Màu",
         "emoji": "🌈",
         "sell_price": 10,
@@ -548,7 +548,7 @@
         "category": "common"
       },
       {
-        "key": "tom_hum_dat",
+        "key": "tom_dat",
         "name": "Tôm Đất",
         "emoji": "🦐",
         "sell_price": 15,
@@ -604,7 +604,7 @@
         "category": "common"
       },
       {
-        "key": "ech",
+        "key": "con_ech",
         "name": "Con Ếch",
         "emoji": "🐸",
         "sell_price": 11,
@@ -688,14 +688,14 @@
         "category": "common"
       },
       {
-        "key": "sam_bien",
+        "key": "con_sam",
         "name": "Con Sam",
         "emoji": "🛸",
         "sell_price": 15,
         "category": "common"
       },
       {
-        "key": "ca_chich",
+        "key": "ca_trich",
         "name": "Cá Trích",
         "emoji": "🐟",
         "sell_price": 11,
@@ -751,7 +751,7 @@
         "category": "rare"
       },
       {
-        "key": "ca_betta",
+        "key": "betta_rong",
         "name": "Betta Rồng",
         "emoji": "🐉",
         "sell_price": 50,
@@ -786,7 +786,7 @@
         "category": "rare"
       },
       {
-        "key": "tom_hum_alaska",
+        "key": "tom_alaska",
         "name": "Tôm Alaska",
         "emoji": "🦞",
         "sell_price": 55,
@@ -849,7 +849,7 @@
         "category": "rare"
       },
       {
-        "key": "ca_su_mi",
+        "key": "ca_napoleon",
         "name": "Cá Napoleon",
         "emoji": "🎩",
         "sell_price": 55,
@@ -863,14 +863,14 @@
         "category": "rare"
       },
       {
-        "key": "ca_duoi_gai",
+        "key": "duoi_gai_doc",
         "name": "Đuối Gai Độc",
         "emoji": "💉",
         "sell_price": 50,
         "category": "rare"
       },
       {
-        "key": "ca_hong_vy",
+        "key": "hong_vy_mo_vit",
         "name": "Hồng Vỹ Mỏ Vịt",
         "emoji": "🦆",
         "sell_price": 55,
@@ -933,21 +933,21 @@
         "category": "rare"
       },
       {
-        "key": "ca_rong_ngan",
+        "key": "ngan_long",
         "name": "Ngân Long",
         "emoji": "🐲",
         "sell_price": 70,
         "category": "rare"
       },
       {
-        "key": "ca_rong_kim",
+        "key": "kim_long",
         "name": "Kim Long",
         "emoji": "🐲",
         "sell_price": 80,
         "category": "rare"
       },
       {
-        "key": "ca_rong_huyet",
+        "key": "huyet_long",
         "name": "Huyết Long",
         "emoji": "🐲",
         "sell_price": 85,
@@ -1256,7 +1256,7 @@
       },
       {
         "key": "thuy_quai_nessie",
-        "name": "Quái Vật Nessie",
+        "name": "Thuỷ Quái Nessie",
         "emoji": "🦕",
         "sell_price": 190,
         "category": "rare"
@@ -1276,7 +1276,7 @@
         "category": "rare"
       },
       {
-        "key": "ca_blob",
+        "key": "ca_giot_nuoc",
         "name": "Cá Giọt Nước",
         "emoji": "💧",
         "sell_price": 110,
@@ -1297,7 +1297,7 @@
         "category": "rare"
       },
       {
-        "key": "ca_coelacanth",
+        "key": "ca_vay_tay",
         "name": "Cá Vây Tay",
         "emoji": "🦴",
         "sell_price": 150,
@@ -1353,7 +1353,7 @@
         "category": "rare"
       },
       {
-        "key": "ca_chay",
+        "key": "ca_chuon",
         "name": "Cá Chuồn",
         "emoji": "✈️",
         "sell_price": 100,
@@ -1367,7 +1367,7 @@
         "category": "rare"
       },
       {
-        "key": "ca_vang_khong_lo",
+        "key": "ca_vang_giant",
         "name": "Cá Vàng Giant",
         "emoji": "🐡",
         "sell_price": 110,
@@ -1388,7 +1388,7 @@
         "category": "rare"
       },
       {
-        "key": "tom_hum_dat_vang",
+        "key": "tom_hum_vang",
         "name": "Tôm Hùm Vàng",
         "emoji": "🏆",
         "sell_price": 160,

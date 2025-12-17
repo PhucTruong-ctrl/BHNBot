@@ -491,6 +491,63 @@ class CommunityCog(commands.Cog):
             
             await self.process_contribution(interaction, amount)
 
+    @app_commands.command(name="bophan", description="🌾 Bón Phân Cho Cây - Tự động sài tất cả phân bón")
+    async def fertilize_tree(self, interaction: discord.Interaction):
+        """Use all fertilizer in inventory and convert to EXP"""
+        await interaction.response.defer(ephemeral=True)
+        
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
+        # Get all fertilizer from inventory
+        from database_manager import get_inventory
+        inventory = await get_inventory(user_id)
+        fertilizer_count = inventory.get("fertilizer", 0)
+        
+        if fertilizer_count <= 0:
+            await interaction.followup.send("❌ Bạn không có Phân Bón nào!", ephemeral=True)
+            return
+        
+        # Calculate EXP from fertilizer (each fertilizer = 50-100 exp, average 75)
+        exp_per_fertilizer = 75
+        total_exp = fertilizer_count * exp_per_fertilizer
+        
+        # Add contribution to tree contributors
+        await self.add_contributor(user_id, guild_id, total_exp, contribution_type="fertilizer")
+        
+        # Remove fertilizer from inventory
+        from database_manager import remove_item
+        await remove_item(user_id, "fertilizer", fertilizer_count)
+        
+        # Update tree progress
+        tree_level, tree_progress, total_contributed, season, tree_channel_id, tree_message_id = await self.get_tree_data(guild_id)
+        
+        # Tree EXP: each fertilizer contributes its EXP as well (50-100 each)
+        tree_exp_gained = total_exp // 1  # Use same EXP for tree
+        new_total = total_contributed + tree_exp_gained
+        
+        await self.update_tree_progress(guild_id, tree_level, tree_progress + tree_exp_gained, new_total)
+        
+        # Create result embed
+        embed = discord.Embed(
+            title="🌾 Bón Phân Cho Cây",
+            description=f"✅ **{interaction.user.name}** vừa sài {fertilizer_count} phân bón!",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="🌾 Phân Bón Sài", value=f"**{fertilizer_count}** cái", inline=False)
+        embed.add_field(name="⭐ EXP Nhân Viên", value=f"**+{total_exp}** EXP", inline=True)
+        embed.add_field(name="🌳 EXP Cây", value=f"**+{tree_exp_gained}** EXP", inline=True)
+        embed.set_footer(text=f"Tổng EXP Cây: {new_total}")
+        
+        await interaction.followup.send(embed=embed, ephemeral=False)
+        
+        # Update tree message if exists
+        if tree_channel_id:
+            try:
+                await self.update_or_create_pin_message(guild_id, tree_channel_id)
+            except:
+                pass
+
     @app_commands.command(name="cay", description="Xem trạng thái cây server")
     async def show_tree(self, interaction: discord.Interaction):
         """Show current tree status"""

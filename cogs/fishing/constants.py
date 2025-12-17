@@ -102,7 +102,7 @@ CATCH_COUNT_WEIGHTS = [70, 20, 8, 1.5, 0.5]  # Tỉ lệ câu 1, 2, 3, 4, 5 con 
 ALL_FISH["pearl"] = {"key": "pearl", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
 ALL_FISH["rod_material"] = {"key": "rod_material", "name": "Vật Liệu Nâng Cấp Cần", "emoji": "⚙️", "sell_price": 0}
 
-# Chest loot
+# Chest loot (will be populated after TRASH_ITEMS is defined)
 CHEST_LOOT = {
     "nothing": 15,  # 15% chance to get nothing
     "fertilizer": 20,
@@ -116,10 +116,6 @@ CHEST_LOOT = {
     "manh_ban_do_d": 3,
     # Trash items from fishing (2% each = 60 total, so ~1% each)
 }
-
-# Add trash items to CHEST_LOOT with small probability
-for trash_key in TRASH_ITEMS:
-    CHEST_LOOT[trash_key.get("key", f"trash_{trash_key}")] = 1
 
 # System values
 WORM_COST = 5
@@ -171,6 +167,10 @@ ALL_ITEMS_DATA = _all_items_data.get("items", {})
 TRASH_ITEMS = [v for v in ALL_ITEMS_DATA.values() if v.get("type") == "trash"]
 LEGENDARY_ITEMS = [v for v in ALL_ITEMS_DATA.values() if v.get("type") == "legendary_component"]
 GIFT_ITEMS = [v.get("key") for v in ALL_ITEMS_DATA.values() if v.get("type") == "gift"]
+
+# NOW populate CHEST_LOOT with trash items (after TRASH_ITEMS is defined)
+for trash_item in TRASH_ITEMS:
+    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 1
 
 
 # Achievements (fishing-specific)

@@ -1312,18 +1312,6 @@ class FishingCog(commands.Cog):
             )
             embed.set_footer(text=f"👤 {user_name}")
         
-        else:  # gift_random
-            gift = random.choice(GIFT_ITEMS)
-            await self.add_inventory_item(user_id, gift, "gift")
-            gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
-                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp"}
-            embed = discord.Embed(
-                title="🎁 Rương Kho Báu",
-                description=f"**{gift_names[gift]}** (Dùng `/tangqua` để tặng cho ai đó)",
-                color=discord.Color.magenta()
-            )
-            embed.set_footer(text=f"👤 {user_name}")
-        
         # Check if it's a trash item
         elif loot_type in [t.get("key") for t in TRASH_ITEMS]:
             trash_item = next((t for t in TRASH_ITEMS if t.get("key") == loot_type), None)
@@ -1335,6 +1323,18 @@ class FishingCog(commands.Cog):
                     color=discord.Color.greyple()
                 )
                 embed.set_footer(text=f"👤 {user_name}")
+        
+        else:  # gift_random
+            gift = random.choice(GIFT_ITEMS)
+            await self.add_inventory_item(user_id, gift, "gift")
+            gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
+                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp"}
+            embed = discord.Embed(
+                title="🎁 Rương Kho Báu",
+                description=f"**{gift_names[gift]}** (Dùng `/tangqua` để tặng cho ai đó)",
+                color=discord.Color.magenta()
+            )
+            embed.set_footer(text=f"👤 {user_name}")
         
         if is_slash:
             await ctx.followup.send(embed=embed)
