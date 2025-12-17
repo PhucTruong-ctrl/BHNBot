@@ -222,6 +222,8 @@ class FishingCog(commands.Cog):
                                 (user_id,)
                             )
                             await db.commit()
+                        # Check achievement: diligent_smith (100 repairs)
+                        await self.check_achievement(user_id, "diligent_smith", channel, guild_id)
                     except Exception as e:
                         print(f"[ACHIEVEMENT] Error updating rods_repaired for {user_id}: {e}")
                 else:
@@ -284,6 +286,8 @@ class FishingCog(commands.Cog):
                             (user_id,)
                         )
                         await db.commit()
+                    # Check achievement: worm_destroyer (500 worms)
+                    await self.check_achievement(user_id, "worm_destroyer", channel, guild_id)
                 except:
                     pass
                 print(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
@@ -335,7 +339,7 @@ class FishingCog(commands.Cog):
         
             # ==================== TRIGGER RANDOM EVENTS ====================
         
-            event_result = await trigger_random_event(self, user_id, channel.guild.id, rod_lvl)
+            event_result = await trigger_random_event(self, user_id, channel.guild.id, rod_lvl, channel)
         
             # If user avoided a bad event, show what they avoided
             if event_result.get("avoided", False):
@@ -347,6 +351,8 @@ class FishingCog(commands.Cog):
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
                 await asyncio.sleep(1)
                 casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
+                # Skip event processing since it was avoided - continue to normal fishing
+                event_result["triggered"] = False
         
             # Check if user was protected from bad event
             was_protected = False
@@ -374,7 +380,20 @@ class FishingCog(commands.Cog):
                                 "UPDATE economy_users SET good_events_encountered = good_events_encountered + 1 WHERE user_id = ?",
                                 (user_id,)
                             )
+                        else:
+                            # Track bad events
+                            await db.execute(
+                                "UPDATE economy_users SET bad_events_encountered = bad_events_encountered + 1 WHERE user_id = ?",
+                                (user_id,)
+                            )
                         await db.commit()
+                    # Check achievements for events
+                    if is_event_good:
+                        await self.check_achievement(user_id, "lucky", channel, guild_id)
+                    else:
+                        # Check bad event achievements
+                        await self.check_achievement(user_id, "unlucky", channel, guild_id)
+                        await self.check_achievement(user_id, "survivor", channel, guild_id)
                 except:
                     pass
             
@@ -680,6 +699,12 @@ class FishingCog(commands.Cog):
                     is_new_collection = await track_caught_fish(user_id, fish['key'])
                     if is_new_collection:
                         print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
+                        # Check first_catch achievement (catch any fish for the first time)
+                        await self.check_achievement(user_id, "first_catch", channel, guild_id)
+                        # Check if collection is complete
+                        is_collection_complete = await check_collection_complete(user_id)
+                        if is_collection_complete:
+                            await self.check_achievement(user_id, "collection_master", channel, guild_id)
                     if fish['key'] not in fish_only_items:
                         fish_only_items[fish['key']] = 0
                     fish_only_items[fish['key']] += 1
@@ -692,6 +717,12 @@ class FishingCog(commands.Cog):
                     is_new_collection = await track_caught_fish(user_id, fish['key'])
                     if is_new_collection:
                         print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
+                        # Check first_catch achievement (catch any fish for the first time)
+                        await self.check_achievement(user_id, "first_catch", channel, guild_id)
+                        # Check if collection is complete
+                        is_collection_complete = await check_collection_complete(user_id)
+                        if is_collection_complete:
+                            await self.check_achievement(user_id, "collection_master", channel, guild_id)
                     if fish['key'] not in fish_only_items:
                         fish_only_items[fish['key']] = 0
                     fish_only_items[fish['key']] += 1
@@ -748,6 +779,8 @@ class FishingCog(commands.Cog):
                             (trash_count, user_id)
                         )
                         await db.commit()
+                    # Check achievement: trash_master (100 trash)
+                    await self.check_achievement(user_id, "trash_master", channel, guild_id)
                 except:
                     pass
                 print(f"[FISHING] {username} caught trash: {trash_items_caught}")
@@ -766,6 +799,8 @@ class FishingCog(commands.Cog):
                             (chest_count, user_id)
                         )
                         await db.commit()
+                    # Check achievement: treasure_hunter (50 chests)
+                    await self.check_achievement(user_id, "treasure_hunter", channel, guild_id)
                 except Exception as e:
                     print(f"[ACHIEVEMENT] Error updating chests_caught for {user_id}: {e}")
         
@@ -809,6 +844,8 @@ class FishingCog(commands.Cog):
                                 (user_id,)
                             )
                             await db.commit()
+                        # Check achievement: market_unluckiest (3 times robbed)
+                        await self.check_achievement(user_id, "market_unluckiest", channel, guild_id)
                     except Exception as e:
                         print(f"[ACHIEVEMENT] Error updating robbed_count for {user_id}: {e}")
                     if fish_display:
@@ -1252,6 +1289,8 @@ class FishingCog(commands.Cog):
                                     (user_id,)
                                 )
                                 await db.commit()
+                            # Check achievement: treasure_hunter (50 chests)
+                            await self.check_achievement(user_id, "treasure_hunter", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
                         except Exception as e:
                             print(f"[ACHIEVEMENT] Error updating chests_caught (sell special) for {user_id}: {e}")
                     
@@ -1342,6 +1381,14 @@ class FishingCog(commands.Cog):
                         
                         # Commit transaction
                         await db.commit()
+                        
+                        # Check achievements for sell events
+                        if triggered_event == "market_boom":
+                            await self.check_achievement(user_id, "market_manipulator", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+                        elif triggered_event == "god_of_wealth":
+                            await self.check_achievement(user_id, "god_of_wealth", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+                        elif triggered_event == "thief_run":
+                            await self.check_achievement(user_id, "market_unluckiest", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
                         
                         # CRITICAL: Invalidate inventory cache after successful transaction
                         db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
@@ -1663,6 +1710,9 @@ class FishingCog(commands.Cog):
         
         # Increment sacrifice counter (using database, not RAM)
         current_sacrifices = await self.add_sacrifice_count(user_id, 1)
+        
+        # Check dragon_slayer achievement (100 sacrifices)
+        await self.check_achievement(user_id, "dragon_slayer", channel, guild_id)
         
         fish_name = global_apply_display_glitch(ALL_FISH[fish_key]['name'])
         fish_emoji = ALL_FISH[fish_key]['emoji']
@@ -2002,6 +2052,8 @@ class FishingCog(commands.Cog):
                     (trash_used, user_id)
                 )
                 await db.commit()
+            # Check achievement: master_recycler (1000 trash recycled)
+            await self.check_achievement(user_id, "master_recycler", channel, guild_id)
         except Exception as e:
             print(f"[ACHIEVEMENT] Error updating trash_recycled for {user_id}: {e}")
         

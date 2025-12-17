@@ -371,7 +371,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     return None
 
 async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
-    """Add legendary fish to user's collection."""
+    """Add legendary fish to user's collection. Returns updated legendary list."""
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
@@ -390,5 +390,7 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
                 (json.dumps(legendary_list), count, user_id)
             )
             await db.commit()
+            return legendary_list
     except Exception as e:
         pass
+    return []

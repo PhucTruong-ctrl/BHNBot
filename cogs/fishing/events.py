@@ -212,7 +212,7 @@ EFFECT_HANDLERS = {
     "lag_debuff": handle_lag_debuff,
 }
 
-async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1) -> dict:
+async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1, channel=None) -> dict:
     """Trigger random event during fishing using Strategy Pattern."""
     result = {
         "triggered": False, "type": None, "message": "",
@@ -245,6 +245,9 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                             "UPDATE economy_users SET global_reset_triggered = global_reset_triggered + 1 WHERE user_id = ?",
                             (user_id,)
                         )
+                        # Check child_of_sea achievement
+                        if hasattr(cog, 'check_achievement'):
+                            await cog.check_achievement(user_id, "child_of_sea", channel, guild_id)
                     await db.commit()
             except:
                 pass
