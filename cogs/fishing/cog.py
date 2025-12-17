@@ -1572,17 +1572,17 @@ class FishingCog(commands.Cog):
     
     # ==================== LEGENDARY SUMMONING ====================
     
-    @app_commands.command(name="hiente", description="🌊 Hiến Tế Cá Cho Sông - Chỉ cá có giá >= 150 hạt")
-    @app_commands.describe(fish_key="Fish key - chỉ cá có giá >= 150 hạt (vd: ca_chep_vang, ca_chim)")
+    @app_commands.command(name="hiente", description="🌊 Hiến Tế Cá Cho Sông - Chỉ cá có giá > 150 hạt")
+    @app_commands.describe(fish_key="Fish key - chỉ cá có giá > 150 hạt (vd: ca_chep_vang, ca_chim)")
     async def hiente_slash(self, interaction: discord.Interaction, fish_key: str):
         await self._hiente_action(interaction, fish_key, is_slash=True)
     
-    @commands.command(name="hiente", description="🌊 Hiến Tế Cá - Dùng !hiente [fish_key] (cá >= 150 hạt)")
+    @commands.command(name="hiente", description="🌊 Hiến Tế Cá - Dùng !hiente [fish_key] (cá > 150 hạt)")
     async def hiente_prefix(self, ctx, fish_key: str = None):
         if not fish_key:
             embed = discord.Embed(
                 title="❌ Thiếu tham số",
-                description="**Cú pháp:** `!hiente <fish_key>`\n\n**Ví dụ:** `!hiente ca_chep_vang`\n\n**Lưu ý:** Chỉ cá có giá bán >= 150 hạt",
+                description="**Cú pháp:** `!hiente <fish_key>`\n\n**Ví dụ:** `!hiente ca_chep_vang`\n\n**Lưu ý:** Chỉ cá có giá bán > 150 hạt",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
@@ -3232,29 +3232,25 @@ class FishingCog(commands.Cog):
                     pass
             
             # Count total players and players with this achievement for rarity calculation
+        # Note: Achievements are tracked in memory, not in DB column
+        rarity_percent = 0
+        try:
+            # Count how many users have this achievement in memory
+            achievement_count = sum(1 for user_achievements in self.user_achievements.values() if achievement_key in user_achievements)
+            
+            # Get total registered users (non-zero seed balance or has played)
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT COUNT(*) FROM economy_users WHERE seeds >= 0"
+                ) as cursor:
+                    total_row = await cursor.fetchone()
+                    total_users = total_row[0] if total_row else 1
+            
+            # Calculate rarity percentage (now including the new achiever)
+            rarity_percent = round((achievement_count / total_users * 100), 2) if total_users > 0 else 0
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error calculating rarity: {e}")
             rarity_percent = 0
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    # Get total achievement count for this user to see if they have it
-                    async with db.execute(
-                        f"SELECT COUNT(*) FROM economy_users WHERE achievements LIKE ?",
-                        (f'%"{achievement_key}"%',)
-                    ) as cursor:
-                        count_row = await cursor.fetchone()
-                        achievement_count = count_row[0] if count_row else 0
-                    
-                    # Get total registered users (non-zero seed balance or has played)
-                    async with db.execute(
-                        "SELECT COUNT(*) FROM economy_users WHERE seeds > 0 OR id IS NOT NULL"
-                    ) as cursor:
-                        total_row = await cursor.fetchone()
-                        total_users = total_row[0] if total_row else 1
-                    
-                    # Calculate rarity percentage (now including the new achiever)
-                    rarity_percent = round((achievement_count / total_users * 100), 2) if total_users > 0 else 0
-            except Exception as e:
-                print(f"[ACHIEVEMENT] Error calculating rarity: {e}")
-                rarity_percent = 0
             
             # Send announcement with full details
             if channel:

@@ -138,8 +138,7 @@ async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
     # Get user balance from kwargs (passed by trigger_random_event)
     if "user_id" in kwargs:
         from database_manager import get_user_balance
-        import asyncio
-        balance = asyncio.run(get_user_balance(kwargs["user_id"]))
+        balance = await get_user_balance(kwargs["user_id"])
         lost = int(balance * 0.5)
         result["lose_money"] = lost
     else:

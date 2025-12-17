@@ -359,6 +359,7 @@ class EconomyCog(commands.Cog):
         if inventory:
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
+            from cogs.fishing.glitch import apply_display_glitch
             
             # Fish items
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
