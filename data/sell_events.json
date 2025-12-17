@@ -273,6 +273,76 @@
       "flat": -300,
       "name": "Tông VinFast!"
     },
+    "tiktok_drama": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.5,
+      "flat": 0,
+      "name": "Bị Phốt!"
+    },
+    "gaslighting": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.6,
+      "flat": 0,
+      "name": "Thao Túng!"
+    },
+    "nyc_revenge": {
+      "chance": 0.003,
+      "type": "bad",
+      "mul": 0.5,
+      "flat": -50,
+      "name": "Gặp NYC!"
+    },
+    "debt_collector": {
+      "chance": 0.002,
+      "type": "bad",
+      "mul": 0.0,
+      "flat": 0,
+      "name": "Chủ Nợ!"
+    },
+    "check_var": {
+      "chance": 0.004,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -200,
+      "name": "Check VAR!"
+    },
+    "crypto_dip": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -300,
+      "name": "Thua Coin!"
+    },
+    "sugar_daddy": {
+      "chance": 0.001,
+      "type": "good",
+      "mul": 5.0,
+      "flat": 0,
+      "name": "Sugar Daddy!"
+    },
+    "flexing_king": {
+      "chance": 0.003,
+      "type": "good",
+      "mul": 1.5,
+      "flat": 100,
+      "name": "Hệ Tư Tưởng!"
+    },
+    "livestream_sale": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.3,
+      "flat": 0,
+      "name": "Chốt Đơn!"
+    },
+    "simp_lord": {
+      "chance": 0.004,
+      "type": "good",
+      "mul": 1.2,
+      "flat": 50,
+      "name": "Gặp Simp!"
+    },
     "market_boom": {
       "chance": 0.01,
       "type": "good",
@@ -559,6 +629,16 @@
     "pearl_in_fish": "Phát hiện ngọc trai trong bụng cá! 🔮 (+1 Ngọc Trai)",
     "free_breakfast": "Bà chủ mời bạn ăn sáng miễn phí! 🍜 (+Độ bền)",
     "old_rod_gift": "Ngư dân già tặng cần câu cũ của ông! 🎣 (+Vật liệu)",
-    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)"
+    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)",
+    "tiktok_drama": "Một 'Chiến thần review' đến quán chê cá tanh, quay clip bóc phốt lên xu hướng TikTok. Khách chạy mất dép! 🎥 (Giá giảm 50%)",
+    "gaslighting": "Khách hàng áp dụng thuật 'thao túng tâm lý': 'Em bán giá này là em không thương chị, chị buồn đó'. Bạn vừa khóc vừa giảm giá. 🧠 (Giá giảm 40%)",
+    "nyc_revenge": "Người Yêu Cũ đi cùng ghệ mới ghé mua. Để tỏ ra mình ổn, bạn bán rẻ như cho. Về nhà khóc tiếng Mán. 💔 (Giá giảm 50% - 50 Hạt)",
+    "debt_collector": "Đang đếm tiền thì chủ nợ ập tới: 'Tiền đâu em?'. Bạn bị trấn lột sạch sẽ doanh thu hôm nay để trả nợ. 💸 (Mất TRẮNG tiền)",
+    "check_var": "Bạn lỡ 'nhìn đểu' mấy anh dân xã hội. Bị gọi lại 'Check VAR', tốn 200 Hạt tiền ngu xin lỗi. 🖥️ (Mất 200 Hạt)",
+    "crypto_dip": "Vừa bán cá vừa check app coin. Thấy tài khoản chia 2, bạn quăng luôn xô cá vì quá sốc. 📉 (Mất 300 Hạt)",
+    "sugar_daddy": "Một Sugar Daddy/Mommy đi siêu xe ngang qua, thấy bạn vất vả quá nên mua hết sạp với giá gấp 5 lần rồi bo thêm. 'Về nhà với chú!' 🤑 (X5 Doanh Thu)",
+    "flexing_king": "Bạn áp dụng hệ tư tưởng 'Flex đến hơi thở cuối cùng'. Khách nể cái đồng hồ Rolex (pha ke) của bạn nên mua không cần nhìn giá. ⌚ (Tăng 50% + 100 Hạt)",
+    "livestream_sale": "Bạn bật livestream chốt đơn ầm ầm: 'Mười điểm không có nhưng!'. Cá bay vèo vèo. 📱 (Tăng 30%)",
+    "simp_lord": "Một Simp Lord thấy bạn bán cá xinh/đẹp trai quá nên mua ủng hộ để lấy le. 'Em ăn cơm chưa?' 😍 (Tăng 20% + 50 Hạt)"
   }
 }

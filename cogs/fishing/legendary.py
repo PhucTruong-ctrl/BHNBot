@@ -187,7 +187,8 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     """Check if legendary fish should spawn. Each player can only catch 1 of each legendary fish.
     Checks for special summoning conditions: sacrifice, crafted bait, map, frequency, etc."""
     import json
-    
+    from database_manager import get_inventory
+
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
@@ -213,6 +214,9 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 return legendary
         return None
     
+    # Fetch inventory once for all checks
+    inventory = await get_inventory(user_id)
+    
     # Check each legendary fish for summoning conditions
     for legendary in LEGENDARY_FISH:
         # Skip if player already caught this legendary fish
@@ -221,19 +225,50 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
         
         legendary_key = legendary['key']
         
-        # 1. THUỒNG LUỒNG - Sacrifice condition (3 fish sacrificed)
+        # 1. THUỒNG LUỒNG - Progressive sacrifice chance
         if legendary_key == "thuong_luong":
             sacrifice_count = await cog.get_sacrifice_count(user_id)
             if sacrifice_count >= 3:
-                # Ritual complete - spawn it and reset counter
-                await cog.reset_sacrifice_count(user_id)
-                return legendary
+                start_time = cog.thuong_luong_timers.get(user_id)
+                if not start_time:
+                    continue
+
+                import time
+                elapsed = time.time() - start_time
+
+                # Check if ritual expired (> 5 minutes)
+                if elapsed > 300:
+                    await cog.reset_sacrifice_count(user_id)
+                    if user_id in cog.thuong_luong_timers:
+                        del cog.thuong_luong_timers[user_id]
+                    return "thuong_luong_expired"
+
+                # Progressive spawn chance with guaranteed spawn in the last minute
+                if elapsed > 240:  # 5th minute: GUARANTEED
+                    await cog.reset_sacrifice_count(user_id)
+                    if user_id in cog.thuong_luong_timers:
+                        del cog.thuong_luong_timers[user_id]
+                    return legendary
+
+                chance = 0.0
+                if elapsed <= 60:  # Minute 1
+                    chance = 0.40
+                elif elapsed <= 120:  # Minute 2
+                    chance = 0.50
+                elif elapsed <= 180:  # Minute 3
+                    chance = 0.60
+                elif elapsed <= 240:  # Minute 4
+                    chance = 0.70
+                
+                if random.random() < chance:
+                    await cog.reset_sacrifice_count(user_id)
+                    if user_id in cog.thuong_luong_timers:
+                        del cog.thuong_luong_timers[user_id]
+                    return legendary
             continue
         
         # 2. CÁ NGÂN HÀ - Special bait condition (Mồi Bụi Sao + night time)
         if legendary_key == "ca_ngan_ha":
-            from database_manager import get_inventory
-            inventory = await get_inventory(user_id)
             if inventory.get("moi_bui_sao", 0) > 0 and (0 <= current_hour < 4):
                 if random.random() < legendary["spawn_chance"]:
                     # Use the bait
@@ -248,8 +283,6 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 continue
             
             # Check if has Lông Vũ Lửa buff active
-            from database_manager import get_inventory
-            inventory = await get_inventory(user_id)
             has_buff = cog.phoenix_buff_active.get(user_id, False)
             
             if has_buff or inventory.get("long_vu_lua", 0) > 0:

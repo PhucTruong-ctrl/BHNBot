@@ -95,27 +95,26 @@
     },
     "cost": "fish"
   },
-  "black_market": {
-    "name": "🕵️ Thương Buôn Chợ Đen",
-    "description": "Một gã mặc áo choàng đen thì thầm:\n'Con cá này nhìn được đấy, ta mua **GẤP 3 LẦN** giá thị trường, bán không?'",
-    "question": "**Rủi ro:** Có 20% bị Công An bắt!",
-    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/blackmarkettrader.png",
+  "eccentric_collector": {
+    "name": "🧐 Nhà Sưu Tầm Lập Dị",
+    "description": "Một quý ông ăn mặc kỳ lạ, tay cầm kính lúp, săm soi con cá của bạn.\n'Tuyệt tác! Một mẫu vật hoàn hảo! Ta sẽ trả **GẤP 3 GIÁ** cho nó!'",
+    "question": "**Rủi ro:** Lão này hơi lập dị, có 20% khả năng lão sẽ lừa bạn.",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/collector.png",
     "chance": 0.15,
     "rewards": {
       "accept": [
         {
           "type": "triple_money",
           "chance": 0.8,
-          "message": "Giao dịch trót lọt! Bạn nhận được tiền gấp 3! 💰"
+          "message": "Lão đưa bạn một túi Hạt nặng trĩu! Giao dịch thành công! 💰"
         },
         {
-          "type": "caught",
-          "fine": 200,
+          "type": "nothing",
           "chance": 0.2,
-          "message": "🚔 **O e o e!** Công an ập tới bắt quả tang!\nBạn mất cá và bị phạt **200 Hạt**! 😱"
+          "message": "Lão ta cầm lấy con cá, cười khoái trá rồi đưa cho bạn... một cọng cỏ. 'Cảm ơn vì đã làm từ thiện!' rồi biến mất. Bạn đã bị lừa!"
         }
       ],
-      "decline": "Gã bí ẩn gật đầu rồi biến vào bóng tối."
+      "decline": "Lão già lẩm bẩm 'Đồ nhà quê không biết thưởng thức nghệ thuật!' rồi bỏ đi."
     },
     "cost": "fish"
   },
@@ -142,5 +141,129 @@
       "decline": "Bạn hoảng sợ bỏ chạy. Tiếng cười thảm thiết vang lên phía sau..."
     },
     "cost": "cooldown_5min"
+  },
+
+  "ninja_lead": {
+    "name": "🥷 Ninja Lead Huyền Thoại",
+    "description": "Một người phụ nữ bịt kín mít từ đầu đến chân, đi con xe tay ga Lead gương zin.\nChị ta phanh cháy lốp trước mặt bạn: 'Ê cu, lên xe chị chở ra bãi cá bí mật này ngon lắm!'",
+    "question": "**Bạn có dám giao tính mạng leo lên xe chị ấy không?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/ninjalead.png",
+    "chance": 0.15,
+    "rewards": {
+      "accept": [
+        {
+          "type": "legendary_buff",
+          "duration": 15,
+          "chance": 0.4,
+          "message": "🏍️ **Tốc Biến!** Chị ta xi-nhan trái rẽ phải, lạng lách đưa bạn đến 'Đảo Giấu Vàng'.\n✨ **Tăng tỉ lệ Cá Hiếm cực mạnh trong 15 phút!**"
+        },
+        {
+          "type": "cursed",
+          "amount": 50,
+          "chance": 0.4,
+          "message": "💥 **RẦM!** Chị ta tạt đầu xe tải. Bạn ngã sấp mặt xuống đường.\n💀 **Cần câu bị gãy đôi (Giảm 50 độ bền). Chị ta đã bỏ chạy!**"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.2,
+          "message": "💨 Chị ta chở bạn đi lòng vòng 3 phút rồi thả bạn lại chỗ cũ vì... quên đường. Tốn thời gian vãi! 🙄"
+        }
+      ],
+      "decline": "Bạn lắc đầu nguầy nguậy. Chị ta rồ ga bốc đầu bỏ đi, để lại đám khói đen sì."
+    },
+    "cost": "cooldown_3min"
+  },
+
+  "crypto_master": {
+    "name": "📈 Chuyên Gia Thổi Nến",
+    "description": "Một thanh niên mặc vest, tay cầm iPad hiển thị biểu đồ xanh đỏ.\n'Người anh em! Tư duy lên! Bỏ 200 Hạt vào con 'FishCoin' này, x10 tài khoản trong 5 phút!'",
+    "question": "**Bạn có muốn 'All-in' để về bờ không?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/cryptobro.png",
+    "chance": 0.1,
+    "rewards": {
+      "accept": [
+        {
+          "type": "money",
+          "amount": 2000,
+          "chance": 0.2,
+          "message": "🚀 **TO THE MOON!** Coin bơm láo x10! Bạn chốt lời ngay lập tức.\n💰 **Nhận được 2000 Hạt!** Về bờ rồi anh em ơi!"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "📉 **Úp Bô!** Vừa vào lệnh thì sàn sập. Chủ dự án đã ôm tiền bỏ trốn sang Campuchia.\n💸 **Mất trắng 200 Hạt.** Lùa gà đẳng cấp!"
+        },
+        {
+          "type": "worm",
+          "amount": 1,
+          "chance": 0.3,
+          "message": "📉 Tài khoản chia 100 lần. Bạn còn đúng cái nịt.\nThanh niên kia thương tình cho lại **1 con Giun** để làm lại cuộc đời. 🤡"
+        }
+      ],
+      "decline": "'Tư duy nghèo nàn!' - Hắn bĩu môi rồi bỏ đi tìm 'con gà' khác."
+    },
+    "cost": 200
+  },
+
+  "gym_bro": {
+    "name": "💪 Gym Bro Sáu Múi",
+    "description": "Một gã khổng lồ cơ bắp cuồn cuộn, áo ba lỗ rách nách.\n'Bro! Cơ bắp đang teo tóp! Tao cần PROTEIN! Con cá kia nhìn nhiều đạm đấy!'",
+    "question": "**Đưa cá cho hắn để nhận sự bảo kê của Gym Chúa?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/gymbro.png",
+    "chance": 0.2,
+    "rewards": {
+      "accept": [
+        {
+          "type": "rod_durability",
+          "amount": 50,
+          "chance": 0.5,
+          "message": "🏋️ **YEAH BUDDY!** Hắn ăn sống con cá rồi gồng tay uốn thẳng lại cái cần câu cong queo của bạn.\n🛠️ **Hồi phục 50 Độ Bền!** Light weight baby!"
+        },
+        {
+          "type": "worm",
+          "amount": 15,
+          "chance": 0.3,
+          "message": "Hắn cảm kích tặng bạn hũ 'Pre-Workout' (thực ra là một nắm giun đất siêu to hắn vừa đào bằng tay không).\n🪱 **Nhận 15 Mồi Câu!**"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.2,
+          "message": "Hắn ăn xong thì bị đau bụng, chạy mất dép vào bụi rậm. Không nhận được gì cả. 💩"
+        }
+      ],
+      "decline": "Hắn khóc lóc vì mất cơ bắp (Muscle Loss) rồi bỏ đi tập Squat."
+    },
+    "cost": "fish"
+  },
+
+  "tiktok_idol": {
+    "name": "💃 Idol Tóp Tóp",
+    "description": "Một cô bé đang cầm điện thoại nhảy nhót quay trend 'Vịt hóa thiên nga'.\n'Anh ơi, cho em mượn con cá làm đạo cụ quay clip đi! Em tag tên anh vào caption!'",
+    "question": "**Bạn có muốn đổi cá lấy sự nổi tiếng ảo không?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/idol.png",
+    "chance": 0.2,
+    "rewards": {
+      "accept": [
+        {
+          "type": "money",
+          "amount": 500,
+          "chance": 0.3,
+          "message": "🔥 **Lên Xu Hướng!** Clip viral 1 triệu view! Fan của cô ấy vào donate cho bạn tới tấp.\n💰 **Nhận 500 Hạt!** Idol mãi đỉnh!"
+        },
+        {
+          "type": "lucky_buff",
+          "chance": 0.4,
+          "message": "Cô ấy nhảy điệu 'Flower' tặng bạn. Bạn cảm thấy yêu đời lạ thường.\n✨ **Nhận Buff May Mắn!**"
+        },
+        {
+          "type": "cursed",
+          "amount": 20,
+          "chance": 0.3,
+          "message": "📵 **Bị Phốt!** Cô ấy cầm cá xong chê tanh, fan cô ấy vào report nick bạn.\n💀 **Bị ném đá tơi tả (Trừ 20 Độ bền cần câu để đỡ gạch đá).**"
+        }
+      ],
+      "decline": "'Hứ, đồ flop!' - Cô ấy block bạn ngoài đời thực."
+    },
+    "cost": "fish"
   }
 }

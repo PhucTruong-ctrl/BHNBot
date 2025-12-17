@@ -26,7 +26,7 @@ from database_manager import (
 class NPCEncounterView(discord.ui.View):
     """View for NPC encounter interactions."""
     def __init__(self, user_id: int, npc_type: str, npc_data: dict, fish_key: str = None):
-        super().__init__(timeout=15)
+        super().__init__(timeout=30)
         self.user_id = user_id
         self.npc_type = npc_type
         self.npc_data = npc_data
@@ -34,7 +34,7 @@ class NPCEncounterView(discord.ui.View):
         self.value = None
     
     async def on_timeout(self):
-        """View times out if no action taken within 15s"""
+        """View times out if no action taken within 30s"""
         self.value = "timeout"
         self.stop()
     
@@ -82,6 +82,7 @@ class FishingCog(commands.Cog):
         self.dark_map_casts = {}  # {user_id: remaining_casts} - Track remaining casts with map
         self.dark_map_cast_count = {}  # {user_id: current_cast} - Track current cast number (1-10) with dark map
         self.phoenix_buff_active = {}  # {user_id: expiry_time} - For Cá Phượng Hoàng lông vũ buff
+        self.thuong_luong_timers = {}  # {user_id: timestamp} - For Thuồng Luồng ritual
         # Note: 52Hz detection flag is now handled by ConsumableCog.detected_52hz
     
     # ==================== COMMANDS ====================
@@ -99,33 +100,43 @@ class FishingCog(commands.Cog):
         try:
             is_slash = isinstance(ctx_or_interaction, discord.Interaction)
             
+            # Get user_id first (before defer) for lag check
+            if is_slash:
+                user_id = ctx_or_interaction.user.id
+            else:
+                user_id = ctx_or_interaction.author.id
+            
+            # *** CHECK AND APPLY LAG DEBUFF DELAY (applies to EVERY cast) ***
+            if self.check_emotional_state(user_id, "lag"):
+                await asyncio.sleep(3)
+                username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                print(f"[EVENT] {username} experienced lag delay (3s) - start of cast")
+            
             if is_slash:
                 await ctx_or_interaction.response.defer(ephemeral=False)
-                user_id = ctx_or_interaction.user.id
                 channel = ctx_or_interaction.channel
                 guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
                 ctx = ctx_or_interaction
             else:
-                user_id = ctx_or_interaction.author.id
                 channel = ctx_or_interaction.channel
                 guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
                 ctx = ctx_or_interaction
             
-            # --- GET ROD DATA ---
+            # --- GET USER AND ROD DATA ---
             rod_lvl, rod_durability = await get_rod_data(user_id)
             rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
-            
+            inventory = await get_inventory(user_id) # Fetch inventory once
+
             # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
-        # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
-            current_inventory = await get_inventory(user_id)
-            fish_count = sum(v for k, v in current_inventory.items() if k in ALL_FISH and k not in LEGENDARY_FISH_KEYS)
+            # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
+            fish_count = sum(v for k, v in inventory.items() if k in ALL_FISH and k not in LEGENDARY_FISH_KEYS)
         
-            # If bucket is full (15+ fish), block fishing immediately
-            if fish_count >= 15:
+            # If bucket is full, block fishing immediately
+            if fish_count >= FISH_BUCKET_LIMIT:
                 username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
                 embed = discord.Embed(
                     title=f"⚠️ XÔ ĐÃ ĐẦY - {username_display}!",
-                    description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa 15).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
+                    description=f"🪣 Xô cá của bạn đã chứa {fish_count} con cá (tối đa {FISH_BUCKET_LIMIT}).\n\nHãy bán cá để có chỗ trống, rồi quay lại câu tiếp!",
                     color=discord.Color.orange()
                 )
                 embed.set_footer(text="Hãy dùng lệnh bán cá để bán bớt nhé.")
@@ -133,7 +144,7 @@ class FishingCog(commands.Cog):
                     await ctx.followup.send(embed=embed, ephemeral=True)
                 else:
                     await ctx.send(embed=embed)
-                print(f"[FISHING] [BLOCKED] {username_display} (user_id={user_id}) bucket_full fish_count={fish_count}/15")
+                print(f"[FISHING] [BLOCKED] {username_display} (user_id={user_id}) bucket_full fish_count={fish_count}/{FISH_BUCKET_LIMIT}")
                 return
         
             # --- CHECK DURABILITY & AUTO REPAIR ---
@@ -148,7 +159,7 @@ class FishingCog(commands.Cog):
                     # Auto repair
                     await add_seeds(user_id, -repair_cost)
                     rod_durability = rod_config["durability"]
-                    await update_rod_data(user_id, rod_durability)
+                    await self.update_rod_data(user_id, rod_durability)
                     repair_msg = f"\n🛠️ *Cần gãy! Đã tự động sửa (-{repair_cost} Hạt)*"
                     print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} new_durability={rod_durability}")
                 else:
@@ -173,7 +184,6 @@ class FishingCog(commands.Cog):
             await get_or_create_user(user_id, username)
         
             # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
-            inventory = await get_inventory(user_id)
             has_worm = inventory.get("worm", 0) > 0
             auto_bought = False  # Biến check xem có tự mua không
 
@@ -208,7 +218,10 @@ class FishingCog(commands.Cog):
         
             print(f"[FISHING] [START] {username} (user_id={user_id}) rod_level={rod_lvl} rod_durability={rod_durability} has_bait={has_worm}")
         
-            # Set cooldown using rod-based cooldown
+            # Track if this cast triggers global reset (will affect cooldown setting)
+            triggers_global_reset = False
+            
+            # Set cooldown using rod-based cooldown (will be cleared if global_reset triggers)
             self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
         
             # Casting animation
@@ -318,7 +331,6 @@ class FishingCog(commands.Cog):
                 # Handle special effects
                 if event_result.get("custom_effect") == "lose_all_bait":
                     # sea_sickness: Mất hết mồi
-                    inventory = await get_inventory(user_id)
                     worm_count = inventory.get("worm", 0)
                     if worm_count > 0:
                         await remove_item(user_id, "worm", worm_count)
@@ -333,7 +345,7 @@ class FishingCog(commands.Cog):
                 elif event_result.get("custom_effect") == "snake_bite":
                     # Rắn Nước: Trừ 5% tài sản
                     balance = await get_user_balance(user_id)
-                    penalty = max(10, int(balance * 0.05))  # Min 10 Hạt
+                    penalty = max(10, int(balance * SNAKE_BITE_PENALTY_PERCENT))  # Min 10 Hạt
                     await add_seeds(user_id, -penalty)
                     event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
                     print(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
@@ -392,8 +404,7 @@ class FishingCog(commands.Cog):
                         print(f"[EVENT] {username} Thời gian chờ reset")
                     else:
                         self.fishing_cooldown[user_id] = time.time() + rod_config["cd"] + event_result["cooldown_increase"]
-                else:
-                    self.fishing_cooldown[user_id] = time.time() + rod_config["cd"]
+                # Note: normal cooldown already set at line 225, only override if special cooldown_increase
             
                 # If lose_catch, don't process fishing
                 if event_result.get("lose_catch", False):
@@ -422,13 +433,9 @@ class FishingCog(commands.Cog):
                 )
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             
-                # *** APPLY LAG DEBUFF DELAY ***
-                if self.check_emotional_state(user_id, "lag"):
-                    await asyncio.sleep(3)  # 3 second lag delay
-                    print(f"[EVENT] {username} experienced lag delay (3s)")
-            
                 # Handle global reset events
                 if event_result.get("custom_effect") == "global_reset":
+                    triggers_global_reset = True
                     # Clear all fishing cooldowns
                     self.fishing_cooldown.clear()
                 
@@ -568,7 +575,7 @@ class FishingCog(commands.Cog):
                 
                     # Check boss_hunter achievement
                     if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
-                        await self.check_achievement(user_id, "boss_hunter", channel, guild_id)
+                        await self.check_achievement(user_id, "boss_hunter", channel, guild_id, inventory_data=inventory)
                 
                     # Track in collection
                     is_new_collection = await track_caught_fish(user_id, fish['key'])
@@ -692,6 +699,18 @@ class FishingCog(commands.Cog):
             # ==================== CHECK FOR LEGENDARY FISH ====================
             current_hour = datetime.now().hour
             legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=self)
+
+            if legendary_fish == "thuong_luong_expired":
+                user_mention = f"<@{user_id}>"
+                embed = discord.Embed(
+                    title="🌊 SÓNG YÊN BIỂN LẶNG 🌊",
+                    description=f"Nghi lễ hiến tế của {user_mention} đã kết thúc sau 5 phút.\n\n"
+                                f"Dòng nước đã trở lại bình thường và sinh vật huyền thoại đã bỏ đi mất do không được câu lên kịp thời!",
+                    color=discord.Color.blue()
+                )
+                embed.set_footer(text="Hãy nhanh tay hơn vào lần tới!")
+                await channel.send(embed=embed)
+                legendary_fish = None
         
             if legendary_fish:
                 # Legendary fish spawned! Show boss fight minigame
@@ -815,9 +834,9 @@ class FishingCog(commands.Cog):
             await casting_msg.edit(content="", embed=embed, view=view)
             print(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
         
-            # ==================== NPC ENCOUNTER (5% chance) ====================
-            if random.random() < 0.05 and fish_only_items:
-                await asyncio.sleep(2)  # Small delay for dramatic effect
+            # ==================== NPC ENCOUNTER ====================
+            if random.random() < NPC_ENCOUNTER_CHANCE and fish_only_items:
+                await asyncio.sleep(NPC_ENCOUNTER_DELAY)  # Small delay for dramatic effect
             
                 # Select random NPC based on weighted chances
                 npc_pool = []
@@ -888,6 +907,14 @@ class FishingCog(commands.Cog):
                     )
                     await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
                     print(f"[NPC] {username} timeout on {npc_type} -> auto-decline")
+            
+            # ==================== FINAL COOLDOWN CHECK ====================
+            # If global_reset was triggered, ensure user has no cooldown
+            if triggers_global_reset:
+                # Clear the user's cooldown that was set earlier
+                if user_id in self.fishing_cooldown:
+                    del self.fishing_cooldown[user_id]
+                print(f"[FISHING] [GLOBAL_RESET] {username} cooldown cleared due to global reset event")
         
         except Exception as e:
             # Catch-all error handler for _fish_action
@@ -924,11 +951,20 @@ class FishingCog(commands.Cog):
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
-            await ctx_or_interaction.response.defer(ephemeral=False)
             user_id = ctx_or_interaction.user.id
-            ctx = ctx_or_interaction
         else:
             user_id = ctx_or_interaction.author.id
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - sell fish")
+        
+        if is_slash:
+            await ctx_or_interaction.response.defer(ephemeral=False)
+            ctx = ctx_or_interaction
+        else:
             ctx = ctx_or_interaction
         
         # CRITICAL: Check if sell is already being processed (prevent duplicate execution)
@@ -948,294 +984,291 @@ class FishingCog(commands.Cog):
         # Mark as processing
         self.sell_processing[user_id] = current_time
         
-        # Get username
-        username = ctx.user.name if is_slash else ctx.author.name
-        
-        # Get inventory
-        inventory = await get_inventory(user_id)
-        
-        # Filter fish items by type (exclude rod materials from selling)
-        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
-        
-        # ==================== CHECK FOR LEGENDARY FISH ====================
-        # Remove legendary fish from sellable items
-        legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS}
-        if legendary_fish_in_inventory:
-            # Show warning that legendary fish cannot be sold
-            legend_names = ", ".join([ALL_FISH[k]['name'] for k in legendary_fish_in_inventory.keys()])
-            msg = f"❌ **CÁ HỮU HẠNG KHÔNG ĐƯỢC BÁN!** 🏆\n\n"
-            msg += f"Bạn có: {legend_names}\n\n"
-            msg += "Các loại cá huyền thoại này là biểu tượng của danh tiếng của bạn. Chúng không được phép bán!\n\n"
-            msg += "💎 Hãy xem `/huyenthoai` để xem Bảng Vàng những con cá huyền thoại!"
+        try:
+            # Get username
+            username = ctx.user.name if is_slash else ctx.author.name
             
-            if is_slash:
-                await ctx.followup.send(msg, ephemeral=False)
-            else:
-                await ctx.send(msg)
+            # Get inventory
+            inventory = await get_inventory(user_id)
             
-            # Remove legendary fish from sellable list
-            fish_items = {k: v for k, v in fish_items.items() if k not in LEGENDARY_FISH_KEYS}
+            # Filter fish items by type (exclude rod materials from selling)
+            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
+            
+            # ==================== CHECK FOR LEGENDARY FISH ====================
+            # Remove legendary fish from sellable items
+            legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS}
+            if legendary_fish_in_inventory:
+                # Show warning that legendary fish cannot be sold
+                legend_names = ", ".join([ALL_FISH[k]['name'] for k in legendary_fish_in_inventory.keys()])
+                msg = f"❌ **CÁ HỮU HẠNG KHÔNG ĐƯỢC BÁN!** 🏆\n\n"
+                msg += f"Bạn có: {legend_names}\n\n"
+                msg += "Các loại cá huyền thoại này là biểu tượng của danh tiếng của bạn. Chúng không được phép bán!\n\n"
+                msg += "💎 Hãy xem `/huyenthoai` để xem Bảng Vàng những con cá huyền thoại!"
+                
+                if is_slash:
+                    await ctx.followup.send(msg, ephemeral=False)
+                else:
+                    await ctx.send(msg)
+                
+                # Remove legendary fish from sellable list
+                fish_items = {k: v for k, v in fish_items.items() if k not in LEGENDARY_FISH_KEYS}
+                
+                if not fish_items:
+                    return  # No other fish to sell
             
             if not fish_items:
-                # Clear processing flag
-                if user_id in self.sell_processing:
-                    del self.sell_processing[user_id]
-                return  # No other fish to sell
-        
-        if not fish_items:
-            msg = "❌ Bạn không có cá nào để bán!"
-            if is_slash:
-                await ctx.followup.send(msg, ephemeral=True)
-            else:
-                await ctx.send(msg)
-            # Clear processing flag
-            if user_id in self.sell_processing:
-                del self.sell_processing[user_id]
-            return
-        
-        # Parse fish_types if specified
-        selected_fish = None
-        if fish_types:
-            requested = [f.strip().lower().replace(" ", "_") for f in fish_types.split(",")]
-            selected_fish = {k: v for k, v in fish_items.items() if k in requested}
-            
-            if not selected_fish:
-                available = ", ".join(fish_items.keys())
-                msg = f"❌ Không tìm thấy cá!\nCá bạn có: {available}"
+                msg = "❌ Bạn không có cá nào để bán!"
                 if is_slash:
                     await ctx.followup.send(msg, ephemeral=True)
                 else:
                     await ctx.send(msg)
-                # Clear processing flag
-                if user_id in self.sell_processing:
-                    del self.sell_processing[user_id]
                 return
-        else:
-            selected_fish = fish_items
-        
-        # 1. Tính tổng tiền gốc
-        base_total = 0
-        for fish_key, quantity in selected_fish.items():
-            fish_info = ALL_FISH.get(fish_key)
-            if fish_info:
-                base_price = fish_info['sell_price']
-                base_total += base_price * quantity
-        
-        # Apply harvest boost (x2) if active in the server
-        is_harvest_boosted = False
-        try:
-            guild_id = ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id
-            if guild_id:
-                result = await db_manager.fetchone(
-                    "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                )
-                if result and result[0]:
-                    buff_until = datetime.fromisoformat(result[0])
-                    if datetime.now() < buff_until:
-                        base_total = base_total * 2  # Double the base reward
-                        is_harvest_boosted = True
-                        print(f"[FISHING] [SELL_ACTION] Applied harvest boost x2 for user {user_id}")
-        except Exception as e:
-            print(f"[FISHING] [SELL_ACTION] Error checking harvest boost: {e}")
-        
-        # 2. Xử lý sự kiện bán hàng (Sell Event)
-        final_total = base_total
-        event_msg = ""
-        event_name = ""
-        event_color = discord.Color.green()  # Mặc định màu xanh lá
-        triggered_event = None
-        
-        # Roll event
-        rand = random.random()
-        current_chance = 0
-        
-        # Debug log
-        print(f"[SELL EVENT DEBUG] User: {username}, base_total: {base_total}, random value: {rand:.4f}")
-        
-        for ev_key, ev_data in SELL_EVENTS.items():
-            current_chance += ev_data["chance"]
-            print(f"[FISHING] [SELL_EVENT_DEBUG] Checking event={ev_key} chance={ev_data['chance']:.4f} cumulative={current_chance:.4f}")
-            if rand < current_chance:
-                triggered_event = ev_key
-                print(f"[FISHING] [SELL_EVENT_DEBUG] TRIGGERED event={triggered_event}")
-                break
-        
-        if not triggered_event:
-            print(f"[FISHING] [SELL_EVENT_DEBUG] NO_EVENT cumulative_chance={current_chance:.4f}")
-        
-        # Apply event logic
-        special_rewards = []
-        if triggered_event:
-            ev_data = SELL_EVENTS[triggered_event]
-            event_name = ev_data["name"]
             
-            # Tính toán tiền sau sự kiện
-            # Công thức: (Gốc * Multiplier) + Flat Bonus
-            final_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
-            
-            # Cho phép âm tiền nếu sự kiện xấu quá nghiêm trọng
-            
-            diff = final_total - base_total
-            sign = "+" if diff >= 0 else ""
-            
-            # Xử lý special effects (vật phẩm thưởng)
-            if "special" in ev_data:
-                special_type = ev_data["special"]
+            # Parse fish_types if specified
+            selected_fish = None
+            if fish_types:
+                requested = [f.strip().lower().replace(" ", "_") for f in fish_types.split(",")]
+                selected_fish = {k: v for k, v in fish_items.items() if k in requested}
                 
-                if special_type == "chest":
-                    await self.add_inventory_item(user_id, "treasure_chest", "tool")
-                    special_rewards.append("🎁 +1 Rương Kho Báu")
-                
-                elif special_type == "worm":
-                    await self.add_inventory_item(user_id, "worm", "bait")
-                    special_rewards.append("🪱 +5 Mồi Câu")
-                
-                elif special_type == "pearl":
-                    await self.add_inventory_item(user_id, "pearl", "tool")
-                    special_rewards.append("🔮 +1 Ngọc Trai")
-                
-                elif special_type == "durability":
-                    # Thêm độ bền cho cần câu hiện tại
-                    user_rod_level, user_rod_durability = await self.get_rod_data(user_id)
-                    max_durability = ROD_LEVELS[user_rod_level]["durability"]
-                    new_durability = min(max_durability, user_rod_durability + 10)
-                    await self.update_rod_data(user_id, new_durability)
-                    special_rewards.append("🛠️ +10 Độ Bền Cần Câu")
-                
-                elif special_type == "rod":
-                    await self.add_inventory_item(user_id, "rod_material", "material")
-                    special_rewards.append("🎣 +1 Vật Liệu Nâng Cấp Cần")
-                
-                elif special_type == "lottery":
-                    if random.random() < 0.1:  # 10% win chance
-                        lottery_reward = 500
-                        await add_seeds(user_id, lottery_reward)
-                        final_total += lottery_reward
-                        special_rewards.append(f"🎉 **TRÚNG SỐ! +{lottery_reward} Hạt!**")
+                if not selected_fish:
+                    available = ", ".join(fish_items.keys())
+                    msg = f"❌ Không tìm thấy cá!\nCá bạn có: {available}"
+                    if is_slash:
+                        await ctx.followup.send(msg, ephemeral=True)
                     else:
-                        special_rewards.append("❌ Vé số không trúng")
-            
-            # Formatting message
-            if ev_data["type"] == "good":
-                event_color = discord.Color.gold()
-                event_msg = f"\n🌟 **SỰ KIỆN: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Biến động:** {sign}{diff} Hạt"
+                        await ctx.send(msg)
+                    return
             else:
-                event_color = discord.Color.orange()
-                event_msg = f"\n⚠️ **SỰ CỐ: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Thiệt hại:** {diff} Hạt"
+                selected_fish = fish_items
+            
+            # 1. Tính tổng tiền gốc
+            base_total = 0
+            for fish_key, quantity in selected_fish.items():
+                fish_info = ALL_FISH.get(fish_key)
+                if fish_info:
+                    base_price = fish_info['sell_price']
+                    base_total += base_price * quantity
+            
+            # Apply harvest boost (x2) if active in the server
+            is_harvest_boosted = False
+            try:
+                guild_id = ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id
+                if guild_id:
+                    result = await db_manager.fetchone(
+                        "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                        (guild_id,)
+                    )
+                    if result and result[0]:
+                        buff_until = datetime.fromisoformat(result[0])
+                        if datetime.now() < buff_until:
+                            base_total = base_total * 2  # Double the base reward
+                            is_harvest_boosted = True
+                            print(f"[FISHING] [SELL_ACTION] Applied harvest boost x2 for user {user_id}")
+            except Exception as e:
+                print(f"[FISHING] [SELL_ACTION] Error checking harvest boost: {e}")
+            
+            # 2. Xử lý sự kiện bán hàng (Sell Event)
+            final_total = base_total
+            event_msg = ""
+            event_name = ""
+            event_color = discord.Color.green()  # Mặc định màu xanh lá
+            triggered_event = None
+            
+            # Roll event
+            rand = random.random()
+            current_chance = 0
+            
+            # Debug log
+            print(f"[SELL EVENT DEBUG] User: {username}, base_total: {base_total}, random value: {rand:.4f}")
+            
+            for ev_key, ev_data in SELL_EVENTS.items():
+                current_chance += ev_data["chance"]
+                print(f"[FISHING] [SELL_EVENT_DEBUG] Checking event={ev_key} chance={ev_data['chance']:.4f} cumulative={current_chance:.4f}")
+                if rand < current_chance:
+                    triggered_event = ev_key
+                    print(f"[FISHING] [SELL_EVENT_DEBUG] TRIGGERED event={triggered_event}")
+                    break
+            
+            if not triggered_event:
+                print(f"[FISHING] [SELL_EVENT_DEBUG] NO_EVENT cumulative_chance={current_chance:.4f}")
+            
+            # Apply event logic
+            special_rewards = []
+            if triggered_event:
+                ev_data = SELL_EVENTS[triggered_event]
+                event_name = ev_data["name"]
                 
-            print(f"[FISHING] [SELL_EVENT] {ctx.user.name if is_slash else ctx.author.name} (user_id={ctx.user.id if is_slash else ctx.author.id}) event={triggered_event} seed_change={final_total - base_total} fish_count={len(selected_fish)}")
+                # Tính toán tiền sau sự kiện
+                # Công thức: (Gốc * Multiplier) + Flat Bonus
+                final_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
+                
+                # Cho phép âm tiền nếu sự kiện xấu quá nghiêm trọng
+                
+                diff = final_total - base_total
+                sign = "+" if diff >= 0 else ""
+                
+                # Xử lý special effects (vật phẩm thưởng)
+                if "special" in ev_data:
+                    special_type = ev_data["special"]
+                    
+                    if special_type == "chest":
+                        await self.add_inventory_item(user_id, "treasure_chest", "tool")
+                        special_rewards.append("🎁 +1 Rương Kho Báu")
+                    
+                    elif special_type == "worm":
+                        await self.add_inventory_item(user_id, "worm", "bait")
+                        special_rewards.append("🪱 +5 Mồi Câu")
+                    
+                    elif special_type == "pearl":
+                        await self.add_inventory_item(user_id, "pearl", "tool")
+                        special_rewards.append("🔮 +1 Ngọc Trai")
+                    
+                    elif special_type == "durability":
+                        # Thêm độ bền cho cần câu hiện tại
+                        user_rod_level, user_rod_durability = await self.get_rod_data(user_id)
+                        max_durability = ROD_LEVELS[user_rod_level]["durability"]
+                        new_durability = min(max_durability, user_rod_durability + 10)
+                        await self.update_rod_data(user_id, new_durability)
+                        special_rewards.append("🛠️ +10 Độ Bền Cần Câu")
+                    
+                    elif special_type == "rod":
+                        await self.add_inventory_item(user_id, "rod_material", "material")
+                        special_rewards.append("🎣 +1 Vật Liệu Nâng Cấp Cần")
+                    
+                    elif special_type == "lottery":
+                        if random.random() < 0.1:  # 10% win chance
+                            lottery_reward = 500
+                            await add_seeds(user_id, lottery_reward)
+                            final_total += lottery_reward
+                            special_rewards.append(f"🎉 **TRÚNG SỐ! +{lottery_reward} Hạt!**")
+                        else:
+                            special_rewards.append("❌ Vé số không trúng")
+                
+                # Formatting message
+                if ev_data["type"] == "good":
+                    event_color = discord.Color.gold()
+                    event_msg = f"\n🌟 **SỰ KIỆN: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Biến động:** {sign}{diff} Hạt"
+                else:
+                    event_color = discord.Color.orange()
+                    event_msg = f"\n⚠️ **SỰ CỐ: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Thiệt hại:** {diff} Hạt"
+                    
+                print(f"[FISHING] [SELL_EVENT] {ctx.user.name if is_slash else ctx.author.name} (user_id={ctx.user.id if is_slash else ctx.author.id}) event={triggered_event} seed_change={final_total - base_total} fish_count={len(selected_fish)}")
 
-        # Remove items & Add money (ATOMIC TRANSACTION - xảy ra cùng lúc)
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Start transaction
-                await db.execute("BEGIN TRANSACTION")
-                
-                try:
-                    # 1. Remove all fish items
-                    for fish_key in selected_fish.keys():
+            # Remove items & Add money (ATOMIC TRANSACTION - xảy ra cùng lúc)
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    # Start transaction
+                    await db.execute("BEGIN TRANSACTION")
+                    
+                    try:
+                        # 1. Remove all fish items
+                        for fish_key in selected_fish.keys():
+                            await db.execute(
+                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                                (selected_fish[fish_key], user_id, fish_key)
+                            )
+                        
+                        # 1.1. Delete items with quantity <= 0
                         await db.execute(
-                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                            (selected_fish[fish_key], user_id, fish_key)
+                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                            (user_id,)
                         )
-                    
-                    # 1.1. Delete items with quantity <= 0
-                    await db.execute(
-                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                        (user_id,)
-                    )
-                    
-                    # 2. Add seeds to user
-                    await db.execute(
-                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
-                        (final_total, user_id)
-                    )
-                    
-                    # Commit transaction
-                    await db.commit()
-                    
-                    # CRITICAL: Invalidate inventory cache after successful transaction
-                    db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
-                    print(f"[FISHING] [SELL_TRANSACTION] Success: user_id={user_id} total={final_total} fish_count={len(selected_fish)}")
-                    
-                except Exception as e:
-                    # Rollback on error
-                    await db.execute("ROLLBACK")
-                    print(f"[FISHING] [SELL_TRANSACTION] Rollback due to error: {e}")
-                    raise
-        except Exception as e:
-            print(f"[FISHING] [SELL_ERROR] Transaction failed: {e}")
-            # Clear processing flag on error
-            if user_id in self.sell_processing:
-                del self.sell_processing[user_id]
-            err_msg = f"❌ Lỗi khi bán cá: {str(e)}"
-            if is_slash:
-                await ctx.followup.send(err_msg, ephemeral=True)
-            else:
-                await ctx.send(err_msg)
-            return
-        
-        # 4. Display sell event notification FIRST (if triggered)
-        if triggered_event:
-            if SELL_EVENTS[triggered_event]["type"] == "good":
-                title = f"🌟 PHƯỚC LÀNH - {username}!"
-                event_embed_color = discord.Color.gold()
-            else:
-                title = f"⚠️ KIẾP NẠN - {username}!"
-                event_embed_color = discord.Color.orange()
+                        
+                        # 2. Add seeds to user
+                        await db.execute(
+                            "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                            (final_total, user_id)
+                        )
+                        
+                        # Commit transaction
+                        await db.commit()
+                        
+                        # CRITICAL: Invalidate inventory cache after successful transaction
+                        db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
+                        print(f"[FISHING] [SELL_TRANSACTION] Success: user_id={user_id} total={final_total} fish_count={len(selected_fish)}")
+                        
+                    except Exception as e:
+                        # Rollback on error
+                        await db.execute("ROLLBACK")
+                        print(f"[FISHING] [SELL_TRANSACTION] Rollback due to error: {e}")
+                        raise
+            except Exception as e:
+                print(f"[FISHING] [SELL_ERROR] Transaction failed: {e}")
+                err_msg = f"❌ Lỗi khi bán cá: {str(e)}"
+                if is_slash:
+                    await ctx.followup.send(err_msg, ephemeral=True)
+                else:
+                    await ctx.send(err_msg)
+                return
             
-            diff = final_total - base_total
-            sign = "+" if diff >= 0 else ""
-            event_detail = f"{SELL_MESSAGES[triggered_event]}\n\n💰 **{event_name}**"
-            
-            event_embed = discord.Embed(
-                title=title,
-                description=event_detail,
-                color=event_embed_color
-            )
-            event_embed.add_field(
-                name="📊 Ảnh hưởng giá bán",
-                value=f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**",
-                inline=False
-            )
-            
-            # Add special rewards if any
-            if special_rewards:
+            # 4. Display sell event notification FIRST (if triggered)
+            if triggered_event:
+                if SELL_EVENTS[triggered_event]["type"] == "good":
+                    title = f"🌟 PHƯỚC LÀNH - {username}!"
+                    event_embed_color = discord.Color.gold()
+                else:
+                    title = f"⚠️ KIẾP NẠN - {username}!"
+                    event_embed_color = discord.Color.orange()
+                
+                diff = final_total - base_total
+                sign = "+" if diff >= 0 else ""
+                event_detail = f"{SELL_MESSAGES[triggered_event]}\n\n💰 **{event_name}**"
+                
+                event_embed = discord.Embed(
+                    title=title,
+                    description=event_detail,
+                    color=event_embed_color
+                )
                 event_embed.add_field(
-                    name="🎁 Phần Thưởng Đặc Biệt",
-                    value="\n".join(special_rewards),
+                    name="📊 Ảnh hưởng giá bán",
+                    value=f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**",
                     inline=False
                 )
+                
+                # Add special rewards if any
+                if special_rewards:
+                    event_embed.add_field(
+                        name="🎁 Phần Thưởng Đặc Biệt",
+                        value="\n".join(special_rewards),
+                        inline=False
+                    )
+                
+                if is_slash:
+                    await ctx.followup.send(content=f"<@{user_id}>", embed=event_embed, ephemeral=False)
+                else:
+                    await ctx.send(content=f"<@{user_id}>", embed=event_embed)
             
-            if is_slash:
-                await ctx.followup.send(content=f"<@{user_id}>", embed=event_embed, ephemeral=False)
-            else:
-                await ctx.send(content=f"<@{user_id}>", embed=event_embed)
-        
-        # 5. Display main sell result embed
-        fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in selected_fish.items()])
-        
-        embed = discord.Embed(
-            title=f"💰 **{username}** bán {sum(selected_fish.values())} con cá",
-            description=f"{fish_summary}\n\n💵 **Tổng nhận:** {final_total} Hạt",
-            color=discord.Color.green()
-        )
-        
-        # Check achievement "millionaire" (Tích lũy tiền)
-        if hasattr(self, "update_user_stat"):
-            total_earned = await self.update_user_stat(user_id, "coins_earned", final_total)
-            if total_earned >= 100000:
-                await self.check_achievement(user_id, "millionaire", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+            # 5. Display main sell result embed
+            fish_summary = "\n".join([f"  • {ALL_FISH[k]['name']} x{v}" for k, v in selected_fish.items()])
+            
+            embed = discord.Embed(
+                title=f"💰 **{username}** bán {sum(selected_fish.values())} con cá",
+                description=f"{fish_summary}\n\n💵 **Tổng nhận:** {final_total} Hạt",
+                color=discord.Color.green()
+            )
+            
+            # Check achievement "millionaire" after sale
+            stats = await self._get_all_user_stats(user_id)
+            await self.check_achievement(user_id, "millionaire", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id, stats_data=stats)
 
-        if is_slash:
-            await ctx.followup.send(embed=embed, ephemeral=False)
-        else:
-            await ctx.send(embed=embed)
-        
-        # Clear processing flag after successful completion
-        if user_id in self.sell_processing:
-            del self.sell_processing[user_id]
+            if is_slash:
+                await ctx.followup.send(embed=embed)
+            else:
+                await ctx.send(embed=embed)
+        except Exception as e:
+            # Handle any exceptions during selling
+            print(f"Error in _sell_fish_action: {e}")
+            import traceback
+            traceback.print_exc()
+            msg = "❌ Có lỗi xảy ra khi bán cá. Vui lòng thử lại!"
+            if is_slash:
+                await ctx.followup.send(msg, ephemeral=True)
+            else:
+                await ctx.send(msg)
+        finally:
+            # Clear processing flag after completion or error
+            if user_id in self.sell_processing:
+                del self.sell_processing[user_id]
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")
     async def open_chest_slash(self, interaction: discord.Interaction):
@@ -1252,13 +1285,21 @@ class FishingCog(commands.Cog):
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
-            await ctx_or_interaction.response.defer(ephemeral=False)
             user_id = ctx_or_interaction.user.id
             user_name = ctx_or_interaction.user.name
-            ctx = ctx_or_interaction
         else:
             user_id = ctx_or_interaction.author.id
             user_name = ctx_or_interaction.author.name
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            print(f"[EVENT] {user_name} experienced lag delay (3s) - open chest")
+        
+        if is_slash:
+            await ctx_or_interaction.response.defer(ephemeral=False)
+            ctx = ctx_or_interaction
+        else:
             ctx = ctx_or_interaction
         
         # Check if user has chest
@@ -1395,7 +1436,6 @@ class FishingCog(commands.Cog):
         is_slash_cmd = is_slash
         
         if is_slash_cmd:
-            await ctx_or_interaction.response.defer()
             user_id = ctx_or_interaction.user.id
             channel = ctx_or_interaction.channel
             guild_id = ctx_or_interaction.guild.id
@@ -1403,6 +1443,15 @@ class FishingCog(commands.Cog):
             user_id = ctx_or_interaction.author.id
             channel = ctx_or_interaction.channel
             guild_id = ctx_or_interaction.guild.id
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - sacrifice fish")
+        
+        if is_slash_cmd:
+            await ctx_or_interaction.response.defer()
         
         # Check if fish_key is valid (common or rare fish only, not legendary)
         if fish_key not in COMMON_FISH_KEYS + RARE_FISH_KEYS:
@@ -1464,11 +1513,11 @@ class FishingCog(commands.Cog):
                 color=discord.Color.blue()
             )
         else:
-            # Reset and prepare for spawn
-            await self.reset_sacrifice_count(user_id)
+            # Set the ritual start time
+            self.thuong_luong_timers[user_id] = time.time()
             embed = discord.Embed(
                 title="⚡ LỄ VẬT HOÀN THÀNH ⚡",
-                description=f"Bạn ném {fish_emoji} **{fish_name}** xuống dòng sông lần thứ 3!\n\n🌊 Dòng nước xoáy dữ dội! Lần quăng cần tiếp theo (trong 5 phút) sẽ gặp **THUỒNG LUỒNG**!",
+                description=f"Bạn ném {fish_emoji} **{fish_name}** xuống dòng sông lần thứ 3!\n\n🌊 Dòng nước xoáy dữ dội! Trong **5 phút** tới, bạn có cơ hội gặp **THUỒNG LUỒNG**!",
                 color=discord.Color.gold()
             )
         
@@ -1491,10 +1540,18 @@ class FishingCog(commands.Cog):
         is_slash_cmd = is_slash
         
         if is_slash_cmd:
-            await ctx_or_interaction.response.defer()
             user_id = ctx_or_interaction.user.id
         else:
             user_id = ctx_or_interaction.author.id
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - craft bait")
+        
+        if is_slash_cmd:
+            await ctx_or_interaction.response.defer()
         
         # Show recipes if no recipe specified
         if not recipe:
@@ -1568,10 +1625,18 @@ class FishingCog(commands.Cog):
         is_slash_cmd = is_slash
         
         if is_slash_cmd:
-            await ctx_or_interaction.response.defer()
             user_id = ctx_or_interaction.user.id
         else:
             user_id = ctx_or_interaction.author.id
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - whale detection")
+        
+        if is_slash_cmd:
+            await ctx_or_interaction.response.defer()
         
         # Check if user has "Máy Dò Sóng"
         inventory = await get_inventory(user_id)
@@ -1629,10 +1694,18 @@ class FishingCog(commands.Cog):
         is_slash_cmd = is_slash
         
         if is_slash_cmd:
-            await ctx_or_interaction.response.defer()
             user_id = ctx_or_interaction.user.id
         else:
             user_id = ctx_or_interaction.author.id
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - combine map")
+        
+        if is_slash_cmd:
+            await ctx_or_interaction.response.defer()
         
         # Check if user has all 4 pieces
         inventory = await get_inventory(user_id)
@@ -1705,12 +1778,20 @@ class FishingCog(commands.Cog):
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
-            await ctx_or_interaction.response.defer(ephemeral=True)
             user_id = ctx_or_interaction.user.id
             ctx = ctx_or_interaction
         else:
             user_id = ctx_or_interaction.author.id
             ctx = ctx_or_interaction
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - recycle trash")
+        
+        if is_slash:
+            await ctx_or_interaction.response.defer(ephemeral=True)
         
         # Get inventory
         inventory = await get_inventory(user_id)
@@ -1788,12 +1869,20 @@ class FishingCog(commands.Cog):
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
-            await ctx_or_interaction.response.defer(ephemeral=False)
             user_id = ctx_or_interaction.user.id
             ctx = ctx_or_interaction
         else:
             user_id = ctx_or_interaction.author.id
             ctx = ctx_or_interaction
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - upgrade rod")
+        
+        if is_slash:
+            await ctx_or_interaction.response.defer(ephemeral=False)
         
         # Get current rod
         cur_lvl, cur_durability = await get_rod_data(user_id)
@@ -1869,7 +1958,8 @@ class FishingCog(commands.Cog):
         # Check rod_tycoon achievement if level 5
         if next_lvl == 5:
             guild_id = ctx_or_interaction.guild.id if hasattr(ctx_or_interaction, 'guild') else ctx_or_interaction.guild.id
-            await self.check_achievement(user_id, "rod_tycoon", ctx_or_interaction.channel, guild_id)
+            stats = await self._get_all_user_stats(user_id)
+            await self.check_achievement(user_id, "rod_tycoon", ctx_or_interaction.channel, guild_id, stats_data=stats)
         
         # Build response embed
         embed = discord.Embed(
@@ -1906,13 +1996,20 @@ class FishingCog(commands.Cog):
         guild_id = ctx_or_interaction.guild.id
         
         if is_slash:
-            await ctx_or_interaction.response.defer(ephemeral=False)
             user_id = ctx_or_interaction.user.id
             ctx = ctx_or_interaction
         else:
             user_id = ctx_or_interaction.author.id
-            guild_id = ctx_or_interaction.guild.id
             ctx = ctx_or_interaction
+        
+        # *** CHECK AND APPLY LAG DEBUFF DELAY ***
+        if self.check_emotional_state(user_id, "lag"):
+            await asyncio.sleep(3)
+            username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            print(f"[EVENT] {username} experienced lag delay (3s) - use fertilizer")
+        
+        if is_slash:
+            await ctx_or_interaction.response.defer(ephemeral=False)
         
         # Check if user has fertilizer
         inventory = await get_inventory(user_id)
@@ -2596,7 +2693,26 @@ class FishingCog(commands.Cog):
         except:
             pass
     
-    async def check_achievement(self, user_id: int, achievement_key: str, channel = None, guild_id: int = None):
+    async def _get_all_user_stats(self, user_id: int) -> dict:
+        """Fetches all achievement-related stats for a user in one query."""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                db.row_factory = aiosqlite.Row
+                async with db.execute(
+                    """SELECT seeds, bad_events_encountered, global_reset_triggered, chests_caught,
+                       market_boom_sales, robbed_count, god_of_wealth_encountered, 
+                       rods_repaired, rod_level, trash_recycled, worms_used, trash_caught, good_events_encountered 
+                       FROM economy_users WHERE user_id = ?""",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        return dict(row)
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error fetching all stats for {user_id}: {e}")
+        return {}
+
+    async def check_achievement(self, user_id: int, achievement_key: str, channel = None, guild_id: int = None, stats_data: dict = None, inventory_data: dict = None):
         """Check and award achievement if conditions are met."""
         if user_id not in self.user_achievements:
             self.user_achievements[user_id] = []
@@ -2609,24 +2725,28 @@ class FishingCog(commands.Cog):
         if not achievement:
             return False
         
-        # Get user stats from database
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    """SELECT bad_events_encountered, global_reset_triggered, chests_caught,
-                       market_boom_sales, robbed_count, god_of_wealth_encountered, 
-                       rods_repaired, rod_level, trash_recycled, worms_used, trash_caught, good_events_encountered FROM economy_users WHERE user_id = ?""",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if not row:
-                        return False
-                    
-                    bad_events, global_reset, chests, market_boom, robbed, god_wealth, rods_rep, rod_lvl, trash_rec, worms_used, trash_caught, good_events = row
-        except Exception as e:
-            print(f"[ACHIEVEMENT] Error fetching stats: {e}")
+        # Get user stats from database if not provided
+        stats = stats_data
+        if stats is None:
+            stats = await self._get_all_user_stats(user_id)
+
+        if not stats:
             return False
-        
+            
+        bad_events = stats.get("bad_events_encountered", 0)
+        global_reset = stats.get("global_reset_triggered", 0)
+        chests = stats.get("chests_caught", 0)
+        market_boom = stats.get("market_boom_sales", 0)
+        robbed = stats.get("robbed_count", 0)
+        god_wealth = stats.get("god_of_wealth_encountered", 0)
+        rods_rep = stats.get("rods_repaired", 0)
+        rod_lvl = stats.get("rod_level", 0)
+        trash_rec = stats.get("trash_recycled", 0)
+        worms_used = stats.get("worms_used", 0)
+        trash_caught = stats.get("trash_caught", 0)
+        good_events = stats.get("good_events_encountered", 0)
+        seeds = stats.get("seeds", 0)
+
         # Check conditions based on achievement type
         condition_met = False
         
@@ -2647,7 +2767,7 @@ class FishingCog(commands.Cog):
             condition_met = True
         elif achievement_key == "trash_master" and trash_caught >= achievement["target"]:
             condition_met = True
-        elif achievement_key == "millionaire" and (await self._get_user_total_earned(user_id)) >= achievement["target"]:
+        elif achievement_key == "millionaire" and seeds >= achievement["target"]:
             condition_met = True
         elif achievement_key == "dragon_slayer":
             # Check if user has caught ca_rong
@@ -2685,18 +2805,24 @@ class FishingCog(commands.Cog):
         elif achievement_key == "master_recycler" and trash_rec >= achievement["target"]:
             condition_met = True
         elif achievement_key == "boss_hunter":
-            # Check if user has all 3 boss fish
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT item_name FROM inventory WHERE user_id = ? AND item_name IN ('megalodon', 'thuy_quai_kraken', 'leviathan')",
-                        (user_id,)
-                    ) as cursor:
-                        boss_fish = await cursor.fetchall()
-                        if len(boss_fish) >= 3:
-                            condition_met = True
-            except:
-                pass
+            boss_fish_keys = {'megalodon', 'thuy_quai_kraken', 'leviathan'}
+            if inventory_data:
+                caught_boss_fish = {key for key in inventory_data if key in boss_fish_keys}
+                if len(caught_boss_fish) >= 3:
+                    condition_met = True
+            else:
+                # Fallback to DB query if inventory_data not provided
+                try:
+                    async with aiosqlite.connect(DB_PATH) as db:
+                        async with db.execute(
+                            "SELECT item_name FROM inventory WHERE user_id = ? AND item_name IN ('megalodon', 'thuy_quai_kraken', 'leviathan')",
+                            (user_id,)
+                        ) as cursor:
+                            boss_fish = await cursor.fetchall()
+                            if len(boss_fish) >= 3:
+                                condition_met = True
+                except:
+                    pass
         elif achievement_key == "river_lord":
             # Check if user has caught thuong_luong
             import json
@@ -2943,22 +3069,6 @@ class FishingCog(commands.Cog):
     async def add_legendary_fish_to_user(self, user_id: int, legendary_key: str):
         """Add legendary fish to user's collection"""
         await add_legendary_module(user_id, legendary_key)
-    
-    async def _get_user_total_earned(self, user_id: int) -> int:
-        """Get total seeds earned by user (from current balance + spent)"""
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get current balance
-                async with db.execute(
-                    "SELECT seeds FROM economy_users WHERE user_id = ?",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row:
-                        return row[0] or 0
-        except:
-            pass
-        return 0
 
     async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: dict, 
                                       fish_key: str, fish_info: dict, username: str):
@@ -2994,6 +3104,11 @@ class FishingCog(commands.Cog):
             # Add cooldown
             self.fishing_cooldown[user_id] = time.time() + 300
             print(f"[NPC] User {user_id} got 5min cooldown from {npc_type}")
+        
+        elif cost == "cooldown_3min":
+            # Add 3-minute cooldown
+            self.fishing_cooldown[user_id] = time.time() + 180
+            print(f"[NPC] User {user_id} got 3min cooldown from {npc_type}")
         
         # Roll for reward
         rewards_list = npc_data["rewards"]["accept"]
@@ -3078,14 +3193,6 @@ class FishingCog(commands.Cog):
             result_text = selected_reward["message"].replace("tiền gấp 3", f"**{price} Hạt**")
             print(f"[NPC] User {user_id} received {price} seeds (3x) from {npc_type}")
         
-        elif reward_type == "caught":
-            # Police caught - lose fish and pay fine
-            fine = selected_reward.get("fine", 200)
-            await add_seeds(user_id, -fine)
-            result_text = selected_reward["message"]
-            result_color = discord.Color.red()
-            print(f"[NPC] User {user_id} caught by police, paid {fine} fine")
-        
         elif reward_type == "legendary_buff":
             # Grant legendary buff
             duration = selected_reward.get("duration", 10)
@@ -3097,13 +3204,14 @@ class FishingCog(commands.Cog):
             print(f"[NPC] User {user_id} received legendary buff ({duration} uses) from {npc_type}")
         
         elif reward_type == "cursed":
-            # Curse - lose durability
+            # Curse - lose durability (default 20, or custom amount)
+            durability_loss = selected_reward.get("amount", 20)
             rod_lvl, current_durability = await get_rod_data(user_id)
-            new_durability = max(0, current_durability - 20)
+            new_durability = max(0, current_durability - durability_loss)
             await self.update_rod_data(user_id, new_durability)
             result_text = selected_reward["message"]
             result_color = discord.Color.dark_red()
-            print(f"[NPC] User {user_id} cursed by {npc_type}, lost 20 durability")
+            print(f"[NPC] User {user_id} cursed by {npc_type}, lost {durability_loss} durability")
         
         # Return result embed
         result_embed = discord.Embed(
