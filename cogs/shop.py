@@ -14,13 +14,20 @@ DB_PATH = "./data/database.db"
 
 # Shop Items Definition
 SHOP_ITEMS = {
-    "cafe": {"name": "Cà phê", "cost": 50, "emoji": "☕"},
-    "flower": {"name": "Hoa", "cost": 75, "emoji": "🌹"},
-    "ring": {"name": "Nhẫn", "cost": 150, "emoji": "💍"},
-    "gift": {"name": "Quà", "cost": 100, "emoji": "🎁"},
-    "chocolate": {"name": "Sô cô la", "cost": 60, "emoji": "🍫"},
-    "card": {"name": "Thiệp", "cost": 40, "emoji": "💌"},
-    "worm": {"name": "Giun (Mồi Câu)", "cost": 10, "emoji": "🪱"},  # Money sink for fishing
+    "cafe": {"name": "Cà phê", "cost": 50, "emoji": "☕", "description": "Đồ uống yêu thích của mọi người"},
+    "flower": {"name": "Hoa", "cost": 75, "emoji": "🌹", "description": "Bông hoa đẹp xinh để tặng"},
+    "ring": {"name": "Nhẫn", "cost": 150, "emoji": "💍", "description": "Nhẫn quý giá, biểu tượng của tình yêu"},
+    "gift": {"name": "Quà", "cost": 100, "emoji": "🎁", "description": "Một món quà bất ngờ"},
+    "chocolate": {"name": "Sô cô la", "cost": 60, "emoji": "🍫", "description": "Sô cô la ngon ngon, ngọt ngào"},
+    "card": {"name": "Thiệp", "cost": 40, "emoji": "💌", "description": "Thiệp chúc mừng lời chúc tốt"},
+    "worm": {"name": "Giun (Mồi Câu)", "cost": 10, "emoji": "🪱", "description": "Mồi để câu cá"},
+    # Consumable buff items (very expensive)
+    "nuoc_tang_luc": {"name": "Nước Tăng Lực", "cost": 15000, "emoji": "💪", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần)"},
+    "gang_tay_xin": {"name": "Găng Tay Câu Cá", "cost": 15000, "emoji": "🥊", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần)"},
+    "thao_tac_tinh_vi": {"name": "Thao Tác Tinh Vi", "cost": 16000, "emoji": "🎯", "description": "Tăng 65% lên 92% thắng 'Dìu Cá' (1 lần)"},
+    "tim_yeu_ca": {"name": "Tình Yêu Với Cá", "cost": 14500, "emoji": "❤️", "description": "Tăng 65% lên 88% thắng 'Dìu Cá' (1 lần)"},
+    # Wave detector for legendary whale
+    "may_do_song": {"name": "Máy Dò Sóng", "cost": 20000, "emoji": "📡", "description": "Phát hiện sóng 52Hz của Cá Voi Buồn Bã (1 lần dùng)"},
 }
 
 # Reverse mapping: Vietnamese name -> item key
@@ -60,38 +67,60 @@ class ShopCog(commands.Cog):
 
     # ==================== COMMANDS ====================
 
-    @app_commands.command(name="shop", description="Xem cửa hàng quà tặng")
+    @app_commands.command(name="shop", description="Xem danh sách quà tặng & vật phẩm trong cửa hàng")
     async def shop(self, interaction: discord.Interaction):
         """Display shop menu"""
         await interaction.response.defer(ephemeral=True)
         
         embed = discord.Embed(
-            title="Cửa Hàng Quà Tặng",
+            title="🏪 Cửa Hàng Quà Tặng & Vật Phẩm",
             color=discord.Color.purple()
         )
         
-        shop_text = ""
-        for item_key, item_info in SHOP_ITEMS.items():
-            shop_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
+        # Regular gifts section
+        gifts_text = ""
+        consumables_text = ""
         
-        embed.description = shop_text
+        for item_key, item_info in SHOP_ITEMS.items():
+            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tim_yeu_ca"]:
+                consumables_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
+            else:
+                gifts_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
+        
+        if gifts_text:
+            embed.add_field(name="💝 Quà Tặng", value=gifts_text, inline=False)
+        
+        if consumables_text:
+            embed.add_field(name="💪 Vật Phẩm Buff", value=consumables_text, inline=False)
+        
         embed.add_field(
-            name="💡 Cách mua",
-            value=f"Dùng: `/buy [tên item tiếng Việt]`\n\nVí dụ: `/buy Cà phê`, `/buy Hoa`, `/buy Nhẫn`",
+            name="📖 Cách Mua",
+            value="**Lệnh:** `/mua <item_key> [số_lượng]`\n\n**Ví dụ:**\n- `/mua cafe 1` (Cà phê)\n- `/mua nuoc_tang_luc 1` (Nước Tăng Lực)\n- `/mua may_do_song 1` (Máy Dò Sóng)\n\n**Item key:** Dùng tên item viết thường, có gạch dưới",
+            inline=False
+        )
+        embed.add_field(
+            name="💪 Buff Items",
+            value="🔹 Dùng `/sudung [item_key]` để kích hoạt buff trong một lần câu cá huyền thoại\n"
+                  "🔹 Dùng `/tuido` để xem các vật phẩm trong túi",
             inline=False
         )
         embed.set_footer(text="Dùng /tangqua để tặng quà cho người khác")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="mua", description="Mua quà - Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp, Giun")
+    @app_commands.command(name="mua", description="Mua quà & vật phẩm từ cửa hàng")
     @app_commands.describe(
-        item="Tên item tiếng Việt: Cà phê (50), Hoa (75), Nhẫn (150), Quà (100), Sô cô la (60), Thiệp (40), Giun (10)",
+        item="Item key: cafe, flower, ring, gift, chocolate, card, worm hoặc nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, tim_yeu_ca hoặc may_do_song",
         soluong="Số lượng muốn mua (mặc định: 1)"
     )
-    async def buy_slash(self, interaction: discord.Interaction, item: str, soluong: int = 1):
+    async def buy_slash(self, interaction: discord.Interaction, item: str = None, soluong: int = 1):
         """Buy item from shop"""
         await interaction.response.defer(ephemeral=True)
+        
+        # If no item specified, show menu
+        if item is None:
+            await self._show_shop_menu(interaction, is_slash=True)
+            return
         
         # Validate quantity
         if soluong < 1:
@@ -147,9 +176,25 @@ class ShopCog(commands.Cog):
             f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
         )
 
-    @commands.command(name="mua", description="Mua quà - ☕ Cà phê (50), 🌹 Hoa (75), 💍 Nhẫn (150), 🎁 Quà (100), 🍫 Sô cô la (60), 💌 Thiệp (40), 🪱 Giun (10)")
-    async def buy_prefix(self, ctx, soluong: int = 1, *, item: str):
-        """Buy item from shop via prefix - Usage: !mua [quantity] [item_name]"""
+    @commands.command(name="mua", description="Mua quà & vật phẩm - Dùng !mua [item_key] [số_lượng]")
+    async def buy_prefix(self, ctx, item: str = None, *, soluong_or_item: str = None):
+        """Buy item from shop via prefix - Usage: !mua [item_name] [quantity]"""
+        # If no item specified, show menu
+        if item is None:
+            await self._show_shop_menu(ctx, is_slash=False)
+            return
+        
+        # Handle parameter parsing
+        # If soluong_or_item is provided, it could be quantity or second word of item name
+        soluong = 1
+        if soluong_or_item is not None:
+            # Try to parse as number first
+            try:
+                soluong = int(soluong_or_item)
+            except ValueError:
+                # If not a number, concatenate back to item name
+                item = f"{item} {soluong_or_item}"
+        
         # Validate quantity
         if soluong < 1:
             await ctx.send(f"❌ Số lượng phải >= 1!")
@@ -192,6 +237,46 @@ class ShopCog(commands.Cog):
             f"[SHOP] [PURCHASE] user_id={user_id} username={ctx.author.name} "
             f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
         )
+
+    async def _show_shop_menu(self, ctx_or_interaction, is_slash: bool):
+        """Show shop menu with all items"""
+        embed = discord.Embed(
+            title="🏪 MENU MUA ĐỒ",
+            color=discord.Color.gold()
+        )
+        
+        # Regular gifts section
+        gifts_text = ""
+        consumables_text = ""
+        
+        for item_key, item_info in SHOP_ITEMS.items():
+            line = f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n    💬 {item_info.get('description', 'N/A')}\n"
+            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tim_yeu_ca"]:
+                consumables_text += line
+            else:
+                gifts_text += line
+        
+        if gifts_text:
+            embed.add_field(name="💝 QUÀNG TẶNG", value=gifts_text, inline=False)
+        
+        if consumables_text:
+            embed.add_field(name="💪 VẬT PHẨM BUFF (Siêu Đắt)", value=consumables_text, inline=False)
+        
+        embed.add_field(
+            name="📖 CÁCH MUA",
+            value="**Slash Command:** `/mua [Tên Item] [Số Lượng]`\n"
+                  "**Prefix Command:** `!mua [Tên Item] [Số Lượng]`\n\n"
+                  "**Ví dụ:**\n"
+                  "• `/mua Cà phê 5`\n"
+                  "• `!mua Nước Tăng Lực 1`",
+            inline=False
+        )
+        embed.set_footer(text="Dùng /shop để xem lại menu này")
+        
+        if is_slash:
+            await ctx_or_interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await ctx_or_interaction.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(ShopCog(bot))

@@ -8,7 +8,7 @@ from datetime import datetime
 from .constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
 
 class LegendaryBossFightView(discord.ui.View):
-    """Interactive boss fight for legendary fish."""
+    """Interactive boss fight for legendary fish with balanced difficulty."""
     def __init__(self, cog, user_id, legendary_fish: dict, rod_durability: int, rod_level: int, channel=None, guild_id=None):
         super().__init__(timeout=60)
         self.cog = cog
@@ -20,8 +20,9 @@ class LegendaryBossFightView(discord.ui.View):
         self.guild_id = guild_id
         self.fought = False
     
-    @discord.ui.button(label="🔴 Giật Mạnh", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="🔴 GIẬT MẠNH (10%)", style=discord.ButtonStyle.danger)
     async def jerk_hard(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Aggressive method: 10% win rate, breaks rod on failure."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
             return
@@ -30,12 +31,12 @@ class LegendaryBossFightView(discord.ui.View):
             return
         
         self.fought = True
-        success = random.random() < 0.15
+        success = random.random() < 0.10
         
         if success:
             result_embed = discord.Embed(
                 title="✨ THÀNH CÔNG! ✨",
-                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n💪 Một cú giật mạnh hoàn hảo!",
+                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n💪 Một cú giật mạnh tuyệt diệu!",
                 color=discord.Color.gold()
             )
             result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
@@ -45,7 +46,7 @@ class LegendaryBossFightView(discord.ui.View):
             from .helpers import track_caught_fish
             await track_caught_fish(self.user_id, self.legendary_fish['key'])
             
-            # Check achievement based on legendary fish type
+            # Check achievement
             legendary_key = self.legendary_fish['key']
             achievement_map = {
                 "thuong_luong": "river_lord",
@@ -56,20 +57,28 @@ class LegendaryBossFightView(discord.ui.View):
             }
             if legendary_key in achievement_map:
                 await self.cog.check_achievement(self.user_id, achievement_map[legendary_key], self.channel, self.guild_id)
+            
+            # Clean up dark map if caught Cthulhu non
+            if legendary_key == "cthulhu_con":
+                self.cog.dark_map_active[self.user_id] = False
+                self.cog.dark_map_casts[self.user_id] = 0
+                self.cog.dark_map_cast_count[self.user_id] = 0
         else:
             result_embed = discord.Embed(
-                title="💔 THẤT BẠI! 💔",
-                description=f"❌ Quá mạnh! Cần câu của bạn đã **GÃY TOÁC**!",
+                title="💥 CẦN ĐÃ GÃY! 💥",
+                description=f"❌ Quá mạnh! Cần câu của bạn không chịu được lực và **GÃY TOÁC**!\n\n⚠️ Bạn sẽ cần sửa chữa.",
                 color=discord.Color.red()
             )
+            # Break rod completely (durability = 0)
             await self.cog.update_rod_data(self.user_id, 0)
         
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
     
-    @discord.ui.button(label="🟡 Dìu Cá (Kỹ Thuật)", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="🌊 DÌU CÁ (65%)", style=discord.ButtonStyle.primary)
     async def guide_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Technique method: 65% win rate, high skill requirement (Lv5 only), -40 durability on failure."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
             return
@@ -79,10 +88,11 @@ class LegendaryBossFightView(discord.ui.View):
         
         self.fought = True
         
+        # Check if rod is level 5
         if self.rod_level < 5:
             fail_embed = discord.Embed(
-                title="❌ KHÔNG ĐỦ LEVEL!",
-                description=f"🎣 Cần câu hiện tại chỉ cấp {self.rod_level}/5",
+                title="🔒 KHÔNG ĐỦ ĐIỀU KIỆN",
+                description=f"🎣 Kỹ thuật \"Dìu Cá\" chỉ dành riêng cho **Cần Poseidon (Cấp 5)**!\n\nCần hiện tại: Cấp {self.rod_level}/5\n\n💡 Hãy chọn \"Giật Mạnh\" hoặc tiếp tục cày để nâng cấp cần.",
                 color=discord.Color.orange()
             )
             for child in self.children:
@@ -90,12 +100,28 @@ class LegendaryBossFightView(discord.ui.View):
             await interaction.response.edit_message(embed=fail_embed, view=self)
             return
         
-        success = random.random() < 0.30
+        # Check for active boosts from consumable items
+        base_chance = 0.65
+        boost_message = ""
+        
+        # Get consumable cog to check for active boosts
+        consumable_cog = interaction.client.get_cog("ConsumableCog")
+        if consumable_cog:
+            active_boost = consumable_cog.get_active_boost(self.user_id)
+            if active_boost and active_boost.get("effect_type") == "legendary_fish_boost":
+                base_chance = active_boost.get("effect_value", 0.65)
+                boost_item_key = active_boost.get("item_key", "")
+                from .consumables import get_consumable_info
+                boost_info = get_consumable_info(boost_item_key)
+                if boost_info:
+                    boost_message = f"\n✨ **BUFF KÍCH HOẠT:** {boost_info['name']}\n🎯 Tỉ lệ thắng: 65% → {int(base_chance*100)}%"
+        
+        success = random.random() < base_chance
         
         if success:
             result_embed = discord.Embed(
                 title="✨ THÀNH CÔNG! ✨",
-                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!",
+                description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {self.legendary_fish['name']}**!\n\n🌊 Một động tác dìu cá hoàn hảo!{boost_message}",
                 color=discord.Color.gold()
             )
             result_embed.set_image(url=self.legendary_fish.get('image_url', ''))
@@ -105,7 +131,7 @@ class LegendaryBossFightView(discord.ui.View):
             from .helpers import track_caught_fish
             await track_caught_fish(self.user_id, self.legendary_fish['key'])
             
-            # Check achievement based on legendary fish type
+            # Check achievement
             legendary_key = self.legendary_fish['key']
             achievement_map = {
                 "thuong_luong": "river_lord",
@@ -116,11 +142,18 @@ class LegendaryBossFightView(discord.ui.View):
             }
             if legendary_key in achievement_map:
                 await self.cog.check_achievement(self.user_id, achievement_map[legendary_key], self.channel, self.guild_id)
+            
+            # Clean up dark map if caught Cthulhu non
+            if legendary_key == "cthulhu_con":
+                self.cog.dark_map_active[self.user_id] = False
+                self.cog.dark_map_casts[self.user_id] = 0
+                self.cog.dark_map_cast_count[self.user_id] = 0
         else:
-            new_durability = max(0, self.rod_durability - 30)
+            # Lose 40 durability on failure (not breaking)
+            new_durability = max(0, self.rod_durability - 40)
             result_embed = discord.Embed(
                 title="💔 THẤT BẠI! 💔",
-                description=f"❌ Quá mạnh! Bạn mất 30 độ bền!",
+                description=f"❌ Quá mạnh! Cá chạy thoát!\n\n🛡️ Cần câu mất **-40 Độ Bền** (Còn: {new_durability})",
                 color=discord.Color.red()
             )
             await self.cog.update_rod_data(self.user_id, new_durability)
@@ -129,8 +162,9 @@ class LegendaryBossFightView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
     
-    @discord.ui.button(label="🔵 Cắt Dây (Bỏ Cuộc)", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="✂️ CẮT DÂY (An Toàn)", style=discord.ButtonStyle.secondary)
     async def cut_line(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Safe method: No penalty but no catch."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu được bọn này thôi!", ephemeral=True)
             return
@@ -141,7 +175,7 @@ class LegendaryBossFightView(discord.ui.View):
         self.fought = True
         result_embed = discord.Embed(
             title="🏃 ĐÃ BỎ CUỘC 🏃",
-            description=f"✂️ Bạn cắt dây cá.\n\n{self.legendary_fish['emoji']} **{self.legendary_fish['name']}** thoát khỏi!",
+            description=f"✂️ Bạn cắt dây cá.\n\n{self.legendary_fish['emoji']} **{self.legendary_fish['name']}** thoát khỏi an toàn!\n\n💡 Ít nhất cần của bạn còn nguyên vẹn.",
             color=discord.Color.greyple()
         )
         
@@ -149,8 +183,9 @@ class LegendaryBossFightView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=result_embed, view=self)
 
-async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_hour: int) -> dict | None:
-    """Check if legendary fish should spawn."""
+async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_hour: int, cog=None) -> dict | None:
+    """Check if legendary fish should spawn. Each player can only catch 1 of each legendary fish.
+    Checks for special summoning conditions: sacrifice, crafted bait, map, frequency, etc."""
     import json
     
     try:
@@ -164,10 +199,117 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     except:
         legendary_list = []
     
-    if len(legendary_list) > 0:
+    if not cog:
+        # Fallback to basic spawn check
+        for legendary in LEGENDARY_FISH:
+            if legendary['key'] in legendary_list:
+                continue
+            time_restriction = legendary.get("time_restriction")
+            if time_restriction is not None:
+                start_hour, end_hour = time_restriction
+                if not (start_hour <= current_hour < end_hour):
+                    continue
+            if random.random() < legendary["spawn_chance"]:
+                return legendary
         return None
     
+    # Check each legendary fish for summoning conditions
     for legendary in LEGENDARY_FISH:
+        # Skip if player already caught this legendary fish
+        if legendary['key'] in legendary_list:
+            continue
+        
+        legendary_key = legendary['key']
+        
+        # 1. THUỒNG LUỒNG - Sacrifice condition (3 fish sacrificed)
+        if legendary_key == "thuong_luong":
+            if cog.sacrifices.get(user_id, 0) >= 3:
+                # Ritual complete - spawn it and reset counter
+                cog.sacrifices[user_id] = 0
+                return legendary
+            continue
+        
+        # 2. CÁ NGÂN HÀ - Special bait condition (Mồi Bụi Sao + night time)
+        if legendary_key == "ca_ngan_ha":
+            from database_manager import get_inventory
+            inventory = await get_inventory(user_id)
+            if inventory.get("moi_bui_sao", 0) > 0 and (0 <= current_hour < 4):
+                if random.random() < legendary["spawn_chance"]:
+                    # Use the bait
+                    from database_manager import remove_item
+                    await remove_item(user_id, "moi_bui_sao", 1)
+                    return legendary
+            continue
+        
+        # 3. CÁ PHƯỢNG HOÀNG - Server tree level + time + optional item condition
+        if legendary_key == "ca_phuong_hoang":
+            if not (12 <= current_hour < 14):
+                continue
+            
+            # Check if has Lông Vũ Lửa buff active
+            from database_manager import get_inventory
+            inventory = await get_inventory(user_id)
+            has_buff = cog.phoenix_buff_active.get(user_id, False)
+            
+            if has_buff or inventory.get("long_vu_lua", 0) > 0:
+                if random.random() < legendary["spawn_chance"]:
+                    # Use item if not in active buff
+                    if not has_buff and inventory.get("long_vu_lua", 0) > 0:
+                        from database_manager import remove_item
+                        await remove_item(user_id, "long_vu_lua", 1)
+                        cog.phoenix_buff_active[user_id] = True  # Buff lasts until next catch
+                    return legendary
+            continue
+        
+        # 4. CTHULHU NON - Dark map active (10 casts remaining)
+        if legendary_key == "cthulhu_con":
+            if cog.dark_map_active.get(user_id, False) and cog.dark_map_casts.get(user_id, 0) > 0:
+                # Increment cast count (1-10)
+                if user_id not in cog.dark_map_cast_count:
+                    cog.dark_map_cast_count[user_id] = 0
+                cog.dark_map_cast_count[user_id] += 1
+                current_cast = cog.dark_map_cast_count[user_id]
+                
+                # Decrement remaining casts
+                cog.dark_map_casts[user_id] -= 1
+                
+                if current_cast == 10:
+                    # 10th cast - GUARANTEED spawn
+                    # Clean up after guaranteeing spawn
+                    cog.dark_map_active[user_id] = False
+                    cog.dark_map_casts[user_id] = 0
+                    cog.dark_map_cast_count[user_id] = 0
+                    from database_manager import remove_item
+                    await remove_item(user_id, "ban_do_ham_am", 1)
+                    return legendary
+                elif current_cast < 10:
+                    # Casts 1-9: Random spawn chance
+                    if random.random() < legendary["spawn_chance"]:
+                        # Spawn success - cleanup and return
+                        cog.dark_map_active[user_id] = False
+                        cog.dark_map_casts[user_id] = 0
+                        cog.dark_map_cast_count[user_id] = 0
+                        from database_manager import remove_item
+                        await remove_item(user_id, "ban_do_ham_am", 1)
+                        return legendary
+                elif cog.dark_map_casts[user_id] <= 0:
+                    # Map expired (should not happen with 10 casts, but safety check)
+                    cog.dark_map_active[user_id] = False
+                    cog.dark_map_cast_count[user_id] = 0
+                    from database_manager import remove_item
+                    await remove_item(user_id, "ban_do_ham_am", 1)
+            continue
+        
+        # 5. CÁ VOI 52HZ - Frequency detected flag
+        if legendary_key == "ca_voi_52hz":
+            consumable_cog = cog.bot.get_cog("ConsumableCog") if hasattr(cog, 'bot') else None
+            if consumable_cog and consumable_cog.has_detected_52hz(user_id):
+                # 100% spawn and reset flag
+                consumable_cog.clear_52hz_signal(user_id)
+                return legendary
+            continue
+        
+        # Fallback: basic spawn check with time restriction
         time_restriction = legendary.get("time_restriction")
         if time_restriction is not None:
             start_hour, end_hour = time_restriction

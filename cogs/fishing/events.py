@@ -124,6 +124,11 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                 result["gain_items"] = {"pearl": 1}
             elif effect == "gain_ring":
                 result["gain_items"] = {"ring": 1}
+            elif effect == "gain_map_piece":
+                # Random map piece A, B, C, or D
+                map_pieces = ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]
+                piece = random.choice(map_pieces)
+                result["gain_items"] = {piece: 1}
             elif effect == "bonus_catch_2":
                 result["bonus_catch"] = 2
             elif effect == "bonus_catch_3":

@@ -271,7 +271,7 @@ class EconomyCog(commands.Cog):
                 else:
                     embed.add_field(name="💝 Quà Tặng", value=gift_text, inline=False)
             
-            # Tool items
+            # Tool items & Consumables
             tool_lookup = {
                 "treasure_chest": ("Rương Kho Báu", "🎁"),
                 "fertilizer": ("Phân Bón", "🌾"),
@@ -281,6 +281,20 @@ class EconomyCog(commands.Cog):
                 "puzzle_b": ("Mảnh Ghép B", "🧩"),
                 "puzzle_c": ("Mảnh Ghép C", "🧩"),
                 "puzzle_d": ("Mảnh Ghép D", "🧩"),
+                "manh_ban_do_a": ("Mảnh Bản Đồ A", "🗺️"),
+                "manh_ban_do_b": ("Mảnh Bản Đồ B", "🗺️"),
+                "manh_ban_do_c": ("Mảnh Bản Đồ C", "🗺️"),
+                "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
+                "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
+                "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
+                "moi_bui_sao": ("Mồi Bụi Sao", "✨🎣"),
+                "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
+                "may_do_song": ("Máy Dò Sóng", "📡"),
+                # Consumable buff items
+                "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
+                "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
+                "thao_tac_tinh_vi": ("🎯 Thao Tác Tinh Vi", "🎯"),
+                "tim_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
@@ -375,7 +389,7 @@ class EconomyCog(commands.Cog):
                 else:
                     embed.add_field(name="💝 Quà Tặng", value=gift_text, inline=False)
             
-            # Tool items
+            # Tool items & Consumables
             tool_lookup = {
                 "treasure_chest": ("Rương Kho Báu", "🎁"),
                 "fertilizer": ("Phân Bón", "🌾"),
@@ -385,6 +399,20 @@ class EconomyCog(commands.Cog):
                 "puzzle_b": ("Mảnh Ghép B", "🧩"),
                 "puzzle_c": ("Mảnh Ghép C", "🧩"),
                 "puzzle_d": ("Mảnh Ghép D", "🧩"),
+                "manh_ban_do_a": ("Mảnh Bản Đồ A", "🗺️"),
+                "manh_ban_do_b": ("Mảnh Bản Đồ B", "🗺️"),
+                "manh_ban_do_c": ("Mảnh Bản Đồ C", "🗺️"),
+                "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
+                "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
+                "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
+                "moi_bui_sao": ("Mồi Bụi Sao", "✨🎣"),
+                "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
+                "may_do_song": ("Máy Dò Sóng", "📡"),
+                # Consumable buff items
+                "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
+                "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
+                "thao_tac_tinh_vi": ("🎯 Thao Tác Tinh Vi", "🎯"),
+                "tim_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:

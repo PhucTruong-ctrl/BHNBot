@@ -142,7 +142,6 @@ RARE_FISH = [
     {"key": "ca_betta", "name": "Betta Rồng", "emoji": "🐉", "sell_price": 50},
     {"key": "ca_la_han", "name": "La Hán", "emoji": "🤯", "sell_price": 55},
     {"key": "ca_hong_ket", "name": "Hồng Két", "emoji": "🦜", "sell_price": 45},
-    {"key": "ca_phuong_hoang", "name": "Phượng Hoàng", "emoji": "🐦", "sell_price": 40},
     {"key": "ca_than_tien", "name": "Thần Tiên", "emoji": "🧚", "sell_price": 40},
     {"key": "tom_hum_bong", "name": "Tôm Hùm Bông", "emoji": "🦞", "sell_price": 55},
     {"key": "tom_hum_alaska", "name": "Tôm Alaska", "emoji": "🦞", "sell_price": 55},
@@ -354,12 +353,35 @@ TRASH_ITEMS = [
     {"name": "Dép Tổ Ong Rách", "emoji": "🩴"}, 
 ]
 
+# Legendary summoning items
+LEGENDARY_ITEMS = [
+    # Thuồng Luồng (Sacrifice - rác)
+    {"key": "manh_ban_do_a", "name": "Mảnh Bản Đồ A", "emoji": "🗺️", "type": "legendary_component", "description": "Một mảnh bản đồ cổ xưa"},
+    {"key": "manh_ban_do_b", "name": "Mảnh Bản Đồ B", "emoji": "🗺️", "type": "legendary_component", "description": "Một mảnh bản đồ cổ xưa"},
+    {"key": "manh_ban_do_c", "name": "Mảnh Bản Đồ C", "emoji": "🗺️", "type": "legendary_component", "description": "Một mảnh bản đồ cổ xưa"},
+    {"key": "manh_ban_do_d", "name": "Mảnh Bản Đồ D", "emoji": "🗺️", "type": "legendary_component", "description": "Một mảnh bản đồ cổ xưa"},
+    
+    # Cá Ngân Hà (Crafting)
+    {"key": "manh_sao_bang", "name": "Mảnh Sao Băng", "emoji": "⭐", "type": "legendary_component", "description": "Mảnh sao băng rơi từ bầu trời"},
+    {"key": "moi_bui_sao", "name": "Mồi Bụi Sao", "emoji": "✨", "type": "legendary_bait", "description": "Mồi đặc biệt để câu Cá Ngân Hà (dùng ban đêm 00:00-04:00)"},
+    
+    # Cá Phượng Hoàng (Community)
+    {"key": "long_vu_lua", "name": "Lông Vũ Lửa", "emoji": "🔥", "type": "legendary_item", "description": "Lông vũ lửa để thu hút Phượng Hoàng (1 giờ)"},
+    
+    # Cthulhu Non (Map)
+    {"key": "ban_do_ham_am", "name": "Bản Đồ Hắc Ám", "emoji": "🌑", "type": "legendary_item", "description": "Bản đồ để tìm Cthulhu Non (dùng trong 10 lượt câu)"},
+    
+    # Cá Voi 52Hz (Frequency)
+    {"key": "may_do_song", "name": "Máy Dò Sóng", "emoji": "📡", "type": "legendary_tool", "description": "Dụng cụ để dò tần số Cá Voi 52Hz"},
+]
+
 # Chest loot
 CHEST_LOOT = {
-    "fertilizer": 30,
-    "puzzle_piece": 20,
+    "fertilizer": 25,
+    "puzzle_piece": 15,
     "coin_pouch": 20,
-    "gift_random": 30
+    "gift_random": 30,
+    "manh_sao_bang": 10  # Mảnh Sao Băng (10% từ chest)
 }
 
 GIFT_ITEMS = ["cafe", "flower", "ring", "gift", "chocolate", "card"]
@@ -558,7 +580,7 @@ ACHIEVEMENTS = {
         "description": "Câu được Thuồng Luồng trong cơn bão dữ",
         "condition_type": "caught_legendary",
         "target": "thuong_luong",
-        "reward_coins": 5000,
+        "reward_coins": 15000,
         "emoji": "⛈️",
         "role_id": 1450518323770167327
     },
@@ -568,7 +590,7 @@ ACHIEVEMENTS = {
         "description": "Câu được Cá Ngân Hà vào lúc đêm khuya thanh vắng",
         "condition_type": "caught_legendary",
         "target": "ca_ngan_ha",
-        "reward_coins": 6000,
+        "reward_coins": 16000,
         "emoji": "🌌",
         "role_id": 1450518368368066611
     },
@@ -578,7 +600,7 @@ ACHIEVEMENTS = {
         "description": "Câu được Cá Phượng Hoàng dưới ánh nắng chói chang",
         "condition_type": "caught_legendary",
         "target": "ca_phuong_hoang",
-        "reward_coins": 5500,
+        "reward_coins": 15500,
         "emoji": "☀️",
         "role_id": 1450518432582992004
     },
@@ -588,7 +610,7 @@ ACHIEVEMENTS = {
         "description": "Bắt được Cthulhu Non và giữ được sự tỉnh táo",
         "condition_type": "caught_legendary",
         "target": "cthulhu_con",
-        "reward_coins": 6666,
+        "reward_coins": 16666,
         "emoji": "👁️",
         "role_id": 1450518489247776880
     },
@@ -598,7 +620,7 @@ ACHIEVEMENTS = {
         "description": "Tìm thấy Cá Voi 52Hz giữa đại dương mênh mông",
         "condition_type": "caught_legendary",
         "target": "ca_voi_52hz",
-        "reward_coins": 8000,
+        "reward_coins": 18000,
         "emoji": "🐋",
         "role_id": 1450518545627877466
     },
@@ -608,7 +630,7 @@ ACHIEVEMENTS = {
         "description": "Sở hữu đủ 5 loài cá Legendary mới trong Hồ Cá",
         "condition_type": "full_legendary_set",
         "target": 5,
-        "reward_coins": 50000,
+        "reward_coins": 150000,
         "emoji": "🏆",
         "role_id": 1450518602041004162
     }
@@ -720,6 +742,9 @@ RANDOM_EVENTS = {
     "monsoon":          {"chance": 0.001, "type": "good", "name": "🌬️ Gió Mùa Đông Bắc!", "effect": "global_reset"},
     "temple_bell":      {"chance": 0.001, "type": "good", "name": "🔔 Tiếng Chuông Chùa!", "effect": "global_reset"},
     "warp_gate":        {"chance": 0.001, "type": "good", "name": "🌌 Cổng Không Gian!", "effect": "global_reset"},
+    
+    # --- LEGENDARY SUMMONING ITEMS ---
+    "ancient_map":      {"chance": 0.008, "type": "good", "name": "🗺️ Mảnh Bản Đồ Cổ", "effect": "gain_map_piece"},
 }
 
 RANDOM_EVENT_MESSAGES = {
@@ -811,6 +836,7 @@ RANDOM_EVENT_MESSAGES = {
     "monsoon": "Gió mùa về! Cá nổi lên hít thở rợp cả mặt hồ. Cơ hội ngàn năm có một! 🌬️🐟",
     "temple_bell": "Tiếng chuông chùa xa xa vọng lại... Tâm tịnh, tay nhanh, mọi phiền muộn (và cooldown) đều tan biến. 🔔✨",
     "warp_gate": "Lưỡi câu của bạn móc trúng nút 'Refresh' của Vũ Trụ. Hệ thống thời gian bị reset! 🌌🔄",
+    "ancient_map": "Bạn câu được một mảnh bản đồ cổ xưa! Nó có thể là chìa khóa để mở ra những bí ẩn. 🗺️✨",
 }
 
 
@@ -1018,7 +1044,7 @@ NPC_ENCOUNTERS = {
         "name": "🐈 Mèo Hoang Đói Bụng",
         "description": "Một chú mèo hoang gầy gò nhìn chằm chằm vào con cá bạn vừa câu.\nNó kêu 'Meow~' vẻ đói bụng.",
         "question": "**Bạn có muốn cho nó con cá này không?**",
-        "image_url": "https://i.imgur.com/QfzKZYH.png",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/catbegging.png",
         "chance": 0.25,
         "rewards": {
             "accept": [
@@ -1035,7 +1061,7 @@ NPC_ENCOUNTERS = {
         "name": "👴 Ông Lão Ăn Xin",
         "description": "Một cụ già rách rưới đi qua:\n'Cậu ơi, cho già xin **50 Hạt** mua bánh mì...'",
         "question": "**Bạn có muốn làm việc thiện không?**",
-        "image_url": "https://i.imgur.com/3mKxPLH.png",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/oldbeggar.png",
         "chance": 0.2,
         "rewards": {
             "accept": [
@@ -1052,7 +1078,7 @@ NPC_ENCOUNTERS = {
         "name": "🦦 Rái Cá Trao Đổi",
         "description": "Một con Rái Cá trồi lên, tay cầm một viên đá sáng lấp lánh.\nNó chỉ vào con cá của bạn, tỏ ý muốn trao đổi.",
         "question": "**Bạn có muốn đổi cá lấy vật phẩm bí ẩn không?**",
-        "image_url": "https://i.imgur.com/9Ky7XzR.png",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/ottertrade.png",
         "chance": 0.25,
         "rewards": {
             "accept": [
@@ -1070,7 +1096,7 @@ NPC_ENCOUNTERS = {
         "name": "🕵️ Thương Buôn Chợ Đen",
         "description": "Một gã mặc áo choàng đen thì thầm:\n'Con cá này nhìn được đấy, ta mua **GẤP 3 LẦN** giá thị trường, bán không?'",
         "question": "**Rủi ro:** Có 20% bị Công An bắt!",
-        "image_url": "https://i.imgur.com/zQx3YmH.png",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/blackmarkettrader.png",
         "chance": 0.15,
         "rewards": {
             "accept": [

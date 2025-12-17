@@ -231,9 +231,11 @@ class General(commands.Cog):
         # Shop commands
         embed.add_field(
             name="🛍️ Cửa hàng",
-            value="• `/shop` - Xem danh sách quà\n"
-                  "• `/mua <item> [soluong]` - Mua quà (Giá: ☕ 50, 🌹 75, 💍 150, 🎁 100, 🍫 60, 💌 40, 🪱 10)\n"
-                  "• `/tuido [@user]` - Xem túi đồ",
+            value="• `/shop` - Xem danh sách quà & vật phẩm\n"
+                  "• `/mua <item_key> [soluong]` - Mua quà/buff/dò sóng\n"
+                  "• `/sudung [item_key]` - Sử dụng vật phẩm buff\n"
+                  "• `/tuido [@user]` - Xem túi đồ\n"
+                  "• `/tangqua <user> <item_key>` - Tặng quà",
             inline=False
         )
         

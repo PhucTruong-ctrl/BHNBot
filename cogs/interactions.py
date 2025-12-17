@@ -54,10 +54,10 @@ class InteractionsCog(commands.Cog):
 
     # ==================== COMMANDS ====================
 
-    @app_commands.command(name="tangqua", description="Tặng quà cho ai đó")
+    @app_commands.command(name="tangqua", description="Tặng quà cho người chơi khác")
     @app_commands.describe(
         user="Người nhận quà",
-        item="Item tặng (Cà phê, Hoa, Nhẫn, Quà, Sô cô la, Thiệp)"
+        item="Item key: cafe, flower, ring, gift, chocolate, card"
     )
     async def gift_item(self, interaction: discord.Interaction, user: discord.User, item: str):
         """Gift an item to another user"""
