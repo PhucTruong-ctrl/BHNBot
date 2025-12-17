@@ -305,7 +305,7 @@ async def get_top_affinity_friends(user_id: int, limit: int = 3) -> List[tuple]:
 async def get_inventory(user_id: int) -> Dict[str, int]:
     """Get user inventory with caching"""
     result = await db_manager.execute(
-        "SELECT item_name, quantity FROM inventory WHERE user_id = ?",
+        "SELECT item_name, quantity FROM inventory WHERE user_id = ? AND quantity > 0",
         (user_id,),
         use_cache=True,
         cache_key=f"inventory_{user_id}",

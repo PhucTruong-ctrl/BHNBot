@@ -1,0 +1,412 @@
+{
+  "items": {
+    "trash_01": {
+      "type": "trash",
+      "key": "trash_01",
+      "name": "Ủng Rách",
+      "emoji": "🥾",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_02": {
+      "type": "trash",
+      "key": "trash_02",
+      "name": "Lon Nước",
+      "emoji": "🥫",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_03": {
+      "type": "trash",
+      "key": "trash_03",
+      "name": "Xà Phòng Cũ",
+      "emoji": "🧼",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_04": {
+      "type": "trash",
+      "key": "trash_04",
+      "name": "Mảnh Kính",
+      "emoji": "🔨",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_05": {
+      "type": "trash",
+      "key": "trash_05",
+      "name": "Túi Ni Lông",
+      "emoji": "🛍️",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_06": {
+      "type": "trash",
+      "key": "trash_06",
+      "name": "Chai Nhựa",
+      "emoji": "🥤",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_07": {
+      "type": "trash",
+      "key": "trash_07",
+      "name": "Lốp Xe Hư",
+      "emoji": "🍩",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_08": {
+      "type": "trash",
+      "key": "trash_08",
+      "name": "Cành Củi Khô",
+      "emoji": "🪵",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_09": {
+      "type": "trash",
+      "key": "trash_09",
+      "name": "Giấy Báo Cũ",
+      "emoji": "📰",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_10": {
+      "type": "trash",
+      "key": "trash_10",
+      "name": "Hộp Xốp",
+      "emoji": "🥡",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_11": {
+      "type": "trash",
+      "key": "trash_11",
+      "name": "Vỏ Chuối",
+      "emoji": "🍌",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_12": {
+      "type": "trash",
+      "key": "trash_12",
+      "name": "Xương Cá",
+      "emoji": "🦴",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_13": {
+      "type": "trash",
+      "key": "trash_13",
+      "name": "Rong Biển",
+      "emoji": "🌿",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_14": {
+      "type": "trash",
+      "key": "trash_14",
+      "name": "Xác Gián",
+      "emoji": "🪳",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_15": {
+      "type": "trash",
+      "key": "trash_15",
+      "name": "Cùi Bắp",
+      "emoji": "🌽",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_16": {
+      "type": "trash",
+      "key": "trash_16",
+      "name": "Trứng Ung",
+      "emoji": "��",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_17": {
+      "type": "trash",
+      "key": "trash_17",
+      "name": "Đầu Tôm",
+      "emoji": "🦐",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_18": {
+      "type": "trash",
+      "key": "trash_18",
+      "name": "Táo Cắn Dở",
+      "emoji": "🍎",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_19": {
+      "type": "trash",
+      "key": "trash_19",
+      "name": "Hoa Héo",
+      "emoji": "🥀",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_20": {
+      "type": "trash",
+      "key": "trash_20",
+      "name": "Cơm Thiu",
+      "emoji": "🍚",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_21": {
+      "type": "trash",
+      "key": "trash_21",
+      "name": "Quần Xì Rách",
+      "emoji": "🩲",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_22": {
+      "type": "trash",
+      "key": "trash_22",
+      "name": "Cục Cứt",
+      "emoji": "💩",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_23": {
+      "type": "trash",
+      "key": "trash_23",
+      "name": "Ba Con Sói",
+      "emoji": "🎈",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_24": {
+      "type": "trash",
+      "key": "trash_24",
+      "name": "Băng Vệ Sinh",
+      "emoji": "🩸",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_25": {
+      "type": "trash",
+      "key": "trash_25",
+      "name": "Áo Dú Cũ",
+      "emoji": "👙",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_26": {
+      "type": "trash",
+      "key": "trash_26",
+      "name": "Vớ Thối",
+      "emoji": "🧦",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_27": {
+      "type": "trash",
+      "key": "trash_27",
+      "name": "Răng Giả",
+      "emoji": "🦷",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_28": {
+      "type": "trash",
+      "key": "trash_28",
+      "name": "Giấy Chùi Đít",
+      "emoji": "🧻",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_29": {
+      "type": "trash",
+      "key": "trash_29",
+      "name": "Tả Em Bé",
+      "emoji": "👶",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "trash_30": {
+      "type": "trash",
+      "key": "trash_30",
+      "name": "Dép Tổ Ong Rách",
+      "emoji": "🩴",
+      "sell_price": 0,
+      "description": "Rác thải từ dưới đáy sông"
+    },
+    "manh_ban_do_a": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_a",
+      "name": "Mảnh Bản Đồ A",
+      "emoji": "🗺️",
+      "sell_price": 0,
+      "description": "Một mảnh bản đồ cổ xưa"
+    },
+    "manh_ban_do_b": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_b",
+      "name": "Mảnh Bản Đồ B",
+      "emoji": "🗺️",
+      "sell_price": 0,
+      "description": "Một mảnh bản đồ cổ xưa"
+    },
+    "manh_ban_do_c": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_c",
+      "name": "Mảnh Bản Đồ C",
+      "emoji": "🗺️",
+      "sell_price": 0,
+      "description": "Một mảnh bản đồ cổ xưa"
+    },
+    "manh_ban_do_d": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_d",
+      "name": "Mảnh Bản Đồ D",
+      "emoji": "🗺️",
+      "sell_price": 0,
+      "description": "Một mảnh bản đồ cổ xưa"
+    },
+    "manh_sao_bang": {
+      "type": "legendary_component",
+      "key": "manh_sao_bang",
+      "name": "Mảnh Sao Băng",
+      "emoji": "⭐",
+      "sell_price": 0,
+      "description": "Mảnh sao băng rơi từ bầu trời"
+    },
+    "moi_bui_sao": {
+      "type": "legendary_component",
+      "key": "moi_bui_sao",
+      "name": "Mồi Bụi Sao",
+      "emoji": "✨",
+      "sell_price": 0,
+      "description": "Mồi đặc biệt để câu Cá Ngân Hà (dùng ban đêm 00:00-04:00)"
+    },
+    "long_vu_lua": {
+      "type": "legendary_component",
+      "key": "long_vu_lua",
+      "name": "Lông Vũ Lửa",
+      "emoji": "🔥",
+      "sell_price": 0,
+      "description": "Lông vũ lửa để thu hút Phượng Hoàng (1 giờ)"
+    },
+    "ban_do_ham_am": {
+      "type": "legendary_component",
+      "key": "ban_do_ham_am",
+      "name": "Bản Đồ Hắc Ám",
+      "emoji": "🌑",
+      "sell_price": 0,
+      "description": "Bản đồ để tìm Cthulhu Non (dùng trong 10 lượt câu)"
+    },
+    "may_do_song": {
+      "type": "legendary_component",
+      "key": "may_do_song",
+      "name": "Máy Dò Sóng",
+      "emoji": "📡",
+      "sell_price": 0,
+      "description": "Dụng cụ để dò tần số Cá Voi 52Hz"
+    },
+    "cafe": {
+      "type": "gift",
+      "key": "cafe",
+      "name": "☕ Cà Phê",
+      "emoji": "☕",
+      "sell_price": 50,
+      "description": "Quà tặng yêu thương"
+    },
+    "flower": {
+      "type": "gift",
+      "key": "flower",
+      "name": "🌹 Hoa Hồng",
+      "emoji": "��",
+      "sell_price": 50,
+      "description": "Quà tặng yêu thương"
+    },
+    "ring": {
+      "type": "gift",
+      "key": "ring",
+      "name": "💍 Nhẫn",
+      "emoji": "💍",
+      "sell_price": 50,
+      "description": "Quà tặng yêu thương"
+    },
+    "gift": {
+      "type": "gift",
+      "key": "gift",
+      "name": "🎁 Quà Tặng",
+      "emoji": "🎁",
+      "sell_price": 50,
+      "description": "Quà tặng yêu thương"
+    },
+    "chocolate": {
+      "type": "gift",
+      "key": "chocolate",
+      "name": "🍫 Sô-cô-la",
+      "emoji": "🍫",
+      "sell_price": 50,
+      "description": "Quà tặng yêu thương"
+    },
+    "card": {
+      "type": "gift",
+      "key": "card",
+      "name": "💌 Thiệp",
+      "emoji": "💌",
+      "sell_price": 50,
+      "description": "Quà tặng yêu thương"
+    },
+    "nuoc_tang_luc": {
+      "type": "consumable",
+      "key": "nuoc_tang_luc",
+      "name": "💪 Nước Tăng Lực",
+      "emoji": "💪",
+      "sell_price": 0,
+      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 90% (1 lần sử dụng)",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.9,
+      "original_value": 0.65,
+      "one_time_use": true
+    },
+    "gang_tay_xin": {
+      "type": "consumable",
+      "key": "gang_tay_xin",
+      "name": "🥊 Găng Tay Câu Cá",
+      "emoji": "��",
+      "sell_price": 0,
+      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 90% (1 lần sử dụng)",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.9,
+      "original_value": 0.65,
+      "one_time_use": true
+    },
+    "thao_tac_tinh_vi": {
+      "type": "consumable",
+      "key": "thao_tac_tinh_vi",
+      "name": "🎯 Thao Tác Tinh Vi",
+      "emoji": "🎯",
+      "sell_price": 0,
+      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 92% (1 lần sử dụng)",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.92,
+      "original_value": 0.65,
+      "one_time_use": true
+    },
+    "tim_yeu_ca": {
+      "type": "consumable",
+      "key": "tim_yeu_ca",
+      "name": "❤️ Tình Yêu Với Cá",
+      "emoji": "❤️",
+      "sell_price": 0,
+      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 88% (1 lần sử dụng)",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.88,
+      "original_value": 0.65,
+      "one_time_use": true
+    }
+  }
+}

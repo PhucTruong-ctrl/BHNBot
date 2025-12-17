@@ -1,0 +1,1405 @@
+{
+  "fishing_data": {
+    "fish": [
+      {
+        "key": "ca_chep",
+        "name": "Cá Chép",
+        "emoji": "🐠",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_ro",
+        "name": "Cá Rô Đồng",
+        "emoji": "🐟",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_bong",
+        "name": "Cá Bống",
+        "emoji": "🐟",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_com",
+        "name": "Cá Cơm",
+        "emoji": "🐟",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_moi",
+        "name": "Cá Mòi",
+        "emoji": "🐟",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_me",
+        "name": "Cá Mè",
+        "emoji": "⚪",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_sac",
+        "name": "Cá Sặc",
+        "emoji": "🐠",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_nuc",
+        "name": "Cá Nục",
+        "emoji": "🐟",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_bac_ma",
+        "name": "Cá Bạc Má",
+        "emoji": "🐟",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_chim",
+        "name": "Cá Chim Trắng",
+        "emoji": "⬜",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_lau_kinh",
+        "name": "Cá Lau Kính",
+        "emoji": "🧹",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_long_tong",
+        "name": "Cá Lòng Tong",
+        "emoji": "🐟",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_bay_trau",
+        "name": "Cá Bảy Trầu",
+        "emoji": "🌈",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_ro_phi",
+        "name": "Cá Rô Phi",
+        "emoji": "🐟",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_trang",
+        "name": "Cá Trắng",
+        "emoji": "⚪",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_linh",
+        "name": "Cá Linh",
+        "emoji": "🐟",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_chot",
+        "name": "Cá Chốt",
+        "emoji": "🐟",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_diu",
+        "name": "Cá Đù",
+        "emoji": "🐟",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_liet",
+        "name": "Cá Liệt",
+        "emoji": "🐟",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_phen",
+        "name": "Cá Phèn",
+        "emoji": "🐟",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_dong",
+        "name": "Cá Đổng",
+        "emoji": "🐟",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_khoai",
+        "name": "Cá Khoai",
+        "emoji": "🥖",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_bep",
+        "name": "Cá Bớp",
+        "emoji": "🦈",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_son",
+        "name": "Cá Sơn",
+        "emoji": "🔴",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_dia",
+        "name": "Cá Dìa",
+        "emoji": "🍃",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_kinh",
+        "name": "Cá Kình",
+        "emoji": "🐟",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_doi",
+        "name": "Cá Đối",
+        "emoji": "🐟",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "ca_nham",
+        "name": "Cá Nhám",
+        "emoji": "🦈",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "ca_thoi_loi",
+        "name": "Cá Thòi Lòi",
+        "emoji": "👀",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "nong_noc",
+        "name": "Nòng Nọc",
+        "emoji": "⚫",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "tep_dong",
+        "name": "Tép Đồng",
+        "emoji": "🦐",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "oc_buou",
+        "name": "Ốc Bươu",
+        "emoji": "🐚",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "oc_lac",
+        "name": "Ốc Lác",
+        "emoji": "🐚",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "oc_gao",
+        "name": "Ốc Gạo",
+        "emoji": "🐚",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "oc_dang",
+        "name": "Ốc Đắng",
+        "emoji": "🐚",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "hen",
+        "name": "Con Hến",
+        "emoji": "🦪",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ngheu",
+        "name": "Con Nghêu",
+        "emoji": "🦪",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "chem_chep",
+        "name": "Chem Chép",
+        "emoji": "🦪",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "so_long",
+        "name": "Sò Lông",
+        "emoji": "🦪",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "so_huyet",
+        "name": "Sò Huyết",
+        "emoji": "🩸",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "cua_dong",
+        "name": "Cua Đồng",
+        "emoji": "🦀",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "con_ram",
+        "name": "Con Rạm",
+        "emoji": "🦀",
+        "sell_price": 6,
+        "category": "common"
+      },
+      {
+        "key": "con_cay",
+        "name": "Con Cáy",
+        "emoji": "🦀",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ba_khia",
+        "name": "Ba Khía",
+        "emoji": "🦀",
+        "sell_price": 7,
+        "category": "common"
+      },
+      {
+        "key": "trung_ca",
+        "name": "Trứng Cá",
+        "emoji": "🫧",
+        "sell_price": 5,
+        "category": "common"
+      },
+      {
+        "key": "ca_tre",
+        "name": "Cá Trê",
+        "emoji": "🥖",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_loc",
+        "name": "Cá Lóc",
+        "emoji": "🦈",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_tram",
+        "name": "Cá Trắm",
+        "emoji": "🐟",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_chach",
+        "name": "Cá Chạch",
+        "emoji": "🐍",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_keo",
+        "name": "Cá Kèo",
+        "emoji": "🥢",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_dieu_hong",
+        "name": "Diêu Hồng",
+        "emoji": "🌸",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_vang",
+        "name": "Cá Vàng",
+        "emoji": "🐡",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_bay_mau",
+        "name": "Cá 7 Màu",
+        "emoji": "🌈",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_nheo",
+        "name": "Cá Nheo",
+        "emoji": "🐟",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_ho",
+        "name": "Cá Hố",
+        "emoji": "🎗️",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_tra",
+        "name": "Cá Tra",
+        "emoji": "🐋",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_basa",
+        "name": "Cá Basa",
+        "emoji": "🐋",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_chim_den",
+        "name": "Cá Chim Đen",
+        "emoji": "⬛",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_that_lat",
+        "name": "Cá Thát Lát",
+        "emoji": "🔪",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_nganh",
+        "name": "Cá Ngạnh",
+        "emoji": "🐟",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_muong",
+        "name": "Cá Mương",
+        "emoji": "🐟",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_diec",
+        "name": "Cá Diếc",
+        "emoji": "🐟",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_he_vang",
+        "name": "Cá He Vàng",
+        "emoji": "🟡",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_me_vinh",
+        "name": "Cá Mè Vinh",
+        "emoji": "🐟",
+        "sell_price": 9,
+        "category": "common"
+      },
+      {
+        "key": "ca_bup",
+        "name": "Cá Búp",
+        "emoji": "🐟",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_neon",
+        "name": "Cá Neon",
+        "emoji": "🚥",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_ty_ba",
+        "name": "Cá Tỳ Bà",
+        "emoji": "🎸",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_mun",
+        "name": "Cá Mún",
+        "emoji": "🐟",
+        "sell_price": 8,
+        "category": "common"
+      },
+      {
+        "key": "ca_duoi_nho",
+        "name": "Cá Đuối Nhỏ",
+        "emoji": "🪁",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "luon",
+        "name": "Con Lươn",
+        "emoji": "🐍",
+        "sell_price": 10,
+        "category": "common"
+      },
+      {
+        "key": "ca_thu",
+        "name": "Cá Thu",
+        "emoji": "🐟",
+        "sell_price": 12,
+        "category": "common"
+      },
+      {
+        "key": "ca_ngu",
+        "name": "Cá Ngừ",
+        "emoji": "🦈",
+        "sell_price": 12,
+        "category": "common"
+      },
+      {
+        "key": "ca_mu",
+        "name": "Cá Mú",
+        "emoji": "🐡",
+        "sell_price": 13,
+        "category": "common"
+      },
+      {
+        "key": "ca_lang",
+        "name": "Cá Lăng",
+        "emoji": "🥖",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "ca_chinh",
+        "name": "Cá Chình",
+        "emoji": "🐍",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "ca_tai_tuong",
+        "name": "Tai Tượng",
+        "emoji": "👂",
+        "sell_price": 13,
+        "category": "common"
+      },
+      {
+        "key": "muc_ong",
+        "name": "Mực Ống",
+        "emoji": "🦑",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "bach_tuoc",
+        "name": "Bạch Tuộc",
+        "emoji": "🐙",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "tom_hum_dat",
+        "name": "Tôm Đất",
+        "emoji": "🦐",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "tom_cang_xanh",
+        "name": "Tôm Càng",
+        "emoji": "🦞",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "tom_su",
+        "name": "Tôm Sú",
+        "emoji": "🦐",
+        "sell_price": 13,
+        "category": "common"
+      },
+      {
+        "key": "tom_tit",
+        "name": "Tôm Tít",
+        "emoji": "🦐",
+        "sell_price": 12,
+        "category": "common"
+      },
+      {
+        "key": "ghe_xanh",
+        "name": "Ghẹ Xanh",
+        "emoji": "🦀",
+        "sell_price": 13,
+        "category": "common"
+      },
+      {
+        "key": "oc_huong",
+        "name": "Ốc Hương",
+        "emoji": "🐚",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "oc_mong_tay",
+        "name": "Ốc Móng Tay",
+        "emoji": "💅",
+        "sell_price": 12,
+        "category": "common"
+      },
+      {
+        "key": "oc_len",
+        "name": "Ốc Len",
+        "emoji": "🐚",
+        "sell_price": 12,
+        "category": "common"
+      },
+      {
+        "key": "ech",
+        "name": "Con Ếch",
+        "emoji": "🐸",
+        "sell_price": 11,
+        "category": "common"
+      },
+      {
+        "key": "ca_bop_bien",
+        "name": "Cá Bớp Biển",
+        "emoji": "🦈",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "ca_chach_lau",
+        "name": "Cá Chạch Lấu",
+        "emoji": "🐍",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "ca_bong_tuong",
+        "name": "Cá Bống Tượng",
+        "emoji": "🗿",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "ca_leo",
+        "name": "Cá Leo",
+        "emoji": "🦈",
+        "sell_price": 13,
+        "category": "common"
+      },
+      {
+        "key": "ca_chem",
+        "name": "Cá Chẽm",
+        "emoji": "🐟",
+        "sell_price": 13,
+        "category": "common"
+      },
+      {
+        "key": "ca_bong_mu",
+        "name": "Cá Bống Mú",
+        "emoji": "🐡",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "ca_khoai",
+        "name": "Cá Khoai",
+        "emoji": "🐟",
+        "sell_price": 11,
+        "category": "common"
+      },
+      {
+        "key": "ca_tuyet",
+        "name": "Cá Tuyết",
+        "emoji": "❄️",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "muc_la",
+        "name": "Mực Lá",
+        "emoji": "🦑",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "muc_sim",
+        "name": "Mực Sim",
+        "emoji": "🦑",
+        "sell_price": 14,
+        "category": "common"
+      },
+      {
+        "key": "sua",
+        "name": "Con Sứa",
+        "emoji": "🎐",
+        "sell_price": 11,
+        "category": "common"
+      },
+      {
+        "key": "sam_bien",
+        "name": "Con Sam",
+        "emoji": "🛸",
+        "sell_price": 15,
+        "category": "common"
+      },
+      {
+        "key": "ca_chich",
+        "name": "Cá Trích",
+        "emoji": "🐟",
+        "sell_price": 11,
+        "category": "common"
+      },
+      {
+        "key": "ca_koi",
+        "name": "Cá Koi",
+        "emoji": "✨🐠",
+        "sell_price": 35,
+        "category": "rare"
+      },
+      {
+        "key": "ca_he",
+        "name": "Cá Hề (Nemo)",
+        "emoji": "🤡",
+        "sell_price": 35,
+        "category": "rare"
+      },
+      {
+        "key": "ca_hoi",
+        "name": "Cá Hồi",
+        "emoji": "🍣",
+        "sell_price": 40,
+        "category": "rare"
+      },
+      {
+        "key": "ca_thien_than",
+        "name": "Thiên Thần",
+        "emoji": "👼",
+        "sell_price": 40,
+        "category": "rare"
+      },
+      {
+        "key": "ca_dia_canh",
+        "name": "Cá Đĩa",
+        "emoji": "💿",
+        "sell_price": 45,
+        "category": "rare"
+      },
+      {
+        "key": "ca_ngua",
+        "name": "Cá Ngựa",
+        "emoji": "🐎",
+        "sell_price": 45,
+        "category": "rare"
+      },
+      {
+        "key": "ca_tam",
+        "name": "Cá Tầm",
+        "emoji": "🦈",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "ca_betta",
+        "name": "Betta Rồng",
+        "emoji": "🐉",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "ca_la_han",
+        "name": "La Hán",
+        "emoji": "🤯",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "ca_hong_ket",
+        "name": "Hồng Két",
+        "emoji": "🦜",
+        "sell_price": 45,
+        "category": "rare"
+      },
+      {
+        "key": "ca_than_tien",
+        "name": "Thần Tiên",
+        "emoji": "🧚",
+        "sell_price": 40,
+        "category": "rare"
+      },
+      {
+        "key": "tom_hum_bong",
+        "name": "Tôm Hùm Bông",
+        "emoji": "🦞",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "tom_hum_alaska",
+        "name": "Tôm Alaska",
+        "emoji": "🦞",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "cua_hoang_de",
+        "name": "Cua Hoàng Đế",
+        "emoji": "👑",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "cua_tuyet",
+        "name": "Cua Tuyết",
+        "emoji": "❄️",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "bao_ngu",
+        "name": "Bào Ngư",
+        "emoji": "👂",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "hai_sam",
+        "name": "Hải Sâm",
+        "emoji": "🥒",
+        "sell_price": 45,
+        "category": "rare"
+      },
+      {
+        "key": "cau_gai",
+        "name": "Cầu Gai (Nhum)",
+        "emoji": "⚫",
+        "sell_price": 40,
+        "category": "rare"
+      },
+      {
+        "key": "oc_voi_voi",
+        "name": "Ốc Vòi Voi",
+        "emoji": "🐘",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "ca_noc",
+        "name": "Cá Nóc",
+        "emoji": "🐡",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "ca_bo_giap",
+        "name": "Cá Bò Giáp",
+        "emoji": "🛡️",
+        "sell_price": 45,
+        "category": "rare"
+      },
+      {
+        "key": "ca_su_mi",
+        "name": "Cá Napoleon",
+        "emoji": "🎩",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "ca_mo",
+        "name": "Cá Mó (Vẹt)",
+        "emoji": "🦜",
+        "sell_price": 40,
+        "category": "rare"
+      },
+      {
+        "key": "ca_duoi_gai",
+        "name": "Đuối Gai Độc",
+        "emoji": "💉",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "ca_hong_vy",
+        "name": "Hồng Vỹ Mỏ Vịt",
+        "emoji": "🦆",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "ca_sau_hoa_tien",
+        "name": "Sấu Hỏa Tiễn",
+        "emoji": "🚀",
+        "sell_price": 50,
+        "category": "rare"
+      },
+      {
+        "key": "axolotl",
+        "name": "Kỳ Giông Axolotl",
+        "emoji": "🦎",
+        "sell_price": 55,
+        "category": "rare"
+      },
+      {
+        "key": "rua_xanh",
+        "name": "Rùa Xanh",
+        "emoji": "🐢",
+        "sell_price": 45,
+        "category": "rare"
+      },
+      {
+        "key": "ba_ba",
+        "name": "Con Ba Ba",
+        "emoji": "🐢",
+        "sell_price": 40,
+        "category": "rare"
+      },
+      {
+        "key": "ca_duoi_dien",
+        "name": "Đuối Điện",
+        "emoji": "⚡",
+        "sell_price": 60,
+        "category": "rare"
+      },
+      {
+        "key": "ca_long_den",
+        "name": "Cá Lồng Đèn",
+        "emoji": "💡",
+        "sell_price": 65,
+        "category": "rare"
+      },
+      {
+        "key": "ca_mat_trang",
+        "name": "Mặt Trăng (Mola)",
+        "emoji": "🌙",
+        "sell_price": 70,
+        "category": "rare"
+      },
+      {
+        "key": "ca_kiem",
+        "name": "Cá Kiếm",
+        "emoji": "⚔️",
+        "sell_price": 75,
+        "category": "rare"
+      },
+      {
+        "key": "ca_rong_ngan",
+        "name": "Ngân Long",
+        "emoji": "🐲",
+        "sell_price": 70,
+        "category": "rare"
+      },
+      {
+        "key": "ca_rong_kim",
+        "name": "Kim Long",
+        "emoji": "🐲",
+        "sell_price": 80,
+        "category": "rare"
+      },
+      {
+        "key": "ca_rong_huyet",
+        "name": "Huyết Long",
+        "emoji": "🐲",
+        "sell_price": 85,
+        "category": "rare"
+      },
+      {
+        "key": "ca_map",
+        "name": "Cá Mập",
+        "emoji": "🦈",
+        "sell_price": 90,
+        "category": "rare"
+      },
+      {
+        "key": "ca_map_bua",
+        "name": "Cá Mập Búa",
+        "emoji": "🔨",
+        "sell_price": 85,
+        "category": "rare"
+      },
+      {
+        "key": "ca_map_ho",
+        "name": "Cá Mập Hổ",
+        "emoji": "🐅",
+        "sell_price": 88,
+        "category": "rare"
+      },
+      {
+        "key": "ca_map_trang",
+        "name": "Cá Mập Trắng",
+        "emoji": "🦷",
+        "sell_price": 95,
+        "category": "rare"
+      },
+      {
+        "key": "ca_duoi_manta",
+        "name": "Đuối Manta",
+        "emoji": "🛸",
+        "sell_price": 85,
+        "category": "rare"
+      },
+      {
+        "key": "ca_ngu_dai_duong",
+        "name": "Ngừ Đại Dương",
+        "emoji": "🌊",
+        "sell_price": 80,
+        "category": "rare"
+      },
+      {
+        "key": "ca_ngu_vay_xanh",
+        "name": "Ngừ Vây Xanh",
+        "emoji": "💎",
+        "sell_price": 95,
+        "category": "rare"
+      },
+      {
+        "key": "ca_ho_khong_lo",
+        "name": "Cá Hô Khổng Lồ",
+        "emoji": "🤯",
+        "sell_price": 90,
+        "category": "rare"
+      },
+      {
+        "key": "ca_anh_vu",
+        "name": "Cá Anh Vũ",
+        "emoji": "💋",
+        "sell_price": 90,
+        "category": "rare"
+      },
+      {
+        "key": "ca_chien",
+        "name": "Cá Chiên Sông Đà",
+        "emoji": "😈",
+        "sell_price": 85,
+        "category": "rare"
+      },
+      {
+        "key": "ca_tra_dau",
+        "name": "Cá Tra Dầu",
+        "emoji": "⛽",
+        "sell_price": 88,
+        "category": "rare"
+      },
+      {
+        "key": "ca_lang_khong_lo",
+        "name": "Lăng Khổng Lồ",
+        "emoji": "🥖",
+        "sell_price": 80,
+        "category": "rare"
+      },
+      {
+        "key": "ca_cop",
+        "name": "Cá Cọp (Tiger)",
+        "emoji": "🐯",
+        "sell_price": 75,
+        "category": "rare"
+      },
+      {
+        "key": "piranha",
+        "name": "Cá Piranha",
+        "emoji": "😬",
+        "sell_price": 60,
+        "category": "rare"
+      },
+      {
+        "key": "muc_khong_lo",
+        "name": "Mực Khổng Lồ",
+        "emoji": "🦑",
+        "sell_price": 80,
+        "category": "rare"
+      },
+      {
+        "key": "bach_tuoc_dom",
+        "name": "Bạch Tuộc Đốm Xanh",
+        "emoji": "☠️",
+        "sell_price": 75,
+        "category": "rare"
+      },
+      {
+        "key": "sua_hop",
+        "name": "Sứa Hộp",
+        "emoji": "📦",
+        "sell_price": 65,
+        "category": "rare"
+      },
+      {
+        "key": "ca_mat_quy",
+        "name": "Cá Mặt Quỷ",
+        "emoji": "👺",
+        "sell_price": 70,
+        "category": "rare"
+      },
+      {
+        "key": "ca_mao_tien",
+        "name": "Cá Mao Tiên",
+        "emoji": "🦁",
+        "sell_price": 65,
+        "category": "rare"
+      },
+      {
+        "key": "ca_co",
+        "name": "Cá Cờ",
+        "emoji": "🚩",
+        "sell_price": 75,
+        "category": "rare"
+      },
+      {
+        "key": "ca_buom",
+        "name": "Cá Buồm",
+        "emoji": "⛵",
+        "sell_price": 78,
+        "category": "rare"
+      },
+      {
+        "key": "luon_dien",
+        "name": "Lươn Điện",
+        "emoji": "⚡",
+        "sell_price": 70,
+        "category": "rare"
+      },
+      {
+        "key": "ran_bien",
+        "name": "Rắn Biển",
+        "emoji": "🐍",
+        "sell_price": 65,
+        "category": "rare"
+      },
+      {
+        "key": "ca_hoang_hau",
+        "name": "Cá Hoàng Hậu",
+        "emoji": "👸",
+        "sell_price": 80,
+        "category": "rare"
+      },
+      {
+        "key": "ca_ma_ca_rong",
+        "name": "Cá Ma Cà Rồng",
+        "emoji": "🧛",
+        "sell_price": 85,
+        "category": "rare"
+      },
+      {
+        "key": "ca_voi_xanh",
+        "name": "Cá Voi Xanh",
+        "emoji": "🐋",
+        "sell_price": 120,
+        "category": "rare"
+      },
+      {
+        "key": "ca_hai_tuong",
+        "name": "Hải Tượng",
+        "emoji": "🦕",
+        "sell_price": 130,
+        "category": "rare"
+      },
+      {
+        "key": "ca_nha_tang",
+        "name": "Cá Nhà Táng",
+        "emoji": "🐳",
+        "sell_price": 150,
+        "category": "rare"
+      },
+      {
+        "key": "ca_heo",
+        "name": "Cá Heo",
+        "emoji": "🐬",
+        "sell_price": 110,
+        "category": "rare"
+      },
+      {
+        "key": "ca_heo_hong",
+        "name": "Cá Heo Hồng",
+        "emoji": "🌸",
+        "sell_price": 115,
+        "category": "rare"
+      },
+      {
+        "key": "ca_voi_sat_thu",
+        "name": "Cá Voi Sát Thủ",
+        "emoji": "🐼",
+        "sell_price": 140,
+        "category": "rare"
+      },
+      {
+        "key": "ky_lan_bien",
+        "name": "Kỳ Lân Biển",
+        "emoji": "🦄",
+        "sell_price": 145,
+        "category": "rare"
+      },
+      {
+        "key": "ca_voi_trang",
+        "name": "Cá Voi Trắng",
+        "emoji": "⚪",
+        "sell_price": 125,
+        "category": "rare"
+      },
+      {
+        "key": "hai_cau",
+        "name": "Hải Cẩu",
+        "emoji": "🦭",
+        "sell_price": 105,
+        "category": "rare"
+      },
+      {
+        "key": "su_tu_bien",
+        "name": "Sư Tử Biển",
+        "emoji": "🦁",
+        "sell_price": 110,
+        "category": "rare"
+      },
+      {
+        "key": "voi_bien",
+        "name": "Voi Biển",
+        "emoji": "🐘",
+        "sell_price": 115,
+        "category": "rare"
+      },
+      {
+        "key": "chim_canh_cut",
+        "name": "Chim Cánh Cụt",
+        "emoji": "🐧",
+        "sell_price": 100,
+        "category": "rare"
+      },
+      {
+        "key": "ca_sau",
+        "name": "Cá Sấu Chúa",
+        "emoji": "🐊",
+        "sell_price": 120,
+        "category": "rare"
+      },
+      {
+        "key": "ha_ma",
+        "name": "Hà Mã",
+        "emoji": "🦛",
+        "sell_price": 130,
+        "category": "rare"
+      },
+      {
+        "key": "rua_da",
+        "name": "Rùa Da",
+        "emoji": "🐢",
+        "sell_price": 120,
+        "category": "rare"
+      },
+      {
+        "key": "rua_hoan_kiem",
+        "name": "Rùa Hoàn Kiếm",
+        "emoji": "🗡️",
+        "sell_price": 200,
+        "category": "rare"
+      },
+      {
+        "key": "megalodon",
+        "name": "Megalodon",
+        "emoji": "🦖",
+        "sell_price": 180,
+        "category": "rare"
+      },
+      {
+        "key": "thuy_quai_kraken",
+        "name": "Kraken",
+        "emoji": "🦑",
+        "sell_price": 190,
+        "category": "rare"
+      },
+      {
+        "key": "thuy_quai_nessie",
+        "name": "Quái Vật Nessie",
+        "emoji": "🦕",
+        "sell_price": 190,
+        "category": "rare"
+      },
+      {
+        "key": "ca_nham_voi",
+        "name": "Cá Nhám Voi",
+        "emoji": "🦈",
+        "sell_price": 135,
+        "category": "rare"
+      },
+      {
+        "key": "ca_mai_cheo",
+        "name": "Cá Mái Chèo",
+        "emoji": "🚣",
+        "sell_price": 125,
+        "category": "rare"
+      },
+      {
+        "key": "ca_blob",
+        "name": "Cá Giọt Nước",
+        "emoji": "💧",
+        "sell_price": 110,
+        "category": "rare"
+      },
+      {
+        "key": "muc_ma",
+        "name": "Mực Ma Cà Rồng",
+        "emoji": "🧛",
+        "sell_price": 130,
+        "category": "rare"
+      },
+      {
+        "key": "bo_bien",
+        "name": "Bò Biển (Dugong)",
+        "emoji": "🐄",
+        "sell_price": 125,
+        "category": "rare"
+      },
+      {
+        "key": "ca_coelacanth",
+        "name": "Cá Vây Tay",
+        "emoji": "🦴",
+        "sell_price": 150,
+        "category": "rare"
+      },
+      {
+        "key": "rong_bien",
+        "name": "Rồng Biển",
+        "emoji": "🐉",
+        "sell_price": 160,
+        "category": "rare"
+      },
+      {
+        "key": "leviathan",
+        "name": "Leviathan",
+        "emoji": "🌊",
+        "sell_price": 250,
+        "category": "rare"
+      },
+      {
+        "key": "my_nhan_ngu",
+        "name": "Mỹ Nhân Ngư",
+        "emoji": "🧜‍♀️",
+        "sell_price": 300,
+        "category": "rare"
+      },
+      {
+        "key": "poseidon",
+        "name": "Đinh Ba Poseidon",
+        "emoji": "🔱",
+        "sell_price": 500,
+        "category": "rare"
+      },
+      {
+        "key": "ngoc_trai_den",
+        "name": "Ngọc Trai Đen",
+        "emoji": "🔮",
+        "sell_price": 150,
+        "category": "rare"
+      },
+      {
+        "key": "ruong_kho_bau",
+        "name": "Rương Kho Báu",
+        "emoji": "💰",
+        "sell_price": 200,
+        "category": "rare"
+      },
+      {
+        "key": "ca_than",
+        "name": "Cá Thần",
+        "emoji": "✨",
+        "sell_price": 168,
+        "category": "rare"
+      },
+      {
+        "key": "ca_chay",
+        "name": "Cá Chuồn",
+        "emoji": "✈️",
+        "sell_price": 100,
+        "category": "rare"
+      },
+      {
+        "key": "ca_hot_mit",
+        "name": "Cá Hót Mít",
+        "emoji": "🍘",
+        "sell_price": 105,
+        "category": "rare"
+      },
+      {
+        "key": "ca_vang_khong_lo",
+        "name": "Cá Vàng Giant",
+        "emoji": "🐡",
+        "sell_price": 110,
+        "category": "rare"
+      },
+      {
+        "key": "ca_map_ma",
+        "name": "Cá Mập Ma",
+        "emoji": "👻",
+        "sell_price": 140,
+        "category": "rare"
+      },
+      {
+        "key": "ca_rac",
+        "name": "Cá Rác (Dọn Bể)",
+        "emoji": "🗑️",
+        "sell_price": 1,
+        "category": "rare"
+      },
+      {
+        "key": "tom_hum_dat_vang",
+        "name": "Tôm Hùm Vàng",
+        "emoji": "🏆",
+        "sell_price": 160,
+        "category": "rare"
+      }
+    ],
+    "metadata": {
+      "total": 199,
+      "common": 100,
+      "rare": 99,
+      "note": "Common and Rare fish only. Legendary fish in separate legendaryFish_data.json"
+    }
+  }
+}

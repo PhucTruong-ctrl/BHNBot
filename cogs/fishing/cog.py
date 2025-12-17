@@ -72,6 +72,7 @@ class FishingCog(commands.Cog):
         self.lucky_buff_users = {}
         self.avoid_event_users = {}
         self.legendary_buff_users = {}  # For ghost NPC buff
+        self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
         
         # Legendary summoning tracking
         self.sacrifices = {}  # {user_id: count} - For Thuồng Luồng sacrifice ritual
@@ -287,8 +288,19 @@ class FishingCog(commands.Cog):
                     event_message += " (Mất 1 Giun)"
             
                 if event_result.get("lose_money", 0) > 0:
-                    await add_seeds(user_id, -event_result["lose_money"])
-                    event_message += f" (-{event_result['lose_money']} Hạt)"
+                    # SECURITY: Never let balance go negative
+                    current_balance = await get_user_balance(user_id)
+                    penalty_amount = min(event_result["lose_money"], current_balance)
+                    
+                    if penalty_amount > 0:
+                        await add_seeds(user_id, -penalty_amount)
+                        event_message += f" (-{penalty_amount} Hạt)"
+                        
+                        # Log if penalty was capped
+                        if penalty_amount < event_result["lose_money"]:
+                            print(f"[FISHING] [EVENT] {username} (user_id={user_id}) Penalty capped: {event_result['lose_money']} → {penalty_amount} (insufficient balance)")
+                    else:
+                        event_message += f" (Không đủ tiền để bị phạt!)"
             
                 if event_result.get("gain_money", 0) > 0:
                     await add_seeds(user_id, event_result["gain_money"])
@@ -889,6 +901,23 @@ class FishingCog(commands.Cog):
             user_id = ctx_or_interaction.author.id
             ctx = ctx_or_interaction
         
+        # CRITICAL: Check if sell is already being processed (prevent duplicate execution)
+        import time
+        current_time = time.time()
+        if user_id in self.sell_processing:
+            last_sell_time = self.sell_processing[user_id]
+            if current_time - last_sell_time < 3:  # 3 second cooldown
+                print(f"[FISHING] [SELL_DUPLICATE_BLOCKED] user_id={user_id} time_diff={current_time - last_sell_time:.2f}s")
+                msg = "⏳ Đang xử lý lệnh bán cá trước đó..."
+                if is_slash:
+                    await ctx.followup.send(msg, ephemeral=True)
+                else:
+                    await ctx.send(msg)
+                return
+        
+        # Mark as processing
+        self.sell_processing[user_id] = current_time
+        
         # Get username
         username = ctx.user.name if is_slash else ctx.author.name
         
@@ -918,6 +947,9 @@ class FishingCog(commands.Cog):
             fish_items = {k: v for k, v in fish_items.items() if k not in LEGENDARY_FISH_KEYS}
             
             if not fish_items:
+                # Clear processing flag
+                if user_id in self.sell_processing:
+                    del self.sell_processing[user_id]
                 return  # No other fish to sell
         
         if not fish_items:
@@ -926,6 +958,9 @@ class FishingCog(commands.Cog):
                 await ctx.followup.send(msg, ephemeral=True)
             else:
                 await ctx.send(msg)
+            # Clear processing flag
+            if user_id in self.sell_processing:
+                del self.sell_processing[user_id]
             return
         
         # Parse fish_types if specified
@@ -941,6 +976,9 @@ class FishingCog(commands.Cog):
                     await ctx.followup.send(msg, ephemeral=True)
                 else:
                     await ctx.send(msg)
+                # Clear processing flag
+                if user_id in self.sell_processing:
+                    del self.sell_processing[user_id]
                 return
         else:
             selected_fish = fish_items
@@ -1058,11 +1096,55 @@ class FishingCog(commands.Cog):
                 
             print(f"[FISHING] [SELL_EVENT] {ctx.user.name if is_slash else ctx.author.name} (user_id={ctx.user.id if is_slash else ctx.author.id}) event={triggered_event} seed_change={final_total - base_total} fish_count={len(selected_fish)}")
 
-        # Remove items & Add money
-        for fish_key in selected_fish.keys():
-            await remove_item(user_id, fish_key, selected_fish[fish_key])
-        
-        await add_seeds(user_id, final_total)
+        # Remove items & Add money (ATOMIC TRANSACTION - xảy ra cùng lúc)
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                # Start transaction
+                await db.execute("BEGIN TRANSACTION")
+                
+                try:
+                    # 1. Remove all fish items
+                    for fish_key in selected_fish.keys():
+                        await db.execute(
+                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                            (selected_fish[fish_key], user_id, fish_key)
+                        )
+                    
+                    # 1.1. Delete items with quantity <= 0
+                    await db.execute(
+                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                        (user_id,)
+                    )
+                    
+                    # 2. Add seeds to user
+                    await db.execute(
+                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                        (final_total, user_id)
+                    )
+                    
+                    # Commit transaction
+                    await db.commit()
+                    
+                    # CRITICAL: Invalidate inventory cache after successful transaction
+                    db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
+                    print(f"[FISHING] [SELL_TRANSACTION] Success: user_id={user_id} total={final_total} fish_count={len(selected_fish)}")
+                    
+                except Exception as e:
+                    # Rollback on error
+                    await db.execute("ROLLBACK")
+                    print(f"[FISHING] [SELL_TRANSACTION] Rollback due to error: {e}")
+                    raise
+        except Exception as e:
+            print(f"[FISHING] [SELL_ERROR] Transaction failed: {e}")
+            # Clear processing flag on error
+            if user_id in self.sell_processing:
+                del self.sell_processing[user_id]
+            err_msg = f"❌ Lỗi khi bán cá: {str(e)}"
+            if is_slash:
+                await ctx.followup.send(err_msg, ephemeral=True)
+            else:
+                await ctx.send(err_msg)
+            return
         
         # 4. Display sell event notification FIRST (if triggered)
         if triggered_event:
@@ -1120,6 +1202,10 @@ class FishingCog(commands.Cog):
             await ctx.followup.send(embed=embed, ephemeral=False)
         else:
             await ctx.send(embed=embed)
+        
+        # Clear processing flag after successful completion
+        if user_id in self.sell_processing:
+            del self.sell_processing[user_id]
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")
     async def open_chest_slash(self, interaction: discord.Interaction):
@@ -2252,7 +2338,7 @@ class FishingCog(commands.Cog):
                 conditions_map = {
                     "thuong_luong": "🌊 **Hiến Tế Cá**\n📌 Dùng `/hiente` để hiến tế 3 con cá thường\n📌 Sau khi hoàn thành, câu cá để gặp Thuồng Luồng",
                     "ca_ngan_ha": "✨ **Chế Tạo Mồi Đặc Biệt**\n📌 Dùng `/chetao` để tạo Mồi Bụi Sao (1 Mảnh Sao Băng + 5 Giun)\n📌 Câu cá vào giữa đêm (00:00-04:00)",
-                    "ca_phuong_hoang": "🔥 **Chuẩn Bị Tài Liệu**\n📌 Có trong inventory: Lông Vũ Lửa (500 Hạt) hoặc kích hoạt buff từ cây server\n📌 Câu cá vào buổi trưa (12:00-14:00)",
+                    "ca_phuong_hoang": "🔥 **Chuẩn Bị Vật Phẩm**\n📌 Có trong túi đồ: Lông Vũ Lửa (500 Hạt) hoặc kích hoạt buff từ cây server\n📌 Câu cá vào buổi trưa (12:00-14:00)",
                     "cthulhu_con": "🗺️ **Ghép Bản Đồ Hắc Ám**\n📌 Thu thập 4 Mảnh Bản Đồ (A, B, C, D) từ rác\n📌 Dùng `/ghepbando` để ghép thành Bản Đồ Hắc Ám\n📌 Dùng `/ghepbando` để kích hoạt (10 lần câu cá)",
                     "ca_voi_52hz": "📡 **Dò Tần Số**\n📌 Mua Máy Dò Sóng (2000 Hạt)\n📌 Dùng `/dosong` để chơi mini-game\n📌 Tìm tần số 52Hz để kích hoạt gặp cá voi",
                 }
@@ -2337,12 +2423,23 @@ class FishingCog(commands.Cog):
     # ==================== HELPER METHODS ====================
     
     async def get_fishing_cooldown_remaining(self, user_id: int) -> int:
-        """Get remaining cooldown in seconds."""
+        """Get remaining cooldown in seconds.
+        
+        Check from RAM first (for users in current session).
+        If not found, return 0 (assume cooldown expired on last restart).
+        """
         if user_id not in self.fishing_cooldown:
+            # Cooldown was not set (user restart bot or first fishing)
             return 0
         
         cooldown_until = self.fishing_cooldown[user_id]
         remaining = max(0, cooldown_until - time.time())
+        
+        # If remaining time passed, clean up
+        if remaining <= 0:
+            del self.fishing_cooldown[user_id]
+            return 0
+        
         return int(remaining)
     
     async def get_tree_boost_status(self, guild_id: int) -> bool:

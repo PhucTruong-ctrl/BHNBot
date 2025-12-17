@@ -514,6 +514,94 @@ class CommunityCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="qualuuniem", description="Tặng vật phẩm lưu niệm cho contributors (Admin Only)")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(
+        season="Mùa muốn tặng vật phẩm (1-5)"
+    )
+    async def give_memorabilia(self, interaction: discord.Interaction, season: int):
+        """Retroactively give memorabilia items to all contributors of a season (Admin Only)"""
+        await interaction.response.defer(ephemeral=False)
+        
+        if season < 1 or season > 5:
+            await interaction.followup.send("❌ Mùa phải từ 1 đến 5!", ephemeral=True)
+            return
+        
+        guild_id = interaction.guild.id
+        memorabilia_key = f"qua_ngot_mua_{season}"
+        
+        try:
+            # Get all contributors from tree_contributors table
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT user_id FROM tree_contributors WHERE guild_id = ?",
+                    (guild_id,)
+                ) as cursor:
+                    contributor_ids = await cursor.fetchall()
+            
+            if not contributor_ids:
+                await interaction.followup.send(
+                    f"❌ Không có contributor nào trong database!",
+                    ephemeral=True
+                )
+                return
+            
+            # Give memorabilia to all contributors
+            async with aiosqlite.connect(DB_PATH) as db:
+                for (cid,) in contributor_ids:
+                    # Check if already has this item
+                    async with db.execute(
+                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
+                        (cid, memorabilia_key)
+                    ) as cursor:
+                        inv_row = await cursor.fetchone()
+                    
+                    if inv_row:
+                        await db.execute(
+                            "UPDATE inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_name = ?",
+                            (cid, memorabilia_key)
+                        )
+                    else:
+                        await db.execute(
+                            "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, 1)",
+                            (cid, memorabilia_key)
+                        )
+                
+                await db.commit()
+            
+            # Show success embed
+            embed = discord.Embed(
+                title="✅ TẶNG VẬT PHẨM THÀNH CÔNG",
+                color=discord.Color.green()
+            )
+            embed.add_field(
+                name="🎁 Vật phẩm",
+                value=f"Quả Ngọt Mùa {season}",
+                inline=False
+            )
+            embed.add_field(
+                name="👥 Số người nhận",
+                value=f"{len(contributor_ids)} contributor(s)",
+                inline=False
+            )
+            embed.add_field(
+                name="💡 Chi tiết",
+                value="Tất cả người đã góp trong mùa này đều nhận được 1x vật phẩm lưu niệm",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            print(f"[TREE] [MEMORABILIA] Given qua_ngot_mua_{season} to {len(contributor_ids)} contributors")
+        
+        except Exception as e:
+            print(f"[TREE] Error in give_memorabilia: {e}")
+            import traceback
+            traceback.print_exc()
+            await interaction.followup.send(
+                f"❌ Lỗi: {str(e)}",
+                ephemeral=True
+            )
+
     @app_commands.command(name="thuhoach", description="Thu hoạch cây (Admin Only)")
     @app_commands.checks.has_permissions(administrator=True)
     async def harvest_tree(self, interaction: discord.Interaction):
@@ -681,9 +769,10 @@ class CommunityCog(commands.Cog):
         )
         
         # Field 3: Memorabilia
+        memorabilia_display_name = f"Quả Ngọt Mùa {season}"
         embed.add_field(
             name="🎁 TẶNG QUÀ LƯU NIỆM",
-            value=f"Tất cả người đã góp được nhận **'{memorabilia_name}'** vào Túi đồ\n"
+            value=f"Tất cả người đã góp được nhận **'{memorabilia_display_name}'** vào Túi đồ\n"
                   f"💎 Vật phẩm này chứng tỏ bạn là người lập công xây dựng server!",
             inline=False
         )

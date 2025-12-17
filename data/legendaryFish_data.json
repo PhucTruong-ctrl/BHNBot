@@ -1,0 +1,81 @@
+{
+  "legendary_data": {
+    "fish": [
+      {
+        "key": "thuong_luong",
+        "name": "Thuồng Luồng",
+        "emoji": "🐍🌊",
+        "sell_price": 500,
+        "description": "Quái vật sông nước trong truyền thuyết Việt Nam. Kẻ cai trị những dòng nước xoáy dữ dội nhất.",
+        "condition": "river_storm",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/thuongluong.png",
+        "level": 5,
+        "spawn_chance": 0.01,
+        "achievement": "river_lord",
+        "time_restriction": null
+      },
+      {
+        "key": "ca_ngan_ha",
+        "name": "Cá Ngân Hà",
+        "emoji": "��✨",
+        "sell_price": 600,
+        "description": "Cơ thể nó chứa đựng cả một vũ trụ thu nhỏ. Chỉ bơi xuống trần gian vào những đêm đầy sao.",
+        "condition": "clear_night",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/canganha.png",
+        "level": 5,
+        "spawn_chance": 0.008,
+        "achievement": "star_walker",
+        "time_restriction": [
+          0,
+          4
+        ]
+      },
+      {
+        "key": "ca_phuong_hoang",
+        "name": "Cá Phượng Hoàng",
+        "emoji": "🔥🦅",
+        "sell_price": 550,
+        "description": "Sinh vật kỳ bí rực cháy dưới nước. Truyền thuyết nói rằng nó mang lại sự hồi sinh.",
+        "condition": "noon_sun",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/caphuonghoang.png",
+        "level": 5,
+        "spawn_chance": 0.008,
+        "achievement": "sun_guardian",
+        "time_restriction": [
+          12,
+          14
+        ]
+      },
+      {
+        "key": "cthulhu_con",
+        "name": "Cthulhu Non",
+        "emoji": "🐙👁️",
+        "sell_price": 666,
+        "description": "Một thực thể cổ xưa đang say ngủ. Đừng nhìn vào mắt nó quá lâu nếu không muốn mất trí.",
+        "condition": "deep_sea",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/cthulunon.png",
+        "level": 5,
+        "spawn_chance": 0.0015,
+        "achievement": "void_gazer",
+        "time_restriction": null
+      },
+      {
+        "key": "ca_voi_52hz",
+        "name": "Cá Voi 52Hz",
+        "emoji": "🐋💔",
+        "sell_price": 800,
+        "description": "Chú cá voi cô đơn nhất thế giới. Tiếng hát của nó không đồng loại nào nghe thấy được.",
+        "condition": "silence",
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/cavoi52hz.png",
+        "level": 5,
+        "spawn_chance": 0.0005,
+        "achievement": "lonely_frequency",
+        "time_restriction": null
+      }
+    ],
+    "metadata": {
+      "total": 5,
+      "description": "Legendary fish with special conditions, descriptions, and images"
+    }
+  }
+}

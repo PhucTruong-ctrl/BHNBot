@@ -1,11 +1,181 @@
-"""Random event system for fishing."""
+"""Random event system for fishing with Strategy Pattern."""
 
 import random
 import aiosqlite
 from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
 
+# ==================== EFFECT HANDLERS ====================
+# Each handler function processes one effect type
+# This replaces the long if/elif chain
+
+async def handle_lose_worm(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Người chơi mất mồi và mẻ câu."""
+    result["lose_worm"] = True
+    result["lose_catch"] = True
+    return result
+
+async def handle_lose_catch(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Mất mẻ câu."""
+    result["lose_worm"] = True
+    result["lose_catch"] = True
+    return result
+
+async def handle_thief(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Mèo/rái cá - cướp con cá to nhất."""
+    result["custom_effect"] = "cat_steal"
+    result["lose_worm"] = True
+    return result
+
+def handle_lose_money(amount: int):
+    """Factory: Tạo handler để trừ tiền."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["lose_money"] = amount
+        return result
+    return handler
+
+def handle_cooldown(seconds: int):
+    """Factory: Tạo handler để thêm cooldown."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["cooldown_increase"] = seconds
+        return result
+    return handler
+
+async def handle_durability_hit(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Mất độ bền."""
+    result["custom_effect"] = "durability_hit"
+    result["durability_loss"] = -5
+    return result
+
+async def handle_lose_all_bait(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Mất hết mồi (say tàu)."""
+    result["custom_effect"] = "lose_all_bait"
+    return result
+
+def handle_gain_money(amount_min: int, amount_max: int):
+    """Factory: Tạo handler để thêm tiền ngẫu nhiên."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["gain_money"] = random.randint(amount_min, amount_max)
+        return result
+    return handler
+
+def handle_gain_money_fixed(amount: int):
+    """Factory: Tạo handler để thêm tiền cố định."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["gain_money"] = amount
+        return result
+    return handler
+
+async def handle_lose_money_percent(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Phạt % tài sản (rắn cắn)."""
+    result["custom_effect"] = "snake_bite"
+    return result
+
+def handle_gain_items(items: dict):
+    """Factory: Tạo handler để thêm vật phẩm."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["gain_items"] = items
+        return result
+    return handler
+
+async def handle_gain_random_map_piece(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Nhận mảnh bản đồ ngẫu nhiên."""
+    map_pieces = ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]
+    piece = random.choice(map_pieces)
+    result["gain_items"] = {piece: 1}
+    return result
+
+def handle_bonus_catch(count: int):
+    """Factory: Tạo handler để thêm cá bonus."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["bonus_catch"] = count
+        return result
+    return handler
+
+def handle_duplicate_catch(multiplier: int):
+    """Factory: Tạo handler để nhân đôi cá."""
+    async def handler(result: dict, event_data: dict, **kwargs) -> dict:
+        result["duplicate_multiplier"] = multiplier
+        return result
+    return handler
+
+async def handle_reset_cooldown(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Reset cooldown."""
+    result["cooldown_increase"] = -999
+    return result
+
+async def handle_restore_durability(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Phục hồi độ bền."""
+    result["custom_effect"] = "restore_durability"
+    return result
+
+async def handle_lucky_buff(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Buff may mắn."""
+    result["custom_effect"] = "lucky_buff"
+    return result
+
+async def handle_avoid_bad_event(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Sixth sense - tránh sự kiện xấu."""
+    result["custom_effect"] = "sixth_sense"
+    return result
+
+async def handle_global_reset(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Global reset (cấp 3+)."""
+    result["custom_effect"] = "global_reset"
+    return result
+
+async def handle_bet_win(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Cược thắng."""
+    result["gain_money"] = random.randint(200, 400)
+    return result
+
+async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Cược thua."""
+    result["lose_money"] = random.randint(50, 150)
+    return result
+
+# ==================== EFFECT HANDLERS MAPPING ====================
+# Dictionary mapping effect names to their handlers
+# EASY TO EXTEND: Just add a new handler + add entry to this dict
+EFFECT_HANDLERS = {
+    "lose_worm": handle_lose_worm,
+    "lose_catch": handle_lose_catch,
+    "thief": handle_thief,
+    "lose_money_50": handle_lose_money(50),
+    "lose_money_100": handle_lose_money(100),
+    "lose_money_200": handle_lose_money(200),
+    "cooldown_short": handle_cooldown(120),
+    "cooldown_medium": handle_cooldown(300),
+    "cooldown_long": handle_cooldown(600),
+    "lose_turn": handle_lose_catch,  # Same as lose_catch
+    "durability_hit": handle_durability_hit,
+    "lose_all_bait": handle_lose_all_bait,
+    "gain_money_small": handle_gain_money(30, 80),
+    "gain_money_medium": handle_gain_money(100, 200),
+    "gain_money_large": handle_gain_money(300, 500),
+    "gain_money_huge": handle_gain_money_fixed(1000),
+    "lose_money_percent": handle_lose_money_percent,
+    "gain_worm_5": handle_gain_items({"worm": 5}),
+    "gain_worm_10": handle_gain_items({"worm": 10}),
+    "bet_loss": handle_bet_loss,
+    "gain_chest_1": handle_gain_items({"treasure_chest": 1}),
+    "gain_chest_2": handle_gain_items({"treasure_chest": 2}),
+    "gain_pearl": handle_gain_items({"pearl": 1}),
+    "gain_ring": handle_gain_items({"ring": 1}),
+    "gain_map_piece": handle_gain_random_map_piece,
+    "bonus_catch_2": handle_bonus_catch(2),
+    "bonus_catch_3": handle_bonus_catch(3),
+    "duplicate_catch_2": handle_duplicate_catch(2),
+    "duplicate_catch_3": handle_duplicate_catch(3),
+    "reset_cooldown": handle_reset_cooldown,
+    "restore_durability": handle_restore_durability,
+    "lucky_buff": handle_lucky_buff,
+    "avoid_bad_event": handle_avoid_bad_event,
+    "global_reset": handle_global_reset,
+    "bet_win": handle_bet_win,
+}
+
 async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1) -> dict:
-    """Trigger random event during fishing."""
+    """Trigger random event during fishing using Strategy Pattern."""
     result = {
         "triggered": False, "type": None, "message": "",
         "lose_worm": False, "lose_catch": False, "lose_money": 0, "gain_money": 0,
@@ -65,90 +235,14 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                 if user_seeds <= 0:
                     return result
             
-            # Handle effects (same logic as before)
+            # ===== STRATEGY PATTERN: Call appropriate handler =====
             effect = event_data.get("effect")
+            handler = EFFECT_HANDLERS.get(effect)
             
-            if effect == "lose_worm":
-                result["lose_worm"] = True
-                result["lose_catch"] = True
-            elif effect == "lose_catch":
-                result["lose_worm"] = True
-                result["lose_catch"] = True
-            elif effect == "thief":
-                # Mèo/rái cá: mất mồi và bị lấy cá to nhất nhưng vẫn tiếp tục mẻ câu
-                result["custom_effect"] = "cat_steal"
-                result["lose_worm"] = True
-            elif effect == "lose_money_50":
-                result["lose_money"] = 50
-            elif effect == "lose_money_100":
-                result["lose_money"] = 100
-            elif effect == "lose_money_200":
-                result["lose_money"] = 200
-            elif effect == "cooldown_short":
-                result["cooldown_increase"] = 120
-            elif effect == "cooldown_medium":
-                result["cooldown_increase"] = 300
-            elif effect == "cooldown_long":
-                result["cooldown_increase"] = 600
-            elif effect == "lose_turn":
-                result["lose_catch"] = True
-            elif effect == "durability_hit":
-                # Mất độ bền nhưng vẫn nhận mẻ cá
-                result["custom_effect"] = "durability_hit"
-                result["durability_loss"] = -5
-            elif effect == "lose_all_bait":
-                result["custom_effect"] = "lose_all_bait"
-            elif effect == "gain_money_small":
-                result["gain_money"] = random.randint(30, 80)
-            elif effect == "gain_money_medium":
-                result["gain_money"] = random.randint(100, 200)
-            elif effect == "gain_money_large":
-                result["gain_money"] = random.randint(300, 500)
-            elif effect == "gain_money_huge":
-                result["gain_money"] = 1000
-            elif effect == "lose_money_percent":
-                # Phạt % tài sản (rắn cắn / viện phí)
-                result["custom_effect"] = "snake_bite"
-            elif effect == "gain_worm_5":
-                result["gain_items"] = {"worm": 5}
-            elif effect == "gain_worm_10":
-                result["gain_items"] = {"worm": 10}
-            elif effect == "bet_loss":
-                # Lose a random amount on bad bet
-                result["lose_money"] = random.randint(50, 150)
-            elif effect == "gain_chest_1":
-                result["gain_items"] = {"treasure_chest": 1}
-            elif effect == "gain_chest_2":
-                result["gain_items"] = {"treasure_chest": 2}
-            elif effect == "gain_pearl":
-                result["gain_items"] = {"pearl": 1}
-            elif effect == "gain_ring":
-                result["gain_items"] = {"ring": 1}
-            elif effect == "gain_map_piece":
-                # Random map piece A, B, C, or D
-                map_pieces = ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]
-                piece = random.choice(map_pieces)
-                result["gain_items"] = {piece: 1}
-            elif effect == "bonus_catch_2":
-                result["bonus_catch"] = 2
-            elif effect == "bonus_catch_3":
-                result["bonus_catch"] = 3
-            elif effect == "duplicate_catch_2":
-                result["duplicate_multiplier"] = 2
-            elif effect == "duplicate_catch_3":
-                result["duplicate_multiplier"] = 3
-            elif effect == "reset_cooldown":
-                result["cooldown_increase"] = -999
-            elif effect == "restore_durability":
-                result["custom_effect"] = "restore_durability"
-            elif effect == "lucky_buff":
-                result["custom_effect"] = "lucky_buff"
-            elif effect == "avoid_bad_event":
-                result["custom_effect"] = "sixth_sense"
-            elif effect == "global_reset":
-                result["custom_effect"] = "global_reset"
-            elif effect == "bet_win":
-                result["gain_money"] = random.randint(200, 400)
+            if handler:
+                result = await handler(result, event_data, user_id=user_id, cog=cog)
+            else:
+                print(f"[EVENTS] Warning: No handler for effect '{effect}'")
             
             return result
     

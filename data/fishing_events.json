@@ -1,0 +1,531 @@
+{
+  "events": {
+    "snapped_line": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Đứt Dây!",
+      "effect": "lose_worm"
+    },
+    "hook_stuck": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Mắc Cây!",
+      "effect": "lose_worm"
+    },
+    "rat_bite": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Chuột Cắn!",
+      "effect": "lose_worm"
+    },
+    "poor_knot": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Tuột Nút!",
+      "effect": "lose_worm"
+    },
+    "fish_escape": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Cá Sẩy!",
+      "effect": "lose_worm"
+    },
+    "predator": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Cá Dữ!",
+      "effect": "lose_catch"
+    },
+    "cat_steal": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Mèo Mun!",
+      "effect": "thief"
+    },
+    "bird_steal": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Chim Cướp!",
+      "effect": "lose_catch"
+    },
+    "bucket_leak": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "Thủng Xô!",
+      "effect": "lose_catch"
+    },
+    "otter_troll": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "Rái Cá!",
+      "effect": "thief"
+    },
+    "police_fine": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Công An!",
+      "effect": "lose_money_50"
+    },
+    "broken_phone": {
+      "chance": 0.001,
+      "type": "bad",
+      "name": "Rớt ĐT!",
+      "effect": "lose_money_200"
+    },
+    "wallet_fall": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "Rớt Ví!",
+      "effect": "lose_money_100"
+    },
+    "snake_bite": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "Rắn Cắn!",
+      "effect": "lose_money_percent"
+    },
+    "hospital_fee": {
+      "chance": 0.001,
+      "type": "bad",
+      "name": "Nhập Viện!",
+      "effect": "lose_money_percent"
+    },
+    "bet_lose": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Thua Cược!",
+      "effect": "bet_loss"
+    },
+    "dropped_slipper": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Rớt Dép!",
+      "effect": "cooldown_short"
+    },
+    "tangled_line": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Rối Dây!",
+      "effect": "cooldown_short"
+    },
+    "stomach_ache": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Đau Bụng!",
+      "effect": "cooldown_medium"
+    },
+    "heavy_rain": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Mưa To!",
+      "effect": "cooldown_medium"
+    },
+    "equipment_break": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "Gãy Cần!",
+      "effect": "cooldown_long"
+    },
+    "mom_called": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Mẹ Gọi!",
+      "effect": "lose_turn"
+    },
+    "wife_gank": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "Vợ Gank!",
+      "effect": "lose_turn"
+    },
+    "sleepy": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Ngủ Gật!",
+      "effect": "lose_turn"
+    },
+    "sneeze": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Hắt Xì!",
+      "effect": "lose_turn"
+    },
+    "kids_rock": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Trẻ Trâu!",
+      "effect": "lose_turn"
+    },
+    "plastic_trap": {
+      "chance": 0.005,
+      "type": "bad",
+      "name": "Vướng Rác!",
+      "effect": "durability_hit"
+    },
+    "big_log": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Mắc Gỗ!",
+      "effect": "durability_hit"
+    },
+    "crab_cut": {
+      "chance": 0.004,
+      "type": "bad",
+      "name": "Cua Kẹp!",
+      "effect": "durability_hit"
+    },
+    "electric_eel": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "Lươn Điện!",
+      "effect": "durability_hit"
+    },
+    "sea_sickness": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "Say Sóng!",
+      "effect": "lose_all_bait"
+    },
+    "found_wallet": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Vớt Ví!",
+      "effect": "gain_money_medium"
+    },
+    "tourist_tip": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Tiền Tip!",
+      "effect": "gain_money_medium"
+    },
+    "floating_cash": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Tiền Trôi!",
+      "effect": "gain_money_small"
+    },
+    "ancient_coin": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Xu Cổ!",
+      "effect": "gain_money_large"
+    },
+    "lottery_win": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "Trúng Số!",
+      "effect": "gain_money_huge"
+    },
+    "streamer_gift": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "Donate!",
+      "effect": "gain_money_medium"
+    },
+    "bet_win": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Thắng Cược!",
+      "effect": "bet_win"
+    },
+    "fairy_gift": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Ông Bụt!",
+      "effect": "gain_worm_5"
+    },
+    "worm_nest": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "Ổ Giun!",
+      "effect": "gain_worm_10"
+    },
+    "treasure_chest": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Rương Báu!",
+      "effect": "gain_chest_1"
+    },
+    "shipwreck": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "Tàu Đắm!",
+      "effect": "gain_chest_2"
+    },
+    "mermaid_gift": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "Tiên Cá!",
+      "effect": "gain_pearl"
+    },
+    "message_bottle": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Thư Chai!",
+      "effect": "gain_chest_1"
+    },
+    "engagement_ring": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "Nhẫn Cưới!",
+      "effect": "gain_ring"
+    },
+    "school_of_fish": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Bão Cá!",
+      "effect": "bonus_catch_3"
+    },
+    "golden_hook": {
+      "chance": 0.006,
+      "type": "good",
+      "name": "Lưỡi Vàng!",
+      "effect": "bonus_catch_2"
+    },
+    "fish_feeding": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Cá Ăn Rộ!",
+      "effect": "bonus_catch_2"
+    },
+    "friendly_otter": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "Rái Cá Giúp!",
+      "effect": "bonus_catch_2"
+    },
+    "net_fishing": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "Vớt Lưới!",
+      "effect": "bonus_catch_3"
+    },
+    "magic_bait": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Mồi Thần Kỳ!",
+      "effect": "duplicate_catch_2"
+    },
+    "twin_fish": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "Cá Song Sinh!",
+      "effect": "duplicate_catch_2"
+    },
+    "mirror_water": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "Mặt Nước Gương!",
+      "effect": "duplicate_catch_3"
+    },
+    "golden_turtle": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Rùa Vàng!",
+      "effect": "reset_cooldown"
+    },
+    "favorable_wind": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "Gió Thuận!",
+      "effect": "reset_cooldown"
+    },
+    "blacksmith_ghost": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Ma Thợ Rèn!",
+      "effect": "restore_durability"
+    },
+    "maintenance_kit": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Dầu Máy!",
+      "effect": "restore_durability"
+    },
+    "energy_drink": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "Tăng Lực!",
+      "effect": "reset_cooldown"
+    },
+    "double_rainbow": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Cầu Vồng!",
+      "effect": "lucky_buff"
+    },
+    "shooting_star": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Sao Băng!",
+      "effect": "lucky_buff"
+    },
+    "ancestor_bless": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "Ông Bà Độ!",
+      "effect": "lucky_buff"
+    },
+    "sixth_sense": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "Giác Quan 6!",
+      "effect": "avoid_bad_event"
+    },
+    "lucky_underwear": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "Quần Đỏ!",
+      "effect": "lucky_buff"
+    },
+    "temple_pray": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "Đi Chùa!",
+      "effect": "avoid_bad_event"
+    },
+    "broken_hourglass": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "⏳ Đồng Hồ Cát Vỡ!",
+      "effect": "global_reset"
+    },
+    "whale_song": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🐋 Tiếng Hát Cá Voi!",
+      "effect": "global_reset"
+    },
+    "red_tide": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🌊 Thủy Triều Đỏ!",
+      "effect": "global_reset"
+    },
+    "lantern_festival": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🏮 Lễ Hội Thả Đèn!",
+      "effect": "global_reset"
+    },
+    "dragon_blessing": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🐉 Long Vương Ban Phước!",
+      "effect": "global_reset"
+    },
+    "energy_storm": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "⚡ Cơn Bão Năng Lượng!",
+      "effect": "global_reset"
+    },
+    "mermaid_tea": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🧚‍♀️ Tiệc Trà Tiên Cá!",
+      "effect": "global_reset"
+    },
+    "monsoon": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🌬️ Gió Mùa Đông Bắc!",
+      "effect": "global_reset"
+    },
+    "temple_bell": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🔔 Tiếng Chuông Chùa!",
+      "effect": "global_reset"
+    },
+    "warp_gate": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🌌 Cổng Không Gian!",
+      "effect": "global_reset"
+    },
+    "ancient_map": {
+      "chance": 0.008,
+      "type": "good",
+      "name": "🗺️ Mảnh Bản Đồ Cổ",
+      "effect": "gain_map_piece"
+    }
+  },
+  "messages": {
+    "snapped_line": "Dây câu căng quá... PẶT! Mất toi cái mồi rồi (-5 Độ bền). 😭",
+    "hook_stuck": "Lưỡi câu mắc vào rễ cây dưới đáy hồ. Phải cắt dây bỏ mồi. ✂️",
+    "rat_bite": "Một con chuột cống chạy qua cắn đứt dây câu của bạn! 🐀",
+    "poor_knot": "Do buộc nút không chặt, lưỡi câu tuột mất tiêu. Gà quá! 🐔",
+    "fish_escape": "Cá đã cắn câu nhưng quẫy mạnh quá nên thoát được. Tiếc hùi hụi! 🐟💨",
+    "bet_lose": "Một tay câu mới đến thách đấu. Bạn tự tin nhận kèo và... thua sấp mặt! 💸",
+    "predator": "Cá Sư Tử lao tới đớp trọn mẻ cá của bạn rồi bỏ chạy (-3 Độ bền)! 😱",
+    "cat_steal": "Meow! 🐈 Một con mèo đen nhanh tay cướp mất con cá to nhất của bạn!",
+    "bird_steal": "Một con Hải Âu sà xuống cắp mất con cá ngon nhất. Cay thế nhở! 🦅",
+    "bucket_leak": "Xô đựng cá bị thủng đáy! Mấy con cá bé chui ra ngoài hết rồi. 🕳️",
+    "otter_troll": "Một chú Rái Cá trêu ngươi bạn, thò tay bốc trộm cá rồi lặn mất. 🦦",
+    "police_fine": "O e o e! 🚔 Công an phường phạt 50 Hạt vì tội câu cá trái phép!",
+    "broken_phone": "Tõm! Chiếc iPhone 15 Promax rơi xuống nước. Tốn 200 Hạt sửa chữa. 📱💦",
+    "wallet_fall": "Cúi xuống gỡ cá, ví tiền rơi tõm xuống hồ. Mất 100 Hạt. 💸",
+    "snake_bite": "Kéo lên không phải cá mà là Rắn Nước! Bị cắn chảy máu (-5% tiền thuốc men) 🐍",
+    "hospital_fee": "Trượt chân ngã sấp mặt! Phải đi trạm xá khâu vết thương (-5% tiền). 🏥",
+    "dropped_slipper": "Mải giật cần làm rớt dép lào. Phải bơi đi nhặt mất 2 phút! 🩴",
+    "tangled_line": "Dây câu rối như tơ vò. Ngồi gỡ mất cả thanh xuân (2 phút). 🧶",
+    "stomach_ache": "Tào Tháo đuổi! 🚽 Bạn phải chạy đi giải quyết nỗi buồn (Chờ 5 phút).",
+    "heavy_rain": "Mưa to gió lớn! Phải trú mưa chờ tạnh (Chờ 5 phút). ⛈️",
+    "equipment_break": "Rắc! Cần câu bị gãy gập. Phải đem đi hàn lại (Chờ 10 phút - Mất toàn bộ độ bền). 🛠️",
+    "mom_called": "Alo? Mẹ gọi về ăn cơm! Bạn vội chạy về, bỏ lỡ mẻ cá này. 🍚",
+    "wife_gank": "Vợ/Người yêu xuất hiện gank! 'Suốt ngày câu với kéo!'. Bạn phải trốn ngay. 🏃",
+    "sleepy": "Gió mát quá... Zzz... Bạn ngủ gật và cá ăn hết mồi lúc nào không hay. 😴",
+    "sneeze": "Hắt xì!!! 🤧 Tiếng hắt hơi làm đàn cá giật mình bơi đi hết.",
+    "kids_rock": "Lũ trẻ trâu ném đá xuống hồ làm cá sợ chạy mất dép. 🗿",
+    "plastic_trap": "Lưỡi câu móc vào bao tải rác. Kéo nặng trịch làm hại độ bền cần (-5 Độ bền). 🗑️",
+    "big_log": "Tưởng cá to, hóa ra là khúc gỗ mục. Cần câu bị cong vòng (-5 Độ bền). 🪵",
+    "crab_cut": "Con Cua kẹp vào dây câu làm xước dây và mòn cần (-5 Độ bền). 🦀",
+    "electric_eel": "Câu trúng Lươn Điện! Nó phóng điện làm bạn tê tay, rơi cần xuống đất (-5 Độ bền). ⚡",
+    "sea_sickness": "Sóng đánh tụt quần! Bạn nôn thốc nôn tháo... nôn hết cả túi mồi ra biển. 🤢",
+    "found_wallet": "Vớt được cái ví da cá sấu! Bên trong có kha khá tiền lẻ. 👛",
+    "magic_bait": "Mồi của bạn tỏa sáng kỳ lạ! Cá đến thành đàn! ✨🐟",
+    "twin_fish": "Bạn câu được cá song sinh! Mỗi con lại kéo thêm anh em! 👯",
+    "mirror_water": "Mặt nước như gương phản chiếu - cá bị ảo giác và cắn nhiều lần! 🪞",
+    "tourist_tip": "Khách du lịch thấy bạn câu điệu nghệ quá nên tip nóng! 💵",
+    "floating_cash": "Ai đó đánh rơi tờ tiền trôi lềnh bềnh trên mặt nước! Vớt lẹ! 💸",
+    "ancient_coin": "Móc lên được đồng xu cổ thời vua Hùng. Bảo tàng mua lại giá cao! 🪙",
+    "lottery_win": "Vớt được tờ vé số trúng giải độc đắc (giải khuyến khích)! 🎫🎉",
+    "streamer_gift": "Độ Mixi đi ngang qua và donate cho bạn tiền mua mồi! 🎥",
+    "bet_win": "Một tay câu mới đến thách đấu. Bạn dạy cho hắn một bài học về kỹ năng! 😎",
+    "fairy_gift": "Ông Bụt hiện lên: 'Ta tặng con 5 con Giun vì con nghèo mà ham cày'. 🎅",
+    "worm_nest": "Đào trúng ổ giun chúa! Nhặt mỏi tay không hết mồi. 🪱",
+    "treasure_chest": "Kéo nặng trịch... Là một Rương Kho Báu của cướp biển để lại! 🏴‍☠️",
+    "shipwreck": "Phát hiện xác tàu đắm! Bạn tìm thấy 2 cái Rương còn nguyên vẹn. 📦📦",
+    "mermaid_gift": "Nàng Tiên Cá ngoi lên tặng bạn viên Ngọc Trai rồi ngại ngùng bơi đi. 🧜‍♀️",
+    "message_bottle": "Một cái chai trôi dạt, bên trong có bản đồ dẫn tới Kho Báu! 🗺️",
+    "engagement_ring": "Ai đó thất tình ném nhẫn xuống hồ. Nhẫn kim cương xịn nha! 💍",
+    "school_of_fish": "Trúng luồng cá di cư! Giật mỏi tay, X3 sản lượng! 🐟🐟🐟",
+    "golden_hook": "Lưỡi câu của bạn phát sáng hoàng kim! Có nhiều cá cắn câu hơn! ✨",
+    "fish_feeding": "Đúng giờ cá ăn! Lũ cá tranh nhau đớp mồi. X2 sản lượng! 🍲",
+    "friendly_otter": "Một chú Rái Cá lùa cá vào lưới giúp bạn. X2 cá! 🦦",
+    "net_fishing": "Móc trúng cái lưới của ai bỏ quên, bên trong đầy cá! (X3) 🕸️",
+    "golden_turtle": "Cụ Rùa Vàng nổi lên thở. Bạn cảm thấy tràn trề sinh lực! 🐢",
+    "favorable_wind": "Gió đông thổi tới! Câu nhanh hơn hẳn. 🌬️",
+    "blacksmith_ghost": "Hồn ma thợ rèn hiện về: 'Để ta sửa cần cho con'. (+20 Độ bền) 🔨👻",
+    "maintenance_kit": "Vớt được hộp dầu máy. Tra dầu vào cần câu chạy mượt hẳn! (+20 Độ bền) 🛢️",
+    "energy_drink": "Làm lon bò húc! Tỉnh cả người, quăng cần liên tục. 🐂",
+    "double_rainbow": "Cầu vồng đôi! 🌈 Nhân phẩm bùng nổ.",
+    "shooting_star": "Sao băng lướt qua! 🌠 Ước gì được nấy (Buff may mắn).",
+    "ancestor_bless": "Ông bà gánh còng lưng! Lần câu sau auto đỏ. 🙏",
+    "sixth_sense": "Mắt phải giật liên hồi... Linh tính mách bảo bạn sẽ tránh được kiếp nạn sắp tới. 👁️",
+    "lucky_underwear": "Bạn mặc chiếc quần chip đỏ may mắn hôm nay. Cá to tự tìm đến! 🩲",
+    "temple_pray": "Hôm qua mới đi chùa thắp hương. Thần linh phù hộ tránh xui xẻo. 🏯",
+    "broken_hourglass": "Bạn câu được một chiếc đồng hồ cát cổ đại... Nó vỡ tan và làm thời gian đảo ngược! ⏳✨",
+    "whale_song": "Một chú Cá Voi Xanh khổng lồ nổi lên và cất tiếng hát vang vọng đại dương. Âm thanh chữa lành mọi mệt mỏi. 🐋🎵",
+    "red_tide": "Một đợt thủy triều mang theo hàng triệu sinh vật phù du tràn về. Cá ăn điên cuồng, không cần chờ đợi! 🌊✨",
+    "lantern_festival": "Hàng nghìn chiếc đèn lồng trôi trên mặt nước, soi sáng cả một vùng. Không khí lễ hội khiến ai cũng hăng say. 🏮🎊",
+    "dragon_blessing": "Long Vương đi vi hành và thấy sự chăm chỉ của các bạn. Ngài phất tay xóa bỏ mọi giới hạn! 🐉👑",
+    "energy_storm": "Một luồng điện tích tụ trong không khí kích thích thần kinh vận động. Mọi người thao tác nhanh như chớp! ⚡💨",
+    "mermaid_tea": "Các nàng tiên cá mời cả server dùng 'Trà Rong Biển'. Uống vào tỉnh táo, quăng cần không biết mệt. 🧚‍♀️🫖",
+    "monsoon": "Gió mùa về! Cá nổi lên hít thở rợp cả mặt hồ. Cơ hội ngàn năm có một! 🌬️🐟",
+    "temple_bell": "Tiếng chuông chùa xa xa vọng lại... Tâm tịnh, tay nhanh, mọi phiền muộn (và cooldown) đều tan biến. 🔔✨",
+    "warp_gate": "Lưỡi câu của bạn móc trúng nút 'Refresh' của Vũ Trụ. Hệ thống thời gian bị reset! 🌌🔄",
+    "ancient_map": "Bạn câu được một mảnh bản đồ cổ xưa! Nó có thể là chìa khóa để mở ra những bí ẩn. 🗺️✨"
+  }
+}

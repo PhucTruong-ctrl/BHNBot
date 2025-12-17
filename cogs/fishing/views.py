@@ -12,6 +12,7 @@ class FishSellView(discord.ui.View):
         self.user_id = user_id
         self.caught_items = caught_items
         self.guild_id = guild_id
+        self.sold = False  # Flag to prevent double-selling
     
     async def on_timeout(self):
         """Cleanup when view times out (after 5 minutes)"""
@@ -28,7 +29,20 @@ class FishSellView(discord.ui.View):
             await interaction.response.send_message("❌ Chỉ có người câu cá mới được bán!", ephemeral=True)
             return
         
-        await interaction.response.defer()
+        # Check if already sold (CRITICAL: prevent race condition)
+        if self.sold:
+            await interaction.response.send_message("❌ Cá này đã bán rồi!", ephemeral=True)
+            return
+        
+        # Mark as sold IMMEDIATELY (before any async operations)
+        self.sold = True
+        
+        # Disable button IMMEDIATELY to prevent double-click
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(view=self)
+        
+        await interaction.followup.send("⏳ Đang xử lý...", ephemeral=True)
         
         try:
             total_money = 0
@@ -56,10 +70,69 @@ class FishSellView(discord.ui.View):
             except:
                 pass
             
-            for fish_key, quantity in self.caught_items.items():
-                await remove_item(self.user_id, fish_key, quantity)
+            # Use ATOMIC TRANSACTION to prevent exploits
+            import aiosqlite
+            from .constants import DB_PATH
             
-            await add_seeds(self.user_id, total_money)
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    await db.execute("BEGIN TRANSACTION")
+                    
+                    try:
+                        # 1. VERIFY inventory quantities INSIDE transaction
+                        for fish_key, quantity in self.caught_items.items():
+                            cursor = await db.execute(
+                                "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
+                                (self.user_id, fish_key)
+                            )
+                            row = await cursor.fetchone()
+                            actual_qty = row[0] if row else 0
+                            
+                            if actual_qty < quantity:
+                                await db.execute("ROLLBACK")
+                                self.sold = False  # Reset flag on insufficient inventory
+                                await interaction.followup.send(
+                                    f"❌ **Khôn vậy má!** Không đủ `{ALL_FISH[fish_key]['name']}` để bán.\n"
+                                    f"Cần: {quantity}, Có: {actual_qty}\n"
+                                    f"(Đã bán qua `/banca` rồi?)",
+                                    ephemeral=True
+                                )
+                                return
+                        
+                        # 2. Remove all fish items (safe now - quantities verified)
+                        for fish_key, quantity in self.caught_items.items():
+                            await db.execute(
+                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                                (quantity, self.user_id, fish_key)
+                            )
+                        
+                        # 3. Delete items with quantity <= 0
+                        await db.execute(
+                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                            (self.user_id,)
+                        )
+                        
+                        # 4. Add seeds to user
+                        await db.execute(
+                            "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                            (total_money, self.user_id)
+                        )
+                        
+                        # Commit transaction
+                        await db.commit()
+                        
+                        # CRITICAL: Invalidate inventory cache after successful transaction
+                        from database_manager import db_manager
+                        db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+                        
+                    except Exception as e:
+                        await db.execute("ROLLBACK")
+                        self.sold = False  # Reset flag on error
+                        raise
+            except Exception as e:
+                await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
+                self.sold = False  # Reset flag on error
+                return
             
             if self.user_id in self.cog.caught_items:
                 del self.cog.caught_items[self.user_id]
@@ -70,11 +143,7 @@ class FishSellView(discord.ui.View):
                 description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**",
                 color=discord.Color.green()
             )
-            await interaction.followup.send(embed=embed)
-            
-            for item in self.children:
-                item.disabled = True
-            await interaction.message.edit(view=self)
+            await interaction.followup.send(embed=embed, ephemeral=False)
             
             fish_count = sum(self.caught_items.values())
             print(f"[FISHING] [SELL] {interaction.user.name} (user_id={self.user_id}) seed_change=+{total_money} fish_count={fish_count} fish_types={len(self.caught_items)}")

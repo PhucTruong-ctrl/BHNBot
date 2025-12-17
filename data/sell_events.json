@@ -1,0 +1,564 @@
+{
+  "events": {
+    "market_crash": {
+      "chance": 0.01,
+      "type": "bad",
+      "mul": 0.7,
+      "flat": 0,
+      "name": "Sập Giá!"
+    },
+    "aggressive_haggler": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.85,
+      "flat": 0,
+      "name": "Trả Giá!"
+    },
+    "competitor_sale": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.9,
+      "flat": 0,
+      "name": "Cạnh Tranh!"
+    },
+    "deflation": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.8,
+      "flat": 0,
+      "name": "Mất Giá!"
+    },
+    "wrong_season": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.75,
+      "flat": 0,
+      "name": "Nghịch Mùa!"
+    },
+    "oversupply": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.85,
+      "flat": 0,
+      "name": "Dư Thừa!"
+    },
+    "rotten_fish": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.6,
+      "flat": 0,
+      "name": "Cá Ươn!"
+    },
+    "bad_smell": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.9,
+      "flat": 0,
+      "name": "Mùi Hôi!"
+    },
+    "flies_swarm": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.95,
+      "flat": -20,
+      "name": "Ruồi Bu!"
+    },
+    "melting_ice": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.9,
+      "flat": -10,
+      "name": "Tan Đá!"
+    },
+    "skinny_fish": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.85,
+      "flat": 0,
+      "name": "Cá Còi!"
+    },
+    "parasite_found": {
+      "chance": 0.003,
+      "type": "bad",
+      "mul": 0.5,
+      "flat": 0,
+      "name": "Ký Sinh!"
+    },
+    "tax_collector": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.85,
+      "flat": 0,
+      "name": "Thuế Chợ!"
+    },
+    "market_management": {
+      "chance": 0.004,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -200,
+      "name": "QLTT Phạt!"
+    },
+    "sanitation_fine": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -100,
+      "name": "Vệ Sinh!"
+    },
+    "parking_fee": {
+      "chance": 0.01,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -10,
+      "name": "Gửi Xe!"
+    },
+    "rent_increase": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -50,
+      "name": "Tăng Giá Thuê!"
+    },
+    "fake_money": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -100,
+      "name": "Tiền Giả!"
+    },
+    "pickpocket": {
+      "chance": 0.004,
+      "type": "bad",
+      "mul": 0.7,
+      "flat": 0,
+      "name": "Móc Túi!"
+    },
+    "gangster_fee": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -150,
+      "name": "Bảo Kê!"
+    },
+    "scammer": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 0.8,
+      "flat": 0,
+      "name": "Lừa Đảo!"
+    },
+    "thief_run": {
+      "chance": 0.002,
+      "type": "bad",
+      "mul": 0.0,
+      "flat": 0,
+      "name": "Cướp!"
+    },
+    "dropped_money": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -50,
+      "name": "Rớt Tiền!"
+    },
+    "hole_in_bag": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.9,
+      "flat": 0,
+      "name": "Túi Thủng!"
+    },
+    "broken_scale": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.9,
+      "flat": 0,
+      "name": "Cân Điêu!"
+    },
+    "cat_steal_sell": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -30,
+      "name": "Mèo Cướp!"
+    },
+    "stray_dog": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -40,
+      "name": "Chó Dữ!"
+    },
+    "rainy_day": {
+      "chance": 0.008,
+      "type": "bad",
+      "mul": 0.8,
+      "flat": 0,
+      "name": "Mưa Giông!"
+    },
+    "slip_fall": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -80,
+      "name": "Trượt Ngã!"
+    },
+    "plastic_bag_fee": {
+      "chance": 0.01,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -5,
+      "name": "Tiền Túi!"
+    },
+    "maybach_crash": {
+      "chance": 0.002,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -500,
+      "name": "Tông Maybach!"
+    },
+    "rollroyce_crash": {
+      "chance": 0.001,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -1000,
+      "name": "Tông Rolls-Royce!"
+    },
+    "ferrari_crash": {
+      "chance": 0.001,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -1000,
+      "name": "Tông Ferrari!"
+    },
+    "porsche_crash": {
+      "chance": 0.002,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -800,
+      "name": "Tông Porsche!"
+    },
+    "mercedes_g63": {
+      "chance": 0.003,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -600,
+      "name": "Tông G63!"
+    },
+    "lamborghini_crash": {
+      "chance": 0.001,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -1200,
+      "name": "Tông Bò Tót!"
+    },
+    "bentley_crash": {
+      "chance": 0.002,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -900,
+      "name": "Tông Bentley!"
+    },
+    "bugatti_crash": {
+      "chance": 0.0005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -2000,
+      "name": "Tông Bugatti!"
+    },
+    "vinfast_crash": {
+      "chance": 0.004,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -300,
+      "name": "Tông VinFast!"
+    },
+    "market_boom": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.2,
+      "flat": 0,
+      "name": "Chợ Sôi!"
+    },
+    "sushi_chef": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.3,
+      "flat": 0,
+      "name": "Đầu Bếp!"
+    },
+    "tourist_group": {
+      "chance": 0.008,
+      "type": "good",
+      "mul": 1.15,
+      "flat": 0,
+      "name": "Khách Du!"
+    },
+    "festival": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.25,
+      "flat": 0,
+      "name": "Lễ Hội!"
+    },
+    "fresh_bonus": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.1,
+      "flat": 0,
+      "name": "Tươi Roi!"
+    },
+    "bidding_war": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.35,
+      "flat": 0,
+      "name": "Tranh Mua!"
+    },
+    "supportive_friend": {
+      "chance": 0.008,
+      "type": "good",
+      "mul": 1.1,
+      "flat": 50,
+      "name": "Bạn Ủng!"
+    },
+    "golden_scale": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.1,
+      "flat": 0,
+      "name": "Cân Thừa!"
+    },
+    "sold_out": {
+      "chance": 0.008,
+      "type": "good",
+      "mul": 1.15,
+      "flat": 0,
+      "name": "Cháy Hàng!"
+    },
+    "compliment": {
+      "chance": 0.008,
+      "type": "good",
+      "mul": 1.1,
+      "flat": 20,
+      "name": "Khen Ngợi!"
+    },
+    "loyal_customer": {
+      "chance": 0.008,
+      "type": "good",
+      "mul": 1.15,
+      "flat": 0,
+      "name": "Khách Quen!"
+    },
+    "good_weather": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.1,
+      "flat": 0,
+      "name": "Trời Đẹp!"
+    },
+    "unexpected_luck": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.2,
+      "flat": 50,
+      "name": "May Mắn!"
+    },
+    "big_fish_auction": {
+      "chance": 0.003,
+      "type": "good",
+      "mul": 2.0,
+      "flat": 0,
+      "name": "Đấu Giá!"
+    },
+    "newspaper_feature": {
+      "chance": 0.002,
+      "type": "good",
+      "mul": 1.5,
+      "flat": 0,
+      "name": "Lên Báo!"
+    },
+    "tip_money": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 50,
+      "name": "Tiền Tip!"
+    },
+    "charity": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 100,
+      "name": "Lì Xì!"
+    },
+    "found_money": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 200,
+      "name": "Tiền Rơi!"
+    },
+    "lucky_money": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 100,
+      "name": "May Mắn!"
+    },
+    "golden_hour": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.4,
+      "flat": 0,
+      "name": "Giờ Vàng!"
+    },
+    "rich_customer": {
+      "chance": 0.01,
+      "type": "good",
+      "mul": 1.2,
+      "flat": 0,
+      "name": "Khách Sộp!"
+    },
+    "buy_one_get_one": {
+      "chance": 0.008,
+      "type": "good",
+      "mul": 1.2,
+      "flat": 0,
+      "name": "Khuyến Mãi!"
+    },
+    "double_joy": {
+      "chance": 0.003,
+      "type": "good",
+      "mul": 1.3,
+      "flat": 100,
+      "name": "Niềm Vui!"
+    },
+    "gift_received": {
+      "chance": 0.003,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Quà Tặng!",
+      "special": "chest"
+    },
+    "found_bait": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Tìm Mồi!",
+      "special": "worm"
+    },
+    "lottery_ticket": {
+      "chance": 0.003,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Vé Số!",
+      "special": "lottery"
+    },
+    "pearl_in_fish": {
+      "chance": 0.001,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Ngọc Trai!",
+      "special": "pearl"
+    },
+    "free_breakfast": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Ăn Sáng!",
+      "special": "durability"
+    },
+    "old_rod_gift": {
+      "chance": 0.001,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Tặng Cần!",
+      "special": "rod"
+    },
+    "god_of_wealth": {
+      "chance": 0.002,
+      "type": "good",
+      "mul": 2.0,
+      "flat": 0,
+      "name": "Thần Tài!"
+    }
+  },
+  "messages": {
+    "market_crash": "Cả chợ ai cũng bán cá này, giá rớt thê thảm! 📉 (Giá giảm 30%)",
+    "aggressive_haggler": "Gặp bà thím mặc cả kinh hoàng: 'Bớt đi cháu, không cô đi hàng khác!'. 👵 (Giá giảm 15%)",
+    "competitor_sale": "Sạp bên cạnh xả hàng tồn kho giá rẻ bèo, bạn buộc phải giảm giá theo. 🏷️ (Giá giảm 10%)",
+    "deflation": "Kinh tế khó khăn, người dân thắt chặt chi tiêu, ép giá bạn. 💸 (Giá giảm 20%)",
+    "wrong_season": "Mùa này không ai ăn cá này cả, phải năn nỉ mãi mới bán được. 🍂 (Giá giảm 25%)",
+    "oversupply": "Thuyền về bến quá nhiều, cá ngập chợ, giá rẻ như cho. 🐟 (Giá giảm 15%)",
+    "rotten_fish": "Trời nóng quá làm cá bị ươn, bốc mùi. Phải bán đổ bán tháo. 🤢 (Giá giảm 40%)",
+    "bad_smell": "Sạp cá của bạn bốc mùi lạ, khách hàng bịt mũi bỏ đi. 👃 (Giá giảm 10%)",
+    "flies_swarm": "Ruồi bu kiến đậu, bạn phải tốn tiền mua nhang muỗi để đuổi. 🪰 (Mất 20 Hạt)",
+    "melting_ice": "Đá ướp tan hết sạch, cá mất độ tươi ngon. 🧊 (Giá giảm 10% + Tốn 10 Hạt)",
+    "skinny_fish": "Khách chê: 'Cá gì mà toàn xương với đầu', ép giá bạn. 🦴 (Giá giảm 15%)",
+    "parasite_found": "Khách phát hiện có sán trong mang cá! Bạn phải đền bù danh dự. 😱 (Giá giảm 50%)",
+    "tax_collector": "Ban quản lý chợ đi thu thuế chỗ ngồi và phí vệ sinh. 🧾 (Mất 15% doanh thu)",
+    "market_management": "Quản lý thị trường kiểm tra: 'Cân chưa kiểm định!'. Phạt nóng! 👮 (Phạt 200 Hạt)",
+    "sanitation_fine": "Vứt rác bừa bãi bị tổ dân phố bắt quả tang. Phạt cảnh cáo. 🧹 (Phạt 100 Hạt)",
+    "parking_fee": "Hôm nay bãi xe tăng giá, tốn thêm tiền gửi xe tải cá. 🛵 (Mất 10 Hạt)",
+    "rent_increase": "Chủ sạp thông báo tăng tiền thuê mặt bằng đột xuất. 🏘️ (Mất 50 Hạt)",
+    "fake_money": "Về nhà đếm lại tiền mới phát hiện bị kẹp tờ tiền âm phủ. 💸 (Mất 100 Hạt)",
+    "pickpocket": "Chen chúc đông người, kẻ gian đã rạch túi lấy mất ví tiền của bạn! 🕵️ (Mất 30% doanh thu)",
+    "gangster_fee": "Giang hồ 'Hắc Long Bang' đi thu phí bảo kê khu vực này. 🕶️ (Mất 150 Hạt)",
+    "scammer": "Bị khách dùng thủ thuật 'tráo tiền' lừa mất một khoản. 🃏 (Mất 20% doanh thu)",
+    "thief_run": "CƯỚP! Một tên cướp giật phăng túi tiền của bạn và chạy mất! 🏃💨 (Mất TRẮNG doanh thu)",
+    "dropped_money": "Đang đếm tiền thì gió thổi bay mất một tờ 50 Hạt xuống cống. 🌬️ (Mất 50 Hạt)",
+    "hole_in_bag": "Túi đựng tiền bị thủng lỗ nhỏ, rơi rớt tiền lẻ dọc đường. 🧵 (Mất 10% doanh thu)",
+    "broken_scale": "Cái cân lò xo bị giãn, cân 1kg mà chỉ hiện 9 lạng. ⚖️ (Mất 10% doanh thu)",
+    "cat_steal_sell": "Đang bận bán hàng, con mèo hoang nhảy lên quầy cướp mất con cá ngon. 🐈 (Mất 30 Hạt)",
+    "stray_dog": "Con chó hàng xóm chạy qua tè vào xô cá. Phải đền tiền cho khách. 🐕 (Mất 40 Hạt)",
+    "rainy_day": "Mưa to quá, chợ vắng tanh, phải bán lỗ vốn để về sớm. 🌧️ (Giá giảm 20%)",
+    "slip_fall": "Sàn chợ trơn trượt, bạn ngã sấp mặt làm đổ hết tiền ra sàn. 🤕 (Mất 80 Hạt)",
+    "plastic_bag_fee": "Khách đòi nhiều túi ni lông quá, tốn tiền mua bao bì. 🛍️ (Mất 5 Hạt)",
+    "maybach_crash": "Mải check giá cá trên điện thoại, bạn tông móp đuôi chiếc **Maybach S680** của chủ tịch huyện. Bán cả sạp cá cũng không đủ đền! 😭 (-500 Hạt)",
+    "rollroyce_crash": "Đang phi xe ba gác thì tạt đầu trúng chiếc **Rolls-Royce Phantom**. Cái logo 'Spirit of Ecstasy' bay mất tiêu. Bạn xác định ra đê ở! 💸 (-1000 Hạt)",
+    "ferrari_crash": "Thấy đèn vàng cố vượt, bạn quẹt xước sườn siêu xe **Ferrari 488** đang dừng. Tiếng 'két' nghe mà xót xa cõi lòng. 🏎️💔 (-1000 Hạt)",
+    "porsche_crash": "Mắt nhắm mắt mở thế nào mà húc thẳng vào đuôi em **Porsche Panamera**. Chủ xe bước xuống nhìn bạn ngao ngán... Chuẩn bị tiền đi! 🚗💥 (-1000 Hạt)",
+    "mercedes_g63": "Lùi xe không quan sát, bạn húc vỡ đèn hậu chiếc **Mercedes G63** mới cóng. Chủ xe nhìn bạn bằng nửa con mắt. 🚙 (-600 Hạt)",
+    "lamborghini_crash": "Nghe tiếng nẹt pô giật mình, bạn tay lái lụa quẹt luôn vào cánh cửa chiếc **Lamborghini Aventador**. Bò tót húc thủng ví rồi! 🐂💸 (-1200 Hạt)",
+    "bentley_crash": "Tránh ổ gà, bạn lạng tay lái va phải chiếc **Bentley** sang trọng. Tiền sơn xe bằng cả tháng đi câu! 🎩 (-900 Hạt)",
+    "bugatti_crash": "😱 **THẢM HỌA!** Bạn vừa tông phải siêu phẩm **Bugatti Chiron** độc nhất vô nhị. Bán nhà, bán đất, bán cả server cũng không đủ đền! ☠️ (-2000 Hạt)",
+    "vinfast_crash": "Ủng hộ hàng Việt nhưng hơi sai cách. Bạn vừa hôn vào đuôi chiếc **VinFast President**. Mãnh liệt tinh thần... đền tiền. 🇻🇳 (-300 Hạt)",
+    "market_boom": "Thị trường sôi động, giá cá tăng vọt! 📈 (Tăng 20%)",
+    "sushi_chef": "Đầu bếp nhà hàng 5 sao mua cá với giá cao! 🍣 (Tăng 30%)",
+    "tourist_group": "Khách du lịch ghé chợ, mua cá với giá hời. 🎒 (Tăng 15%)",
+    "festival": "Lễ hội ẩm thực đang diễn ra, nhu cầu tăng! 🏮 (Tăng 25%)",
+    "fresh_bonus": "Cá của bạn tươi quá! Được đánh giá 5 sao. ⭐ (Tăng 10%)",
+    "bidding_war": "Thương lái tranh nhau mua mẻ cá của bạn! 🗣️ (Tăng 35%)",
+    "supportive_friend": "Gặp bạn quen, họ mua ủng hộ với giá cao. 💚 (Tăng 10% + 50 Hạt)",
+    "golden_scale": "Cân của bà chủ bị hỏng, cân thừa cho bạn! ⚖️ (Tăng 10%)",
+    "sold_out": "Bạn bán hết sạch cá trong tích tắc! 🔥 (Tăng 15%)",
+    "compliment": "Mọi người khen cá bạn ngon nhất chợ! 👍 (Tăng 10% + 20 Hạt)",
+    "loyal_customer": "Khách quen quay lại mua ủng hộ. 🤝 (Tăng 15%)",
+    "good_weather": "Trời đẹp, chợ đông, bán đắt hàng! ☀️ (Tăng 10%)",
+    "unexpected_luck": "Hôm nay bạn cảm thấy thật may mắn! 🍀 (Tăng 20% + 50 Hạt)",
+    "big_fish_auction": "Con cá to nhất được đấu giá! 🏆 (Giá cực cao)",
+    "newspaper_feature": "Báo đưa tin về mẻ cá tuyệt vời của bạn! 📰 (Tăng 50%)",
+    "tip_money": "Khách hàng thấy bạn vui vẻ nên tip thêm tiền. 💵 (+50 Hạt)",
+    "charity": "Hôm nay bà chủ trúng số, lì xì cho bạn. 🧧 (+100 Hạt)",
+    "found_money": "Bạn nhặt được tiền rơi ở chợ! 💸 (+200 Hạt)",
+    "lucky_money": "Bà chủ cảm thấy vui nên lì xì thêm. 🎉 (+100 Hạt)",
+    "golden_hour": "Bạn bán cá đúng giờ vàng, giá cao nhất! ⏰ (Tăng 40%)",
+    "rich_customer": "Gặp đại gia, không cần nhìn giá. 🎩 (Tăng 20%)",
+    "buy_one_get_one": "Khách hàng vui vẻ mua thêm vì khuyến mãi. 🎁 (Tăng 20%)",
+    "double_joy": "Bán được giá cao lại còn được khen! 😊 (Tăng 30% + 100 Hạt)",
+    "gift_received": "Khách hàng tặng bạn một rương báu nhỏ. 📦 (+1 Rương)",
+    "found_bait": "Bạn tìm thấy mồi câu bị bỏ quên! 🪱 (+5 Mồi)",
+    "lottery_ticket": "Ai đó tặng bạn vé số! 🎫 (Cơ hội trúng thưởng)",
+    "pearl_in_fish": "Phát hiện ngọc trai trong bụng cá! 🔮 (+1 Ngọc Trai)",
+    "free_breakfast": "Bà chủ mời bạn ăn sáng miễn phí! 🍜 (+Độ bền)",
+    "old_rod_gift": "Ngư dân già tặng cần câu cũ của ông! 🎣 (+Vật liệu)",
+    "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)"
+  }
+}
