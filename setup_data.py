@@ -79,13 +79,14 @@ def init_database():
                     last_harvest DATETIME
                 )''')
     
-    # Tree Contributors: Track who contributed to the tree
+    # Tree Contributors: Track who contributed to the tree (per season)
     c.execute('''CREATE TABLE IF NOT EXISTS tree_contributors (
                     user_id INTEGER,
                     guild_id INTEGER,
                     amount INTEGER DEFAULT 0,
                     contribution_exp INTEGER DEFAULT 0,
-                    PRIMARY KEY (user_id, guild_id)
+                    season INTEGER DEFAULT 1,
+                    PRIMARY KEY (user_id, guild_id, season)
                 )''')
     
     # Game Sessions: Save game state for resume after bot restart
@@ -381,7 +382,7 @@ def init_database():
     except Exception as e:
         print(f"⚠️ Inventory table check error: {e}")
     
-    # Check and migrate tree_contributors table - add contribution_exp column
+    # Check and migrate tree_contributors table - add contribution_exp and season columns
     try:
         c.execute("PRAGMA table_info(tree_contributors)")
         tree_contrib_columns = [row[1] for row in c.fetchall()]
@@ -396,6 +397,15 @@ def init_database():
                 print("✓ Added contribution_exp column to tree_contributors and migrated data from amount")
             except Exception as e:
                 print(f"⚠️ Migration error for tree_contributors: {e}")
+        
+        if "season" not in tree_contrib_columns:
+            print("🔄 Migrating: Adding season column to tree_contributors")
+            try:
+                # Add season column
+                c.execute("ALTER TABLE tree_contributors ADD COLUMN season INTEGER DEFAULT 1")
+                print("✓ Added season column to tree_contributors")
+            except Exception as e:
+                print(f"⚠️ Migration error for tree_contributors season: {e}")
     except Exception as e:
         print(f"⚠️ Tree contributors table check error: {e}")
     

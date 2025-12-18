@@ -174,7 +174,7 @@ class CommunityCog(commands.Cog):
             await db.commit()
 
     async def add_contributor(self, user_id: int, guild_id: int, amount: int, contribution_type: str = "seeds"):
-        """Add to contributor's total with experience points.
+        """Add to contributor's total with experience points for CURRENT season.
         
         contribution_type: 'seeds' (hạt góp) or 'fertilizer' (bón phân)
         Seeds: 1 hạt = 1 exp
@@ -186,32 +186,38 @@ class CommunityCog(commands.Cog):
         else:  # seeds
             exp_amount = amount  # 1 seed = 1 exp
         
+        # Get current season
+        _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
+        
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ?",
-                (user_id, guild_id)
+                "SELECT contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ? AND season = ?",
+                (user_id, guild_id, current_season)
             ) as cursor:
                 row = await cursor.fetchone()
             
             if row:
                 await db.execute(
-                    "UPDATE tree_contributors SET contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ?",
-                    (exp_amount, user_id, guild_id)
+                    "UPDATE tree_contributors SET contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ? AND season = ?",
+                    (exp_amount, user_id, guild_id, current_season)
                 )
             else:
                 await db.execute(
-                    "INSERT INTO tree_contributors (user_id, guild_id, contribution_exp) VALUES (?, ?, ?)",
-                    (user_id, guild_id, exp_amount)
+                    "INSERT INTO tree_contributors (user_id, guild_id, contribution_exp, season) VALUES (?, ?, ?, ?)",
+                    (user_id, guild_id, exp_amount, current_season)
                 )
             
             await db.commit()
 
     async def get_top_contributors(self, guild_id: int, limit: int = 3):
-        """Get top 3 contributors by contribution experience"""
+        """Get top contributors by contribution experience for CURRENT season"""
+        # Get current season
+        _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
+        
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? ORDER BY contribution_exp DESC LIMIT ?",
-                (guild_id, limit)
+                "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC LIMIT ?",
+                (guild_id, current_season, limit)
             ) as cursor:
                 return await cursor.fetchall()
 
@@ -588,11 +594,11 @@ class CommunityCog(commands.Cog):
         memorabilia_key = f"qua_ngot_mua_{season}"
         
         try:
-            # Get all contributors from tree_contributors table
+            # Get all contributors from tree_contributors table for specific season
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT user_id FROM tree_contributors WHERE guild_id = ?",
-                    (guild_id,)
+                    "SELECT user_id FROM tree_contributors WHERE guild_id = ? AND season = ?",
+                    (guild_id, season)
                 ) as cursor:
                     contributor_ids = await cursor.fetchall()
             
@@ -731,10 +737,10 @@ class CommunityCog(commands.Cog):
                     (global_reward, uid)
                 )
             
-            # 3. GIVE MEMORABILIA TO ALL CONTRIBUTORS
+            # 3. GIVE MEMORABILIA TO ALL CONTRIBUTORS OF CURRENT SEASON
             async with db.execute(
-                "SELECT user_id FROM tree_contributors WHERE guild_id = ?",
-                (guild_id,)
+                "SELECT user_id FROM tree_contributors WHERE guild_id = ? AND season = ?",
+                (guild_id, season)
             ) as cursor:
                 contributor_ids = await cursor.fetchall()
             
@@ -771,8 +777,7 @@ class CommunityCog(commands.Cog):
                 (guild_id,)
             )
             
-            # 6. CLEAR CONTRIBUTORS
-            await db.execute("DELETE FROM tree_contributors WHERE guild_id = ?", (guild_id,))
+            # 6. KEEP CONTRIBUTORS HISTORY (don't delete, just start fresh season)
             
             await db.commit()
         
