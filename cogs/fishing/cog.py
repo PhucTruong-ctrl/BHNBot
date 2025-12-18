@@ -1807,6 +1807,28 @@ class FishingCog(commands.Cog):
         if is_slash_cmd:
             await ctx_or_interaction.response.defer()
         
+        # Check if user already has Thuồng Luồng
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'thuong_luong'",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row and row[0] > 0:
+                        embed = discord.Embed(
+                            title="🌊 Đã Hoàn Thành Nhiệm Vụ",
+                            description="Bạn đã sở hữu **Thuồng Luồng** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                            color=discord.Color.gold()
+                        )
+                        if is_slash_cmd:
+                            await ctx_or_interaction.followup.send(embed=embed)
+                        else:
+                            await ctx_or_interaction.send(embed=embed)
+                        return
+        except Exception as e:
+            print(f"[HIENTE] Error checking thuong_luong ownership: {e}")
+        
         # Check if fish_key is valid (common or rare fish only, not legendary)
         if fish_key not in COMMON_FISH_KEYS + RARE_FISH_KEYS:
             embed = discord.Embed(
@@ -1910,6 +1932,29 @@ class FishingCog(commands.Cog):
         if is_slash_cmd:
             await ctx_or_interaction.response.defer()
         
+        # Check if user already has Cá Ngân Hà (for moi_sao recipe)
+        if recipe == "moi_sao":
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'ca_ngan_ha'",
+                        (user_id,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row[0] > 0:
+                            embed = discord.Embed(
+                                title="✨ Đã Hoàn Thành Nhiệm Vụ",
+                                description="Bạn đã sở hữu **Cá Ngân Hà** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                                color=discord.Color.gold()
+                            )
+                            if is_slash_cmd:
+                                await ctx_or_interaction.followup.send(embed=embed)
+                            else:
+                                await ctx_or_interaction.send(embed=embed)
+                            return
+            except Exception as e:
+                print(f"[CHETAO] Error checking ca_ngan_ha ownership: {e}")
+        
         # Show recipes if no recipe specified
         if not recipe:
             embed = discord.Embed(
@@ -1995,6 +2040,28 @@ class FishingCog(commands.Cog):
         if is_slash_cmd:
             await ctx_or_interaction.response.defer()
         
+        # Check if user already has Cá Voi 52Hz
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'ca_voi_52hz'",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row and row[0] > 0:
+                        embed = discord.Embed(
+                            title="🐋 Đã Hoàn Thành Nhiệm Vụ",
+                            description="Bạn đã sở hữu **Cá Voi 52Hz** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                            color=discord.Color.gold()
+                        )
+                        if is_slash_cmd:
+                            await ctx_or_interaction.followup.send(embed=embed)
+                        else:
+                            await ctx_or_interaction.send(embed=embed)
+                        return
+        except Exception as e:
+            print(f"[DOSONG] Error checking ca_voi_52hz ownership: {e}")
+        
         # Check if user has "Máy Dò Sóng"
         inventory = await get_inventory(user_id)
         if inventory.get("may_do_song", 0) < 1:
@@ -2063,6 +2130,28 @@ class FishingCog(commands.Cog):
         
         if is_slash_cmd:
             await ctx_or_interaction.response.defer()
+        
+        # Check if user already has Cthulhu Non
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'cthulhu_con'",
+                    (user_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row and row[0] > 0:
+                        embed = discord.Embed(
+                            title="🐙 Đã Hoàn Thành Nhiệm Vụ",
+                            description="Bạn đã sở hữu **Cthulhu Non** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                            color=discord.Color.gold()
+                        )
+                        if is_slash_cmd:
+                            await ctx_or_interaction.followup.send(embed=embed)
+                        else:
+                            await ctx_or_interaction.send(embed=embed)
+                        return
+        except Exception as e:
+            print(f"[GHEPBANDO] Error checking cthulhu_con ownership: {e}")
         
         # Check if user has all 4 pieces
         inventory = await get_inventory(user_id)
@@ -2806,34 +2895,30 @@ class FishingCog(commands.Cog):
         legendary_catches = {}
         try:
             async with aiosqlite.connect(DB_PATH) as db:
+                # Query all legendary fish caught by users
                 async with db.execute(
-                    "SELECT DISTINCT user_id FROM fish_collection"
+                    "SELECT user_id, fish_key FROM fish_collection WHERE fish_key IN (?, ?, ?, ?, ?)",
+                    ('thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz')
                 ) as cursor:
                     rows = await cursor.fetchall()
                     
-                    for user_id, legendary_json in rows:
-                        if legendary_json:
-                            try:
-                                legendary_list = json.loads(legendary_json)
-                                for fish_key in legendary_list:
-                                    if fish_key not in legendary_catches:
-                                        legendary_catches[fish_key] = []
-                                    
-                                    try:
-                                        user = await client.fetch_user(user_id)
-                                        legendary_catches[fish_key].append({
-                                            "user_id": user_id,
-                                            "username": user.name,
-                                            "avatar_url": user.avatar.url if user.avatar else None
-                                        })
-                                    except:
-                                        legendary_catches[fish_key].append({
-                                            "user_id": user_id,
-                                            "username": f"User {user_id}",
-                                            "avatar_url": None
-                                        })
-                            except:
-                                pass
+                    for user_id, fish_key in rows:
+                        if fish_key not in legendary_catches:
+                            legendary_catches[fish_key] = []
+                        
+                        try:
+                            user = await client.fetch_user(user_id)
+                            legendary_catches[fish_key].append({
+                                "user_id": user_id,
+                                "username": user.name,
+                                "avatar_url": user.avatar.url if user.avatar else None
+                            })
+                        except:
+                            legendary_catches[fish_key].append({
+                                "user_id": user_id,
+                                "username": f"User {user_id}",
+                                "avatar_url": None
+                            })
         except Exception as e:
             print(f"[LEGENDARY] Error fetching hall of fame: {e}")
         
@@ -2903,6 +2988,10 @@ class FishingCog(commands.Cog):
                     embed.add_field(name="📊 Số Người Bắt", value=f"{len(catchers)}", inline=True)
                     embed.add_field(name="📋 Nhiệm Vụ", value=conditions, inline=False)
                     embed.add_field(name="🏅 Những Người Chinh Phục", value=catcher_text, inline=False)
+                    # Set image for caught legendary fish
+                    fish_image_url = fish.get('image_url')
+                    if fish_image_url:
+                        embed.set_image(url=fish_image_url)
                 else:
                     # Fish not caught yet - show ??? with hidden info
                     embed = discord.Embed(
@@ -3210,7 +3299,8 @@ class FishingCog(commands.Cog):
             
             stats_dict = {'seeds': seeds, 'rod_level': rod_level}
             for key in stat_keys:
-                stats_dict[key] = int(all_stats.get(key, {}).get('stat_value', 0)) if key in all_stats else 0
+                # all_stats returns {key: value} where value is int, not {key: {stat_value: value}}
+                stats_dict[key] = int(all_stats.get(key, 0)) if key in all_stats else 0
             
             return stats_dict
         except Exception as e:
