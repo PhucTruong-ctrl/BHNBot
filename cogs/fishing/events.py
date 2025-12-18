@@ -2,7 +2,7 @@
 
 import random
 import aiosqlite
-from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES, get_db
+from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
 from database_manager import increment_stat
 
 # ==================== EFFECT HANDLERS ====================
@@ -126,12 +126,18 @@ async def handle_global_reset(result: dict, event_data: dict, **kwargs) -> dict:
 
 async def handle_bet_win(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Cược thắng."""
-    result["gain_money"] = random.randint(200, 400)
+    amount = random.randint(200, 400)
+    result["gain_money"] = amount
+    if "user_id" in kwargs:
+        print(f"[EVENT] handle_bet_win: user_id={kwargs['user_id']} gain_money={amount}")
     return result
 
 async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Cược thua."""
-    result["lose_money"] = random.randint(50, 150)
+    amount = random.randint(50, 150)
+    result["lose_money"] = amount
+    if "user_id" in kwargs:
+        print(f"[EVENT] handle_bet_loss: user_id={kwargs['user_id']} lose_money={amount}")
     return result
 
 async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
@@ -142,6 +148,7 @@ async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
         balance = await get_user_balance(kwargs["user_id"])
         lost = int(balance * 0.5)
         result["lose_money"] = lost
+        print(f"[EVENT] handle_crypto_loss: user_id={kwargs['user_id']} balance={balance} lost={lost}")
     else:
         result["lose_money"] = 200
     return result

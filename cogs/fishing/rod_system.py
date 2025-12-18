@@ -1,23 +1,20 @@
 """Rod upgrade and durability system."""
 
-import aiosqlite
-from .constants import DB_PATH, ROD_LEVELS, get_db
+from .constants import DB_PATH, ROD_LEVELS
+from database_manager import db_manager
 
 async def get_rod_data(user_id: int) -> tuple:
     """Get rod level and durability (rod_level, rod_durability).
     Creates fishing_profile automatically if user doesn't have one."""
     try:
-        from database_manager import db_manager
+        # Use database_manager for proper connection pooling
+        row = await db_manager.execute(
+            "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
+            (user_id,)
+        )
         
-        db = await get_db()
-        try:
-            async with db.execute(
-                "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-        finally:
-            await db.close()
+        # db_manager.execute returns list of rows, get first one
+        row = row[0] if row else None
         
         if not row:
             # Auto-create fishing profile for new user
@@ -29,7 +26,11 @@ async def get_rod_data(user_id: int) -> tuple:
             except Exception as e:
                 print(f"[ROD] Error creating fishing profile for {user_id}: {e}")
             return 1, ROD_LEVELS[1]["durability"]
-        return row[0] or 1, row[1] or ROD_LEVELS[1]["durability"]
+        # Ensure level fallback only when None/invalid, and do NOT override legitimate 0 durability
+        rod_level = row[0] if row[0] is not None and int(row[0]) >= 1 else 1
+        # If durability is None, fall back to max durability for current level
+        rod_durability = row[1] if row[1] is not None else ROD_LEVELS[rod_level]["durability"]
+        return rod_level, rod_durability
     except Exception as e:
         print(f"[ROD] Error getting rod data: {e}")
         return 1, ROD_LEVELS[1]["durability"]
@@ -37,20 +38,18 @@ async def get_rod_data(user_id: int) -> tuple:
 async def update_rod_data(user_id: int, durability: int, level: int = None):
     """Update rod durability (and level if provided)."""
     try:
-        db = await get_db()
-        try:
-            if level is not None:
-                await db.execute(
-                    "UPDATE fishing_profiles SET rod_durability = ?, rod_level = ? WHERE user_id = ?",
-                    (durability, level, user_id)
-                )
-            else:
-                await db.execute(
-                    "UPDATE fishing_profiles SET rod_durability = ? WHERE user_id = ?",
-                    (durability, user_id)
-                )
-            await db.commit()
-        finally:
-            await db.close()
+        # Use database_manager for proper connection pooling
+        if level is not None:
+            await db_manager.modify(
+                "UPDATE fishing_profiles SET rod_durability = ?, rod_level = ? WHERE user_id = ?",
+                (durability, level, user_id)
+            )
+            print(f"[ROD] [UPDATE] user_id={user_id} durability={durability} level={level}")
+        else:
+            await db_manager.modify(
+                "UPDATE fishing_profiles SET rod_durability = ? WHERE user_id = ?",
+                (durability, user_id)
+            )
+            print(f"[ROD] [UPDATE] user_id={user_id} durability={durability}")
     except Exception as e:
-        pass
+        print(f"[ROD] Error updating rod data for {user_id}: {e}")

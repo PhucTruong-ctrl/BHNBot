@@ -4,6 +4,7 @@ from discord.ext import commands, tasks
 import datetime
 import json
 import asyncio
+from typing import Optional
 from database_manager import db_manager
 from .views import GiveawayJoinView
 from .models import Giveaway

@@ -133,16 +133,25 @@ class WerewolfManager:
             game_state_json = json.dumps(game_state)
             
             async with aiosqlite.connect(DB_PATH) as db:
-                # Delete old session if exists
-                await db.execute(
-                    "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                # Check if session exists
+                async with db.execute(
+                    "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
                     (guild_id, "werewolf")
-                )
-                # Insert new session
-                await db.execute(
-                    "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
-                    (guild_id, "werewolf", game.channel.id, game_state_json)
-                )
+                ) as cursor:
+                    existing = await cursor.fetchone()
+                
+                if existing:
+                    # Update existing session
+                    await db.execute(
+                        "UPDATE game_sessions SET channel_id = ?, game_state = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ?",
+                        (game.channel.id, game_state_json, guild_id, "werewolf")
+                    )
+                else:
+                    # Insert new session
+                    await db.execute(
+                        "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
+                        (guild_id, "werewolf", game.channel.id, game_state_json)
+                    )
                 await db.commit()
             
             print(f"[Werewolf] GAME_SAVED [Guild {guild_id}] Phase: {game.phase.name}, Night: {game.night_number}, Day: {game.day_number}, Players: {len(game.players)}")

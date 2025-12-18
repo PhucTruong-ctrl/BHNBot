@@ -9,6 +9,7 @@ import asyncio
 import random
 import time
 import json
+from typing import Optional
 
 from .constants import *
 from .helpers import track_caught_fish, get_collection, check_collection_complete
@@ -20,6 +21,14 @@ from .glitch import apply_display_glitch as global_apply_display_glitch, set_gli
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
     get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats
+)
+from .legendary_quest_helper import (
+    increment_sacrifice_count, get_sacrifice_count, reset_sacrifice_count,
+    set_crafted_bait_status, get_crafted_bait_status,
+    set_phoenix_prep_status, get_phoenix_prep_status,
+    set_map_pieces_count, get_map_pieces_count, set_quest_completed, is_quest_completed,
+    set_frequency_hunt_status, get_frequency_hunt_status,
+    is_legendary_caught, set_legendary_caught
 )
 
 # ==================== NPC ENCOUNTER VIEW ====================
@@ -227,6 +236,8 @@ class FishingCog(commands.Cog):
             rod_lvl, rod_durability = await get_rod_data(user_id)
             rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
             inventory = await get_inventory(user_id) # Fetch inventory once
+            username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+            print(f"[FISHING] [ROD_DATA] {username_display} (user_id={user_id}) rod_level={rod_lvl} durability={rod_durability}/{rod_config['durability']}")
             
             # --- CHECK FOR SERVER FREEZE (GLOBAL DISASTER) ---
             if self.is_server_frozen:
@@ -243,6 +254,7 @@ class FishingCog(commands.Cog):
                     else:
                         message = f"⛔ Server đang bị khóa. Vui lòng chờ **{remaining_freeze}s** nữa!"
                     
+                    print(f"[FISHING] [SERVER_FROZEN] {username_display} (user_id={user_id}) blocked by disaster: {self.current_disaster.get('name', 'unknown') if self.current_disaster else 'unknown'}")
                     if is_slash:
                         await ctx.followup.send(message, ephemeral=True)
                     else:
@@ -339,6 +351,7 @@ class FishingCog(commands.Cog):
             if rod_durability <= 0:
                 repair_cost = rod_config["repair"]
                 balance = await get_user_balance(user_id)
+                print(f"[FISHING] [ROD_BROKEN] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) rod_level={rod_lvl} durability={rod_durability} repair_cost={repair_cost} balance={balance}")
             
                 if balance >= repair_cost:
                     # Auto repair
@@ -365,6 +378,7 @@ class FishingCog(commands.Cog):
             if remaining > 0:
                 username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
                 msg = f"⏱️ **{username_display}** chờ chút nhen! Cần chờ {remaining}s nữa mới được câu lại!"
+                print(f"[FISHING] [COOLDOWN] {username_display} (user_id={user_id}) remaining={remaining}s")
                 if is_slash:
                     await ctx.followup.send(msg, ephemeral=True)
                 else:
@@ -381,6 +395,7 @@ class FishingCog(commands.Cog):
                 # Disaster was triggered! User's cast is cancelled
                 culprit_reward = disaster_result["disaster"]["reward_message"]
                 thank_you_msg = f"🎭 {culprit_reward}"
+                print(f"[FISHING] [DISASTER_TRIGGERED] {username} (user_id={user_id}) triggered disaster: {disaster_result['disaster']['name']}")
                 if is_slash:
                     await ctx.followup.send(thank_you_msg)
                 else:
@@ -399,21 +414,17 @@ class FishingCog(commands.Cog):
                     await add_seeds(user_id, -WORM_COST)
                     has_worm = True
                     auto_bought = True
-                    print(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} action=purchased_bait")
+                    print(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} balance_before={balance} balance_after={balance - WORM_COST}")
                 else:
                     # Không có mồi, cũng không đủ tiền -> Chấp nhận câu rác
                     has_worm = False
+                    print(f"[FISHING] [NO_WORM_NO_MONEY] {username} (user_id={user_id}) has_worm=False balance={balance} < {WORM_COST}")
             else:
                 # Có mồi trong túi -> Trừ mồi
                 await remove_item(user_id, "worm", 1)
                 # Track worms used for achievement
                 try:
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        await db.execute(
-                            await increment_stat(user_id, "fishing", "worms_used", 1)  # stat update,
-                            (user_id,)
-                        )
-                        await db.commit()
+                    await increment_stat(user_id, "fishing", "worms_used", 1)
                     # Check achievement: worm_destroyer (500 worms)
                     await self.check_achievement(user_id, "worm_destroyer", channel, guild_id)
                 except:
@@ -429,7 +440,10 @@ class FishingCog(commands.Cog):
                 if current_balance >= self.disaster_fine_amount:
                     await add_seeds(user_id, -self.disaster_fine_amount)
                     disaster_fine_msg = f"\n💰 **PHẠT HÀNH CHÍNH:** -{ self.disaster_fine_amount} Hạt do {self.current_disaster.get('name', 'sự kiện')}"
-                    print(f"[DISASTER_FINE] {username} fined {self.disaster_fine_amount} seeds due to {self.current_disaster.get('key')}")
+                    print(f"[DISASTER_FINE] {username} fined {self.disaster_fine_amount} seeds due to {self.current_disaster.get('key')} balance_before={current_balance} balance_after={current_balance - self.disaster_fine_amount}")
+                else:
+                    disaster_fine_msg = f"\n⚠️ **PHẠT HÀNH CHÍNH:** Không đủ tiền phạt ({self.disaster_fine_amount} Hạt)"
+                    print(f"[DISASTER_FINE] {username} insufficient balance for fine {self.disaster_fine_amount} balance={current_balance}")
 
         
             print(f"[FISHING] [START] {username} (user_id={user_id}) rod_level={rod_lvl} rod_durability={rod_durability} has_bait={has_worm}")
@@ -1108,8 +1122,10 @@ class FishingCog(commands.Cog):
                 )
         
             # *** UPDATE DURABILITY AFTER FISHING ***
+            old_durability = rod_durability
             rod_durability = max(0, rod_durability - durability_loss)
             await self.update_rod_data(user_id, rod_durability)
+            print(f"[FISHING] [DURABILITY_UPDATE] {username} (user_id={user_id}) durability {old_durability} → {rod_durability} (loss: {durability_loss})")
         
             durability_status = f"🛡️ Độ bền còn lại: {rod_durability}/{rod_config['durability']}"
             if rod_durability <= 0:
@@ -1402,7 +1418,13 @@ class FishingCog(commands.Cog):
                 # Công thức: (Gốc * Multiplier) + Flat Bonus
                 final_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
                 
-                # Cho phép âm tiền nếu sự kiện xấu quá nghiêm trọng
+                # Prevent negative balance
+                current_balance = await get_user_balance(user_id)
+                if final_total < 0 and current_balance + final_total < 0:
+                    final_total = -current_balance
+                    print(f"[FISHING] [SELL_EVENT] {username} (user_id={user_id}) Penalty capped to prevent negative balance: {final_total}")
+                
+                # Cho phép âm tiền nếu sự kiện xấu quá nghiêm trọng (but capped above)
                 
                 diff = final_total - base_total
                 sign = "+" if diff >= 0 else ""
@@ -1486,11 +1508,21 @@ class FishingCog(commands.Cog):
                             (user_id,)
                         )
                         
-                        # 2. Add seeds to user
+                        # 2. Add seeds to user (with balance tracking)
+                        # Get balance before
+                        async with db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,)) as cursor:
+                            row = await cursor.fetchone()
+                            balance_before = row[0] if row else 0
+                        
+                        # Update seeds
                         await db.execute(
                             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (final_total, user_id)
                         )
+                        
+                        # Log the balance change
+                        balance_after = balance_before + final_total
+                        print(f"[FISHING] [SEED_CHANGE] user_id={user_id} amount=+{final_total} balance_before={balance_before} balance_after={balance_after}")
 
                         # 2.1. Track event-based achievements
                         try:
@@ -3851,46 +3883,16 @@ class FishingCog(commands.Cog):
     # ==================== SACRIFICE SYSTEM (Database Persisted) ====================
     
     async def get_sacrifice_count(self, user_id: int) -> int:
-        """Get current sacrifice count from database (persisted)."""
-        try:
-            sacrifice_count = await get_stat(user_id, "fishing", "sacrifice_count", default=0)
-            return sacrifice_count
-        except Exception as e:
-            print(f"[SACRIFICE] Error getting sacrifice count: {e}")
-            return 0
+        """Get current sacrifice count from database (persisted in legendary_quests)."""
+        return await get_sacrifice_count(user_id, "thuong_luong")
     
     async def add_sacrifice_count(self, user_id: int, amount: int = 1) -> int:
-        """Increment sacrifice count in database and return new count."""
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get current count
-                current = await self.get_sacrifice_count(user_id)
-                new_count = current + amount
-                
-                # Update database
-                await db.execute(
-                    "UPDATE users SET seeds = ? WHERE user_id = ?",
-                    (new_count, user_id)
-                )
-                await db.commit()
-                print(f"[SACRIFICE] Updated user {user_id} sacrifice count: {current} → {new_count}")
-                return new_count
-        except Exception as e:
-            print(f"[SACRIFICE] Error updating sacrifice count: {e}")
-            return await self.get_sacrifice_count(user_id)
+        """Increment sacrifice count for Thuồng Luồng quest"""
+        return await increment_sacrifice_count(user_id, amount, "thuong_luong")
     
     async def reset_sacrifice_count(self, user_id: int) -> None:
-        """Reset sacrifice count to 0 in database."""
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute(
-                    "UPDATE users SET seeds = seeds WHERE user_id = ?",
-                    (user_id,)
-                )
-                await db.commit()
-                print(f"[SACRIFICE] Reset user {user_id} sacrifice count to 0")
-        except Exception as e:
-            print(f"[SACRIFICE] Error resetting sacrifice count: {e}")
+        """Reset sacrifice count to 0 in database (after completing quest)."""
+        await reset_sacrifice_count(user_id, "thuong_luong")
 
     # ==================== EMOTIONAL STATE SYSTEM ====================
     

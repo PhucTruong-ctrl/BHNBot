@@ -4,6 +4,8 @@ from discord import app_commands
 import aiosqlite
 from PIL import Image, ImageDraw, ImageFont
 import io
+import asyncio
+import functools
 
 DB_PATH = "./data/database.db"
 
@@ -324,26 +326,27 @@ class General(commands.Cog):
             import traceback
             traceback.print_exc()
 
-    async def _create_profile_card_new(self, user, seeds, rank):
-        """Create profile card using Pillow with 'Resident Card' (Ghibli/Journal) design"""
-        import aiohttp
+    def _generate_profile_image_sync(self, user_data, avatar_bytes, friend_data=None, friend_avatar_bytes=None):
+        """Synchronous CPU-bound Pillow image generation (runs in executor)"""
         import os
         
-        # --- CONFIGURATION ---
-        # Colors (Earth Tones)
-        COLOR_BG = (245, 240, 235)      # Warm Beige
-        COLOR_BORDER = (139, 90, 43)    # Brown
-        COLOR_TEXT_MAIN = (74, 59, 42)  # Dark Brown
-        COLOR_TEXT_ACCENT = (92, 138, 69) # Green
-        COLOR_BAR_BG = (224, 224, 224)  # Light Grey
-        COLOR_BAR_FILL = (118, 200, 147) # Pastel Green
-        COLOR_HEART = (255, 107, 107)   # Pastel Red
+        # Unpack user data
+        display_name = user_data['display_name']
+        seeds = user_data['seeds']
+        rank = user_data['rank']
         
-        # Dimensions
+        # --- CONFIGURATION ---
+        COLOR_BG = (245, 240, 235)
+        COLOR_BORDER = (139, 90, 43)
+        COLOR_TEXT_MAIN = (74, 59, 42)
+        COLOR_TEXT_ACCENT = (92, 138, 69)
+        COLOR_BAR_BG = (224, 224, 224)
+        COLOR_BAR_FILL = (118, 200, 147)
+        COLOR_HEART = (255, 107, 107)
+        
         WIDTH, HEIGHT = 900, 300
         
-        # --- ASSETS LOADING ---
-        # Fonts
+        # Load fonts
         def load_font(name, size, fallback_font="arial.ttf"):
             font_path = f"./assets/{name}"
             try:
@@ -359,7 +362,7 @@ class General(commands.Cog):
         font_info = load_font("Nunito-Bold.ttf", 16)
         font_small = load_font("Nunito-Bold.ttf", 14)
         
-        # Background
+        # Create base image
         bg_path = "./assets/card_bg_ghibli.png"
         if os.path.exists(bg_path):
             try:
@@ -371,46 +374,31 @@ class General(commands.Cog):
             
         draw = ImageDraw.Draw(img, 'RGBA')
         
-        # Draw Border if no background image
         if not os.path.exists(bg_path):
             draw.rectangle((5, 5, WIDTH-5, HEIGHT-5), outline=COLOR_BORDER, width=3)
         
-        # --- AVATAR SECTION (LEFT) ---
-        # Download avatar
-        user_avatar_url = str(user.avatar.url if user.avatar else user.default_avatar.url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(user_avatar_url) as resp:
-                avatar_bytes = io.BytesIO(await resp.read())
-        
+        # --- AVATAR SECTION ---
         avatar_size = 200
         avatar = Image.open(avatar_bytes).convert('RGBA').resize((avatar_size, avatar_size))
         
-        # Create circular mask
         mask = Image.new('L', (avatar_size, avatar_size), 0)
         mask_draw = ImageDraw.Draw(mask)
         mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
         
-        # Paste avatar
         avatar_x, avatar_y = 25, 50
         img.paste(avatar, (avatar_x, avatar_y), mask)
-        
-        # Draw decorative ring around avatar
         draw.ellipse((avatar_x-5, avatar_y-5, avatar_x+avatar_size+5, avatar_y+avatar_size+5), 
                      outline=COLOR_BORDER, width=4)
         
-        # --- INFO SECTION (MIDDLE) ---
+        # --- INFO SECTION ---
         info_x = 280
         
-        # Username
-        display_name = user.display_name
         draw.text((info_x, 90), display_name, font=font_main, fill=COLOR_TEXT_MAIN)
         
-        # Rank Title
         rank_title = self._get_rank_title_no_emoji(seeds)
         draw.text((info_x, 145), f"Hạng: {rank_title} (#{rank})", font=font_rank, fill=COLOR_TEXT_ACCENT)
         
-        # Progress Bar (Branch style)
-        # Milestones: 50, 200, 500, 1000, 5000
+        # Progress Bar
         next_milestone = 50
         if seeds >= 5000: next_milestone = 10000
         elif seeds >= 1000: next_milestone = 5000
@@ -423,60 +411,88 @@ class General(commands.Cog):
         bar_x, bar_y = info_x, 175
         bar_w, bar_h = 335, 15
         
-        # Draw Seeds Text
         draw.text((info_x + bar_w - 100, 150), f"{seeds}/{next_milestone}", font=font_info, fill=COLOR_TEXT_MAIN)
-
-        # Draw Bar Background
         draw.rounded_rectangle([(bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h)], radius=12, fill=COLOR_BAR_BG)
         
-        # Draw Bar Fill
         if progress > 0:
             fill_w = int(bar_w * progress)
             draw.rounded_rectangle([(bar_x, bar_y), (bar_x + fill_w, bar_y + bar_h)], radius=12, fill=COLOR_BAR_FILL)
             
-        # --- AFFINITY SECTION (RIGHT/BOTTOM) ---
-        # Get best friend
+        # --- FRIEND SECTION ---
+        if friend_data and friend_avatar_bytes:
+            f_size = 200
+            f_avatar = Image.open(friend_avatar_bytes).convert('RGBA').resize((f_size, f_size))
+            
+            f_mask = Image.new('L', (f_size, f_size), 0)
+            ImageDraw.Draw(f_mask).ellipse((0, 0, f_size, f_size), fill=255)
+            
+            f_x, f_y = 680, 50
+            img.paste(f_avatar, (f_x, f_y), f_mask)
+            draw.ellipse((f_x-2, f_y-2, f_x+f_size+2, f_y+f_size+2), outline=COLOR_HEART, width=2)
+            
+            affinity_title = self._get_affinity_title(friend_data['affinity'])
+            draw.text((info_x, 190), f"Đang thân với: {friend_data['name']}", font=font_info, fill=COLOR_HEART)
+            draw.text((info_x, 210), f"Mức độ: {affinity_title} ({friend_data['affinity']})", font=font_small, fill=COLOR_TEXT_MAIN)
+        else:
+            draw.text((info_x, 210), "Chưa có tri kỷ", font=font_info, fill=(150, 150, 150))
+
+        # Save to bytes
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, 'PNG')
+        img_bytes.seek(0)
+        return img_bytes
+
+    async def _create_profile_card_new(self, user, seeds, rank):
+        """Download avatars then generate profile card in executor (non-blocking)"""
+        import aiohttp
+        
+        # Prepare user data
+        user_data = {
+            'display_name': user.display_name,
+            'seeds': seeds,
+            'rank': rank
+        }
+        
+        # Download user avatar
+        user_avatar_url = str(user.avatar.url if user.avatar else user.default_avatar.url)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(user_avatar_url) as resp:
+                avatar_bytes = io.BytesIO(await resp.read())
+        
+        # Get best friend and download their avatar if exists
+        friend_data = None
+        friend_avatar_bytes = None
         best_friend_data = await self._get_best_friend(user.id)
         
         if best_friend_data:
             f_id, f_affinity = best_friend_data
             try:
                 friend = await self.bot.fetch_user(f_id)
+                friend_data = {
+                    'name': friend.name,
+                    'affinity': f_affinity
+                }
                 
-                # Friend Avatar
                 f_avatar_url = str(friend.avatar.url if friend.avatar else friend.default_avatar.url)
                 async with aiohttp.ClientSession() as session:
                     async with session.get(f_avatar_url) as resp:
-                        f_avatar_bytes = io.BytesIO(await resp.read())
-                
-                f_size = 200
-                f_avatar = Image.open(f_avatar_bytes).convert('RGBA').resize((f_size, f_size))
-                
-                # Mask
-                f_mask = Image.new('L', (f_size, f_size), 0)
-                ImageDraw.Draw(f_mask).ellipse((0, 0, f_size, f_size), fill=255)
-                
-                # Position: Bottom Right of the info section
-                f_x, f_y = 680, 50
-                
-                img.paste(f_avatar, (f_x, f_y), f_mask)
-                draw.ellipse((f_x-2, f_y-2, f_x+f_size+2, f_y+f_size+2), outline=COLOR_HEART, width=2)
-                
-                # Text
-                affinity_title = self._get_affinity_title(f_affinity)
-                draw.text((info_x, 190), f"Đang thân với: {friend.name}", font=font_info, fill=COLOR_HEART)
-                draw.text((info_x, 210), f"Mức độ: {affinity_title} ({f_affinity})", font=font_small, fill=COLOR_TEXT_MAIN)
-                
+                        friend_avatar_bytes = io.BytesIO(await resp.read())
             except Exception as e:
                 print(f"Error loading friend: {e}")
-                draw.text((info_x, 210), "Chưa có tri kỷ", font=font_info, fill=(150, 150, 150))
-        else:
-            draw.text((info_x, 210), "Chưa có tri kỷ", font=font_info, fill=(150, 150, 150))
-
-        # Save
-        img_bytes = io.BytesIO()
-        img.save(img_bytes, 'PNG')
-        img_bytes.seek(0)
+        
+        # Run CPU-bound image generation in executor to avoid blocking
+        loop = asyncio.get_running_loop()
+        img_bytes = await loop.run_in_executor(
+            None,
+            functools.partial(
+                self._generate_profile_image_sync,
+                user_data,
+                avatar_bytes,
+                friend_data,
+                friend_avatar_bytes
+            )
+        )
+        
         return img_bytes
 
     async def _get_best_friend(self, user_id):

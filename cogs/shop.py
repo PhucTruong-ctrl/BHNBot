@@ -133,9 +133,9 @@ class ShopCog(commands.Cog):
             return
         
         # Validate quantity
-        if soluong < 1:
+        if soluong <= 0:
             await interaction.followup.send(
-                f"❌ Số lượng phải >= 1!",
+                f"❌ Số lượng không hợp lệ!",
                 ephemeral=True
             )
             return
@@ -178,6 +178,8 @@ class ShopCog(commands.Cog):
         embed.add_field(name="💰 Trừ", value=f"{total_cost} hạt", inline=True)
         embed.add_field(name="💾 Còn lại", value=f"{seeds - total_cost} hạt", inline=True)
         
+        print(f"[SHOP] [BUY] user_id={user_id} item={item_key} quantity={soluong} total_cost={total_cost} balance_before={seeds} balance_after={seeds - total_cost}")
+        
         await interaction.followup.send(embed=embed, ephemeral=True)
         
         new_balance = seeds - total_cost
@@ -206,8 +208,8 @@ class ShopCog(commands.Cog):
                 item = f"{item} {soluong_or_item}"
         
         # Validate quantity
-        if soluong < 1:
-            await ctx.send(f"❌ Số lượng phải >= 1!")
+        if soluong <= 0:
+            await ctx.send(f"❌ Số lượng không hợp lệ!")
             return
         
         # Try to match Vietnamese name to item key

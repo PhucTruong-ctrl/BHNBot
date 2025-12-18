@@ -76,7 +76,7 @@ class ContributeModal(discord.ui.Modal):
             
             amount = int(self.amount_input.value)
             if amount <= 0:
-                await interaction.followup.send("Số lượng phải lớn hơn 0!", ephemeral=True)
+                await interaction.followup.send("Số lượng không hợp lệ!", ephemeral=True)
                 return
             
             # Now call the process method which expects deferred response
@@ -492,7 +492,7 @@ class CommunityCog(commands.Cog):
         else:
             if amount <= 0:
                 await interaction.response.defer(ephemeral=True)
-                await interaction.followup.send("Số lượng phải lớn hơn 0!", ephemeral=True)
+                await interaction.followup.send("Số lượng không hợp lệ!", ephemeral=True)
                 return
             
             await self.process_contribution(interaction, amount)

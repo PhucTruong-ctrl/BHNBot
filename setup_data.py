@@ -55,6 +55,25 @@ def init_database():
                     FOREIGN KEY(user_id) REFERENCES users(user_id)
                 )''')
 
+    # 4.5. MODULE: LEGENDARY QUESTS (Tiến độ từng cá huyền thoại)
+    # Mỗi con cá có cơ chế riêng:
+    # thuong_luong: quest_status = số lần hiến tế (0-3)
+    # ca_ngan_ha: quest_status = 0 (chưa chế tạo mồi), 1 (đã chế tạo)
+    # ca_phuong_hoang: quest_status = 0 (chưa chuẩn bị), 1 (đã chuẩn bị)
+    # cthulhu_con: quest_status = số mảnh bản đồ (0-4), quest_completed = true để kích hoạt
+    # ca_voi_52hz: quest_status = 0 (chưa mua), 1 (có máy), 2 (đã dò được 52Hz)
+    c.execute('''CREATE TABLE IF NOT EXISTS legendary_quests (
+                    user_id INTEGER,
+                    fish_key TEXT,
+                    quest_status INTEGER DEFAULT 0,
+                    quest_completed BOOLEAN DEFAULT FALSE,
+                    legendary_caught BOOLEAN DEFAULT FALSE,
+                    last_progress_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, fish_key),
+                    FOREIGN KEY(user_id) REFERENCES users(user_id)
+                )''')
+
     # 5. MODULE: FISH COLLECTION (Túi Cá)
     c.execute('''CREATE TABLE IF NOT EXISTS fish_collection (
                     user_id INTEGER,
@@ -147,6 +166,16 @@ def init_database():
                     PRIMARY KEY (inviter_id, joined_user_id)
                 )''')
 
+    # 9. GAME SESSIONS (Persistence cho game đang chơi)
+    c.execute('''CREATE TABLE IF NOT EXISTS game_sessions (
+                    guild_id INTEGER,
+                    game_type TEXT, -- 'werewolf', 'noitu'
+                    channel_id INTEGER,
+                    game_state TEXT, -- JSON serialized state
+                    last_saved DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (guild_id, game_type)
+                )''')
+
     conn.commit()
     
     # ==================== INDEXES (Tối Ưu Hóa) ====================
@@ -207,6 +236,19 @@ def init_database():
     except:
         pass
     
+    # Index cho Legendary Quests
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_legendary_quests_user ON legendary_quests(user_id)")
+        print("✓ Created index: legendary_quests(user_id)")
+    except:
+        pass
+    
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_legendary_quests_status ON legendary_quests(fish_key, quest_completed)")
+        print("✓ Created index: legendary_quests(fish_key, quest_completed)")
+    except:
+        pass
+    
     # Index cho Relationships (BXH thân thiết)
     try:
         c.execute("CREATE INDEX IF NOT EXISTS idx_relationships_affinity ON relationships(affinity DESC)")
@@ -239,6 +281,13 @@ def init_database():
     try:
         c.execute("CREATE INDEX IF NOT EXISTS idx_tree_contrib_exp ON tree_contributors(guild_id, contribution_exp DESC)")
         print("✓ Created index: tree_contributors(guild_id, contribution_exp DESC)")
+    except:
+        pass
+    
+    # Index cho Game Sessions (Quick lookup)
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_game_sessions_lookup ON game_sessions(guild_id, game_type)")
+        print("✓ Created index: game_sessions(guild_id, game_type)")
     except:
         pass
 

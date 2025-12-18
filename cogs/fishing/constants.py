@@ -2,18 +2,18 @@
 
 import json
 import os
-import aiosqlite
+from configs.settings import (
+    DB_PATH, DB_TIMEOUT, FISHING_DATA_PATH, LEGENDARY_FISH_PATH,
+    FISHING_EVENTS_PATH, SELL_EVENTS_PATH, NPC_EVENTS_PATH,
+    FISHING_ACHIEVEMENTS_PATH, FISHING_ITEMS_PATH, DISASTER_EVENTS_PATH,
+    WORM_COST, FISH_BUCKET_LIMIT, NPC_ENCOUNTER_CHANCE, NPC_ENCOUNTER_DELAY,
+    SNAKE_BITE_PENALTY_PERCENT, GLOBAL_DISASTER_COOLDOWN,
+    LOOT_TABLE_NORMAL, LOOT_TABLE_BOOST, LOOT_TABLE_NO_WORM,
+    CATCH_COUNT_WEIGHTS, TREE_NAMES, ROD_LEVELS
+)
 
-DB_PATH = "./data/database.db"
-DB_TIMEOUT = 10.0  # 10 seconds timeout
-FISHING_DATA_PATH = "./data/fishing_data.json"
-LEGENDARY_FISH_PATH = "./data/legendaryFish_data.json"
-
-async def get_db():
-    """Get database connection with timeout and WAL mode for better concurrency"""
-    db = await aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT)
-    await db.execute("PRAGMA journal_mode=WAL")
-    return db
+# NOTE: Database connections are now managed centrally through core.database
+# This prevents connection leaks and provides proper connection pooling
 
 # ==================== LOAD FISH DATA FROM JSON ====================
 def load_fishing_data():
@@ -90,20 +90,8 @@ else:
 if not FISHING_DATA and not LEGENDARY_FISH_DATA:
     print("[ERROR] No fish data loaded! Game will not work properly.")
 
-# Loot tables
-LOOT_TABLE_NORMAL = {
-    "trash": 30, "common_fish": 60, "rare_fish": 5, "chest": 5
-}
-
-LOOT_TABLE_BOOST = {
-    "trash": 15, "common_fish": 75, "rare_fish": 5, "chest": 5
-}
-
-LOOT_TABLE_NO_WORM = {
-    "trash": 50, "common_fish": 49, "rare_fish": 1, "chest": 0
-}
-
-CATCH_COUNT_WEIGHTS = [70, 20, 8, 1.5, 0.5]  # Tỉ lệ câu 1, 2, 3, 4, 5 con cá (tổng = 100)
+if not FISHING_DATA and not LEGENDARY_FISH_DATA:
+    print("[ERROR] No fish data loaded! Game will not work properly.")
 
 # ==================== SPECIAL ITEMS (Added to ALL_FISH after loading) ====================
 # Add special items that aren't in JSON
@@ -123,32 +111,6 @@ CHEST_LOOT = {
     "manh_ban_do_c": 3,  # Mảnh Bản Đồ C
     "manh_ban_do_d": 3,
     # Trash items from fishing (2% each = 60 total, so ~1% each)
-}
-
-# System values
-WORM_COST = 5
-FISH_BUCKET_LIMIT = 15
-NPC_ENCOUNTER_CHANCE = 0.05
-NPC_ENCOUNTER_DELAY = 2
-SNAKE_BITE_PENALTY_PERCENT = 0.05
-
-# Tree names
-TREE_NAMES = {
-    1: "🌱 Hạt mầm",
-    2: "🌿 Nảy mầm",
-    3: "🎋 Cây non",
-    4: "🌳 Trưởng thành",
-    5: "🌸 Ra hoa",
-    6: "🍎 Kết trái"
-}
-
-# Rod levels
-ROD_LEVELS = {
-    1: {"name": "Cần Tre", "cost": 0, "durability": 30, "repair": 50, "cd": 30, "luck": 0.0, "emoji": "🎋"},
-    2: {"name": "Cần Thủy Tinh", "cost": 3000, "durability": 50, "repair": 100, "cd": 25, "luck": 0.0, "emoji": "🎣"},
-    3: {"name": "Cần Carbon", "cost": 12000, "durability": 80, "repair": 200, "cd": 20, "luck": 0.02, "emoji": "✨🎣"},
-    4: {"name": "Cần Hợp Kim", "cost": 30000, "durability": 120, "repair": 500, "cd": 15, "luck": 0.05, "emoji": "🔱"},
-    5: {"name": "Cần Poseidon", "cost": 80000, "durability": 200, "repair": 1000, "cd": 10, "luck": 0.10, "emoji": "🔱✨"},
 }
 
 FISHING_EVENTS_PATH = "./data/fishing_events.json"

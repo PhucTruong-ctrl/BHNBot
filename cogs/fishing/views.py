@@ -4,7 +4,7 @@ import discord
 import random
 import aiosqlite
 from database_manager import remove_item, add_seeds, get_inventory
-from .constants import ALL_FISH, DB_PATH, get_db
+from .constants import ALL_FISH, DB_PATH
 from .glitch import apply_display_glitch
 
 class FishSellView(discord.ui.View):
@@ -149,22 +149,36 @@ class FishSellView(discord.ui.View):
                             (self.user_id,)
                         )
                         
-                        # 4. Add seeds to user
+                        # 4. Add seeds to user (with balance logging)
+                        # Get balance before
+                        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (self.user_id,))
+                        row = await cursor.fetchone()
+                        balance_before = row[0] if row else 0
+                        
+                        # Update seeds
                         await db.execute(
                             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (total_money, self.user_id)
                         )
                         
+                        # Log the balance change
+                        balance_after = balance_before + total_money
+                        print(f"[FISHING] [SELL_TRANSACTION] user_id={self.user_id} amount=+{total_money} balance_before={balance_before} balance_after={balance_after}")
+                        
                         # Commit transaction
                         await db.commit()
+                        print(f"[FISHING] [SELL_TRANSACTION] COMMITTED - user_id={self.user_id}")
                         
-                        # CRITICAL: Invalidate inventory cache after successful transaction
+                        # CRITICAL: Invalidate caches after successful transaction
                         from database_manager import db_manager
                         db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+                        db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+                        db_manager.clear_cache_by_prefix("leaderboard")
                         
                     except Exception as e:
                         await db.execute("ROLLBACK")
                         self.sold = False  # Reset flag on error
+                        print(f"[FISHING] [SELL_TRANSACTION] ROLLED_BACK due to error: {e}")
                         raise
             except Exception as e:
                 await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
@@ -280,10 +294,14 @@ class FishSellView(discord.ui.View):
                             (self.user_id,)
                         )
                         
-                        # Deduct 500 seeds as fine
+                        # Deduct 500 seeds as fine, but cap to prevent negative balance
+                        from database_manager import get_user_balance
+                        current_balance = await get_user_balance(self.user_id)
+                        fine = min(500, current_balance)
+                        
                         await db.execute(
-                            "UPDATE users SET seeds = seeds - 500 WHERE user_id = ?",
-                            (self.user_id,)
+                            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                            (fine, self.user_id)
                         )
                         
                         await db.commit()
@@ -293,11 +311,11 @@ class FishSellView(discord.ui.View):
                         
                         embed = discord.Embed(
                             title="🚔 **O E O E!**",
-                            description="Công an ập tới!\n\n💔 Mất sạch cá\n💸 Phạt 500 Hạt tội buôn lậu\n\n😭 Lần sau không dám chơi xấu nữa!",
+                            description=f"Công an ập tới!\n\n💔 Mất sạch cá\n💸 Phạt {fine} Hạt tội buôn lậu\n\n😭 Lần sau không dám chơi xấu nữa!",
                             color=discord.Color.red()
                         )
                         await interaction.followup.send(embed=embed, ephemeral=False)
-                        print(f"[FISHING] [BLACK_MARKET_FAIL] {interaction.user.name} (user_id={self.user_id}) lost fish + 500 seeds fine")
+                        print(f"[FISHING] [BLACK_MARKET_FAIL] {interaction.user.name} (user_id={self.user_id}) lost fish + {fine} seeds fine")
                         
                     except Exception as e:
                         await db.execute("ROLLBACK")

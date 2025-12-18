@@ -49,7 +49,7 @@ class BauCuaBetModal(discord.ui.Modal):
             
             amount = int(self.amount_input.value)
             if amount <= 0:
-                await interaction.followup.send("Số lượng phải lớn hơn 0!", ephemeral=True)
+                await interaction.followup.send("Số lượng không hợp lệ!", ephemeral=True)
                 return
             
             # Process the bet
@@ -185,7 +185,7 @@ class BauCuaCog(commands.Cog):
             return
         
         if bet_amount <= 0:
-            await interaction.followup.send("❌ Số tiền cược phải lớn hơn 0!", ephemeral=True)
+            await interaction.followup.send("❌ Số tiền cược không hợp lệ!", ephemeral=True)
             return
         
         # Check if user has enough seeds

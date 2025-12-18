@@ -194,16 +194,25 @@ class GameNoiTu(commands.Cog):
             })
             
             async with aiosqlite.connect(DB_PATH) as db:
-                # Delete old session if exists
-                await db.execute(
-                    "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                # Check if session exists
+                async with db.execute(
+                    "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
                     (guild_id, "noitu")
-                )
-                # Insert new session
-                await db.execute(
-                    "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
-                    (guild_id, "noitu", channel_id, game_state_json)
-                )
+                ) as cursor:
+                    existing = await cursor.fetchone()
+                
+                if existing:
+                    # Update existing session
+                    await db.execute(
+                        "UPDATE game_sessions SET channel_id = ?, game_state = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ?",
+                        (channel_id, game_state_json, guild_id, "noitu")
+                    )
+                else:
+                    # Insert new session
+                    await db.execute(
+                        "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
+                        (guild_id, "noitu", channel_id, game_state_json)
+                    )
                 await db.commit()
             
             log(f"GAME_SAVED [Guild {guild_id}] Current word: {game.get('current_word')}, Used: {len(game.get('used_words', set()))}")
@@ -681,30 +690,42 @@ class GameNoiTu(commands.Cog):
         # Use lock to prevent race condition when multiple users send messages at the same time
         lock = self.get_game_lock(guild_id)
         async with lock:
-            try:
-                # Re-check game state after acquiring lock (game might have ended)
-                if guild_id not in self.games:
-                    return
-                
-                game = self.games[guild_id]
+            # Process word validation and game logic
+            result = await self._process_word(message, guild_id, game)
+            
+            # Auto-save game state after each valid move (persistence)
+            if result == "valid_move":
+                try:
+                    await self.save_game_state(guild_id, message.channel.id)
+                except Exception as e:
+                    log(f"ERROR auto-saving game state: {e}")
+    
+    async def _process_word(self, message, guild_id, game):
+        """Process word validation and game logic. Returns 'valid_move' if word was accepted."""
+        try:
+            # Re-check game state after acquiring lock (game might have ended)
+            if guild_id not in self.games:
+                return "game_ended"
+            
+            game = self.games[guild_id]
 
-                # --- GAME LOGIC ---
-                
-                content = message.content.lower().strip()
-                
-                # Validation: Only process 2-word inputs (ignore commands and other formats)
-                if len(content.split()) != 2:
-                    log(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (not 2 words)")
-                    # Refresh sticky start message if game is in round 1
-                    if game['player_count'] == 0:
-                        try:
-                            if game.get('start_message'):
-                                await game['start_message'].delete()
-                        except:
-                            pass
-                        msg = await message.channel.send(game["start_message_content"])
-                        game['start_message'] = msg
-                    return
+            # --- GAME LOGIC ---
+            
+            content = message.content.lower().strip()
+            
+            # Validation: Only process 2-word inputs (ignore commands and other formats)
+            if len(content.split()) != 2:
+                log(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (not 2 words)")
+                # Refresh sticky start message if game is in round 1
+                if game['player_count'] == 0:
+                    try:
+                        if game.get('start_message'):
+                            await game['start_message'].delete()
+                    except:
+                        pass
+                    msg = await message.channel.send(game["start_message_content"])
+                    game['start_message'] = msg
+                return "invalid_format"
                 
                 # Skip if starts with command prefix
                 if content.startswith(('!', '/')):
@@ -718,7 +739,7 @@ class GameNoiTu(commands.Cog):
                             pass
                         msg = await message.channel.send(game["start_message_content"])
                         game['start_message'] = msg
-                    return
+                    return "command_prefix"
 
                 # Anti-Self-Play
                 if message.author.id == game['last_author_id']:
@@ -728,7 +749,7 @@ class GameNoiTu(commands.Cog):
                     except:
                         pass
                     await message.reply("Ko được tự reply, chờ người khác nhé", delete_after=5)
-                    return
+                    return "self_play"
 
                 current_word = game['current_word']
                 last_syllable = current_word.split()[-1]
@@ -742,7 +763,7 @@ class GameNoiTu(commands.Cog):
                     except:
                         pass
                     await message.reply(f"Từ phải bắt đầu bằng **{last_syllable}**", delete_after=3)
-                    return
+                    return "wrong_connection"
 
                 # Check used
                 if content in game['used_words']:
@@ -752,7 +773,7 @@ class GameNoiTu(commands.Cog):
                     except:
                         pass
                     await message.reply("Từ này dùng rồi, tìm từ khác đi", delete_after=3)
-                    return
+                    return "already_used"
 
                 # Check dictionary
                 if not await self.check_word_in_db(content):
@@ -774,7 +795,7 @@ class GameNoiTu(commands.Cog):
                     except Exception as e:
                         log(f"ERROR showing add word view: {e}")
                         await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)
-                    return
+                    return "not_in_dict"
 
                 # === VALID MOVE ===
                 try:
@@ -881,7 +902,7 @@ class GameNoiTu(commands.Cog):
                     self.cleanup_game_lock(guild_id)
                     await self.start_new_round(guild_id, message.channel)
                     await self.save_game_state(guild_id, message.channel.id)
-                    return
+                    return "valid_move"
                 
                 # Start timer only after 2nd player joins
                 if game['player_count'] >= 2:
@@ -893,11 +914,14 @@ class GameNoiTu(commands.Cog):
                         await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
                     except:
                         pass
-            
-            except Exception as e:
-                log(f"ERROR [Guild {guild_id}] Exception: {str(e)}")
-                import traceback
-                traceback.print_exc()
+                
+                return "valid_move"
+        
+        except Exception as e:
+            log(f"ERROR [Guild {guild_id}] Exception in _process_word: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return "error"
 
 async def setup(bot):
     await bot.add_cog(GameNoiTu(bot))

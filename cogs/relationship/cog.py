@@ -4,6 +4,7 @@ from discord.ext import commands
 import datetime
 import random
 import asyncio
+from typing import Optional
 from database_manager import db_manager, remove_item, add_item, get_top_affinity_friends
 from cogs.shop import SHOP_ITEMS, VIETNAMESE_TO_ITEM_KEY
 from .constants import *

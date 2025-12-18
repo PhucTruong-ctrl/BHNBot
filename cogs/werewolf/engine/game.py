@@ -57,6 +57,7 @@ class WerewolfGame:
         self._loop_task: Optional[asyncio.Task] = None
         self._wolf_thread: Optional[discord.Thread] = None
         self._lobby_message: Optional[discord.Message] = None
+        self._player_role: Optional[discord.Role] = None  # Role for game participants
         self._lobby_view: Optional[_LobbyView] = None
         # (player_id, cause) where cause in {wolves, white_wolf, witch, pyro, hunter, lynch, lover, scapegoat}
         self._pending_deaths: List[Tuple[int, str]] = []
@@ -143,6 +144,12 @@ class WerewolfGame:
         if self._wolf_thread:
             try:
                 await self._wolf_thread.delete()
+            except discord.HTTPException:
+                pass
+        # Delete player role if it exists
+        if self._player_role:
+            try:
+                await self._player_role.delete(reason="Werewolf: Game ended - cleanup role")
             except discord.HTTPException:
                 pass
     
@@ -249,6 +256,7 @@ class WerewolfGame:
         self.phase = Phase.NIGHT
         self.night_number = 1
         await self._assign_roles()
+        await self._create_player_role()  # Create role and set permissions efficiently
         await self._notify_roles()
         await self._create_wolf_thread()
         await self._announce_role_composition()
@@ -1008,6 +1016,8 @@ class WerewolfGame:
             embed.set_image(url=role.metadata.card_image_url)
             # SECURITY: Use safe DM with error handling
             await self._safe_send_dm(player.member, embed=embed)
+            # Rate limit protection: small delay between DMs
+            await asyncio.sleep(0.1)
 
     async def _announce_role_composition(self) -> None:
         """Announce all roles in the game at the start."""
@@ -1132,6 +1142,56 @@ class WerewolfGame:
         
         # Return the background task
         return asyncio.create_task(_run_countdown())
+
+    async def _create_player_role(self) -> None:
+        """Create a role for game participants to manage channel permissions efficiently."""
+        try:
+            # Create the role
+            self._player_role = await self.guild.create_role(
+                name="Werewolf Player",
+                color=discord.Color.dark_blue(),
+                reason="Werewolf: Game participant role for channel permissions"
+            )
+            
+            # Set channel permissions for the role
+            await self.channel.set_permissions(
+                self._player_role,
+                send_messages=True,
+                read_messages=True,
+                reason="Werewolf: Allow players to chat in game channel"
+            )
+            
+            # Assign role to all players with rate limiting protection
+            for player in self.players.values():
+                try:
+                    await player.member.add_roles(self._player_role, reason="Werewolf: Add player to game")
+                    await asyncio.sleep(0.1)  # Rate limit protection
+                except discord.HTTPException as e:
+                    logger.warning("Failed to add role to player | guild=%s player=%s error=%s",
+                                 self.guild.id, player.user_id, str(e))
+            
+            logger.info("Player role created and assigned | guild=%s role=%s players=%s",
+                       self.guild.id, self._player_role.id, len(self.players))
+        except discord.HTTPException as e:
+            logger.error("Failed to create player role | guild=%s error=%s", self.guild.id, str(e))
+            # Fallback: set individual permissions if role creation fails
+            await self._fallback_individual_permissions()
+
+    async def _fallback_individual_permissions(self) -> None:
+        """Fallback: Set individual permissions for each player (rate-limited)."""
+        logger.warning("Using fallback individual permissions | guild=%s players=%s", self.guild.id, len(self.players))
+        for player in self.players.values():
+            try:
+                await self.channel.set_permissions(
+                    player.member,
+                    send_messages=True,
+                    read_messages=True,
+                    reason="Werewolf: Allow player to chat in game channel"
+                )
+                await asyncio.sleep(0.1)  # Rate limit protection
+            except discord.HTTPException as e:
+                logger.warning("Failed to set permissions for player | guild=%s player=%s error=%s",
+                             self.guild.id, player.user_id, str(e))
 
     async def _create_wolf_thread(self) -> None:
         # Get wolves but exclude Avengers on werewolf side (they don't join wolf thread)
@@ -2656,15 +2716,24 @@ class WerewolfGame:
                         pass
             
             # 2. Prevent dead player from messaging in main game channel
-            try:
-                await self.channel.set_permissions(
-                    player.member,
-                    send_messages=False,
-                    reason="Werewolf: Player died - mute text chat"
-                )
-            except discord.HTTPException as e:
-                logger.warning("Failed to restrict dead player in game channel | guild=%s player=%s error=%s", 
-                             self.guild.id, player.user_id, str(e))
+            if self._player_role:
+                # Remove player role to revoke channel access
+                try:
+                    await player.member.remove_roles(self._player_role, reason="Werewolf: Player died - remove from game")
+                except discord.HTTPException as e:
+                    logger.warning("Failed to remove player role | guild=%s player=%s error=%s",
+                                 self.guild.id, player.user_id, str(e))
+            else:
+                # Fallback: set individual permissions
+                try:
+                    await self.channel.set_permissions(
+                        player.member,
+                        send_messages=False,
+                        reason="Werewolf: Player died - mute text chat"
+                    )
+                except discord.HTTPException as e:
+                    logger.warning("Failed to restrict dead player in game channel | guild=%s player=%s error=%s", 
+                                 self.guild.id, player.user_id, str(e))
             
             # 3. Prevent dead player from messaging in werewolf thread
             if self._wolf_thread:
