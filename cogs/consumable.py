@@ -18,7 +18,7 @@ class ConsumableCog(commands.Cog):
     # ==================== COMMANDS ====================
 
     @app_commands.command(name="sudung", description="Sử dụng vật phẩm tiêu thụ để có buff khi câu cá")
-    @app_commands.describe(item="Item key: nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, hoặc tim_yeu_ca (để trống xem danh sách)")
+    @app_commands.describe(item="Item key: nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, hoặc tinh_yeu_ca (để trống xem danh sách)")
     async def use_consumable_slash(self, interaction: discord.Interaction, item: str = None):
         """Use a consumable item - slash version"""
         await interaction.response.defer(ephemeral=True)
@@ -114,41 +114,7 @@ class ConsumableCog(commands.Cog):
         else:
             await ctx_or_interaction.send(embed=embed)
 
-    @app_commands.command(name="consumables", description="Xem danh sách vật phẩm tiêu thụ")
-    async def list_consumables_slash(self, interaction: discord.Interaction):
-        """List all consumable items - slash version"""
-        await interaction.response.defer(ephemeral=True)
-        await self._list_consumables(interaction, is_slash=True)
 
-    @commands.command(name="consumables", description="Xem danh sách vật phẩm tiêu thụ")
-    async def list_consumables_prefix(self, ctx):
-        """List all consumable items - prefix version"""
-        await self._list_consumables(ctx, is_slash=False)
-
-    async def _list_consumables(self, ctx_or_interaction, is_slash: bool):
-        """Display list of all consumable items"""
-        
-        embed = discord.Embed(
-            title="📜 Danh Sách Vật Phẩm Tiêu Thụ",
-            color=discord.Color.blue()
-        )
-        
-        for item_key, item_info in CONSUMABLE_ITEMS.items():
-            value = f"""**Cơ chế:** {item_info['mechanism']}
-**Mô tả:** {item_info['description']}
-**Lệnh sử dụng:** `/sudung {item_key}` hoặc `!sudung {item_key}`"""
-            embed.add_field(
-                name=item_info["name"],
-                value=value,
-                inline=False
-            )
-        
-        embed.set_footer(text="Dùng /sudung [item_key] để sử dụng vật phẩm")
-        
-        if is_slash:
-            await ctx_or_interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(embed=embed)
 
     # ==================== ADMIN COMMANDS ====================
 

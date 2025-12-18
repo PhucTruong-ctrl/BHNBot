@@ -21,11 +21,15 @@ SHOP_ITEMS = {
     "chocolate": {"name": "Sô cô la", "cost": 60, "emoji": "🍫", "description": "Sô cô la ngon ngon, ngọt ngào"},
     "card": {"name": "Thiệp", "cost": 40, "emoji": "💌", "description": "Thiệp chúc mừng lời chúc tốt"},
     "worm": {"name": "Giun (Mồi Câu)", "cost": 10, "emoji": "🪱", "description": "Mồi để câu cá"},
+    # Pet Items
+    "nuoc": {"name": "Nước Tinh Khiết", "cost": 20, "emoji": "💧", "description": "Nước sạch cho thú cưng"},
+    "vitamin": {"name": "Vitamin Tổng Hợp", "cost": 50, "emoji": "💊", "description": "Giúp thú cưng mau lớn"},
+    "thuc_an_cao_cap": {"name": "Thức Ăn Cao Cấp", "cost": 100, "emoji": "🍱", "description": "Bữa ăn sang chảnh cho thú cưng"},
     # Consumable buff items (very expensive)
     "nuoc_tang_luc": {"name": "Nước Tăng Lực", "cost": 15000, "emoji": "💪", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần)"},
     "gang_tay_xin": {"name": "Găng Tay Câu Cá", "cost": 15000, "emoji": "🥊", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần)"},
     "thao_tac_tinh_vi": {"name": "Thao Tác Tinh Vi", "cost": 16000, "emoji": "🎯", "description": "Tăng 65% lên 92% thắng 'Dìu Cá' (1 lần)"},
-    "tim_yeu_ca": {"name": "Tình Yêu Với Cá", "cost": 14500, "emoji": "❤️", "description": "Tăng 65% lên 88% thắng 'Dìu Cá' (1 lần)"},
+    "tinh_yeu_ca": {"name": "Tình Yêu Với Cá", "cost": 14500, "emoji": "❤️", "description": "Tăng 65% lên 88% thắng 'Dìu Cá' (1 lần)"},
     # Wave detector for legendary whale
     "may_do_song": {"name": "Máy Dò Sóng", "cost": 20000, "emoji": "📡", "description": "Phát hiện sóng 52Hz của Cá Voi Buồn Bã (1 lần dùng)"},
     # Commemorative items (Season rewards - NOT for sale)
@@ -88,7 +92,7 @@ class ShopCog(commands.Cog):
         consumables_text = ""
         
         for item_key, item_info in SHOP_ITEMS.items():
-            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tim_yeu_ca"]:
+            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
                 consumables_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
             else:
                 gifts_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
@@ -116,7 +120,7 @@ class ShopCog(commands.Cog):
 
     @app_commands.command(name="mua", description="Mua quà & vật phẩm từ cửa hàng")
     @app_commands.describe(
-        item="Item key: cafe, flower, ring, gift, chocolate, card, worm hoặc nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, tim_yeu_ca hoặc may_do_song",
+        item="Item key: cafe, flower, ring, gift, chocolate, card, worm hoặc nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, tinh_yeu_ca hoặc may_do_song",
         soluong="Số lượng muốn mua (mặc định: 1)"
     )
     async def buy_slash(self, interaction: discord.Interaction, item: str = None, soluong: int = 1):
@@ -257,7 +261,7 @@ class ShopCog(commands.Cog):
         
         for item_key, item_info in SHOP_ITEMS.items():
             line = f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n    💬 {item_info.get('description', 'N/A')}\n"
-            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tim_yeu_ca"]:
+            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
                 consumables_text += line
             else:
                 gifts_text += line

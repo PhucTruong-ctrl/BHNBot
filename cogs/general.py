@@ -76,200 +76,106 @@ class General(commands.Cog):
     @commands.command(name="help")
     async def help_prefix(self, ctx):
         """Hiển thị danh sách lệnh"""
-        embed = discord.Embed(
-            title="📖 Danh sách lệnh Mèo Béo",
-            color=discord.Color.blue(),
-            description="Sử dụng các lệnh dưới đây để tương tác với bot"
-        )
-        
-        # Game commands
-        embed.add_field(
-            name="🎮 Nối Từ",
-            value="• `!reset` - Reset game trong kênh\n"
-                  "• `/reset` - Reset game (slash)\n"
-                  "• Nhắn 2 từ để nối tiếp từ",
-            inline=False
-        )
-        
-        # Word management
-        embed.add_field(
-            name="📚 Quản lý từ vựng",
-            value="• `!themtu từ1 từ2` - Đề xuất từ mới\n"
-                  "• `/themtu từ1 từ2` - Đề xuất từ mới (slash)",
-            inline=False
-        )
-        
-        # Economy commands
-        embed.add_field(
-            name="💰 Kinh tế (Hạt)",
-            value="• `/chao` - Chào buổi sáng (5h-10h) nhận 10 hạt\n"
-                  "• `/bal` - Xem số hạt hiện tại\n"
-                  "• `/tuido` - Xem túi đồ và hạt\n"
-                  "• `/top` - Xem bảng xếp hạng top 10 hạt",
-            inline=False
-        )
-        
-        # Fishing commands
-        embed.add_field(
-            name="🎣 Câu Cá",
-            value="• `/cauca` - Câu cá (cooldown 30s)\n"
-                  "• `/banca` - Bán cá\n"
-                  "• `/suutapca` - Xem bộ sưu tập cá\n"
-                  "• `/taiche` - Tái chế rác (10 rác → 1 phân)\n"
-                  "• `/bonphan` - Dùng phân bón nuôi cây\n"
-                  "• `/moruong` - Mở rương kho báu (sau khi câu)",
-            inline=False
-        )
-        
-        # Tree commands
-        embed.add_field(
-            name="🌳 Trồng Cây",
-            value="• `/cay` - Xem trạng thái cây server\n"
-                  "• `/gophat` - Góp hạt để nuôi cây\n"
-                  "• `/thuhoach` - Thu hoạch cây (Admin only)",
-            inline=False
-        )
-        
-        # Shop commands
-        embed.add_field(
-            name="🛍️ Cửa hàng",
-            value="• `/shop` - Xem danh sách quà\n"
-                  "• `/buy <item>` - Mua quà\n"
-                  "• `/inventory [@user]` - Xem túi đồ",
-            inline=False
-        )
-        
-        # Interaction commands
-        embed.add_field(
-            name="💝 Tương tác",
-            value="• `/tangqua <user> <item>` - Tặng quà cho ai đó\n"
-                  "• `/affinity [@user]` - Xem mức độ thân thiết",
-            inline=False
-        )
-        
-        # Configuration (Admin only)
-        embed.add_field(
-            name="⚙️ Cấu hình (Admin only)",
-            value="• `/config set kenh_noitu <channel>` - Đặt kênh chơi nối từ\n"
-                  "• `/config set kenh_cay <channel>` - Đặt kênh trồng cây\n"
-                  "• `/config set kenh_giveaway <channel>` - Đặt kênh giveaway\n"
-                  "• `/config set kenh_logs <channel>` - Đặt kênh logs\n"
-                  "• `/exclude add|remove <channel>` - Loại trừ kênh không nhận seed",
-            inline=False
-        )
-        
-        # Utility
-        embed.add_field(
-            name="🔧 Tiện ích",
-            value="• `!ping` - Kiểm tra độ trễ bot\n"
-                  "• `/avatar [@user]` - Xem avatar\n"
-                  "• `/profile [@user]` - Xem profile card\n"
-                  "• `/ntrank` - Xem xếp hạng nối từ",
-            inline=False
-        )
-        
-        embed.set_footer(text="Gõ lệnh để bắt đầu • Hỗ trợ cả prefix (!) và slash (/)")
-        await ctx.send(embed=embed)
+        await self._send_help(ctx)
 
     @app_commands.command(name="help", description="Hiển thị danh sách lệnh")
     async def help_slash(self, interaction: discord.Interaction):
         """Hiển thị danh sách lệnh"""
+        await self._send_help(interaction)
+
+    async def _send_help(self, ctx_or_interaction):
+        """Helper to send help embed"""
         embed = discord.Embed(
             title="📖 Danh sách lệnh BHNBot",
             color=discord.Color.blue(),
-            description="Sử dụng các lệnh dưới đây để tương tác với bot"
+            description="Bot hỗ trợ cả **Slash Command (/)** và **Prefix Command (!)**.\n_Các lệnh đánh dấu (/) là chỉ dùng Slash._"
         )
         
-        # Game commands
+        # 1. Fishing
         embed.add_field(
-            name="🎮 Nối Từ",
-            value="• `!reset` - Reset game trong kênh\n"
-                  "• `/reset` - Reset game (slash)\n"
-                  "• Nhắn 2 từ để nối tiếp từ",
+            name="🎣 Câu Cá & Khám Phá",
+            value="• `/cauca` (!cauca) - Câu cá (cooldown 30s)\n"
+                  "• `/banca` (!banca) - Bán cá (VD: `/banca ca_loc`)\n"
+                  "• `/moruong` (!moruong) - Mở rương kho báu\n"
+                  "• `/hiente` (!hiente) - Hiến tế cá (Gọi Thuồng Luồng)\n"
+                  "• `/chetao` (!chetao) - Chế tạo mồi/vật phẩm\n"
+                  "• `/dosong` (!dosong) - Dò tìm Cá Voi 52Hz\n"
+                  "• `/ghepbando` (!ghepbando) - Ghép bản đồ kho báu\n"
+                  "• `/taiche` (!taiche) - Tái chế rác thành phân bón",
+            inline=False
+        )
+
+        # 2. Economy
+        embed.add_field(
+            name="💰 Kinh Tế & Túi Đồ",
+            value="• `/chao` (Slash only) - Nhận quà sáng (5h-10h)\n"
+                  "• `/bal` (Slash only) - Xem số dư hạt\n"
+                  "• `/tuido` (!tuido) - Xem túi đồ và hạt\n"
+                  "• `/top` (!top) - Xem BXH đại gia hạt",
+            inline=False
+        )
+
+        # 3. Shop & Items
+        embed.add_field(
+            name="🛍️ Cửa Hàng",
+            value="• `/shop` (Slash only) - Xem menu shop\n"
+                  "• `/mua` (!mua) - Mua đồ (VD: `/mua cafe 1`)",
+            inline=False
+        )
+
+        # 4. Relationship & Pet
+        embed.add_field(
+            name="🐱 Thú Cưng & Quan Hệ",
+            value="• `/tangqua` (Slash only) - Tặng quà tăng thân thiết\n"
+                  "• `/thanthiet` (!thanthiet) - Xem điểm thân thiết\n"
+                  "• `/kethop` (Slash only) - Mời nuôi pet chung\n"
+                  "• `/nuoi` (Slash only) - Chăm sóc pet (cho ăn/vuốt ve)",
+            inline=False
+        )
+
+        # 5. Games
+        embed.add_field(
+            name="🎮 Minigames",
+            value="• `/baucua` (!baucua) - Chơi Bầu Cua Tôm Cá\n"
+                  "• `/ntrank` (!ntrank) - BXH Nối Từ\n"
+                  "• `/themtu` (!themtu) - Đề xuất từ mới cho Nối Từ\n"
+                  "• `/reset` (!reset) - Reset game (Nối từ/Ma sói) tại kênh",
+            inline=False
+        )
+
+        # 6. Utility
+        embed.add_field(
+            name="🔧 Tiện Ích",
+            value="• `/hoso` (!hoso) - Xem thẻ hồ sơ cá nhân đẹp\n"
+                  "• `/avatar` (!avatar) - Xem ảnh đại diện\n"
+                  "• `!ping` - Kiểm tra mạng bot",
             inline=False
         )
         
-        # Word management
+        # 7. Giveaway (Host)
         embed.add_field(
-            name="📚 Quản lý từ vựng",
-            value="• `!themtu từ1 từ2` - Đề xuất từ mới\n"
-                  "• `/themtu từ1 từ2` - Đề xuất từ mới (slash)",
+            name="🎁 Giveaway",
+            value="• `/gacreate` (Slash only) - Tạo Giveaway mới",
             inline=False
         )
-        
-        # Economy commands
+
+        # 8. Admin Only (Separate field)
         embed.add_field(
-            name="💰 Kinh tế (Hạt)",
-            value="• `/chao` - Chào buổi sáng (5h-10h) nhận 10 hạt\n"
-                  "• `/bal` - Xem số hạt hiện tại\n"
-                  "• `/tuido` - Xem túi đồ và hạt\n"
-                  "• `/top` - Xem bảng xếp hạng top 10 hạt",
+            name="⚙️ Admin / Quản Lý (Admin Only)",
+            value="• `/config set ...` - Cài đặt kênh (Nối từ, Log, v.v.)\n"
+                  "• `/exclude add/remove` - Chặn kênh nhận hạt chat\n"
+                  "• `/themhat` (!themhat) - Cộng hạt cho member\n"
+                  "• `/sync` (!sync) - Đồng bộ lệnh Slash\n"
+                  "• `!cog load/reload` - Quản lý module",
             inline=False
         )
+
+        embed.set_footer(text="Gõ / hoặc ! tên lệnh để bắt đầu")
         
-        # Fishing commands
-        embed.add_field(
-            name="🎣 Câu Cá",
-            value="• `/cauca` - Câu cá (cooldown 30s)\n"
-                  "• `/banca` - Bán cá\n"
-                  "• `/suutapca` - Xem bộ sưu tập cá\n"
-                  "• `/taiche` - Tái chế rác (10 rác → 1 phân)\n"
-                  "• `/bonphan` - Dùng phân bón nuôi cây\n"
-                  "• `/moruong` - Mở rương kho báu (sau khi câu)",
-            inline=False
-        )
-        
-        # Tree commands
-        embed.add_field(
-            name="🌳 Trồng Cây",
-            value="• `/cay` - Xem trạng thái cây server\n"
-                  "• `/gophat` - Góp hạt để nuôi cây\n"
-                  "• `/thuhoach` - Thu hoạch cây (Admin only)",
-            inline=False
-        )
-        
-        # Shop commands
-        embed.add_field(
-            name="🛍️ Cửa hàng",
-            value="• `/shop` - Xem danh sách quà & vật phẩm\n"
-                  "• `/mua <item_key> [soluong]` - Mua quà/buff/dò sóng\n"
-                  "• `/sudung [item_key]` - Sử dụng vật phẩm buff\n"
-                  "• `/tuido [@user]` - Xem túi đồ\n"
-                  "• `/tangqua <user> <item_key>` - Tặng quà",
-            inline=False
-        )
-        
-        # Interaction commands
-        embed.add_field(
-            name="💝 Tương tác",
-            value="• `/tangqua <user> <item>` - Tặng quà cho ai đó\n"
-                  "• `/affinity [@user]` - Xem mức độ thân thiết",
-            inline=False
-        )
-        
-        # Configuration (Admin only)
-        embed.add_field(
-            name="⚙️ Cấu hình (Admin only)",
-            value="• `/config set kenh_noitu <channel>` - Đặt kênh chơi nối từ\n"
-                  "• `/config set kenh_cay <channel>` - Đặt kênh trồng cây\n"
-                  "• `/config set kenh_giveaway <channel>` - Đặt kênh giveaway\n"
-                  "• `/config set kenh_logs <channel>` - Đặt kênh logs\n"
-                  "• `/exclude add|remove <channel>` - Loại trừ kênh không nhận seed",
-            inline=False
-        )
-        
-        # Utility
-        embed.add_field(
-            name="🔧 Tiện ích",
-            value="• `!ping` - Kiểm tra độ trễ bot\n"
-                  "• `/avatar [@user]` - Xem avatar\n"
-                  "• `/profile [@user]` - Xem profile card\n"
-                  "• `/ntrank` - Xem xếp hạng nối từ",
-            inline=False
-        )
-        
-        embed.set_footer(text="Gõ lệnh để bắt đầu • Hỗ trợ cả prefix (!) và slash (/)")
-        await interaction.response.send_message(embed=embed)
+        if isinstance(ctx_or_interaction, commands.Context):
+            await ctx_or_interaction.send(embed=embed)
+        else:
+            await ctx_or_interaction.response.send_message(embed=embed)
 
     @commands.command(name="ntrank")
     async def ntrank_prefix(self, ctx):

@@ -63,8 +63,8 @@ if not CONSUMABLE_ITEMS:
             "original_value": 0.65,
             "one_time_use": True,
         },
-        "tim_yeu_ca": {
-            "key": "tim_yeu_ca",
+        "tinh_yeu_ca": {
+            "key": "tinh_yeu_ca",
             "type": "consumable",
             "name": "❤️ Tình Yêu Với Cá",
             "emoji": "❤️",

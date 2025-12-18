@@ -1,0 +1,93 @@
+# Database path
+DB_PATH = "./data/database.db"
+
+# Embed Colors
+COLOR_RELATIONSHIP = 0xFF69B4  # Hot Pink
+COLOR_PET = 0x00FF7F         # Spring Green
+
+# Gift Messages (Chill & Healing Vibe)
+GIFT_MESSAGES = {
+    "cafe": [
+        "☕ **{sender}** đã mời **{receiver}** một tách cà phê nóng hổi. 'Cậu vất vả rồi, nghỉ ngơi chút nhé!'",
+        "☕ Một buổi sáng bình yên! **{sender}** mời **{receiver}** cà phê. 'Hương vị của sự tỉnh táo!'",
+        "☕ **{sender}** trao cho **{receiver}** ly cà phê. 'Chúc cậu một ngày tràn đầy năng lượng!'"
+    ],
+    "flower": [
+        "🌹 **{sender}** tặng **{receiver}** một bông hoa. 'Cậu xinh đẹp như đóa hoa này vậy!'",
+        "🌹 **{sender}** gửi đến **{receiver}** hương thơm dịu dàng. 'Mong cậu luôn rạng rỡ.'",
+        "🌹 Một đóa hoa cho một người đặc biệt. **{sender}** -> **{receiver}**."
+    ],
+    "ring": [
+        "💍 **{sender}** trao nhẫn cho **{receiver}**. 'Chúng ta là một cặp bài trùng!'",
+        "💍 **{sender}** muốn gắn kết lâu dài với **{receiver}**. 'Tri kỷ của tớ!'",
+        "💍 Một tín vật định tình... bạn bè? **{sender}** tặng **{receiver}** chiếc nhẫn quý giá."
+    ],
+    "gift": [
+        "🎁 **{sender}** gửi một món quà bí mật cho **{receiver}**. 'Bất ngờ chưa!'",
+        "🎁 **{sender}** tặng quà cho **{receiver}**. 'Thấy cái này hợp với cậu lắm!'",
+        "🎁 **{sender}** -> **{receiver}**: 'Không nhân dịp gì cả, thích thì tặng thôi!'"
+    ],
+    "chocolate": [
+        "🍫 **{sender}** chia sẻ ngọt ngào với **{receiver}**. 'Ăn đi cho đời thêm ngọt!'",
+        "🍫 **{sender}** tặng **{receiver}** thanh sô cô la. 'Vị đắng nhẹ nhưng hậu ngọt ngào, như tình bạn tụi mình!'",
+        "🍫 **{sender}** -> **{receiver}**: 'Cẩn thận sâu răng nha, nhưng mà ngon lắm!'"
+    ],
+    "card": [
+        "💌 **{sender}** gửi thiệp cho **{receiver}**. 'Những lời này tớ muốn nói với cậu từ lâu...'",
+        "💌 Một tấm thiệp nhỏ, một tấm lòng to. **{sender}** gửi **{receiver}**.",
+        "💌 **{sender}** viết cho **{receiver}**: 'Cảm ơn vì đã luôn ở bên tớ.'"
+    ]
+}
+
+# Affinity Values for Items
+AFFINITY_VALUES = {
+    "cafe": 15,
+    "flower": 25,
+    "ring": 100,  # Big jump
+    "gift": 40,
+    "chocolate": 20,
+    "card": 15
+}
+
+# Affinity Thresholds & Titles (Healing/Friendship)
+AFFINITY_TITLES = {
+    0: "Người Lạ",
+    10: "Người Quen",
+    50: "Hàng Xóm Thân Thiện",
+    100: "Bạn Bè",
+    200: "Bạn Thân",
+    500: "Cạ Cứng",
+    1000: "Tri Kỷ",
+    2000: "Cặp Bài Trùng",
+    5000: "Soulmate (Tâm Giao)"
+}
+
+# Pet System Constants
+PET_DEFAULT_NAME = "Mèo Béo"
+PET_MAX_LEVEL = 10
+PET_XP_PER_LEVEL = 100  # Base XP, might scale
+
+# Pet Food Values
+PET_FOOD_VALUES = {
+    "fish": 15,      # Common fish
+    "trash": 5,      # Recycled trash
+    "water": 20,     # Shop item
+    "vitamin": 40,   # Shop item
+    "premium_food": 80 # Shop item
+}
+
+# Shop Items for Pet (New)
+PET_SHOP_ITEMS = {
+    "water": {"name": "Nước Tinh Khiết", "cost": 20, "emoji": "💧", "description": "Nước sạch cho thú cưng"},
+    "vitamin": {"name": "Vitamin Tổng Hợp", "cost": 50, "emoji": "💊", "description": "Giúp thú cưng mau lớn"},
+    "premium_food": {"name": "Thức Ăn Cao Cấp", "cost": 100, "emoji": "🍱", "description": "Bữa ăn sang chảnh cho thú cưng"}
+}
+
+# Pet Images
+PET_IMAGES = {
+    "idle": "https://i.imgur.com/Qp1nKjK.png",      # Sitting/Happy
+    "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Sleeping
+    "eating": "https://i.imgur.com/rN9Xj5d.png",    # Eating
+    "play": "https://i.imgur.com/7Y5Xj1b.png",      # Playing
+    "sad": "https://i.imgur.com/9Xj5K8L.png"        # Sad/Hungry
+}

@@ -23,8 +23,8 @@ DAILY_WINDOW_END = 12  # 12 AM
 CHAT_REWARD_MIN = 1
 CHAT_REWARD_MAX = 3
 CHAT_REWARD_COOLDOWN = 60  # seconds
-VOICE_REWARD_INTERVAL = 5  # minutes
-VOICE_REWARD = 5  # Hạt mỗi 5 phút trong voice
+VOICE_REWARD_INTERVAL = 10  # minutes
+VOICE_REWARD = 2  # Hạt mỗi 10 phút trong voice
 
 class EconomyCog(commands.Cog):
     def __init__(self, bot):
@@ -302,7 +302,7 @@ class EconomyCog(commands.Cog):
                 "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
                 "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
                 "thao_tac_tinh_vi": ("🎯 Thao Tác Tinh Vi", "🎯"),
-                "tim_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
+                "tinh_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
@@ -427,7 +427,7 @@ class EconomyCog(commands.Cog):
                 "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
                 "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
                 "thao_tac_tinh_vi": ("🎯 Thao Tác Tinh Vi", "🎯"),
-                "tim_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
+                "tinh_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
@@ -761,8 +761,8 @@ class EconomyCog(commands.Cog):
     async def voice_affinity_task(self):
         """Increase affinity between members speaking in the same voice channel"""
         try:
-            interactions_cog = self.bot.get_cog("InteractionsCog")
-            if not interactions_cog:
+            relationship_cog = self.bot.get_cog("RelationshipCog")
+            if not relationship_cog:
                 return
             
             for guild in self.bot.guilds:
@@ -777,11 +777,11 @@ class EconomyCog(commands.Cog):
                     # Increase affinity between all pairs of speaking members
                     for i, member1 in enumerate(speaking_members):
                         for member2 in speaking_members[i+1:]:
-                            # Add 3 affinity points per person pair in voice
-                            await interactions_cog.add_affinity_local(member1.id, member2.id, 3)
+                            # Add 1 affinity point per person pair in voice
+                            await relationship_cog.add_affinity(member1.id, member2.id, 1)
                             print(
                                 f"[AFFINITY] [VOICE] user1_id={member1.id} user1={member1.name} "
-                                f"user2_id={member2.id} user2={member2.name} affinity_change=+3"
+                                f"user2_id={member2.id} user2={member2.name} affinity_change=+1"
                             )
         
         except Exception as e:

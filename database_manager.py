@@ -406,3 +406,16 @@ async def set_server_config(guild_id: int, field: str, value: Any):
         (guild_id, value)
     )
     db_manager.clear_cache_by_prefix(f"config_{guild_id}")
+
+
+async def get_rod_data(user_id: int) -> tuple[int, int]:
+    """Get user's rod level and durability"""
+    result = await db_manager.fetchone(
+        "SELECT rod_level, rod_durability FROM economy_users WHERE user_id = ?",
+        (user_id,),
+        use_cache=True,
+        cache_key=f"rod_{user_id}",
+        cache_ttl=300
+    )
+    return result if result else (1, 30) # Default level 1, 30 durability
+

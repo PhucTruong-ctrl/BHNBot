@@ -117,11 +117,23 @@ class AdminCog(commands.Cog):
 
     @manage_cog.command(name="load", description="Load a cog")
     async def load_cog(self, ctx, cog_name: str):
-        """Load a cog file"""
+        """Load a cog file (supports sub-directory cogs like fishing.cog, werewolf.cog)"""
         try:
-            await self.bot.load_extension(f"cogs.{cog_name}")
-            await ctx.send(f"Loaded: {cog_name}")
-            print(f"COG_LOAD: {cog_name}")
+            # Check if it's a sub-directory cog (e.g., fishing, werewolf)
+            import os
+            cogs_dir = './cogs'
+            subdir_path = os.path.join(cogs_dir, cog_name)
+            
+            # If it's a directory with cog.py, load as sub-cog
+            if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, 'cog.py')):
+                await self.bot.load_extension(f"cogs.{cog_name}.cog")
+                await ctx.send(f"Loaded: cogs.{cog_name}.cog")
+                print(f"COG_LOAD: cogs.{cog_name}.cog")
+            else:
+                # Load as top-level cog
+                await self.bot.load_extension(f"cogs.{cog_name}")
+                await ctx.send(f"Loaded: {cog_name}")
+                print(f"COG_LOAD: {cog_name}")
         except commands.ExtensionAlreadyLoaded:
             await ctx.send(f"{cog_name} already loaded")
         except commands.ExtensionNotFound:
@@ -132,11 +144,23 @@ class AdminCog(commands.Cog):
 
     @manage_cog.command(name="unload", description="Unload a cog")
     async def unload_cog(self, ctx, cog_name: str):
-        """Unload a cog file"""
+        """Unload a cog file (supports sub-directory cogs like fishing.cog, werewolf.cog)"""
         try:
-            await self.bot.unload_extension(f"cogs.{cog_name}")
-            await ctx.send(f"Unloaded: {cog_name}")
-            print(f"COG_UNLOAD: {cog_name}")
+            # Check if it's a sub-directory cog (e.g., fishing, werewolf)
+            import os
+            cogs_dir = './cogs'
+            subdir_path = os.path.join(cogs_dir, cog_name)
+            
+            # If it's a directory with cog.py, unload as sub-cog
+            if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, 'cog.py')):
+                await self.bot.unload_extension(f"cogs.{cog_name}.cog")
+                await ctx.send(f"Unloaded: cogs.{cog_name}.cog")
+                print(f"COG_UNLOAD: cogs.{cog_name}.cog")
+            else:
+                # Unload as top-level cog
+                await self.bot.unload_extension(f"cogs.{cog_name}")
+                await ctx.send(f"Unloaded: {cog_name}")
+                print(f"COG_UNLOAD: {cog_name}")
         except commands.ExtensionNotLoaded:
             await ctx.send(f"{cog_name} not loaded")
         except Exception as e:
@@ -145,11 +169,23 @@ class AdminCog(commands.Cog):
 
     @manage_cog.command(name="reload", description="Reload a cog")
     async def reload_cog(self, ctx, cog_name: str):
-        """Reload a cog file"""
+        """Reload a cog file (supports sub-directory cogs like fishing.cog, werewolf.cog)"""
         try:
-            await self.bot.reload_extension(f"cogs.{cog_name}")
-            await ctx.send(f"Reloaded: {cog_name}")
-            print(f"COG_RELOAD: {cog_name}")
+            # Check if it's a sub-directory cog (e.g., fishing, werewolf)
+            import os
+            cogs_dir = './cogs'
+            subdir_path = os.path.join(cogs_dir, cog_name)
+            
+            # If it's a directory with cog.py, reload as sub-cog
+            if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, 'cog.py')):
+                await self.bot.reload_extension(f"cogs.{cog_name}.cog")
+                await ctx.send(f"Reloaded: cogs.{cog_name}.cog")
+                print(f"COG_RELOAD: cogs.{cog_name}.cog")
+            else:
+                # Reload as top-level cog
+                await self.bot.reload_extension(f"cogs.{cog_name}")
+                await ctx.send(f"Reloaded: {cog_name}")
+                print(f"COG_RELOAD: {cog_name}")
         except commands.ExtensionNotLoaded:
             await ctx.send(f"{cog_name} not loaded")
         except commands.ExtensionNotFound:

@@ -54,7 +54,21 @@ def init_database():
                     user_id_2 INTEGER,
                     affinity INTEGER DEFAULT 0,
                     last_interaction DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id_1, user_id_2)
+                )''')
+    
+    # Shared Pets: Track shared pets between users
+    c.execute('''CREATE TABLE IF NOT EXISTS shared_pets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id_1 INTEGER,
+                    user_id_2 INTEGER,
+                    name TEXT DEFAULT 'Mèo Béo',
+                    level INTEGER DEFAULT 1,
+                    exp INTEGER DEFAULT 0,
+                    last_fed DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id_1, user_id_2)
                 )''')
     
     # Inventory: Track items owned by users
@@ -98,6 +112,37 @@ def init_database():
                     game_state TEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+    
+    # Giveaway: Track active giveaways
+    c.execute('''CREATE TABLE IF NOT EXISTS giveaways (
+                    message_id INTEGER PRIMARY KEY,
+                    channel_id INTEGER,
+                    guild_id INTEGER,
+                    host_id INTEGER,
+                    prize TEXT,
+                    winners_count INTEGER,
+                    end_time TIMESTAMP,
+                    requirements TEXT, -- JSON
+                    status TEXT DEFAULT 'active'
+                )''')
+
+    # Giveaway Participants: Track users who joined
+    c.execute('''CREATE TABLE IF NOT EXISTS giveaway_participants (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    giveaway_id INTEGER,
+                    user_id INTEGER,
+                    entries INTEGER DEFAULT 1,
+                    UNIQUE(giveaway_id, user_id)
+                )''')
+
+    # Invite Tracking: Track user invites for requirements
+    c.execute('''CREATE TABLE IF NOT EXISTS user_invites (
+                    inviter_id INTEGER,
+                    joined_user_id INTEGER,
+                    is_valid BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (inviter_id, joined_user_id)
                 )''')
     
     # Migration: Rename admin_channel_id to logs_channel_id (if table exists with old schema)
@@ -365,6 +410,13 @@ def init_database():
                 print("✓ Added last_interaction column to relationships table")
             except sqlite3.OperationalError:
                 print("ℹ️ last_interaction column already exists")
+                
+        if "start_date" not in rel_columns:
+            try:
+                c.execute("ALTER TABLE relationships ADD COLUMN start_date DATETIME DEFAULT CURRENT_TIMESTAMP")
+                print("✓ Added start_date column to relationships table")
+            except sqlite3.OperationalError:
+                print("ℹ️ start_date column already exists")
     except Exception as e:
         print(f"⚠️ Relationships table check error: {e}")
     

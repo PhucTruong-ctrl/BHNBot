@@ -396,9 +396,9 @@
       "original_value": 0.65,
       "one_time_use": true
     },
-    "tim_yeu_ca": {
+    "tinh_yeu_ca": {
       "type": "consumable",
-      "key": "tim_yeu_ca",
+      "key": "tinh_yeu_ca",
       "name": "❤️ Tình Yêu Với Cá",
       "emoji": "❤️",
       "sell_price": 0,
