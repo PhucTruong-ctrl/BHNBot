@@ -47,6 +47,7 @@ class WerewolfGame:
         self.host = host
         self.voice_channel_id = voice_channel_id
         self.game_mode = game_mode  # "text" or "voice"
+        self.werewolf_role: Optional[discord.Role] = None
         self.settings = GameSettings(expansions=set(expansions))
         self.players: Dict[int, PlayerState] = {}
         self.phase = Phase.LOBBY
@@ -150,6 +151,12 @@ class WerewolfGame:
         if self._player_role:
             try:
                 await self._player_role.delete(reason="Werewolf: Game ended - cleanup role")
+            except discord.HTTPException:
+                pass
+        # Delete werewolf role if it exists
+        if self.werewolf_role:
+            try:
+                await self.werewolf_role.delete(reason="Werewolf: Game ended - cleanup role")
             except discord.HTTPException:
                 pass
     
@@ -340,6 +347,12 @@ class WerewolfGame:
         if self.game_mode == "voice":
             await self._mute_voice()
         
+        # Mute Werewolf Player role during night
+        if self.werewolf_role and self.voice_channel_id:
+            channel = self.bot.get_channel(self.voice_channel_id)
+            if isinstance(channel, discord.VoiceChannel):
+                await channel.set_permissions(self.werewolf_role, speak=False)
+        
         # Wake Two Sisters on even nights (2, 4, 6...) for coordination
         if self.night_number % 2 == 0 and len(self._sisters_ids) == 2:
             await self._wake_sisters()
@@ -351,6 +364,12 @@ class WerewolfGame:
     async def _run_day(self) -> None:
         self.phase = Phase.DAY
         self.day_number += 1
+        
+        # Unmute Werewolf Player role during day
+        if self.werewolf_role and self.voice_channel_id:
+            channel = self.bot.get_channel(self.voice_channel_id)
+            if isinstance(channel, discord.VoiceChannel):
+                await channel.set_permissions(self.werewolf_role, speak=True)
         
         # Reset wolves died tracking for the new day
         self._wolves_died_today = []
@@ -992,6 +1011,13 @@ class WerewolfGame:
                 sister_player.user_id,
             )
 
+        # Create Werewolf Player role for voice mode
+        if self.game_mode == "voice" and self.voice_channel_id:
+            self.werewolf_role = await self.guild.create_role(name="Werewolf Player", permissions=discord.Permissions.none())
+            for player in self.players.values():
+                if any(role.alignment == Alignment.WEREWOLF for role in player.roles):
+                    await player.member.add_roles(self.werewolf_role)
+
     async def _notify_roles(self) -> None:
         wolf_players = [p for p in self.players.values() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
         wolf_names = ", ".join(p.display_name() for p in wolf_players) or "Không có"
@@ -1571,6 +1597,18 @@ class WerewolfGame:
                 self._pending_deaths.append((killed_id, "wolves"))
             if betrayer_kill:
                 self._pending_deaths.append((betrayer_kill, "white_wolf"))
+            
+            # Call on_night for roles with night actions
+            for player in self.alive_players():
+                if self._is_player_eligible_for_action(player):
+                    for role in player.roles:
+                        if hasattr(role, 'on_night') and role.night_order > 0:
+                            try:
+                                await role.on_night(self, player, self.night_number)
+                                logger.info("Role on_night called | guild=%s player=%s role=%s", self.guild.id, player.user_id, role.metadata.name)
+                            except Exception as e:
+                                logger.error("Error in role on_night | guild=%s player=%s role=%s error=%s", self.guild.id, player.user_id, role.metadata.name, str(e), exc_info=True)
+            
             logger.info("Night resolution | guild=%s night=%s killed=%s extra=%s", self.guild.id, self.night_number, killed_id, betrayer_kill)
         except Exception as e:
             logger.error("CRITICAL: Exception in _resolve_role_sequence | guild=%s night=%s error=%s", 

@@ -493,7 +493,7 @@
       "effect": "lose_turn"
     },
     "crypto_scam": {
-      "chance": 0.001,
+      "chance": 0.0005,
       "type": "bad",
       "name": "📉 Lùa Gà!",
       "effect": "crypto_loss"

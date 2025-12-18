@@ -44,8 +44,8 @@ class NPCEncounterView(discord.ui.View):
         self.value = None
     
     async def on_timeout(self):
-        """View times out if no action taken within 30s"""
-        self.value = "timeout"
+        """View times out if no action taken within 30s - auto decline"""
+        self.value = "decline"
         self.stop()
     
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -1201,7 +1201,7 @@ class FishingCog(commands.Cog):
                     await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
             
                 elif npc_view.value == "decline":
-                    # Process decline
+                    # Process decline (includes manual decline and timeout auto-decline)
                     result_text = npc_data["rewards"]["decline"]
                     result_color = discord.Color.light_grey()
                     result_embed = discord.Embed(
@@ -1211,17 +1211,6 @@ class FishingCog(commands.Cog):
                     )
                     await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
                     print(f"[NPC] {username} declined {npc_type}")
-            
-                else:
-                    # Timeout -> auto-decline (no cost, show decline-style embed)
-                    result_text = f"⏱️ Hết thời gian phản hồi.\n{npc_data['rewards']['decline']}"
-                    result_embed = discord.Embed(
-                        title=f"{npc_data['name']} - {username} - Từ Chối (Hết thời gian)",
-                        description=result_text,
-                        color=discord.Color.light_grey()
-                    )
-                    await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
-                    print(f"[NPC] {username} timeout on {npc_type} -> auto-decline")
             
             # ==================== FINAL COOLDOWN CHECK ====================
             # If global_reset was triggered, ensure user has no cooldown
