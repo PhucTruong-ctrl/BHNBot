@@ -148,7 +148,9 @@ class PendingWordView(discord.ui.View):
             with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
                 words_dict = json.load(f)
             
-            first, second = self.word.split()
+            # Normalize to lowercase
+            word_normalized = self.word.lower().strip()
+            first, second = word_normalized.split()
             
             if first not in words_dict:
                 words_dict[first] = []
@@ -169,7 +171,7 @@ class PendingWordView(discord.ui.View):
                     raise
                 
                 # Also add to tu_dien.txt for persistence
-                add_word_to_tu_dien(self.word)
+                add_word_to_tu_dien(word_normalized)
                 
                 # Reload dictionary in NoiTu cog
                 try:
@@ -189,12 +191,12 @@ class PendingWordView(discord.ui.View):
                 # Notify in admin channel
                 embed = discord.Embed(
                     title="Từ này đã được thêm vào",
-                    description=f"**Từ:** {self.word}\n**Người đề xuất:** {self.proposer_mention}",
+                    description=f"**Từ:** {word_normalized}\n**Người đề xuất:** {self.proposer_mention}",
                     color=discord.Color.green()
                 )
                 await self.admin_channel.send(embed=embed)
                 
-                print(f"[ADD_WORD] Added word '{self.word}' from {self.proposer_mention}")
+                print(f"[ADD_WORD] Added word '{word_normalized}' from {self.proposer_mention}")
             else:
                 # Disable button
                 for item in self.children:

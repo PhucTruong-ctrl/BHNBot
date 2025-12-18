@@ -130,11 +130,13 @@ class GameNoiTu(commands.Cog):
 
     async def check_word_in_db(self, word):
         """Check if word exists in dictionary (memory-based)"""
-        return word in self.all_words
+        word_lower = word.lower().strip()
+        return word_lower in self.all_words
 
     async def check_if_word_has_next(self, current_word, used_words):
         """Check if there's any valid next word (memory-based lookup)"""
-        last_syllable = current_word.split()[-1]
+        current_word_lower = current_word.lower().strip()
+        last_syllable = current_word_lower.split()[-1]
         
         # Check if last syllable exists in dictionary
         if last_syllable not in self.words_dict:
@@ -752,8 +754,8 @@ class GameNoiTu(commands.Cog):
                     return "self_play"
 
                 current_word = game['current_word']
-                last_syllable = current_word.split()[-1]
-                first_syllable = content.split()[0]
+                last_syllable = current_word.split()[-1].lower()
+                first_syllable = content.split()[0].lower()
 
                 # Check connection
                 if first_syllable != last_syllable:
