@@ -382,6 +382,9 @@ class EconomyCog(commands.Cog):
         from database_manager import get_inventory
         inventory = await get_inventory(target_user.id)
         
+        # Import glitch functions at the start
+        from cogs.fishing.glitch import is_glitch_active, apply_display_glitch
+        
         embed = discord.Embed(
             title=f"💰 Thông tin của {target_user.name}",
             color=discord.Color.green()
@@ -421,7 +424,6 @@ class EconomyCog(commands.Cog):
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
                 if is_glitch_active():
-                    from cogs.fishing.glitch import is_glitch_active, apply_display_glitch
                     gift_text = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(gift_items.items())])
                 else:
                     gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])

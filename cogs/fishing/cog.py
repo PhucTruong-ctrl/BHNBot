@@ -101,6 +101,7 @@ class FishingCog(commands.Cog):
         self.disaster_fine_amount = 0  # Amount to deduct from players
         self.disaster_display_glitch = False  # Whether to show garbled fish names
         self.disaster_effect_end_time = 0  # When current disaster effects expire
+        self.disaster_channel = None  # Channel to send disaster end notification
         
         # Load achievements from database on startup
         try:
@@ -250,6 +251,8 @@ class FishingCog(commands.Cog):
                 else:
                     # Freeze time expired, reset
                     self.is_server_frozen = False
+                    current_disaster_copy = self.current_disaster
+                    disaster_channel = self.disaster_channel
                     self.current_disaster = None
                     self.disaster_culprit = None
                     # Clear all disaster effects
@@ -258,10 +261,56 @@ class FishingCog(commands.Cog):
                     self.disaster_fine_amount = 0
                     self.disaster_display_glitch = False
                     self.disaster_effect_end_time = 0
+                    self.disaster_channel = None
                     try:
                         set_glitch_state(False, 0)
                     except Exception:
                         pass
+                    
+                    # Send disaster end notification
+                    try:
+                        if current_disaster_copy and disaster_channel:
+                            end_embed = discord.Embed(
+                                title=f"✅ {current_disaster_copy['name'].upper()} ĐÃ KẾT THÚC",
+                                description=f"{current_disaster_copy['emoji']} Thảm hoạ toàn server đã qua đi!\n\n💚 **Server đã trở lại bình thường.** Các hoạt động khôi phục hoàn toàn.",
+                                color=discord.Color.green()
+                            )
+                            end_embed.set_footer(text="Cảm ơn vì đã chờ đợi!")
+                            await disaster_channel.send(embed=end_embed)
+                    except Exception as e:
+                        print(f"[DISASTER] Error sending end notification: {e}")
+
+            # --- CHECK FOR NON-FREEZE DISASTER EFFECTS EXPIRING ---
+            if self.current_disaster and time.time() >= self.disaster_effect_end_time and not self.is_server_frozen:
+                # Non-freeze disaster effects have expired
+                try:
+                    current_disaster_copy = self.current_disaster
+                    disaster_channel = self.disaster_channel
+                    self.current_disaster = None
+                    self.disaster_culprit = None
+                    # Clear all disaster effects
+                    self.disaster_catch_rate_penalty = 0.0
+                    self.disaster_cooldown_penalty = 0
+                    self.disaster_fine_amount = 0
+                    self.disaster_display_glitch = False
+                    self.disaster_effect_end_time = 0
+                    self.disaster_channel = None
+                    try:
+                        set_glitch_state(False, 0)
+                    except Exception:
+                        pass
+                    
+                    # Send disaster end notification
+                    if current_disaster_copy and disaster_channel:
+                        end_embed = discord.Embed(
+                            title=f"✅ {current_disaster_copy['name'].upper()} ĐÃ KẾT THÚC",
+                            description=f"{current_disaster_copy['emoji']} Thảm hoạ toàn server đã qua đi!\n\n💚 **Server đã trở lại bình thường.** Các hoạt động khôi phục hoàn toàn.",
+                            color=discord.Color.green()
+                        )
+                        end_embed.set_footer(text="Cảm ơn vì đã chờ đợi!")
+                        await disaster_channel.send(embed=end_embed)
+                except Exception as e:
+                    print(f"[DISASTER] Error handling end of non-freeze disaster: {e}")
 
             # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
             # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
@@ -3089,6 +3138,7 @@ class FishingCog(commands.Cog):
         self.current_disaster = disaster
         self.disaster_culprit = username
         self.disaster_effect_end_time = current_time + disaster_duration
+        self.disaster_channel = channel  # Store channel for end notification
         
         self.disaster_catch_rate_penalty = effects.get("catch_rate_penalty", 0.0)
         self.disaster_cooldown_penalty = effects.get("cooldown_penalty", 0)
