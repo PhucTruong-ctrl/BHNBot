@@ -326,7 +326,7 @@ class CommunityCog(commands.Cog):
             # Check user balance
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT seeds FROM economy_users WHERE user_id = ?",
+                    "SELECT seeds FROM users WHERE user_id = ?",
                     (user_id,)
                 ) as cursor:
                     row = await cursor.fetchone()
@@ -345,7 +345,7 @@ class CommunityCog(commands.Cog):
             # Deduct seeds
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute(
-                    "UPDATE economy_users SET seeds = seeds - ? WHERE user_id = ?",
+                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
                     (amount, user_id)
                 )
                 await db.commit()
@@ -365,7 +365,7 @@ class CommunityCog(commands.Cog):
                 )
                 async with aiosqlite.connect(DB_PATH) as db:
                     await db.execute(
-                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                         (amount, user_id)
                     )
                     await db.commit()
@@ -723,17 +723,17 @@ class CommunityCog(commands.Cog):
             for idx, (uid, exp) in enumerate(contributors):
                 reward_amt = top1_reward if idx == 0 else top23_reward
                 await db.execute(
-                    "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                     (reward_amt, uid)
                 )
             
             # 2. REWARD ALL ACTIVE MEMBERS with global buff
-            async with db.execute("SELECT user_id FROM economy_users") as cursor:
+            async with db.execute("SELECT user_id FROM users") as cursor:
                 all_users = await cursor.fetchall()
             
             for (uid,) in all_users:
                 await db.execute(
-                    "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                     (global_reward, uid)
                 )
             

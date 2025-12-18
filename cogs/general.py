@@ -196,9 +196,15 @@ class General(commands.Cog):
         
         try:
             async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT username, wins, correct_words FROM player_stats ORDER BY wins DESC, correct_words DESC LIMIT 10"
-                ) as cursor:
+                # Query user_stats table for noi tu wins
+                async with db.execute("""
+                    SELECT u.username, us.value as wins
+                    FROM user_stats us
+                    JOIN users u ON us.user_id = u.user_id
+                    WHERE us.game_id = 'noitu' AND us.stat_key = 'wins'
+                    ORDER BY us.value DESC
+                    LIMIT 10
+                """) as cursor:
                     rows = await cursor.fetchall()
             
             if not rows:
@@ -219,12 +225,12 @@ class General(commands.Cog):
             medals = ["🥇", "🥈", "🥉"]
             
             rank_text = ""
-            for idx, (username, wins, correct_words) in enumerate(rows, 1):
+            for idx, (username, wins) in enumerate(rows, 1):
                 medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
-                rank_text += f"{medal} **{username}** - {wins} thắng, {correct_words} từ\n"
+                rank_text += f"{medal} **{username}** - {wins} thắng\n"
             
             embed.description = rank_text
-            embed.set_footer(text="Xếp hạng dựa trên số thắng và số từ chính xác")
+            embed.set_footer(text="Xếp hạng dựa trên số thắng")
             
             if isinstance(ctx_or_interaction, commands.Context):
                 await ctx_or_interaction.send(embed=embed)
@@ -253,14 +259,14 @@ class General(commands.Cog):
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get seeds
                 async with db.execute(
-                    "SELECT seeds FROM economy_users WHERE user_id = ?",
+                    "SELECT seeds FROM users WHERE user_id = ?",
                     (target_user.id,)
                 ) as cursor:
                     economy_row = await cursor.fetchone()
                 
                 # Get rank
                 async with db.execute(
-                    "SELECT COUNT(*) FROM economy_users WHERE seeds > (SELECT seeds FROM economy_users WHERE user_id = ?)",
+                    "SELECT COUNT(*) FROM users WHERE seeds > (SELECT seeds FROM users WHERE user_id = ?)",
                     (target_user.id,)
                 ) as cursor:
                     rank_row = await cursor.fetchone()
@@ -290,14 +296,14 @@ class General(commands.Cog):
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get seeds
                 async with db.execute(
-                    "SELECT seeds FROM economy_users WHERE user_id = ?",
+                    "SELECT seeds FROM users WHERE user_id = ?",
                     (target_user.id,)
                 ) as cursor:
                     economy_row = await cursor.fetchone()
                 
                 # Get rank
                 async with db.execute(
-                    "SELECT COUNT(*) FROM economy_users WHERE seeds > (SELECT seeds FROM economy_users WHERE user_id = ?)",
+                    "SELECT COUNT(*) FROM users WHERE seeds > (SELECT seeds FROM users WHERE user_id = ?)",
                     (target_user.id,)
                 ) as cursor:
                     rank_row = await cursor.fetchone()

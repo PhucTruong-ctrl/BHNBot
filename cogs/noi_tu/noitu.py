@@ -263,30 +263,20 @@ class GameNoiTu(commands.Cog):
     async def update_player_stats(self, user_id, username, is_winner=False):
         """Update player stats: wins and correct words count"""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Check if user exists
-                async with db.execute("SELECT wins, correct_words FROM player_stats WHERE user_id = ?", (user_id,)) as cursor:
-                    row = await cursor.fetchone()
-                
-                if row:
-                    # User exists, update stats
-                    wins = row[0] + (1 if is_winner else 0)
-                    correct_words = row[1] + 1
-                    await db.execute(
-                        "UPDATE player_stats SET wins = ?, correct_words = ?, username = ?, last_updated = CURRENT_TIMESTAMP WHERE user_id = ?",
-                        (wins, correct_words, username, user_id)
-                    )
-                else:
-                    # New user, insert
-                    wins = 1 if is_winner else 0
-                    correct_words = 1
-                    await db.execute(
-                        "INSERT INTO player_stats (user_id, username, wins, correct_words) VALUES (?, ?, ?, ?)",
-                        (user_id, username, wins, correct_words)
-                    )
-                
-                await db.commit()
-                log(f"STATS_UPDATE [User {username}] Wins: +{'1' if is_winner else '0'}, CorrectWords: +1")
+            from database_manager import get_stat, increment_stat
+            
+            # Get current stats
+            wins = await get_stat(user_id, 'noitu', 'wins', default=0)
+            correct_words = await get_stat(user_id, 'noitu', 'correct_words', default=0)
+            
+            # Update stats
+            wins += 1 if is_winner else 0
+            correct_words += 1
+            
+            await increment_stat(user_id, 'noitu', 'wins', 1 if is_winner else 0)
+            await increment_stat(user_id, 'noitu', 'correct_words', 1)
+            
+            log(f"STATS_UPDATE [User {username}] Wins: +{'1' if is_winner else '0'}, CorrectWords: +1")
         except Exception as e:
             log(f"ERROR updating player stats: {e}")
     
@@ -467,7 +457,7 @@ class GameNoiTu(commands.Cog):
             # Get top 3 players
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT user_id FROM player_stats ORDER BY wins DESC, correct_words DESC LIMIT 3"
+                    "SELECT user_id, value FROM user_stats WHERE game_id = 'noitu' AND stat_key = 'wins' ORDER BY value DESC LIMIT 3"
                 ) as cursor:
                     rows = await cursor.fetchall()
             

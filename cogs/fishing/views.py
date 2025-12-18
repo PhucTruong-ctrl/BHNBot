@@ -151,7 +151,7 @@ class FishSellView(discord.ui.View):
                         
                         # 4. Add seeds to user
                         await db.execute(
-                            "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (total_money, self.user_id)
                         )
                         
@@ -235,7 +235,7 @@ class FishSellView(discord.ui.View):
                         
                         # Add seeds (x3)
                         await db.execute(
-                            "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (total_money, self.user_id)
                         )
                         
@@ -282,7 +282,7 @@ class FishSellView(discord.ui.View):
                         
                         # Deduct 500 seeds as fine
                         await db.execute(
-                            "UPDATE economy_users SET seeds = seeds - 500 WHERE user_id = ?",
+                            "UPDATE users SET seeds = seeds - 500 WHERE user_id = ?",
                             (self.user_id,)
                         )
                         
@@ -379,7 +379,7 @@ class HagglingView(discord.ui.View):
                     
                     # Add seeds
                     await db.execute(
-                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                         (self.base_total, self.user_id)
                     )
                     
@@ -451,7 +451,7 @@ class HagglingView(discord.ui.View):
                     
                     # Add seeds
                     await db.execute(
-                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                         (final_total, self.user_id)
                     )
                     
