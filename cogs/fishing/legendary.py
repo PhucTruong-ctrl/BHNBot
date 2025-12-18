@@ -207,11 +207,11 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                 (user_id,)
             ) as cursor:
-                row = await cursor.fetchone()
-                legendary_list = json.loads(row[0] or "[]") if row else []
+                rows = await cursor.fetchall()
+                legendary_list = [row[0] for row in rows]
     except:
         legendary_list = []
     
@@ -375,21 +375,29 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT legendary_fish, legendary_fish_count FROM economy_users WHERE user_id = ?",
+                "SELECT COUNT(*) as count FROM fish_collection WHERE user_id = ?",
                 (user_id,)
             ) as cursor:
                 row = await cursor.fetchone()
-                legendary_list = json.loads(row[0] or "[]") if row else []
-                count = row[1] or 0 if row else 0
+                count = row[0] if row else 0
+            
+            legendary_list = []
+            async with db.execute(
+                "SELECT fish_id FROM fish_collection WHERE user_id = ?",
+                (user_id,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                legendary_list = [row[0] for row in rows]
             
             legendary_list.append(legendary_key)
             count += 1
             
-            await db.execute(
-                "UPDATE economy_users SET legendary_fish = ?, legendary_fish_count = ? WHERE user_id = ?",
-                (json.dumps(legendary_list), count, user_id)
+            # Store the legendary fish using the insert function
+            from database_manager import db_manager
+            await db_manager.modify(
+                "INSERT OR IGNORE INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
+                (user_id, legendary_key, 1)
             )
-            await db.commit()
             return legendary_list
     except Exception as e:
         pass

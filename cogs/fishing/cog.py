@@ -19,7 +19,7 @@ from .views import FishSellView
 from .glitch import apply_display_glitch as global_apply_display_glitch, set_glitch_state
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
-    get_user_balance, get_or_create_user, db_manager
+    get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats
 )
 
 # ==================== NPC ENCOUNTER VIEW ====================
@@ -344,20 +344,12 @@ class FishingCog(commands.Cog):
                     # Auto repair
                     await add_seeds(user_id, -repair_cost)
                     rod_durability = rod_config["durability"]
-                    await self.update_rod_data(user_id, rod_durability)
+                    await self.update_rod_data(user_id, rod_durability, rod_lvl)
                     repair_msg = f"\n🛠️ **Cần câu đã gãy!** Tự động sửa chữa: **-{repair_cost} Hạt** (Độ bền phục hồi: {rod_durability}/{rod_config['durability']})"
                     print(f"[FISHING] [AUTO_REPAIR] {ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name} (user_id={user_id}) seed_change=-{repair_cost} action=rod_repaired new_durability={rod_durability}")
                     # Track rods repaired for achievement
                     try:
-                        db = await get_db()
-                        try:
-                            await db.execute(
-                                "UPDATE economy_users SET rods_repaired = rods_repaired + 1 WHERE user_id = ?",
-                                (user_id,)
-                            )
-                            await db.commit()
-                        finally:
-                            await db.close()
+                        await increment_stat(user_id, "fishing", "rods_repaired", 1)
                         # Check achievement: diligent_smith (100 repairs)
                         await self.check_achievement(user_id, "diligent_smith", channel, guild_id)
                     except Exception as e:
@@ -418,7 +410,7 @@ class FishingCog(commands.Cog):
                 try:
                     async with aiosqlite.connect(DB_PATH) as db:
                         await db.execute(
-                            "UPDATE economy_users SET worms_used = worms_used + 1 WHERE user_id = ?",
+                            await increment_stat(user_id, "fishing", "worms_used", 1)  # stat update,
                             (user_id,)
                         )
                         await db.commit()
@@ -513,19 +505,11 @@ class FishingCog(commands.Cog):
             
                 # Update achievement tracking
                 try:
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        if is_event_good:
-                            await db.execute(
-                                "UPDATE economy_users SET good_events_encountered = good_events_encountered + 1 WHERE user_id = ?",
-                                (user_id,)
-                            )
-                        else:
-                            # Track bad events
-                            await db.execute(
-                                "UPDATE economy_users SET bad_events_encountered = bad_events_encountered + 1 WHERE user_id = ?",
-                                (user_id,)
-                            )
-                        await db.commit()
+                    if is_event_good:
+                        await increment_stat(user_id, "fishing", "good_events_encountered", 1)  # stat update
+                    else:
+                        # Track bad events
+                        await increment_stat(user_id, "fishing", "bad_events_encountered", 1)  # stat update
                     # Check achievements for events
                     if is_event_good:
                         await self.check_achievement(user_id, "lucky", channel, guild_id)
@@ -918,7 +902,7 @@ class FishingCog(commands.Cog):
                 try:
                     async with aiosqlite.connect(DB_PATH) as db:
                         await db.execute(
-                            "UPDATE economy_users SET trash_caught = trash_caught + ? WHERE user_id = ?",
+                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (trash_count, user_id)
                         )
                         await db.commit()
@@ -938,7 +922,7 @@ class FishingCog(commands.Cog):
                 try:
                     async with aiosqlite.connect(DB_PATH) as db:
                         await db.execute(
-                            "UPDATE economy_users SET chests_caught = chests_caught + ? WHERE user_id = ?",
+                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (chest_count, user_id)
                         )
                         await db.commit()
@@ -981,12 +965,7 @@ class FishingCog(commands.Cog):
                     print(f"[EVENT] {username} lost {fish_info['name']} to cat_steal")
                     # Track robbed count (cat steal counts as being robbed)
                     try:
-                        async with aiosqlite.connect(DB_PATH) as db:
-                            await db.execute(
-                                "UPDATE economy_users SET robbed_count = robbed_count + 1 WHERE user_id = ?",
-                                (user_id,)
-                            )
-                            await db.commit()
+                        await increment_stat(user_id, "fishing", "robbed_count", 1)  # stat update,
                         # Check achievement: market_unluckiest (3 times robbed)
                         await self.check_achievement(user_id, "market_unluckiest", channel, guild_id)
                     except Exception as e:
@@ -1439,7 +1418,7 @@ class FishingCog(commands.Cog):
                         try:
                             async with aiosqlite.connect(DB_PATH) as db:
                                 await db.execute(
-                                    "UPDATE economy_users SET chests_caught = chests_caught + 1 WHERE user_id = ?",
+                                    "UPDATE users SET seeds = seeds + 1 WHERE user_id = ?",
                                     (user_id,)
                                 )
                                 await db.commit()
@@ -1509,27 +1488,18 @@ class FishingCog(commands.Cog):
                         
                         # 2. Add seeds to user
                         await db.execute(
-                            "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
+                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (final_total, user_id)
                         )
 
                         # 2.1. Track event-based achievements
                         try:
                             if triggered_event == "market_boom":
-                                await db.execute(
-                                    "UPDATE economy_users SET market_boom_sales = market_boom_sales + 1 WHERE user_id = ?",
-                                    (user_id,)
-                                )
+                                await increment_stat(user_id, "fishing", "market_boom_sales", 1)  # stat update,
                             elif triggered_event == "god_of_wealth":
-                                await db.execute(
-                                    "UPDATE economy_users SET god_of_wealth_encountered = god_of_wealth_encountered + 1 WHERE user_id = ?",
-                                    (user_id,)
-                                )
+                                await increment_stat(user_id, "fishing", "god_of_wealth_encountered", 1)  # stat update,
                             elif triggered_event == "thief_run":
-                                await db.execute(
-                                    "UPDATE economy_users SET robbed_count = robbed_count + 1 WHERE user_id = ?",
-                                    (user_id,)
-                                )
+                                await increment_stat(user_id, "fishing", "robbed_count", 1)  # stat update,
                         except Exception as e:
                             print(f"[ACHIEVEMENT] Error updating sell-event counters for {user_id}: {e}")
                         
@@ -2224,7 +2194,7 @@ class FishingCog(commands.Cog):
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute(
-                    "UPDATE economy_users SET trash_recycled = trash_recycled + ? WHERE user_id = ?",
+                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
                     (trash_used, user_id)
                 )
                 await db.commit()
@@ -2607,14 +2577,20 @@ class FishingCog(commands.Cog):
         # Get legendary fish caught - check both sources (legacy and new)
         try:
             async with aiosqlite.connect(DB_PATH) as db:
-                # Try to get from legendary_fish column (legacy)
+                # Get legendary fish from new fish_collection table
                 async with db.execute(
-                    "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                    "SELECT COUNT(*) as count FROM fish_collection WHERE user_id = ?",
                     (user_id,)
                 ) as cursor:
                     row = await cursor.fetchone()
-                    if row and row[0]:
-                        legendary_caught = json.loads(row[0])
+                    legendary_caught = []
+                    if row and row[0] > 0:
+                        async with db.execute(
+                            "SELECT fish_id FROM fish_collection WHERE user_id = ?",
+                            (user_id,)
+                        ) as cursor2:
+                            rows = await cursor2.fetchall()
+                            legendary_caught = [r[0] for r in rows]
                     else:
                         legendary_caught = []
         except:
@@ -2831,7 +2807,7 @@ class FishingCog(commands.Cog):
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT user_id, legendary_fish FROM economy_users WHERE legendary_fish_count > 0"
+                    "SELECT DISTINCT user_id FROM fish_collection"
                 ) as cursor:
                     rows = await cursor.fetchall()
                     
@@ -3212,18 +3188,31 @@ class FishingCog(commands.Cog):
     async def _get_all_user_stats(self, user_id: int) -> dict:
         """Fetches all achievement-related stats for a user in one query."""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                db.row_factory = aiosqlite.Row
-                async with db.execute(
-                    """SELECT seeds, bad_events_encountered, global_reset_triggered, chests_caught,
-                       market_boom_sales, robbed_count, god_of_wealth_encountered, 
-                       rods_repaired, rod_level, trash_recycled, worms_used, trash_caught, good_events_encountered 
-                       FROM economy_users WHERE user_id = ?""",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row:
-                        return dict(row)
+            from database_manager import db_manager
+            
+            # Get stats from user_stats table
+            all_stats = await get_all_stats(user_id, "fishing")
+            
+            # Get seeds from users table
+            seeds_row = await db_manager.fetchone("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            seeds = seeds_row[0] if seeds_row else 0
+            
+            # Get rod_level from fishing_profiles
+            rod_row = await db_manager.fetchone("SELECT rod_level FROM fishing_profiles WHERE user_id = ?", (user_id,))
+            rod_level = rod_row[0] if rod_row else 0
+            
+            # Convert stats dict to dict with proper values (default 0 if not found)
+            stat_keys = [
+                'bad_events_encountered', 'global_reset_triggered', 'chests_caught',
+                'market_boom_sales', 'robbed_count', 'god_of_wealth_encountered',
+                'rods_repaired', 'trash_recycled', 'worms_used', 'trash_caught', 'good_events_encountered'
+            ]
+            
+            stats_dict = {'seeds': seeds, 'rod_level': rod_level}
+            for key in stat_keys:
+                stats_dict[key] = int(all_stats.get(key, {}).get('stat_value', 0)) if key in all_stats else 0
+            
+            return stats_dict
         except Exception as e:
             print(f"[ACHIEVEMENT] Error fetching all stats for {user_id}: {e}")
         return {}
@@ -3353,7 +3342,7 @@ class FishingCog(commands.Cog):
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                         (user_id,)
                     ) as cursor:
                         row = await cursor.fetchone()
@@ -3369,7 +3358,7 @@ class FishingCog(commands.Cog):
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                         (user_id,)
                     ) as cursor:
                         row = await cursor.fetchone()
@@ -3385,7 +3374,7 @@ class FishingCog(commands.Cog):
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                         (user_id,)
                     ) as cursor:
                         row = await cursor.fetchone()
@@ -3401,7 +3390,7 @@ class FishingCog(commands.Cog):
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                         (user_id,)
                     ) as cursor:
                         row = await cursor.fetchone()
@@ -3417,7 +3406,7 @@ class FishingCog(commands.Cog):
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                         (user_id,)
                     ) as cursor:
                         row = await cursor.fetchone()
@@ -3433,7 +3422,7 @@ class FishingCog(commands.Cog):
             try:
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT legendary_fish FROM economy_users WHERE user_id = ?",
+                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
                         (user_id,)
                     ) as cursor:
                         row = await cursor.fetchone()
@@ -3505,7 +3494,7 @@ class FishingCog(commands.Cog):
                 # Get total registered users (non-zero seed balance or has played)
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
-                        "SELECT COUNT(*) FROM economy_users WHERE seeds >= 0"
+                        "SELECT COUNT(*) FROM users WHERE seeds >= 0"
                     ) as cursor:
                         total_row = await cursor.fetchone()
                         total_users = total_row[0] if total_row else 1
@@ -3774,13 +3763,8 @@ class FishingCog(commands.Cog):
     async def get_sacrifice_count(self, user_id: int) -> int:
         """Get current sacrifice count from database (persisted)."""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT sacrifice_count FROM economy_users WHERE user_id = ?",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    return row[0] if row and row[0] else 0
+            sacrifice_count = await get_stat(user_id, "fishing", "sacrifice_count", default=0)
+            return sacrifice_count
         except Exception as e:
             print(f"[SACRIFICE] Error getting sacrifice count: {e}")
             return 0
@@ -3795,7 +3779,7 @@ class FishingCog(commands.Cog):
                 
                 # Update database
                 await db.execute(
-                    "UPDATE economy_users SET sacrifice_count = ? WHERE user_id = ?",
+                    "UPDATE users SET seeds = ? WHERE user_id = ?",
                     (new_count, user_id)
                 )
                 await db.commit()
@@ -3810,7 +3794,7 @@ class FishingCog(commands.Cog):
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute(
-                    "UPDATE economy_users SET sacrifice_count = 0 WHERE user_id = ?",
+                    "UPDATE users SET seeds = seeds WHERE user_id = ?",
                     (user_id,)
                 )
                 await db.commit()

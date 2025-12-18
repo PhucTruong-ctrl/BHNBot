@@ -40,7 +40,7 @@ class EconomyCog(commands.Cog):
 
     # ==================== HELPER FUNCTIONS ====================
     async def get_or_create_user_local(self, user_id: int, username: str):
-        """Get or create user in economy_users table"""
+        """Get or create user in users table"""
         return await get_or_create_user(user_id, username)
 
     async def is_harvest_buff_active(self, guild_id: int) -> bool:
@@ -83,23 +83,23 @@ class EconomyCog(commands.Cog):
     async def update_last_daily(self, user_id: int):
         """Update last daily reward time"""
         await db_manager.modify(
-            "UPDATE economy_users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
+            "UPDATE users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
             (user_id,)
         )
-        db_manager.clear_cache_by_prefix(f"user_full_{user_id}")
+        db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
 
     async def update_last_chat_reward(self, user_id: int):
         """Update last chat reward time"""
         await db_manager.modify(
-            "UPDATE economy_users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = ?",
+            "UPDATE users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = ?",
             (user_id,)
         )
-        db_manager.clear_cache_by_prefix(f"user_full_{user_id}")
+        db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
 
     async def get_last_daily(self, user_id: int) -> datetime:
         """Get last daily reward time"""
         result = await db_manager.fetchone(
-            "SELECT last_daily FROM economy_users WHERE user_id = ?",
+            "SELECT last_daily FROM users WHERE user_id = ?",
             (user_id,)
         )
         if result and result[0]:
