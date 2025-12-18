@@ -17,6 +17,31 @@ class Giveaway:
 
     @classmethod
     def from_db(cls, row):
+        end_time = row[6]
+        if isinstance(end_time, str):
+            try:
+                end_time = datetime.fromisoformat(end_time)
+            except ValueError:
+                try:
+                    # Fallback for other formats like "YYYY-MM-DD HH:MM:SS" or similar
+                    # SQLite default timestamp often looks like "2023-01-01 12:00:00"
+                    end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    # If all else fails, try parsing with timezone if present or just return current time to avoid crash
+                    # But better to raise or log. For now, let's try one more common format
+                    try:
+                        end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S.%f")
+                    except ValueError:
+                        print(f"Error parsing date: {end_time}")
+                        end_time = datetime.now() # Fallback
+
+        if end_time.tzinfo is None:
+             end_time = end_time.replace(tzinfo=None).astimezone() # Local to Aware? Or just assume UTC?
+             # Standard in this bot seems to be discord.utils.utcnow() which is UTC.
+             # So if naive, assume it was stored as UTC (if we used utcnow() to store).
+             from datetime import timezone
+             end_time = end_time.replace(tzinfo=timezone.utc)
+
         return cls(
             message_id=row[0],
             channel_id=row[1],
@@ -24,7 +49,7 @@ class Giveaway:
             host_id=row[3],
             prize=row[4],
             winners_count=row[5],
-            end_time=row[6], # Expected to be handled as datetime by aiosqlite or converted
+            end_time=end_time,
             requirements=json.loads(row[7]) if row[7] else {},
             status=row[8]
         )

@@ -223,23 +223,35 @@ class EconomyCog(commands.Cog):
         from database_manager import get_inventory
         inventory = await get_inventory(target_user.id)
         
+        # Import glitch function to check if active
+        from cogs.fishing.glitch import is_glitch_active
+        
+        embed_title = f"💰 Thông tin của {target_user.name}"
+        if is_glitch_active():
+            from cogs.fishing.glitch import apply_display_glitch
+            embed_title = apply_display_glitch(embed_title)
+        
         embed = discord.Embed(
-            title=f"💰 Thông tin của {target_user.name}",
+            title=embed_title,
             color=discord.Color.green()
         )
-        embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
+        
+        seeds_display = f"**{seeds}**"
+        if is_glitch_active():
+            from cogs.fishing.glitch import apply_display_glitch
+            seeds_display = apply_display_glitch(seeds_display)
+        embed.add_field(name="🌱 Hạt", value=seeds_display, inline=False)
         
         # Display inventory items
         if inventory:
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
             from cogs.fishing.glitch import apply_display_glitch
-            from cogs.fishing.glitch import apply_display_glitch
             
             # Fish items
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
             if fish_items:
-                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
+                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {apply_display_glitch(str(ALL_FISH[k]['sell_price'] * v))} Hạt" for k, v in sorted(fish_items.items())])
                 # Split into multiple fields if too long (max 1024 chars per field)
                 if len(fish_text) > 1024:
                     fish_list = sorted(fish_items.items())
@@ -262,12 +274,19 @@ class EconomyCog(commands.Cog):
             }
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
-                gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
+                if is_glitch_active():
+                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(gift_items.items())])
+                else:
+                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
                 if len(gift_text) > 1024:
                     gift_list = sorted(gift_items.items())
                     mid = len(gift_list) // 2
-                    part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
-                    part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
+                    if is_glitch_active():
+                        part1 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[:mid]])
+                        part2 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[mid:]])
+                    else:
+                        part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
+                        part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
                     embed.add_field(name="💝 Quà Tặng (1/2)", value=part1, inline=False)
                     embed.add_field(name="💝 Quà Tặng (2/2)", value=part2, inline=False)
                 else:
@@ -306,12 +325,19 @@ class EconomyCog(commands.Cog):
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
-                tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
+                if is_glitch_active():
+                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(tool_items.items())])
+                else:
+                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
                 if len(tool_text) > 1024:
                     tool_list = sorted(tool_items.items())
                     mid = len(tool_list) // 2
-                    part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
-                    part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
+                    if is_glitch_active():
+                        part1 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[:mid]])
+                        part2 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[mid:]])
+                    else:
+                        part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
+                        part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
                     embed.add_field(name="🛠️ Công Cụ (1/2)", value=part1, inline=False)
                     embed.add_field(name="🛠️ Công Cụ (2/2)", value=part2, inline=False)
                 else:
@@ -320,12 +346,19 @@ class EconomyCog(commands.Cog):
             # Trash items
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
-                trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                if is_glitch_active():
+                    trash_text = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
+                else:
+                    trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
                 if len(trash_text) > 1024:
                     trash_list = sorted(trash_items.items())
                     mid = len(trash_list) // 2
-                    part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
-                    part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
+                    if is_glitch_active():
+                        part1 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
+                    else:
+                        part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
                     embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
                     embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
                 else:
@@ -387,12 +420,20 @@ class EconomyCog(commands.Cog):
             }
             gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
             if gift_items:
-                gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
+                if is_glitch_active():
+                    from cogs.fishing.glitch import is_glitch_active, apply_display_glitch
+                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(gift_items.items())])
+                else:
+                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
                 if len(gift_text) > 1024:
                     gift_list = sorted(gift_items.items())
                     mid = len(gift_list) // 2
-                    part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
-                    part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
+                    if is_glitch_active():
+                        part1 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[:mid]])
+                        part2 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[mid:]])
+                    else:
+                        part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
+                        part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
                     embed.add_field(name="💝 Quà Tặng (1/2)", value=part1, inline=False)
                     embed.add_field(name="💝 Quà Tặng (2/2)", value=part2, inline=False)
                 else:
@@ -431,12 +472,19 @@ class EconomyCog(commands.Cog):
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
-                tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
+                if is_glitch_active():
+                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(tool_items.items())])
+                else:
+                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
                 if len(tool_text) > 1024:
                     tool_list = sorted(tool_items.items())
                     mid = len(tool_list) // 2
-                    part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
-                    part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
+                    if is_glitch_active():
+                        part1 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[:mid]])
+                        part2 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[mid:]])
+                    else:
+                        part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
+                        part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
                     embed.add_field(name="🛠️ Công Cụ (1/2)", value=part1, inline=False)
                     embed.add_field(name="🛠️ Công Cụ (2/2)", value=part2, inline=False)
                 else:
@@ -445,12 +493,19 @@ class EconomyCog(commands.Cog):
             # Trash items
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
-                trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                if is_glitch_active():
+                    trash_text = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
+                else:
+                    trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
                 if len(trash_text) > 1024:
                     trash_list = sorted(trash_items.items())
                     mid = len(trash_list) // 2
-                    part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
-                    part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
+                    if is_glitch_active():
+                        part1 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
+                    else:
+                        part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
                     embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
                     embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
                 else:

@@ -280,8 +280,8 @@ class RelationshipCog(commands.Cog):
         if level_up_msg:
              embed.add_field(name="🌟 Level Up!", value=level_up_msg, inline=False)
 
-        # Set Pet Image based on State
-        pet_image_url = PET_IMAGES.get(state, PET_IMAGES["idle"])
+        # Set Pet Image based on State and Level
+        pet_image_url = PET_IMAGES.get(level, {}).get(state, PET_IMAGES.get(1, {}).get("idle", ""))
         embed.set_thumbnail(url=pet_image_url)
         
         embed.set_footer(text=f"Trạng thái: {state.upper()} {state_emojis.get(state, '')}")

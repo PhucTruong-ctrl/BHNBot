@@ -178,7 +178,6 @@ class ConfigCog(commands.Cog):
     @config_group.command(name="set", description="Cài đặt các kênh chức năng (Admin Only)")
     @app_commands.describe(
         kenh_noitu="Kênh chơi nối từ (Game Channel)",
-        kenh_giveaway="Kênh thông báo Giveaway",
         kenh_logs="Kênh ghi log (Log Channel)",
         kenh_soi="Kênh voice họp sói (Wolf Voice Channel)",
         kenh_cay="Kênh trồng cây server (Tree Channel)"
@@ -186,7 +185,6 @@ class ConfigCog(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def config_set(self, interaction: discord.Interaction, 
                          kenh_noitu: discord.TextChannel = None, 
-                         kenh_giveaway: discord.TextChannel = None,
                          kenh_logs: discord.TextChannel = None,
                          kenh_soi: discord.VoiceChannel = None,
                          kenh_cay: discord.TextChannel = None):
@@ -205,7 +203,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi, kenh_cay]):
+        if not any([kenh_noitu, kenh_logs, kenh_soi, kenh_cay]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -214,18 +212,16 @@ class ConfigCog(commands.Cog):
             print(f"CONFIG [Guild {guild_id}] Setting channels")
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get old config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, wolf_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
                 old_logs = row[0] if row else None
                 old_noitu = row[1] if row else None
                 old_wolf = row[2] if row else None
-                old_giveaway = row[3] if row else None
 
                 # Merge
                 new_logs = kenh_logs.id if kenh_logs else old_logs
                 new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
                 new_wolf = kenh_soi.id if kenh_soi else old_wolf
-                new_giveaway = kenh_giveaway.id if kenh_giveaway else old_giveaway
                 
                 # Validate: một kênh không được có nhiều hơn 1 game
                 if kenh_noitu and kenh_soi:
@@ -259,8 +255,8 @@ class ConfigCog(commands.Cog):
                     new_tree = None
                 
                 # Save
-                await db.execute("UPDATE server_config SET logs_channel_id = ?, noitu_channel_id = ?, wolf_channel_id = ?, giveaway_channel_id = ? WHERE guild_id = ?", 
-                                 (new_logs, new_noitu, new_wolf, new_giveaway, guild_id))
+                await db.execute("UPDATE server_config SET logs_channel_id = ?, noitu_channel_id = ?, wolf_channel_id = ? WHERE guild_id = ?", 
+                                 (new_logs, new_noitu, new_wolf, guild_id))
                 
                 if kenh_cay:
                     await db.execute("UPDATE server_tree SET tree_channel_id = ? WHERE guild_id = ?",
@@ -271,7 +267,6 @@ class ConfigCog(commands.Cog):
 
             msg = "✅ Setup ok:\n"
             if kenh_noitu: msg += f"📝 Nối Từ: {kenh_noitu.mention}\n"
-            if kenh_giveaway: msg += f"🎁 Giveaway: {kenh_giveaway.mention}\n"
             if kenh_logs: msg += f"📋 Logs: {kenh_logs.mention}\n"
             if kenh_soi: msg += f"🐺 Sói Voice: {kenh_soi.mention}\n"
             if kenh_cay: msg += f"🌳 Cây: {kenh_cay.mention}\n"
@@ -308,14 +303,12 @@ class ConfigCog(commands.Cog):
         
         Usage:
             !config kenh_noitu #channel
-            !config kenh_giveaway #channel
             !config kenh_logs #channel
             !config kenh_soi #voice_channel (voice channel)
         """
         if not key:
             msg = "**Các option cấu hình:**\n"
             msg += "• `!config kenh_noitu #channel` - Kênh chơi nối từ\n"
-            msg += "• `!config kenh_giveaway #channel` - Kênh giveaway\n"
             msg += "• `!config kenh_logs #channel` - Kênh logs (admin channel)\n"
             msg += "• `!config kenh_soi #voice_channel` - Kênh voice sói\n"
             await ctx.send(msg)
@@ -330,13 +323,12 @@ class ConfigCog(commands.Cog):
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get current config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, wolf_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
                 
                 current_logs = row[0] if row else None
                 current_noitu = row[1] if row else None
                 current_wolf = row[2] if row else None
-                current_giveaway = row[3] if row else None
                 
                 # Update based on key
                 if key == "kenh_noitu":
@@ -344,13 +336,10 @@ class ConfigCog(commands.Cog):
                     if current_wolf and channel.id == current_wolf:
                         await ctx.send("❌ Kênh này đang được dùng cho Ma Sói. Xoá kenh_soi trước!")
                         return
-                    new_logs, new_noitu, new_wolf, new_giveaway = current_logs, channel.id, current_wolf, current_giveaway
+                    new_logs, new_noitu, new_wolf = current_logs, channel.id, current_wolf
                     msg_key = "Nối Từ"
-                elif key == "kenh_giveaway":
-                    new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, current_wolf, channel.id
-                    msg_key = "Giveaway"
                 elif key == "kenh_logs":
-                    new_logs, new_noitu, new_wolf, new_giveaway = channel.id, current_noitu, current_wolf, current_giveaway
+                    new_logs, new_noitu, new_wolf = channel.id, current_noitu, current_wolf
                     msg_key = "Logs"
                 elif key == "kenh_soi":
                     # Check if this channel is already set as noitu channel
@@ -360,7 +349,7 @@ class ConfigCog(commands.Cog):
                             if voice_channel.id == current_noitu:
                                 await ctx.send("❌ Kênh này đang được dùng cho Nối Từ. Xoá kenh_noitu trước!")
                                 return
-                            new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, voice_channel.id, current_giveaway
+                            new_logs, new_noitu, new_wolf = current_logs, current_noitu, voice_channel.id
                             msg_key = "Sói Voice"
                         except:
                             await ctx.send("❌ Kênh voice không hợp lệ. Dùng: `!config kenh_soi 1449580372705677312` (ID)")
@@ -368,24 +357,22 @@ class ConfigCog(commands.Cog):
                     else:
                         try:
                             voice_channel = await commands.VoiceChannelConverter().convert(ctx, ctx.message.content.split()[-1])
-                            new_logs, new_noitu, new_wolf, new_giveaway = current_logs, current_noitu, voice_channel.id, current_giveaway
+                            new_logs, new_noitu, new_wolf = current_logs, current_noitu, voice_channel.id
                             msg_key = "Sói Voice"
                         except:
                             await ctx.send("❌ Kênh voice không hợp lệ. Dùng: `!config kenh_soi 1449580372705677312` (ID)")
                             return
                 else:
-                    await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_giveaway, kenh_logs, kenh_soi")
+                    await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_soi")
                     return
                 
                 # Save
-                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, wolf_channel_id, giveaway_channel_id) VALUES (?, ?, ?, ?, ?)", 
-                                 (guild_id, new_logs, new_noitu, new_wolf, new_giveaway))
+                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, wolf_channel_id) VALUES (?, ?, ?, ?)", 
+                                 (guild_id, new_logs, new_noitu, new_wolf))
                 await db.commit()
                 
                 # Get channel mention for confirmation
                 if key == "kenh_noitu":
-                    channel_mention = f"<#{channel.id}>"
-                elif key == "kenh_giveaway":
                     channel_mention = f"<#{channel.id}>"
                 elif key == "kenh_logs":
                     channel_mention = f"<#{channel.id}>"

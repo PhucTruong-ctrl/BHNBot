@@ -83,11 +83,76 @@ PET_SHOP_ITEMS = {
     "premium_food": {"name": "Thức Ăn Cao Cấp", "cost": 100, "emoji": "🍱", "description": "Bữa ăn sang chảnh cho thú cưng"}
 }
 
-# Pet Images
+# Pet Images - Mỗi level có 5 state riêng (Level 1-10)
 PET_IMAGES = {
-    "idle": "https://i.imgur.com/Qp1nKjK.png",      # Sitting/Happy
-    "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Sleeping
-    "eating": "https://i.imgur.com/rN9Xj5d.png",    # Eating
-    "play": "https://i.imgur.com/7Y5Xj1b.png",      # Playing
-    "sad": "https://i.imgur.com/9Xj5K8L.png"        # Sad/Hungry
+    1: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Bé mèo level 1 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Bé mèo level 1 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Bé mèo level 1 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Bé mèo level 1 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Bé mèo level 1 - Buồn/Đói
+    },
+    2: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 2 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 2 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 2 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 2 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 2 - Buồn/Đói
+    },
+    3: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 3 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 3 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 3 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 3 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 3 - Buồn/Đói
+    },
+    4: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 4 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 4 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 4 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 4 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 4 - Buồn/Đói
+    },
+    5: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 5 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 5 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 5 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 5 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 5 - Buồn/Đói
+    },
+    6: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 6 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 6 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 6 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 6 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 6 - Buồn/Đói
+    },
+    7: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 7 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 7 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 7 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 7 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 7 - Buồn/Đói
+    },
+    8: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 8 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 8 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 8 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 8 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 8 - Buồn/Đói
+    },
+    9: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 9 - Ngồi bình thường
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 9 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 9 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 9 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 9 - Buồn/Đói
+    },
+    10: {
+        "idle": "https://i.imgur.com/Qp1nKjK.png",      # Mèo level 10 - Ngồi bình thường (Max Level!)
+        "sleep": "https://i.imgur.com/5Q6J9Xh.png",     # Mèo level 10 - Ngủ
+        "eating": "https://i.imgur.com/rN9Xj5d.png",    # Mèo level 10 - Ăn
+        "play": "https://i.imgur.com/7Y5Xj1b.png",      # Mèo level 10 - Chơi
+        "sad": "https://i.imgur.com/9Xj5K8L.png"        # Mèo level 10 - Buồn/Đói
+    }
 }

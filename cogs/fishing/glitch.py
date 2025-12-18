@@ -19,15 +19,23 @@ def set_glitch_state(active: bool, end_time: float):
     DISPLAY_GLITCH_END_TIME = float(end_time or 0)
 
 
+def is_glitch_active() -> bool:
+    """Check if glitch is currently active."""
+    return DISPLAY_GLITCH_ACTIVE and time.time() < DISPLAY_GLITCH_END_TIME
+
+
 def apply_display_glitch(text: str) -> str:
-    """Apply display glitch effect to text (garble characters) when active."""
+    """Apply display glitch effect to text (garble characters) when active.
+    Glitches letters and numbers aggressively (40% chance each)."""
     try:
-        if not DISPLAY_GLITCH_ACTIVE or time.time() >= DISPLAY_GLITCH_END_TIME:
+        if not is_glitch_active():
             return text
+        
         garble_chars = "▓░█╬▄▀┃┫┬┪◄►▼▲"
         result = []
         for ch in text:
-            if ch in string.ascii_letters or ch in "0123456789":
+            # Garble ASCII letters, numbers, and Vietnamese characters
+            if ch.isalnum() or ord(ch) > 127:  # ASCII letters/digits or non-ASCII (Vietnamese)
                 if random.random() < 0.4:
                     result.append(random.choice(garble_chars))
                 else:
@@ -38,3 +46,33 @@ def apply_display_glitch(text: str) -> str:
     except Exception:
         # Fail-safe: never break rendering
         return text
+
+
+def apply_glitch_aggressive(text: str) -> str:
+    """Apply AGGRESSIVE glitch effect - garbles more aggressively (50% chance).
+    Used for all fishing output text during hacker attack."""
+    try:
+        if not is_glitch_active():
+            return text
+        
+        garble_chars = "▓░█╬▄▀┃┫┬┪◄►▼▲?@#$%^&*"
+        result = []
+        for ch in text:
+            # Glitch most characters (50% chance for letters/numbers, 30% for others)
+            if ch.isalnum() or ord(ch) > 127:
+                if random.random() < 0.5:
+                    result.append(random.choice(garble_chars))
+                else:
+                    result.append(ch)
+            elif ch not in "\n\t ":  # Glitch some punctuation too
+                if random.random() < 0.3:
+                    result.append(random.choice(garble_chars))
+                else:
+                    result.append(ch)
+            else:
+                result.append(ch)
+        return "".join(result)
+    except Exception:
+        # Fail-safe: never break rendering
+        return text
+

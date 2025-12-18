@@ -93,6 +93,7 @@ class FishingCog(commands.Cog):
         self.global_disaster_cooldown = GLOBAL_DISASTER_COOLDOWN  # Default 3600s (1 hour)
         self.current_disaster = None  # Store current disaster info
         self.disaster_culprit = None  # User who caused the disaster
+        self.pending_disaster = {}  # {user_id: disaster_key} - Force trigger disaster on next fishing
         
         # Disaster effects tracking (expire when disaster ends)
         self.disaster_catch_rate_penalty = 0.0  # Percentage to reduce catch rate (0.2 = -20%)
@@ -100,8 +101,91 @@ class FishingCog(commands.Cog):
         self.disaster_fine_amount = 0  # Amount to deduct from players
         self.disaster_display_glitch = False  # Whether to show garbled fish names
         self.disaster_effect_end_time = 0  # When current disaster effects expire
+        
+        # Load achievements from database on startup
+        try:
+            import asyncio
+            asyncio.create_task(self._load_achievements_from_db())
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Could not schedule achievement loading: {e}")
+    
+    async def _load_achievements_from_db(self):
+        """Load all earned achievements from database into memory on startup."""
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute("SELECT user_id, achievement_key FROM user_achievements") as cursor:
+                    rows = await cursor.fetchall()
+                    for user_id, achievement_key in rows:
+                        if user_id not in self.user_achievements:
+                            self.user_achievements[user_id] = []
+                        self.user_achievements[user_id].append(achievement_key)
+            print(f"[ACHIEVEMENT] Loaded {sum(len(v) for v in self.user_achievements.values())} achievements from database")
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error loading achievements from database: {e}")
     
     # ==================== COMMANDS ====================
+    
+    @app_commands.command(name="sukien", description="⚡ Force trigger disaster trên user tiếp theo (chỉ Admin)")
+    @app_commands.describe(
+        user="Discord user sẽ bị trigger disaster",
+        disaster_key="Disaster key (xem danh sách trong disaster_events.json)"
+    )
+    async def trigger_disaster_slash(self, interaction: discord.Interaction, user: discord.User, disaster_key: str):
+        await self._trigger_disaster_action(interaction, user.id, disaster_key, is_slash=True)
+    
+    @commands.command(name="sukien", description="⚡ Force trigger disaster (chỉ Admin)")
+    async def trigger_disaster_prefix(self, ctx, user: discord.User, disaster_key: str):
+        await self._trigger_disaster_action(ctx, user.id, disaster_key, is_slash=False)
+    
+    async def _trigger_disaster_action(self, ctx_or_interaction, target_user_id: int, disaster_key: str, is_slash: bool):
+        """Force trigger a disaster for next fishing action."""
+        # Check if user is bot owner/admin
+        if ctx_or_interaction.user.id != self.bot.owner_id:
+            if is_slash:
+                await ctx_or_interaction.response.send_message("❌ Chỉ Owner mới có quyền sử dụng lệnh này!", ephemeral=True)
+            else:
+                await ctx_or_interaction.send("❌ Chỉ Owner mới có quyền sử dụng lệnh này!")
+            return
+        
+        # Load disasters data
+        import json
+        from .constants import DISASTER_EVENTS_PATH
+        try:
+            with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                disasters = {d["key"]: d for d in data.get("disasters", [])}
+        except:
+            if is_slash:
+                await ctx_or_interaction.response.send_message("❌ Lỗi load disaster events!", ephemeral=True)
+            else:
+                await ctx_or_interaction.send("❌ Lỗi load disaster events!")
+            return
+        
+        # Verify disaster key exists
+        if disaster_key not in disasters:
+            disaster_list = ", ".join(disasters.keys())
+            if is_slash:
+                await ctx_or_interaction.response.send_message(f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}", ephemeral=True)
+            else:
+                await ctx_or_interaction.send(f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}")
+            return
+        
+        # Store pending disaster
+        self.pending_disaster[target_user_id] = disaster_key
+        
+        target_user = self.bot.get_user(target_user_id)
+        target_name = target_user.mention if target_user else f"<@{target_user_id}>"
+        
+        embed = discord.Embed(
+            title="⚡ THẢM HỌA ĐƯỢC LÊNH CHỈ",
+            description=f"Người chơi {target_name} sẽ bị trigger disaster **{disasters[disaster_key]['name']}** ({disasters[disaster_key]['emoji']}) trong lần câu tiếp theo!",
+            color=discord.Color.red()
+        )
+        
+        if is_slash:
+            await ctx_or_interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            await ctx_or_interaction.send(embed=embed)
     
     @app_commands.command(name="cauca", description="Câu cá - thời gian chờ 30s")
     async def fish_slash(self, interaction: discord.Interaction):
@@ -334,10 +418,12 @@ class FishingCog(commands.Cog):
         
             rod_status = f"\n🎣 *{rod_config['emoji']} {rod_config['name']} (Thời gian chờ: {rod_config['cd']}s)*"
             durability_status = f"\n🛡️ **Độ bền còn lại: {rod_durability}/{rod_config['durability']}**"
+            
+            # Apply glitch to all casting text
+            casting_text = f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}{repair_msg}{durability_status}"
+            casting_text = self.apply_display_glitch(casting_text)
 
-            casting_msg = await channel.send(
-                f"🎣 **{username}** quăng cần... Chờ cá cắn câu... ({wait_time}s){status_text}{rod_status}{repair_msg}{durability_status}"
-            )
+            casting_msg = await channel.send(casting_text)
             await asyncio.sleep(wait_time)
         
             # ==================== TRIGGER RANDOM EVENTS ====================
@@ -346,9 +432,10 @@ class FishingCog(commands.Cog):
         
             # If user avoided a bad event, show what they avoided
             if event_result.get("avoided", False):
+                protection_desc = f"✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\n{event_result['message']}\n\n**Bạn an toàn thoát khỏi sự kiện này!**"
                 embed = discord.Embed(
-                    title=f"🛡️ BẢO VỆ - {username}!",
-                    description=f"✨ **Giác Quan Thứ 6 hoặc Đi Chùa bảo vệ bạn!**\n\n{event_result['message']}\n\n**Bạn an toàn thoát khỏi sự kiện này!**",
+                    title=self.apply_display_glitch(f"🛡️ BẢO VỆ - {username}!"),
+                    description=self.apply_display_glitch(protection_desc),
                     color=discord.Color.gold()
                 )
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
@@ -522,27 +609,31 @@ class FishingCog(commands.Cog):
             
                 # If lose_catch, don't process fishing
                 if event_result.get("lose_catch", False):
+                    event_display = self.apply_display_glitch(event_message)
                     embed = discord.Embed(
                         title=f"⚠️ KIẾP NẠN - {username}!",
-                        description=event_message,
+                        description=event_display,
                         color=discord.Color.red()
                     )
                     # Apply durability loss before returning
                     rod_durability = max(0, rod_durability - durability_loss)
                     await self.update_rod_data(user_id, rod_durability)
-                    embed.set_footer(text=f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}")
+                    durability_display = self.apply_display_glitch(f"🛡️ Độ bền: {rod_durability}/{rod_config['durability']}")
+                    embed.set_footer(text=durability_display)
                     await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
                     print(f"[EVENT] {username} triggered {event_type} - fishing cancelled, durability loss: {durability_loss}")
                     return
             
                 # Otherwise, display event message and continue fishing
+                event_display = self.apply_display_glitch(event_message)
                 event_type_data = RANDOM_EVENTS.get(event_type, {})
                 is_good_event = event_type_data.get("type") == "good"
                 color = discord.Color.green() if is_good_event else discord.Color.orange()
                 event_title = f"🌟 PHƯỚC LÀNH - {username}!" if is_good_event else f"⚠️ KIẾP NẠN - {username}!"
+                event_title = self.apply_display_glitch(event_title)
                 embed = discord.Embed(
                     title=event_title,
-                    description=event_message,
+                    description=event_display,
                     color=color
                 )
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
@@ -959,6 +1050,9 @@ class FishingCog(commands.Cog):
             # Add title-earned message if applicable
             if title_earned:
                 title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
+            
+            # *** APPLY GLITCH TO TITLE ***
+            title = self.apply_display_glitch(title)
         
             # Build description with broken rod warning if needed
             display_content = "\n".join(fish_display) if fish_display else "Không có gì"
@@ -969,6 +1063,7 @@ class FishingCog(commands.Cog):
             desc_parts = [display_content]
             if is_broken_rod:
                 desc_parts.append("\n⚠️ **CẢNH BÁO: Cần câu gãy!** (Chỉ 1% cá hiếm, 1 item/lần, không rương)")
+                desc_parts[-1] = self.apply_display_glitch(desc_parts[-1])
         
             embed = discord.Embed(
                 title=title,
@@ -977,9 +1072,10 @@ class FishingCog(commands.Cog):
             )
         
             if title_earned:
+                completion_text = "Bạn đã bắt được **tất cả các loại cá**!\nChúc mừng bạn trở thành **Vua Câu Cá**! 🎉\nXem `/suutapca` để xác nhận!"
                 embed.add_field(
                     name="🏆 HOÀN THÀNH!",
-                    value="Bạn đã bắt được **tất cả các loại cá**!\nChúc mừng bạn trở thành **Vua Câu Cá**! 🎉\nXem `/suutapca` để xác nhận!",
+                    value=self.apply_display_glitch(completion_text),
                     inline=False
                 )
         
@@ -990,7 +1086,11 @@ class FishingCog(commands.Cog):
             durability_status = f"🛡️ Độ bền còn lại: {rod_durability}/{rod_config['durability']}"
             if rod_durability <= 0:
                 durability_status += f" ⚠️ CẦN SỬA ({rod_config['repair']} Hạt)"
-            embed.set_footer(text=f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}")
+            
+            # *** APPLY GLITCH TO FOOTER ***
+            footer_text = f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}"
+            footer_text = self.apply_display_glitch(footer_text)
+            embed.set_footer(text=footer_text)
         
             # Create view with sell button if there are fish to sell
             view = None
@@ -1020,9 +1120,11 @@ class FishingCog(commands.Cog):
                 caught_fish_info = ALL_FISH[caught_fish_key]
             
                 # Build NPC embed
+                npc_title = f"⚠️ {npc_data['name']} - {username}!"
+                npc_desc = f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}"
                 npc_embed = discord.Embed(
-                    title=f"⚠️ {npc_data['name']} - {username}!",
-                    description=f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}",
+                    title=self.apply_display_glitch(npc_title),
+                    description=self.apply_display_glitch(npc_desc),
                     color=discord.Color.purple()
                 )
             
@@ -1038,7 +1140,7 @@ class FishingCog(commands.Cog):
                 elif npc_data["cost"] == "cooldown_5min":
                     cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
             
-                npc_embed.add_field(name="💸 Giá", value=cost_text, inline=False)
+                npc_embed.add_field(name="💸 Giá", value=self.apply_display_glitch(cost_text), inline=False)
             
                 # Send NPC message with buttons
                 npc_view = NPCEncounterView(user_id, npc_type, npc_data, caught_fish_key)
@@ -1413,6 +1515,8 @@ class FishingCog(commands.Cog):
             
             # 4. Display sell event notification FIRST (if triggered)
             if triggered_event:
+                from .glitch import is_glitch_active, apply_display_glitch as glitch_text
+                
                 if SELL_EVENTS[triggered_event]["type"] == "good":
                     title = f"🌟 PHƯỚC LÀNH - {username}!"
                     event_embed_color = discord.Color.gold()
@@ -1420,18 +1524,30 @@ class FishingCog(commands.Cog):
                     title = f"⚠️ KIẾP NẠN - {username}!"
                     event_embed_color = discord.Color.orange()
                 
+                # Apply glitch if active
+                if is_glitch_active():
+                    title = glitch_text(title)
+                
                 diff = final_total - base_total
                 sign = "+" if diff >= 0 else ""
                 event_detail = f"{SELL_MESSAGES[triggered_event]}\n\n💰 **{event_name}**"
+                
+                if is_glitch_active():
+                    event_detail = glitch_text(event_detail)
                 
                 event_embed = discord.Embed(
                     title=title,
                     description=event_detail,
                     color=event_embed_color
                 )
+                
+                impact_text = f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**"
+                if is_glitch_active():
+                    impact_text = glitch_text(impact_text)
+                
                 event_embed.add_field(
                     name="📊 Ảnh hưởng giá bán",
-                    value=f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**",
+                    value=impact_text,
                     inline=False
                 )
                 
@@ -1449,12 +1565,20 @@ class FishingCog(commands.Cog):
                     await ctx.send(content=f"<@{user_id}>", embed=event_embed)
             
             # 5. Display main sell result embed
-            from .glitch import apply_display_glitch as _glitch
-            fish_summary = "\n".join([f"  • {_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in selected_fish.items()])
+            from .glitch import apply_display_glitch as _glitch, is_glitch_active
+            
+            if is_glitch_active():
+                fish_summary = "\n".join([f"  • {_glitch(ALL_FISH[k]['name'])} x{_glitch(str(v))}" for k, v in selected_fish.items()])
+                embed_title = _glitch(f"💰 **{username}** bán {sum(selected_fish.values())} con cá")
+                embed_desc = _glitch(f"{fish_summary}\n\n💵 **Tổng nhận:** {_glitch(str(final_total))} Hạt")
+            else:
+                fish_summary = "\n".join([f"  • {_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in selected_fish.items()])
+                embed_title = f"💰 **{username}** bán {sum(selected_fish.values())} con cá"
+                embed_desc = f"{fish_summary}\n\n💵 **Tổng nhận:** {final_total} Hạt"
             
             embed = discord.Embed(
-                title=f"💰 **{username}** bán {sum(selected_fish.values())} con cá",
-                description=f"{fish_summary}\n\n💵 **Tổng nhận:** {final_total} Hạt",
+                title=embed_title,
+                description=embed_desc,
                 color=discord.Color.green()
             )
             
@@ -2901,7 +3025,7 @@ class FishingCog(commands.Cog):
                 
                 # Fallback: Check if tree is at level 5+ (persistent bonus)
                 async with db.execute(
-                    "SELECT level FROM server_tree WHERE guild_id = ?",
+                    "SELECT current_level FROM server_tree WHERE guild_id = ?",
                     (guild_id,)
                 ) as cursor:
                     tree_row = await cursor.fetchone()
@@ -2918,27 +3042,54 @@ class FishingCog(commands.Cog):
         """
         current_time = time.time()
         
-        # Check if server is in global cooldown period
-        if current_time - self.last_disaster_time < self.global_disaster_cooldown:
-            return {"triggered": False, "reason": "global_cooldown"}
+        # CHECK FOR FORCED PENDING DISASTER FIRST
+        if user_id in self.pending_disaster:
+            disaster_key = self.pending_disaster.pop(user_id)
+            # Load disaster data
+            import json
+            from .constants import DISASTER_EVENTS_PATH
+            try:
+                with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    disasters_by_key = {d["key"]: d for d in data.get("disasters", [])}
+                    if disaster_key in disasters_by_key:
+                        disaster = disasters_by_key[disaster_key]
+                    else:
+                        print(f"[DISASTER] Pending disaster key {disaster_key} not found, skipping")
+                        return {"triggered": False, "reason": "pending_disaster_key_invalid"}
+            except Exception as e:
+                print(f"[DISASTER] Error loading pending disaster: {e}")
+                return {"triggered": False, "reason": "pending_disaster_load_error"}
+        else:
+            # Check if server is in global cooldown period
+            if current_time - self.last_disaster_time < self.global_disaster_cooldown:
+                return {"triggered": False, "reason": "global_cooldown"}
+            
+            # Roll for disaster (0.05% chance)
+            if random.random() >= 0.0005:
+                return {"triggered": False, "reason": "no_trigger"}
+            
+            # DISASTER TRIGGERED!
+            disaster = random.choice(DISASTER_EVENTS)
         
-        # Roll for disaster (0.05% chance)
-        if random.random() >= 0.0005:
-            return {"triggered": False, "reason": "no_trigger"}
-        
-        # DISASTER TRIGGERED!
-        disaster = random.choice(DISASTER_EVENTS)
         disaster_duration = disaster.get("duration", 300)
         
-        self.is_server_frozen = True
-        self.freeze_end_time = current_time + disaster_duration
-        self.last_disaster_time = self.freeze_end_time
+        # Extract and store disaster effects
+        effects = disaster.get("effects", {})
+        
+        # ONLY freeze server if disaster explicitly has freeze_server = true
+        if effects.get("freeze_server"):
+            self.is_server_frozen = True
+            self.freeze_end_time = current_time + effects.get("freeze_duration", disaster_duration)
+        else:
+            self.is_server_frozen = False
+            self.freeze_end_time = 0
+        
+        self.last_disaster_time = current_time + disaster_duration
         self.current_disaster = disaster
         self.disaster_culprit = username
         self.disaster_effect_end_time = current_time + disaster_duration
         
-        # Extract and store disaster effects
-        effects = disaster.get("effects", {})
         self.disaster_catch_rate_penalty = effects.get("catch_rate_penalty", 0.0)
         self.disaster_cooldown_penalty = effects.get("cooldown_penalty", 0)
         self.disaster_fine_amount = effects.get("fine_amount", 0)
@@ -2987,24 +3138,13 @@ class FishingCog(commands.Cog):
         }
     
     def apply_display_glitch(self, text: str) -> str:
-        """Apply display glitch effect to text (garble fish names)."""
+        """Apply display glitch effect to text - glitches ALL text during hacker attack."""
         if not self.disaster_display_glitch or time.time() >= self.disaster_effect_end_time:
             return text
         
-        # Create garbled version by replacing some characters
-        import string
-        garble_chars = "▓░█╬▄▀┃┫┬┪◄►▼▲"
-        result = ""
-        for char in text:
-            if char in string.ascii_letters or char in "0123456789":
-                # 40% chance to garble letter/digit
-                if random.random() < 0.4:
-                    result += random.choice(garble_chars)
-                else:
-                    result += char
-            else:
-                result += char
-        return result
+        # Import the aggressive glitch function
+        from .glitch import apply_glitch_aggressive
+        return apply_glitch_aggressive(text)
     
     async def add_inventory_item(self, user_id: int, item_name: str, item_type: str):
         """Add item to inventory."""
@@ -3039,13 +3179,21 @@ class FishingCog(commands.Cog):
         return {}
 
     async def check_achievement(self, user_id: int, achievement_key: str, channel = None, guild_id: int = None, stats_data: dict = None, inventory_data: dict = None):
-        """Check and award achievement if conditions are met."""
-        if user_id not in self.user_achievements:
-            self.user_achievements[user_id] = []
-        
-        # Skip if already earned
-        if achievement_key in self.user_achievements[user_id]:
-            return False
+        """Check and award achievement if conditions are met. Only awards once per user."""
+        # Check if achievement already earned in database
+        try:
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute(
+                    "SELECT id FROM user_achievements WHERE user_id = ? AND achievement_key = ?",
+                    (user_id, achievement_key)
+                ) as cursor:
+                    already_earned = await cursor.fetchone()
+                    if already_earned:
+                        # Already earned, don't award again
+                        return False
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error checking if achievement already earned: {e}")
+            # Fall through to continue
         
         achievement = ACHIEVEMENTS.get(achievement_key)
         if not achievement:
@@ -3250,6 +3398,20 @@ class FishingCog(commands.Cog):
             condition_met = True  # This is checked separately in _fish_action
         
         if condition_met:
+            # Save to database (IMPORTANT: persistent storage)
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    await db.execute(
+                        "INSERT INTO user_achievements (user_id, achievement_key, earned_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+                        (user_id, achievement_key)
+                    )
+                    await db.commit()
+            except Exception as e:
+                print(f"[ACHIEVEMENT] Error saving achievement to DB: {e}")
+            
+            # Also save to memory for faster lookup during session
+            if user_id not in self.user_achievements:
+                self.user_achievements[user_id] = []
             self.user_achievements[user_id].append(achievement_key)
             
             # Award role if specified
@@ -3265,19 +3427,14 @@ class FishingCog(commands.Cog):
                 except Exception as e:
                     print(f"[ACHIEVEMENT] Error awarding role for {achievement_key}: {e}")
             
-            # Award coins in database
+            # Award coins in database using add_seeds to invalidate cache
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute(
-                        "UPDATE economy_users SET seeds = seeds + ? WHERE user_id = ?",
-                        (achievement["reward_coins"], user_id)
-                    )
-                    await db.commit()
-            except:
-                pass
+                from database_manager import add_seeds
+                await add_seeds(user_id, achievement["reward_coins"])
+            except Exception as e:
+                print(f"[ACHIEVEMENT] Error awarding coins for {achievement_key}: {e}")
             
-            # Get user info for @mention
-            user = None
+            # Get user info for @mention (IMPORTANT: Define BEFORE using)
             user_name = f"<@{user_id}>"
             if guild_id:
                 try:
@@ -3290,34 +3447,37 @@ class FishingCog(commands.Cog):
                     pass
             
             # Count total players and players with this achievement for rarity calculation
-        # Note: Achievements are tracked in memory, not in DB column
-        rarity_percent = 0
-        try:
-            # Count how many users have this achievement in memory
-            achievement_count = sum(1 for user_achievements in self.user_achievements.values() if achievement_key in user_achievements)
-            
-            # Get total registered users (non-zero seed balance or has played)
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT COUNT(*) FROM economy_users WHERE seeds >= 0"
-                ) as cursor:
-                    total_row = await cursor.fetchone()
-                    total_users = total_row[0] if total_row else 1
-            
-            # Calculate rarity percentage (now including the new achiever)
-            rarity_percent = round((achievement_count / total_users * 100), 2) if total_users > 0 else 0
-        except Exception as e:
-            print(f"[ACHIEVEMENT] Error calculating rarity: {e}")
             rarity_percent = 0
+            try:
+                # Count how many users have this achievement in memory
+                achievement_count = sum(1 for user_achievements in self.user_achievements.values() if achievement_key in user_achievements)
+                
+                # Get total registered users (non-zero seed balance or has played)
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute(
+                        "SELECT COUNT(*) FROM economy_users WHERE seeds >= 0"
+                    ) as cursor:
+                        total_row = await cursor.fetchone()
+                        total_users = total_row[0] if total_row else 1
+                
+                # Calculate rarity percentage (now including the new achiever)
+                rarity_percent = round((achievement_count / total_users * 100), 2) if total_users > 0 else 0
+            except Exception as e:
+                print(f"[ACHIEVEMENT] Error calculating rarity: {e}")
+                rarity_percent = 0
             
             # Send announcement with full details
             if channel:
                 from datetime import datetime
                 current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 
+                # Apply glitch to all achievement info
+                achievement_title = f"🏆 THÀNH TỰU MỚI! {achievement['emoji']}"
+                achievement_desc = f"**{achievement['name']}**\n\n{achievement['description']}"
+                
                 embed = discord.Embed(
-                    title=f"🏆 THÀNH TỰU MỚI! {achievement['emoji']}",
-                    description=f"**{achievement['name']}**\n\n{achievement['description']}",
+                    title=self.apply_display_glitch(achievement_title),
+                    description=self.apply_display_glitch(achievement_desc),
                     color=discord.Color.gold(),
                     timestamp=datetime.now()
                 )
@@ -3325,22 +3485,24 @@ class FishingCog(commands.Cog):
                 # User info with mention
                 embed.add_field(
                     name="👤 Người Chơi",
-                    value=user_name,
+                    value=self.apply_display_glitch(user_name),
                     inline=True
                 )
                 
                 # Rarity
                 rarity_emoji = "🔥" if rarity_percent <= 5 else "⭐" if rarity_percent <= 15 else "✨"
+                rarity_text = f"{rarity_percent}% người chơi sở hữu"
                 embed.add_field(
                     name=f"{rarity_emoji} Độ Hiếm",
-                    value=f"{rarity_percent}% người chơi sở hữu",
+                    value=self.apply_display_glitch(rarity_text),
                     inline=True
                 )
                 
                 # Reward
+                reward_text = f"+{achievement['reward_coins']} Hạt"
                 embed.add_field(
                     name="💰 Phần Thưởng",
-                    value=f"+{achievement['reward_coins']} Hạt",
+                    value=self.apply_display_glitch(reward_text),
                     inline=True
                 )
                 
@@ -3348,11 +3510,11 @@ class FishingCog(commands.Cog):
                 if achievement.get("role_id"):
                     embed.add_field(
                         name="🎖️ Role Cấp",
-                        value="Nhân được role thành tựu!",
+                        value=self.apply_display_glitch("Nhân được role thành tựu!"),
                         inline=False
                     )
                 
-                embed.set_footer(text=f"Thời gian: {current_time}")
+                embed.set_footer(text=self.apply_display_glitch(f"Thời gian: {current_time}"))
                 
                 try:
                     await channel.send(embed=embed)

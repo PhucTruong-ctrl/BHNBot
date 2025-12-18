@@ -136,6 +136,15 @@ def init_database():
                     UNIQUE(giveaway_id, user_id)
                 )''')
 
+    # User Achievements: Persistent achievement tracking (so achievements are only awarded once)
+    c.execute('''CREATE TABLE IF NOT EXISTS user_achievements (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    achievement_key TEXT,
+                    earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, achievement_key)
+                )''')
+
     # Invite Tracking: Track user invites for requirements
     c.execute('''CREATE TABLE IF NOT EXISTS user_invites (
                     inviter_id INTEGER,

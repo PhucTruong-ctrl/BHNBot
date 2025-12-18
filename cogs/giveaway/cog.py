@@ -23,32 +23,14 @@ class GiveawayCog(commands.Cog):
     async def check_giveaways_task(self):
         try:
             now = discord.utils.utcnow()
-            # Fetch active giveaways that have ended
-            # SQLite stores datetime as string usually? Or helpers handles it?
-            # aiosqlite/sqlite3 default adapter might store as string "YYYY-MM-DD HH:MM:SS..."
-            # We can select all active and check in python, or try sqlite datetime func
             active_gas = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
             for row in active_gas:
-                ga = Giveaway.from_db(row)
-                # Ensure ga.end_time is timezone aware if now is
-                end_time = ga.end_time
-                if isinstance(end_time, str):
-                    try:
-                        end_time = datetime.datetime.fromisoformat(end_time)
-                    except:
-                        # Fallback parsing if format differs
-                        try:
-                            end_time = datetime.datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S.%f%z")
-                        except:
-                            # Last resort
-                            continue
-                
-                # Make naive aware if needed
-                if end_time.tzinfo is None:
-                    end_time = end_time.replace(tzinfo=datetime.timezone.utc)
-                
-                if now >= end_time:
-                    await end_giveaway(ga.message_id, self.bot)
+                try:
+                    ga = Giveaway.from_db(row)
+                    if now >= ga.end_time:
+                        await end_giveaway(ga.message_id, self.bot)
+                except Exception as e:
+                     print(f"[Giveaway] Error processing giveaway {row[0]}: {e}")
         except Exception as e:
             print(f"[Giveaway] Task error: {e}")
 
@@ -136,6 +118,99 @@ class GiveawayCog(commands.Cog):
                         return inv.inviter
         return None
 
+    @app_commands.command(name="gatest_invite", description="[Admin/Test] Thêm invite ảo để test")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def gatest_invite(self, interaction: discord.Interaction, target: discord.User, amount: int = 1):
+        """Add fake invites for testing"""
+        try:
+            import random
+            await interaction.response.defer(ephemeral=True)
+            
+            for _ in range(amount):
+                # Generate random dummy user ID for the "joined" person
+                dummy_id = random.randint(100000000000000000, 999999999999999999)
+                await db_manager.modify(
+                    "INSERT INTO user_invites (inviter_id, joined_user_id, is_valid) VALUES (?, ?, 1)",
+                    (target.id, dummy_id)
+                )
+            
+            # Clear cache so new value is fetched immediately
+            db_manager.clear_cache_by_prefix(f"invites_{target.id}")
+            
+            await interaction.followup.send(f"✅ Đã thêm {amount} invite ảo cho {target.mention}")
+        except Exception as e:
+             await interaction.followup.send(f"❌ Lỗi: {e}")
+
+    @app_commands.command(name="gatest_invite", description="[Admin/Test] Thêm invite ảo để test")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def gatest_invite(self, interaction: discord.Interaction, target: discord.User, amount: int = 1):
+        """Add fake invites for testing"""
+        try:
+            import random
+            await interaction.response.defer(ephemeral=True)
+            
+            for _ in range(amount):
+                # Generate random dummy user ID for the "joined" person
+                dummy_id = random.randint(100000000000000000, 999999999999999999)
+                await db_manager.modify(
+                    "INSERT INTO user_invites (inviter_id, joined_user_id, is_valid) VALUES (?, ?, 1)",
+                    (target.id, dummy_id)
+                )
+            
+            # Clear cache so new value is fetched immediately
+            db_manager.clear_cache_by_prefix(f"invites_{target.id}")
+            
+            await interaction.followup.send(f"✅ Đã thêm {amount} invite ảo cho {target.mention}")
+        except Exception as e:
+             await interaction.followup.send(f"❌ Lỗi: {e}")
+
+    @app_commands.command(name="gaend_now", description="[Admin] Kết thúc Giveaway ngay lập tức")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def gaend_now(self, interaction: discord.Interaction):
+        """End a giveaway immediately by selecting from active giveaways."""
+        try:
+            await interaction.response.defer(ephemeral=True)
+            
+            # Get all active giveaways in this guild
+            active_gas = await db_manager.execute(
+                "SELECT message_id, prize, end_time FROM giveaways WHERE status = 'active' AND guild_id = ? ORDER BY end_time ASC",
+                (interaction.guild.id,)
+            )
+            
+            if not active_gas:
+                return await interaction.followup.send("❌ Không có Giveaway nào đang hoạt động!")
+            
+            # Limit to 25 options for Discord select menu
+            active_gas = active_gas[:25]
+            
+            # Create select menu options
+            options = []
+            for idx, (msg_id, prize, end_time) in enumerate(active_gas, 1):
+                # Create short code like GA001, GA002, etc
+                code = f"GA{idx:03d}"
+                label = f"{code} - {prize[:50]}"  # Truncate prize if too long
+                options.append(
+                    discord.SelectOption(
+                        label=label,
+                        value=str(msg_id),
+                        description=f"Kết thúc lúc: {end_time[:16] if isinstance(end_time, str) else end_time}"
+                    )
+                )
+            
+            from .views import GiveawayEndSelectView
+            view = GiveawayEndSelectView(self.bot, options)
+            embed = discord.Embed(
+                title="🛑 Kết Thúc Giveaway",
+                description="Chọn Giveaway bạn muốn kết thúc ngay lập tức:",
+                color=discord.Color.red()
+            )
+            
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            
+        except Exception as e:
+            print(f"[Giveaway] Error in gaend_now: {e}")
+            await interaction.followup.send(f"❌ Có lỗi xảy ra: {e}")
+
     @app_commands.command(name="gacreate", description="Tạo Giveaway với các điều kiện")
     @app_commands.describe(
         prize="Phần thưởng",
@@ -151,14 +226,19 @@ class GiveawayCog(commands.Cog):
         
         # 1. Parse Duration
         seconds = 0
-        unit = duration[-1].lower()
-        value = int(duration[:-1])
-        if unit == 's': seconds = value
-        elif unit == 'm': seconds = value * 60
-        elif unit == 'h': seconds = value * 3600
-        elif unit == 'd': seconds = value * 86400
-        else:
-            return await interaction.response.send_message("❌ Định dạng thời gian không hợp lệ! (vd: 1h, 30m)", ephemeral=True)
+        try:
+            if len(duration) < 2:
+                raise ValueError("Too short")
+            unit = duration[-1].lower()
+            value = int(duration[:-1])
+            if unit == 's': seconds = value
+            elif unit == 'm': seconds = value * 60
+            elif unit == 'h': seconds = value * 3600
+            elif unit == 'd': seconds = value * 86400
+            else:
+                raise ValueError("Invalid unit")
+        except ValueError:
+            return await interaction.response.send_message("❌ Định dạng thời gian không hợp lệ! (vd: 1h, 30m, 10s)", ephemeral=True)
             
         end_time = discord.utils.utcnow() + datetime.timedelta(seconds=seconds)
         
@@ -173,7 +253,7 @@ class GiveawayCog(commands.Cog):
         embed.add_field(name="Số lượng giải", value=f"{winners} giải")
         embed.set_footer(text=f"Hosted by {interaction.user.display_name}")
         
-        if req_invite > 0: embed.add_field(name="Điều kiện", value=f"✉️ **{req_invite} Valid Invites**", inline=True)
+        if req_invite > 0: embed.add_field(name="Điều kiện", value=f"✉️ **{req_invite} Lời mời hợp lệ (Mời người vào server)**", inline=True)
         if req_rod > 0: embed.add_field(name="Điều kiện", value=f"🎣 **Cần Câu Lv{req_rod}**", inline=True)
         if cost > 0: embed.add_field(name="Vé tham gia", value=f"💰 **{cost} Hạt**", inline=True)
 

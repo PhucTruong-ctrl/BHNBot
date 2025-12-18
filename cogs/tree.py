@@ -190,24 +190,24 @@ class CommunityCog(commands.Cog):
         _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
         
         async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ? AND season = ?",
-                (user_id, guild_id, current_season)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if row:
+            try:
+                # Try to insert first (if not exists)
+                await db.execute(
+                    "INSERT OR IGNORE INTO tree_contributors (user_id, guild_id, contribution_exp, season) VALUES (?, ?, ?, ?)",
+                    (user_id, guild_id, exp_amount, current_season)
+                )
+                
+                # Now update the row (either the one we just inserted or existing one)
                 await db.execute(
                     "UPDATE tree_contributors SET contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ? AND season = ?",
                     (exp_amount, user_id, guild_id, current_season)
                 )
-            else:
-                await db.execute(
-                    "INSERT INTO tree_contributors (user_id, guild_id, contribution_exp, season) VALUES (?, ?, ?, ?)",
-                    (user_id, guild_id, exp_amount, current_season)
-                )
-            
-            await db.commit()
+                
+                await db.commit()
+            except Exception as e:
+                print(f"[TREE] Error adding contributor: {e}")
+                await db.rollback()
+                raise
 
     async def get_top_contributors(self, guild_id: int, limit: int = 3):
         """Get top contributors by contribution experience for CURRENT season"""
