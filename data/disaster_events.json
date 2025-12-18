@@ -56,9 +56,9 @@
       "duration": 300,
       "description": "Một xe bồn chở Trà Sữa Trân Châu Đường Đen bị lật xuống hồ. Nước hồ ngọt lịm, cá lười câu.",
       "effects": {
-        "catch_rate_penalty": 0.5,
+        "catch_rate_penalty": 0.8,
         "penalty_duration": 300,
-        "message_template": "🧋 **BÁO ĐỘNG ĐỎ!** Hồ nước đã biến thành Trà Sữa vì {player} kéo lềnh tềnh mặt nước!\n\n Lũ cá đang bận hút trân châu, không thèm ăn mồi. Tỉ lệ cắn giảm 50% trong 5 phút!",
+        "message_template": "🧋 **BÁO ĐỘNG ĐỎ!** Hồ nước đã biến thành Trà Sữa vì {player} kéo lềnh tềnh mặt nước!\n\n Lũ cá đang bận hút trân châu, không thèm ăn mồi. Tỉ lệ cắn giảm 80% trong 5 phút!",
         "loss_type": "none"
       },
       "reward_message": "Bạn đã trở thành **Kẻ Phá Hoại Môi Trường**! Hồ nước giờ mùi trà sữa vì bạn. ☕"
