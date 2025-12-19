@@ -20,7 +20,7 @@ class WerewolfManager:
 
     def __init__(self, bot: discord.Client) -> None:
         self.bot = bot
-        self._games: Dict[int, WerewolfGame] = {}
+        self._games: Dict[Tuple[int, Optional[int]], WerewolfGame] = {}
         self._lock = asyncio.Lock()
 
     async def _get_voice_channel_id(self, guild_id: int) -> Optional[int]:
@@ -43,32 +43,35 @@ class WerewolfManager:
         host: discord.Member,
         expansions: Set[Expansion],
         game_mode: str = "text",
+        voice_channel_id: Optional[int] = None,
     ) -> WerewolfGame:
         async with self._lock:
             if guild is None or channel is None:
                 raise RuntimeError("Lệnh này chỉ dùng trong máy chủ.")
-            if guild.id in self._games and not self._games[guild.id].is_finished:
-                raise RuntimeError("Đã có bàn ma sói đang chạy ở máy chủ này")
+            if (guild.id, voice_channel_id) in self._games and not self._games[(guild.id, voice_channel_id)].is_finished:
+                raise RuntimeError("Đã có bàn ma sói đang chạy ở kênh này")
             
-            # Retrieve voice channel ID from database only if mode is "voice"
-            voice_channel_id = None
+            # Use provided voice channel ID if mode is "voice"
             if game_mode == "voice":
-                voice_channel_id = await self._get_voice_channel_id(guild.id)
+                if voice_channel_id is None:
+                    raise RuntimeError("Voice mode yêu cầu voice_channel_id.")
             
             game = WerewolfGame(self.bot, guild, channel, host, expansions, voice_channel_id=voice_channel_id, game_mode=game_mode)
-            self._games[guild.id] = game
+            self._games[(guild.id, voice_channel_id)] = game
             return game
 
-    def get_game(self, guild_id: int) -> Optional[WerewolfGame]:
-        game = self._games.get(guild_id)
+    def get_game(self, guild_id: int, voice_channel_id: Optional[int] = None) -> Optional[WerewolfGame]:
+        key = (guild_id, voice_channel_id)
+        game = self._games.get(key)
         if game and game.is_finished:
-            self._games.pop(guild_id, None)
+            self._games.pop(key, None)
             return None
         return game
 
-    async def remove_game(self, guild_id: int) -> None:
+    async def remove_game(self, guild_id: int, voice_channel_id: Optional[int] = None) -> None:
         async with self._lock:
-            game = self._games.pop(guild_id, None)
+            key = (guild_id, voice_channel_id)
+            game = self._games.pop(key, None)
             if game:
                 await game.cleanup()
 
@@ -79,10 +82,10 @@ class WerewolfManager:
         for game in games:
             await game.cleanup()
 
-    async def save_game_state(self, guild_id: int) -> None:
+    async def save_game_state(self, guild_id: int, voice_channel_id: Optional[int] = None) -> None:
         """Save Werewolf game state to database for resume after restart"""
         try:
-            game = self._games.get(guild_id)
+            game = self._games.get((guild_id, voice_channel_id))
             if not game or game.is_finished:
                 return
             
@@ -135,22 +138,22 @@ class WerewolfManager:
             async with aiosqlite.connect(DB_PATH) as db:
                 # Check if session exists
                 async with db.execute(
-                    "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                    (guild_id, "werewolf")
+                    "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ? AND voice_channel_id IS ?",
+                    (guild_id, "werewolf", voice_channel_id)
                 ) as cursor:
                     existing = await cursor.fetchone()
                 
                 if existing:
                     # Update existing session
                     await db.execute(
-                        "UPDATE game_sessions SET channel_id = ?, game_state = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ?",
-                        (game.channel.id, game_state_json, guild_id, "werewolf")
+                        "UPDATE game_sessions SET channel_id = ?, game_state = ?, last_saved = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ? AND voice_channel_id IS ?",
+                        (game.channel.id, game_state_json, guild_id, "werewolf", voice_channel_id)
                     )
                 else:
                     # Insert new session
                     await db.execute(
-                        "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
-                        (guild_id, "werewolf", game.channel.id, game_state_json)
+                        "INSERT INTO game_sessions (guild_id, game_type, voice_channel_id, channel_id, game_state) VALUES (?, ?, ?, ?, ?)",
+                        (guild_id, "werewolf", voice_channel_id, game.channel.id, game_state_json)
                     )
                 await db.commit()
             
@@ -158,25 +161,28 @@ class WerewolfManager:
         except Exception as e:
             print(f"[Werewolf] ERROR saving game state: {e}")
 
-    async def restore_game_state(self, guild_id: int) -> Optional[dict]:
-        """Retrieve saved Werewolf game state from database (returns state dict or None)"""
+    async def restore_game_state(self, guild_id: int) -> List[dict]:
+        """Retrieve saved Werewolf game states from database (returns list of state dicts)"""
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT game_state, channel_id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                    "SELECT game_state, channel_id, voice_channel_id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
                     (guild_id, "werewolf")
                 ) as cursor:
-                    row = await cursor.fetchone()
+                    rows = await cursor.fetchall()
             
-            if not row:
-                return None
+            states = []
+            for row in rows:
+                game_state = json.loads(row[0])
+                channel_id = row[1]
+                voice_channel_id = row[2]
+                game_state["channel_id"] = channel_id
+                game_state["voice_channel_id"] = voice_channel_id
+                states.append(game_state)
             
-            game_state = json.loads(row[0])
-            channel_id = row[1]
-            game_state["channel_id"] = channel_id
-            
-            print(f"[Werewolf] GAME_STATE_LOADED [Guild {guild_id}] Phase: {game_state.get('phase')}, Players: {len(game_state.get('players', {}))}")
-            return game_state
+            if states:
+                print(f"[Werewolf] GAME_STATES_LOADED [Guild {guild_id}] {len(states)} game(s)")
+            return states
         except Exception as e:
-            print(f"[Werewolf] ERROR loading game state: {e}")
-            return None
+            print(f"[Werewolf] ERROR loading game states: {e}")
+            return []

@@ -219,11 +219,12 @@ class GiveawayCog(commands.Cog):
         winners="Số người thắng (mặc định 1)",
         req_invite="Số invite yêu cầu (Acc > 7 ngày)",
         req_rod="Cấp cần câu yêu cầu (1-5)",
-        cost="Giá vé tham gia (Hạt)"
+        cost="Giá vé tham gia (Hạt)",
+        image_url="Link ảnh/gif để hiển thị (tùy chọn)"
     )
     async def create_giveaway(self, interaction: discord.Interaction, 
                               prize: str, duration: str, winners: int = 1,
-                              req_invite: int = 0, req_rod: int = 0, cost: int = 0):
+                              req_invite: int = 0, req_rod: int = 0, cost: int = 0, image_url: str = None):
         
         # 1. Parse Duration
         seconds = 0
@@ -258,6 +259,9 @@ class GiveawayCog(commands.Cog):
         if req_rod > 0: embed.add_field(name="Điều kiện", value=f"🎣 **Cần Câu Lv{req_rod}**", inline=True)
         if cost > 0: embed.add_field(name="Vé tham gia", value=f"💰 **{cost} Hạt**", inline=True)
 
+        if image_url:
+            embed.set_image(url=image_url)
+
         # 4. Send Message (Temporary ID)
         # We need to send first to get ID
         # View needs ID to be persistent. 
@@ -278,9 +282,9 @@ class GiveawayCog(commands.Cog):
         # 6. Save to DB
         await db_manager.modify(
             """INSERT INTO giveaways 
-            (message_id, channel_id, guild_id, host_id, prize, winners_count, end_time, requirements, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (msg.id, msg.channel.id, interaction.guild.id, interaction.user.id, prize, winners, end_time, json.dumps(reqs), 'active')
+            (message_id, channel_id, guild_id, host_id, prize, winners_count, end_time, requirements, status, image_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (msg.id, msg.channel.id, interaction.guild.id, interaction.user.id, prize, winners, end_time, json.dumps(reqs), 'active', image_url)
         )
         
         await interaction.edit_original_response(content="✅ Đã tạo Giveaway thành công!")

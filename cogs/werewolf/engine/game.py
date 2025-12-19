@@ -147,6 +147,8 @@ class WerewolfGame:
                 await self._wolf_thread.delete()
             except discord.HTTPException:
                 pass
+        # Unmute all players in voice channel
+        await self._unmute_voice(force_unmute_all=True)
         # Delete player role if it exists
         if self._player_role:
             try:
@@ -1275,8 +1277,12 @@ class WerewolfGame:
         except Exception as e:
             logger.error("Failed to mute voice channel | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
-    async def _unmute_voice(self) -> None:
-        """Unmute alive players in voice channel during day phase, keep dead players muted."""
+    async def _unmute_voice(self, force_unmute_all: bool = False) -> None:
+        """Unmute alive players in voice channel during day phase, keep dead players muted.
+        
+        Args:
+            force_unmute_all: If True, unmute all players regardless of alive status (used in cleanup).
+        """
         if not self.voice_channel_id:
             return
         try:
@@ -1290,8 +1296,8 @@ class WerewolfGame:
             for member in voice_channel.members:
                 # Check if player is alive
                 player = self.players.get(member.id)
-                if player and not player.alive:
-                    # Keep dead players muted
+                if not force_unmute_all and player and not player.alive:
+                    # Keep dead players muted (unless force_unmute_all)
                     try:
                         if member.voice and not member.voice.mute:
                             await member.edit(mute=True, reason="Werewolf: Dead player must stay muted")
@@ -1300,14 +1306,14 @@ class WerewolfGame:
                     continue
                 
                 try:
-                    await member.edit(mute=False, reason="Werewolf: Day phase - unmute")
+                    await member.edit(mute=False, reason="Werewolf: Day phase - unmute" if not force_unmute_all else "Werewolf: Game ended - unmute all")
                     unmuted_count += 1
                 except discord.HTTPException as e:
                     logger.warning("Failed to unmute member | guild=%s member=%s error=%s", 
                                  self.guild.id, member.id, str(e))
             
-            logger.info("Voice unmuted | guild=%s voice_channel=%s unmuted_count=%s", 
-                       self.guild.id, self.voice_channel_id, unmuted_count)
+            logger.info("Voice unmuted | guild=%s voice_channel=%s unmuted_count=%s force_unmute_all=%s", 
+                       self.guild.id, self.voice_channel_id, unmuted_count, force_unmute_all)
         except Exception as e:
             logger.error("Failed to unmute voice channel | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 

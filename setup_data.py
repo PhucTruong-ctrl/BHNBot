@@ -112,7 +112,6 @@ def init_database():
                     guild_id INTEGER PRIMARY KEY,
                     logs_channel_id INTEGER,
                     noitu_channel_id INTEGER,
-                    wolf_channel_id INTEGER,
                     giveaway_channel_id INTEGER,
                     exclude_chat_channels TEXT,
                     harvest_buff_until DATETIME
@@ -150,6 +149,14 @@ def init_database():
                     status TEXT DEFAULT 'active'
                 )''')
 
+    # Add image_url column if not exists
+    try:
+        c.execute("ALTER TABLE giveaways ADD COLUMN image_url TEXT")
+        print("✓ Added image_url column to giveaways table")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+
     c.execute('''CREATE TABLE IF NOT EXISTS giveaway_participants (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     giveaway_id INTEGER,
@@ -170,10 +177,11 @@ def init_database():
     c.execute('''CREATE TABLE IF NOT EXISTS game_sessions (
                     guild_id INTEGER,
                     game_type TEXT, -- 'werewolf', 'noitu'
+                    voice_channel_id INTEGER, -- For werewolf voice games, NULL for text
                     channel_id INTEGER,
                     game_state TEXT, -- JSON serialized state
                     last_saved DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (guild_id, game_type)
+                    PRIMARY KEY (guild_id, game_type, voice_channel_id)
                 )''')
 
     conn.commit()
@@ -286,8 +294,8 @@ def init_database():
     
     # Index cho Game Sessions (Quick lookup)
     try:
-        c.execute("CREATE INDEX IF NOT EXISTS idx_game_sessions_lookup ON game_sessions(guild_id, game_type)")
-        print("✓ Created index: game_sessions(guild_id, game_type)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_game_sessions_lookup ON game_sessions(guild_id, game_type, voice_channel_id)")
+        print("✓ Created index: game_sessions(guild_id, game_type, voice_channel_id)")
     except:
         pass
 

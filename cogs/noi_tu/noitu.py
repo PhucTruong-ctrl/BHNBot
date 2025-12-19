@@ -35,6 +35,71 @@ class GameNoiTu(commands.Cog):
         self.dict_load_lock = asyncio.Lock()
         # Co-op Streak tracking: {guild_id: current_streak_count}
         self.streak = {}
+        # Track if we've already initialized
+        self._initialized = False
+
+    async def cog_load(self):
+        """Called when the cog is loaded - initialize games here"""
+        log("Cog loaded, scheduling game initialization")
+        # Schedule initialization as a background task
+        asyncio.create_task(self._initialize_games_on_load())
+
+    async def _initialize_games_on_load(self):
+        """Initialize games after cog is loaded - called as background task"""
+        try:
+            # Wait for bot to be ready
+            await self.bot.wait_until_ready()
+            log("Bot is ready - initializing NoiTu games")
+            
+            # Load dictionary
+            async with self.dict_load_lock:
+                await self._load_dictionary()
+            
+            if not self.dict_loaded:
+                log("⚠️  Dictionary not loaded, skipping game initialization")
+                return
+            
+            # Initialize games
+            log("Auto-initializing games for configured servers")
+            try:
+                async with aiosqlite.connect(DB_PATH) as db:
+                    async with db.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL") as cursor:
+                        rows = await cursor.fetchall()
+                
+                if not rows:
+                    log("⚠️  No NoiTu channels configured in database")
+                    return
+                
+                initialized_count = 0
+                for guild_id, channel_id in rows:
+                    channel = self.bot.get_channel(channel_id)
+                    if not channel:
+                        log(f"⚠️  Channel {channel_id} not found for guild {guild_id}")
+                        continue
+                    
+                    if guild_id in self.games:
+                        log(f"⏭️  Game already initialized for guild {guild_id}, skipping")
+                        continue
+                    
+                    try:
+                        # Try to restore game state from database first
+                        is_restored = await self.restore_game_state(guild_id, channel)
+                        if not is_restored:
+                            # If no saved state, start fresh
+                            await self.start_new_round(guild_id, channel)
+                        log(f"✅ Game initialized for guild {guild_id} (restored={is_restored})")
+                        initialized_count += 1
+                    except Exception as e:
+                        log(f"❌ Failed to initialize game for guild {guild_id}: {e}")
+                
+                log(f"Auto-initialization complete: {initialized_count}/{len(rows)} games initialized")
+                self._initialized = True
+            except Exception as e:
+                log(f"ERROR in initialization loop: {e}")
+        except Exception as e:
+            log(f"FATAL ERROR in _initialize_games_on_load: {e}")
+            import traceback
+            traceback.print_exc()
 
     async def _load_dictionary(self):
         """Load words dictionary from file"""
@@ -65,40 +130,6 @@ class GameNoiTu(commands.Cog):
             self.dict_loaded = False
             return False
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        """Auto-initialize games for all configured servers on bot startup"""
-        log("Bot ready - Loading/reloading words dictionary")
-        
-        # Use lock to prevent multiple concurrent loads
-        async with self.dict_load_lock:
-            await self._load_dictionary()
-        
-        # Auto-initialize games for configured servers
-        if not self.dict_loaded:
-            log("⚠️  Dictionary not loaded, skipping game initialization")
-            return
-        
-        log("Auto-initializing games for configured servers")
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL") as cursor:
-                    rows = await cursor.fetchall()
-            
-            for guild_id, channel_id in rows:
-                channel = self.bot.get_channel(channel_id)
-                if channel and guild_id not in self.games:
-                    try:
-                        # Try to restore game state from database first
-                        is_restored = await self.restore_game_state(guild_id, channel)
-                        if not is_restored:
-                            # If no saved state, start fresh
-                            await self.start_new_round(guild_id, channel)
-                        log(f"Game initialized for guild {guild_id} (restored={is_restored})")
-                    except Exception as e:
-                        log(f"Failed to initialize game for guild {guild_id}: {e}")
-        except Exception as e:
-            log(f"ERROR initializing games: {e}")
 
     # --- Helper Functions ---
     async def get_config_channel(self, guild_id):
@@ -728,196 +759,196 @@ class GameNoiTu(commands.Cog):
                     msg = await message.channel.send(game["start_message_content"])
                     game['start_message'] = msg
                 return "invalid_format"
-                
-                # Skip if starts with command prefix
-                if content.startswith(('!', '/')):
-                    log(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (command prefix)")
-                    # Refresh sticky start message if game is in round 1
-                    if game['player_count'] == 0:
-                        try:
-                            if game.get('start_message'):
-                                await game['start_message'].delete()
-                        except:
-                            pass
-                        msg = await message.channel.send(game["start_message_content"])
-                        game['start_message'] = msg
-                    return "command_prefix"
-
-                # Anti-Self-Play
-                if message.author.id == game['last_author_id']:
-                    log(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
+            
+            # Skip if starts with command prefix
+            if content.startswith(('!', '/')):
+                log(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (command prefix)")
+                # Refresh sticky start message if game is in round 1
+                if game['player_count'] == 0:
                     try:
-                            await message.add_reaction("❌")
+                        if game.get('start_message'):
+                            await game['start_message'].delete()
                     except:
                         pass
-                    await message.reply("Ko được tự reply, chờ người khác nhé", delete_after=5)
-                    return "self_play"
+                    msg = await message.channel.send(game["start_message_content"])
+                    game['start_message'] = msg
+                return "command_prefix"
 
-                current_word = game['current_word']
-                last_syllable = current_word.split()[-1].lower()
-                first_syllable = content.split()[0].lower()
-
-                # Check connection
-                if first_syllable != last_syllable:
-                    log(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
-                    try:
-                            await message.add_reaction("❌")
-                    except:
-                        pass
-                    await message.reply(f"Từ phải bắt đầu bằng **{last_syllable}**", delete_after=3)
-                    return "wrong_connection"
-
-                # Check used
-                if content in game['used_words']:
-                    log(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
-                    try:
-                            await message.add_reaction("❌")
-                    except:
-                        pass
-                    await message.reply("Từ này dùng rồi, tìm từ khác đi", delete_after=3)
-                    return "already_used"
-
-                # Check dictionary
-                if not await self.check_word_in_db(content):
-                    log(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
-                    try:
-                            await message.add_reaction("❌")
-                    except:
-                        pass
-                    
-                    # Import QuickAddWordView from add_word cog
-                    try:
-                        from cogs.noi_tu.add_word import QuickAddWordView
-                        view = QuickAddWordView(content, message.author, self.bot)
-                        await message.reply(
-                            f"Từ **{content}** không có trong từ điển. Bạn muốn gửi admin thêm từ này?",
-                            view=view,
-                            delete_after=10
-                        )
-                    except Exception as e:
-                        log(f"ERROR showing add word view: {e}")
-                        await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)
-                    return "not_in_dict"
-
-                # === VALID MOVE ===
+            # Anti-Self-Play
+            if message.author.id == game['last_author_id']:
+                log(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
                 try:
-                        await message.add_reaction("✅")
+                    await message.add_reaction("❌")
+                except:
+                    pass
+                await message.reply("Ko được tự reply, chờ người khác nhé", delete_after=5)
+                return "self_play"
+
+            current_word = game['current_word']
+            last_syllable = current_word.split()[-1].lower()
+            first_syllable = content.split()[0].lower()
+
+            # Check connection
+            if first_syllable != last_syllable:
+                log(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
+                try:
+                    await message.add_reaction("❌")
+                except:
+                    pass
+                await message.reply(f"Từ phải bắt đầu bằng **{last_syllable}**", delete_after=3)
+                return "wrong_connection"
+
+            # Check used
+            if content in game['used_words']:
+                log(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
+                try:
+                    await message.add_reaction("❌")
+                except:
+                    pass
+                await message.reply("Từ này dùng rồi, tìm từ khác đi", delete_after=3)
+                return "already_used"
+
+            # Check dictionary
+            if not await self.check_word_in_db(content):
+                log(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
+                try:
+                    await message.add_reaction("❌")
                 except:
                     pass
                 
-                # Initialize streak counter if not exists
-                if guild_id not in self.streak:
-                    self.streak[guild_id] = 0
+                # Import QuickAddWordView from add_word cog
+                try:
+                    from cogs.noi_tu.add_word import QuickAddWordView
+                    view = QuickAddWordView(content, message.author, self.bot)
+                    await message.reply(
+                        f"Từ **{content}** không có trong từ điển. Bạn muốn gửi admin thêm từ này?",
+                        view=view,
+                        delete_after=10
+                    )
+                except Exception as e:
+                    log(f"ERROR showing add word view: {e}")
+                    await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)
+                return "not_in_dict"
+
+            # === VALID MOVE ===
+            try:
+                await message.add_reaction("✅")
+            except:
+                pass
+            
+            # Initialize streak counter if not exists
+            if guild_id not in self.streak:
+                self.streak[guild_id] = 0
+            
+            # Increment streak on valid move
+            self.streak[guild_id] += 1
+            current_streak = self.streak[guild_id]
+            
+            log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (Streak: {current_streak}, Players: {game['player_count'] + 1})")
+            
+            # Track player with word count
+            if message.author.id not in game['players']:
+                game['players'][message.author.id] = {"username": message.author.name, "correct_words": 0}
+            
+            # Increment correct word count for this player (only for end-of-game bonus, not for immediate reward)
+            game['players'][message.author.id]["correct_words"] += 1
+            
+            # Update player stats (correct word count)
+            await self.update_player_stats(message.author.id, message.author.name, is_winner=False)
+            
+            # Cancel old timer
+            if game['timer_task']:
+                game['timer_task'].cancel()
+                try:
+                    if game.get('timer_message'):
+                        await game['timer_message'].delete()
+                        game['timer_message'] = None
+                except:
+                    pass
+                log(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
+            
+            # Update player count
+            game['player_count'] += 1
+            
+            # Notify when Player 2 joins
+            if game['player_count'] == 2:
+                try:
+                    await message.channel.send("🎮 Nối từ bắt đầu!")
+                except:
+                    pass
+            
+            # Update game state
+            game['current_word'] = content
+            game['used_words'].add(content)
+            game['last_author_id'] = message.author.id
+            game['last_message_time'] = time.time()
+            
+            # === MILESTONE REWARD (Cứ 10 từ thành công) ===
+            if current_streak > 0 and current_streak % 10 == 0:
+                try:
+                    economy_cog = self.bot.get_cog("EconomyCog")
+                    is_buff_active = await economy_cog.is_harvest_buff_active(guild_id)
+                    milestone_reward = 20 * (2 if is_buff_active else 1)
+                    
+                    await message.channel.send(f"🔥 **MILESTONE! Chuỗi {current_streak}!** Cả phòng nhận được **{milestone_reward} Hạt**! 🎉")
+                    # Distribute milestone reward to all players
+                    for player_id in game['players'].keys():
+                        await economy_cog.add_seeds_local(player_id, milestone_reward)
+                except Exception as e:
+                    log(f"ERROR awarding milestone: {e}")
+            
+            # Save game state
+            await self.save_game_state(guild_id, message.channel.id)
+            
+            # Check Dead End
+            has_next = await self.check_if_word_has_next(content, game['used_words'])
+            
+            if not has_next:
+                last_syllable = content.split()[-1]
+                log(f"DEAD_END [Guild {guild_id}] No words starting with '{last_syllable}' - Streak ended at {current_streak}")
                 
-                # Increment streak on valid move
-                self.streak[guild_id] += 1
-                current_streak = self.streak[guild_id]
+                # Embed for end-of-streak
+                embed = discord.Embed(
+                    title="🛑 BÍ TỪ!",
+                    description=f"Không có từ nào bắt đầu bằng **{last_syllable}**.",
+                    color=discord.Color.orange()
+                )
+                embed.add_field(
+                    name="🔥 Chuỗi Cộng Đồng",
+                    value=f"Chuỗi **{current_streak}** từ kết thúc!",
+                    inline=False
+                )
+                embed.add_field(
+                    name="👤 Người cuối cùng",
+                    value=message.author.mention,
+                    inline=False
+                )
                 
-                log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (Streak: {current_streak}, Players: {game['player_count'] + 1})")
+                await message.channel.send(embed=embed)
                 
-                # Track player with word count
-                if message.author.id not in game['players']:
-                    game['players'][message.author.id] = {"username": message.author.name, "correct_words": 0}
+                # Distribute rewards to all participants
+                if game.get('players'):
+                    await self.distribute_streak_rewards(guild_id, game['players'], current_streak, message.channel)
                 
-                # Increment correct word count for this player (only for end-of-game bonus, not for immediate reward)
-                game['players'][message.author.id]["correct_words"] += 1
-                
-                # Update player stats (correct word count)
-                await self.update_player_stats(message.author.id, message.author.name, is_winner=False)
-                
-                # Cancel old timer
-                if game['timer_task']:
-                    game['timer_task'].cancel()
-                    try:
-                        if game.get('timer_message'):
-                            await game['timer_message'].delete()
-                            game['timer_message'] = None
-                    except:
-                        pass
-                    log(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
-                
-                # Update player count
-                game['player_count'] += 1
-                
-                # Notify when Player 2 joins
-                if game['player_count'] == 2:
-                    try:
-                        await message.channel.send("🎮 Nối từ bắt đầu!")
-                    except:
-                        pass
-                
-                # Update game state
-                game['current_word'] = content
-                game['used_words'].add(content)
-                game['last_author_id'] = message.author.id
-                game['last_message_time'] = time.time()
-                
-                # === MILESTONE REWARD (Cứ 10 từ thành công) ===
-                if current_streak > 0 and current_streak % 10 == 0:
-                    try:
-                        economy_cog = self.bot.get_cog("EconomyCog")
-                        is_buff_active = await economy_cog.is_harvest_buff_active(guild_id)
-                        milestone_reward = 20 * (2 if is_buff_active else 1)
-                        
-                        await message.channel.send(f"🔥 **MILESTONE! Chuỗi {current_streak}!** Cả phòng nhận được **{milestone_reward} Hạt**! 🎉")
-                        # Distribute milestone reward to all players
-                        for player_id in game['players'].keys():
-                            await economy_cog.add_seeds_local(player_id, milestone_reward)
-                    except Exception as e:
-                        log(f"ERROR awarding milestone: {e}")
-                
-                # Save game state
+                # Reset and start new round
+                self.streak[guild_id] = 0
+                self.cleanup_game_lock(guild_id)
+                await self.start_new_round(guild_id, message.channel)
                 await self.save_game_state(guild_id, message.channel.id)
-                
-                # Check Dead End
-                has_next = await self.check_if_word_has_next(content, game['used_words'])
-                
-                if not has_next:
-                    last_syllable = content.split()[-1]
-                    log(f"DEAD_END [Guild {guild_id}] No words starting with '{last_syllable}' - Streak ended at {current_streak}")
-                    
-                    # Embed for end-of-streak
-                    embed = discord.Embed(
-                        title="🛑 BÍ TỪ!",
-                        description=f"Không có từ nào bắt đầu bằng **{last_syllable}**.",
-                        color=discord.Color.orange()
-                    )
-                    embed.add_field(
-                        name="🔥 Chuỗi Cộng Đồng",
-                        value=f"Chuỗi **{current_streak}** từ kết thúc!",
-                        inline=False
-                    )
-                    embed.add_field(
-                        name="👤 Người cuối cùng",
-                        value=message.author.mention,
-                        inline=False
-                    )
-                    
-                    await message.channel.send(embed=embed)
-                    
-                    # Distribute rewards to all participants
-                    if game.get('players'):
-                        await self.distribute_streak_rewards(guild_id, game['players'], current_streak, message.channel)
-                    
-                    # Reset and start new round
-                    self.streak[guild_id] = 0
-                    self.cleanup_game_lock(guild_id)
-                    await self.start_new_round(guild_id, message.channel)
-                    await self.save_game_state(guild_id, message.channel.id)
-                    return "valid_move"
-                
-                # Start timer only after 2nd player joins
-                if game['player_count'] >= 2:
-                    log(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
-                    game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
-                else:
-                    log(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
-                    try:
-                        await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
-                    except:
-                        pass
-                
                 return "valid_move"
+            
+            # Start timer only after 2nd player joins
+            if game['player_count'] >= 2:
+                log(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
+                game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
+            else:
+                log(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
+                try:
+                    await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
+                except:
+                    pass
+            
+            return "valid_move"
         
         except Exception as e:
             log(f"ERROR [Guild {guild_id}] Exception in _process_word: {str(e)}")

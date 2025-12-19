@@ -1,6 +1,9 @@
 import datetime
 import random
+import logging
 from .constants import *
+
+logger = logging.getLogger("relationship")
 
 def get_affinity_title(points):
     """Get the title based on affinity points."""
@@ -19,18 +22,22 @@ def get_pet_state(pet_level, last_fed_time):
     
     # 1. Check hunger (> 24h since last fed)
     # last_fed_time can be a string from SQLite or a datetime object
-    if isinstance(last_fed_time, str):
-        try:
-            last_fed = datetime.datetime.fromisoformat(last_fed_time)
-        except ValueError:
-            # Handle different formats if necessary, e.g., with or without milliseconds
+    try:
+        if isinstance(last_fed_time, str):
             try:
-                 last_fed = datetime.datetime.strptime(last_fed_time, "%Y-%m-%d %H:%M:%S.%f")
-            except:
-                 last_fed = datetime.datetime.strptime(last_fed_time, "%Y-%m-%d %H:%M:%S")
-    else:
-        last_fed = last_fed_time
-
+                last_fed = datetime.datetime.fromisoformat(last_fed_time)
+            except ValueError:
+                # Handle different formats if necessary, e.g., with or without milliseconds
+                try:
+                     last_fed = datetime.datetime.strptime(last_fed_time, "%Y-%m-%d %H:%M:%S.%f")
+                except:
+                     last_fed = datetime.datetime.strptime(last_fed_time, "%Y-%m-%d %H:%M:%S")
+        else:
+            last_fed = last_fed_time
+    except Exception as e:
+        logger.error(f"Failed to parse last_fed_time {last_fed_time}: {e}, defaulting to idle")
+        return "idle"
+    
     # Make last_fed timezone naive if now is naive, or both aware. 
     # Assuming system time is naive local time or UTC. 
     # Best to stick to whatever discord.utils.utcnow() returns if using that, but here we used datetime.now()

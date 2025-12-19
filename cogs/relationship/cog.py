@@ -4,11 +4,14 @@ from discord.ext import commands
 import datetime
 import random
 import asyncio
+import logging
 from typing import Optional
 from database_manager import db_manager, remove_item, add_item, get_top_affinity_friends
 from cogs.shop import SHOP_ITEMS, VIETNAMESE_TO_ITEM_KEY
 from .constants import *
 from .helpers import get_affinity_title, get_pet_state, calculate_next_level_xp
+
+logger = logging.getLogger("relationship")
 
 class ConfirmView(discord.ui.View):
     def __init__(self, inviter, invitee):
@@ -110,6 +113,7 @@ class RelationshipCog(commands.Cog):
         # Add affinity
         base_points = AFFINITY_VALUES.get(item_key, 5)
         await self.add_affinity(interaction.user.id, user.id, base_points)
+        logger.info(f"Gift: {interaction.user.id} -> {user.id}, item: {item_key}, affinity: +{base_points}, anonymous: {an_danh}")
         
         # Create Embed
         # Visual & Fame
@@ -164,6 +168,7 @@ class RelationshipCog(commands.Cog):
                 "INSERT INTO shared_pets (user_id_1, user_id_2, name, level, exp, last_fed, start_date) VALUES (?, ?, ?, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 (u1, u2, PET_DEFAULT_NAME)
             )
+            logger.info(f"Pet created: users {u1} and {u2}, name: {PET_DEFAULT_NAME}")
             await interaction.followup.send(f"🎉 Chúc mừng! **{interaction.user.name}** và **{user.name}** đã nhận nuôi một bé **{PET_DEFAULT_NAME}**!\nDùng lệnh `/nuoi` để chăm sóc bé nhé.")
         elif view.value is False:
             await interaction.followup.send(f"💔 {user.name} đã từ chối lời mời...")
@@ -181,10 +186,13 @@ class RelationshipCog(commands.Cog):
             "SELECT * FROM shared_pets WHERE user_id_1 = ? OR user_id_2 = ?",
             (interaction.user.id, interaction.user.id)
         )
-        pets = await rows.fetchall()
+        pets = rows
         
         if not pets:
              return await interaction.followup.send("❌ Bạn chưa nuôi thú cưng với ai cả! Hãy dùng `/kethop` với bạn thân nhé.")
+        
+        if len(pets) > 1:
+            logger.warning(f"User {interaction.user.id} has multiple pets ({len(pets)}), using first one")
         
         # Use the first pet found for now (MVP)
         pet = pets[0] 
@@ -257,6 +265,8 @@ class RelationshipCog(commands.Cog):
                 "UPDATE shared_pets SET exp = ? WHERE id = ?",
                 (new_exp, pet_id)
             )
+        
+        logger.info(f"Pet action: user {interaction.user.id}, pet {pet_id}, action {action}, exp +{exp_gain}, new_exp {new_exp}, level {level}")
 
         # Generate Embed
         state = get_pet_state(level, last_fed)
@@ -276,7 +286,7 @@ class RelationshipCog(commands.Cog):
         
         embed = discord.Embed(title=f"🐱 {pet_name} (Lv.{level})", description=f"Cùng nuôi với: **{partner_name}**", color=COLOR_PET)
         embed.add_field(name="💬 Mèo nói:", value=f'"{msg_response}"', inline=False)
-        embed.add_field(name="📊 Trạng thái:", value=f"EXP: {new_exp}/{req_exp}\nNo bụng: {{'✅' if state != 'sad' else '❌ (Đói lắm rồi!)'}}", inline=True)
+        embed.add_field(name="📊 Trạng thái:", value=f"EXP: {new_exp}/{req_exp}\nNo bụng: {'✅' if state != 'sad' else '❌ (Đói lắm rồi!)'}", inline=True)
         
         if level_up_msg:
              embed.add_field(name="🌟 Level Up!", value=level_up_msg, inline=False)
@@ -400,10 +410,7 @@ class RelationshipCog(commands.Cog):
                 if not replied_msg.author.bot and replied_msg.author.id != message.author.id:
                     # Add small affinity (2 points)
                     await self.add_affinity(message.author.id, replied_msg.author.id, 2)
-                    print(
-                        f"[AFFINITY] [REPLY] actor_id={message.author.id} actor={message.author.name} "
-                        f"target_id={replied_msg.author.id} target={replied_msg.author.name} affinity_change=+2"
-                    )
+                    logger.info(f"Auto affinity reply: {message.author.id} -> {replied_msg.author.id}, +2")
             except:
                 pass
         
@@ -412,10 +419,7 @@ class RelationshipCog(commands.Cog):
             if not mentioned_user.bot and mentioned_user.id != message.author.id:
                 # Add small affinity (1 point)
                 await self.add_affinity(message.author.id, mentioned_user.id, 1)
-                print(
-                    f"[AFFINITY] [MENTION] actor_id={message.author.id} actor={message.author.name} "
-                    f"target_id={mentioned_user.id} target={mentioned_user.name} affinity_change=+1"
-                )
+                logger.info(f"Auto affinity mention: {message.author.id} -> {mentioned_user.id}, +1")
 
 async def setup(bot):
     await bot.add_cog(RelationshipCog(bot))

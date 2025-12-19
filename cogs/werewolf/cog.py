@@ -32,76 +32,16 @@ class WerewolfCog(commands.Cog):
 
     def cog_unload(self) -> None:
         asyncio.create_task(self.manager.stop_all())
-    
     @commands.Cog.listener()
     async def on_ready(self) -> None:
         """Auto-restore saved Werewolf games on bot startup"""
-        print("[Werewolf] Checking for saved games to restore...")
-        try:
-            # Get all saved werewolf game states from database
-            import aiosqlite
-            import json
-            
-            DB_PATH = "./data/database.db"
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT guild_id, channel_id, game_state FROM game_sessions WHERE game_type = ? AND guild_id IS NOT NULL",
-                    ("werewolf",)
-                ) as cursor:
-                    rows = await cursor.fetchall()
-            
-            if rows:
-                print(f"[Werewolf] Found {len(rows)} saved game(s) to restore")
-            
-            for guild_id, channel_id, game_state_json in rows:
-                try:
-                    guild = self.bot.get_guild(guild_id)
-                    channel = self.bot.get_channel(channel_id)
-                    
-                    if not guild or not channel:
-                        print(f"[Werewolf] Guild {guild_id} or channel {channel_id} not found, skipping restore")
-                        # Delete orphaned session
-                        async with aiosqlite.connect(DB_PATH) as db:
-                            await db.execute(
-                                "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                                (guild_id, "werewolf")
-                            )
-                            await db.commit()
-                        continue
-                    
-                    game_state = json.loads(game_state_json)
-                    print(f"[Werewolf] Restoring game in guild {guild_id}: Phase={game_state.get('phase')}, Players={len(game_state.get('players', {}))}")
-                    
-                    # TODO: Implement full game state restoration
-                    # This is a placeholder - full restoration would require:
-                    # 1. Recreating WerewolfGame with same expansions
-                    # 2. Restoring player states with roles
-                    # 3. Restoring phase and night/day numbers
-                    # 4. Re-connecting to voice channel if voice mode
-                    # For now, notify admins to restart games
-                    
-                    await channel.send(
-                        "⚠️ **Game Resume Notice**: A Werewolf game was interrupted during restart. "
-                        "Please use `/werewolf start` to begin a new game. "
-                        "(Full state restoration coming soon)"
-                    )
-                    
-                    # Delete the saved state since we can't restore it yet
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        await db.execute(
-                            "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                            (guild_id, "werewolf")
-                        )
-                        await db.commit()
-                    
-                except Exception as e:
-                    print(f"[Werewolf] Error restoring game in guild {guild_id}: {e}")
-        except Exception as e:
-            print(f"[Werewolf] Error in on_ready restore: {e}")
+        # Temporarily disabled for dynamic voice channel support
+        # TODO: Implement full game state restoration with voice_channel_id
+        pass
 
-    @commands.group(name="werewolf", invoke_without_command=True)
+    @commands.group(name="masoi", invoke_without_command=True)
     async def werewolf_group(self, ctx: commands.Context) -> None:
-        await ctx.send("Các lệnh: !werewolf create, !werewolf guide")
+        await ctx.send("Các lệnh: !masoi create, !masoi guide")
 
     @werewolf_group.command(name="create")
     async def create(self, ctx: commands.Context, game_mode: str = "text", *expansion_flags: str) -> None:
@@ -109,6 +49,20 @@ class WerewolfCog(commands.Cog):
         if game_mode not in ("text", "voice"):
             await ctx.send("Mode phải là 'text' hoặc 'voice'", delete_after=6)
             return
+        
+        voice_channel_id = None
+        if game_mode == "voice":
+            # Check if user is in a voice channel
+            if not ctx.author.voice or not ctx.author.voice.channel:
+                await ctx.send("❌ Bạn phải vào một kênh Voice trước mới tạo bàn được!", delete_after=6)
+                return
+            voice_channel = ctx.author.voice.channel
+            # Check bot permissions
+            permissions = voice_channel.permissions_for(ctx.guild.me)
+            if not permissions.mute_members:
+                await ctx.send(f"❌ Bot thiếu quyền **Mute Members** trong kênh {voice_channel.name}!\nNhờ Admin cấp quyền cho Bot nhé.", delete_after=10)
+                return
+            voice_channel_id = voice_channel.id
         
         # Check if current channel is set as NoiTu channel
         import aiosqlite
@@ -127,7 +81,7 @@ class WerewolfCog(commands.Cog):
         except Exception as e:
             print(f"Error checking NoiTu channel: {e}")
         
-        existing = self.manager.get_game(ctx.guild.id) if ctx.guild else None
+        existing = self.manager.get_game(ctx.guild.id, voice_channel_id) if ctx.guild else None
         if existing and not existing.is_finished:
             await ctx.send("Đang có một bàn Ma Sói khác hoạt động.", delete_after=8)
             return
@@ -137,7 +91,7 @@ class WerewolfCog(commands.Cog):
             if exp:
                 expansions.add(exp)
         try:
-            game = await self.manager.create_game(ctx.guild, ctx.channel, ctx.author, expansions, game_mode=game_mode)  # type: ignore[arg-type]
+            game = await self.manager.create_game(ctx.guild, ctx.channel, ctx.author, expansions, game_mode=game_mode, voice_channel_id=voice_channel_id)  # type: ignore[arg-type]
         except RuntimeError as exc:
             await ctx.send(str(exc), delete_after=8)
             return
@@ -162,24 +116,38 @@ class WerewolfCog(commands.Cog):
         view = guide_cog.get_guide_view(ctx.author.id)
         await ctx.send(embed=embed, view=view)
 
-    werewolf_group_app = app_commands.Group(name="werewolf", description="Werewolf game commands")
+    werewolf_group_app = app_commands.Group(name="masoi", description="Werewolf game commands")
 
-    @werewolf_group_app.command(name="start", description="Bắt đầu trò chơi Ma Sói")
+    @werewolf_group_app.command(name="create", description="Tạo bàn chơi Ma Sói tại kênh Voice bạn đang ngồi")
     @app_commands.describe(
         game_mode="'text' hoặc 'voice' (mặc định: text)",
         expansion="Expansion (newmoon, village)"
     )
-    async def start_slash(self, interaction: discord.Interaction, game_mode: str = "text", expansion: str = "") -> None:
-        """Start a werewolf game via slash command.
+    async def create_slash(self, interaction: discord.Interaction, game_mode: str = "text", expansion: str = "") -> None:
+        """Create a werewolf game via slash command.
         
         Usage:
-            /werewolf start
-            /werewolf start voice newmoon
+            /masoi create
+            /masoi create voice newmoon
         """
         game_mode = game_mode.lower()
         if game_mode not in ("text", "voice"):
             await interaction.response.send_message("Mode phải là 'text' hoặc 'voice'", ephemeral=True)
             return
+        
+        voice_channel_id = None
+        if game_mode == "voice":
+            # Check if user is in a voice channel
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                await interaction.response.send_message("❌ Bạn phải vào một kênh Voice trước mới tạo bàn được!", ephemeral=True)
+                return
+            voice_channel = interaction.user.voice.channel
+            # Check bot permissions
+            permissions = voice_channel.permissions_for(interaction.guild.me)
+            if not permissions.mute_members:
+                await interaction.response.send_message(f"❌ Bot thiếu quyền **Mute Members** trong kênh {voice_channel.name}!\nNhờ Admin cấp quyền cho Bot nhé.", ephemeral=True)
+                return
+            voice_channel_id = voice_channel.id
         
         # Check if current channel is set as NoiTu channel
         import aiosqlite
@@ -200,7 +168,7 @@ class WerewolfCog(commands.Cog):
         
         await interaction.response.defer()
         
-        existing = self.manager.get_game(interaction.guild.id) if interaction.guild else None
+        existing = self.manager.get_game(interaction.guild.id, voice_channel_id) if interaction.guild else None
         if existing and not existing.is_finished:
             await interaction.followup.send("Đang có một bàn Ma Sói khác hoạt động.")
             return
@@ -212,7 +180,7 @@ class WerewolfCog(commands.Cog):
                 expansions.add(exp)
         
         try:
-            game = await self.manager.create_game(interaction.guild, interaction.channel, interaction.user, expansions, game_mode=game_mode)  # type: ignore[arg-type]
+            game = await self.manager.create_game(interaction.guild, interaction.channel, interaction.user, expansions, game_mode=game_mode, voice_channel_id=voice_channel_id)  # type: ignore[arg-type]
         except RuntimeError as exc:
             await interaction.followup.send(str(exc))
             return

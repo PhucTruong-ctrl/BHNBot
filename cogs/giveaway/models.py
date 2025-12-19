@@ -14,6 +14,7 @@ class Giveaway:
     end_time: datetime
     requirements: Dict
     status: str = 'active'
+    image_url: Optional[str] = None
 
     @classmethod
     def from_db(cls, row):
@@ -51,5 +52,6 @@ class Giveaway:
             winners_count=row[5],
             end_time=end_time,
             requirements=json.loads(row[7]) if row[7] else {},
-            status=row[8]
+            status=row[8],
+            image_url=row[9] if len(row) > 9 else None
         )

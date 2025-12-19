@@ -77,47 +77,6 @@ class ShopCog(commands.Cog):
 
     # ==================== COMMANDS ====================
 
-    @app_commands.command(name="shop", description="Xem danh sách quà tặng & vật phẩm trong cửa hàng")
-    async def shop(self, interaction: discord.Interaction):
-        """Display shop menu"""
-        await interaction.response.defer(ephemeral=True)
-        
-        embed = discord.Embed(
-            title="🏪 Cửa Hàng Quà Tặng & Vật Phẩm",
-            color=discord.Color.purple()
-        )
-        
-        # Regular gifts section
-        gifts_text = ""
-        consumables_text = ""
-        
-        for item_key, item_info in SHOP_ITEMS.items():
-            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
-                consumables_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
-            else:
-                gifts_text += f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n"
-        
-        if gifts_text:
-            embed.add_field(name="💝 Quà Tặng", value=gifts_text, inline=False)
-        
-        if consumables_text:
-            embed.add_field(name="💪 Vật Phẩm Buff", value=consumables_text, inline=False)
-        
-        embed.add_field(
-            name="📖 Cách Mua",
-            value="**Lệnh:** `/mua <item_key> [số_lượng]`\n\n**Ví dụ:**\n- `/mua cafe 1` (Cà phê)\n- `/mua nuoc_tang_luc 1` (Nước Tăng Lực)\n- `/mua may_do_song 1` (Máy Dò Sóng)\n\n**Item key:** Dùng tên item viết thường, có gạch dưới",
-            inline=False
-        )
-        embed.add_field(
-            name="💪 Buff Items",
-            value="🔹 Dùng `/sudung [item_key]` để kích hoạt buff trong một lần câu cá huyền thoại\n"
-                  "🔹 Dùng `/tuido` để xem các vật phẩm trong túi",
-            inline=False
-        )
-        embed.set_footer(text="Dùng /tangqua để tặng quà cho người khác")
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
     @app_commands.command(name="mua", description="Mua quà & vật phẩm từ cửa hàng")
     @app_commands.describe(
         item="Item key: cafe, flower, ring, gift, chocolate, card, worm hoặc nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, tinh_yeu_ca hoặc may_do_song",
@@ -257,22 +216,46 @@ class ShopCog(commands.Cog):
             color=discord.Color.gold()
         )
         
-        # Regular gifts section
-        gifts_text = ""
-        consumables_text = ""
+        # Categorize items
+        regular_gifts = []
+        pet_items = []
+        fishing_items = []
+        buff_items = []
+        special_items = []
+        commemorative_items = []
         
         for item_key, item_info in SHOP_ITEMS.items():
             line = f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n    💬 {item_info.get('description', 'N/A')}\n"
-            if item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
-                consumables_text += line
-            else:
-                gifts_text += line
+            if item_key in ["cafe", "flower", "ring", "gift", "chocolate", "card"]:
+                regular_gifts.append(line)
+            elif item_key in ["nuoc", "vitamin", "thuc_an_cao_cap"]:
+                pet_items.append(line)
+            elif item_key == "worm":
+                fishing_items.append(line)
+            elif item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
+                buff_items.append(line)
+            elif item_key == "may_do_song":
+                special_items.append(line)
+            elif item_key.startswith("qua_ngot_mua_"):
+                commemorative_items.append(line)
         
-        if gifts_text:
-            embed.add_field(name="💝 QUÀNG TẶNG", value=gifts_text, inline=False)
+        if regular_gifts:
+            embed.add_field(name="🎁 Quà Tặng Cơ Bản", value="".join(regular_gifts), inline=False)
         
-        if consumables_text:
-            embed.add_field(name="💪 VẬT PHẨM BUFF (Siêu Đắt)", value=consumables_text, inline=False)
+        if pet_items:
+            embed.add_field(name="🐱 Đồ Cho Pet", value="".join(pet_items), inline=False)
+        
+        if fishing_items:
+            embed.add_field(name="🎣 Đồ Câu Cá", value="".join(fishing_items), inline=False)
+        
+        if buff_items:
+            embed.add_field(name="💪 Vật Phẩm Buff (Siêu Đắt)", value="".join(buff_items), inline=False)
+        
+        if special_items:
+            embed.add_field(name="📡 Vật Phẩm Đặc Biệt", value="".join(special_items), inline=False)
+        
+        if commemorative_items:
+            embed.add_field(name="🏆 Vật Phẩm Kỉ Niệm", value="".join(commemorative_items), inline=False)
         
         embed.add_field(
             name="📖 CÁCH MUA",
@@ -283,7 +266,7 @@ class ShopCog(commands.Cog):
                   "• `!mua Nước Tăng Lực 1`",
             inline=False
         )
-        embed.set_footer(text="Dùng /shop để xem lại menu này")
+        embed.set_footer(text="Dùng !mua để xem menu này")
         
         if is_slash:
             await ctx_or_interaction.followup.send(embed=embed, ephemeral=True)

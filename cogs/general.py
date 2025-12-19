@@ -78,14 +78,16 @@ class General(commands.Cog):
     @commands.command(name="help")
     async def help_prefix(self, ctx):
         """Hiển thị danh sách lệnh"""
-        await self._send_help(ctx)
+        is_admin = ctx.author.guild_permissions.administrator if ctx.guild else False
+        await self._send_help(ctx, is_admin)
 
     @app_commands.command(name="help", description="Hiển thị danh sách lệnh")
     async def help_slash(self, interaction: discord.Interaction):
         """Hiển thị danh sách lệnh"""
-        await self._send_help(interaction)
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+        await self._send_help(interaction, is_admin)
 
-    async def _send_help(self, ctx_or_interaction):
+    async def _send_help(self, ctx_or_interaction, is_admin: bool = False):
         """Helper to send help embed"""
         embed = discord.Embed(
             title="📖 Danh sách lệnh BHNBot",
@@ -111,7 +113,6 @@ class General(commands.Cog):
         embed.add_field(
             name="💰 Kinh Tế & Túi Đồ",
             value="• `/chao` (Slash only) - Nhận quà sáng (5h-10h)\n"
-                  "• `/bal` (Slash only) - Xem số dư hạt\n"
                   "• `/tuido` (!tuido) - Xem túi đồ và hạt\n"
                   "• `/top` (!top) - Xem BXH đại gia hạt",
             inline=False
@@ -120,8 +121,7 @@ class General(commands.Cog):
         # 3. Shop & Items
         embed.add_field(
             name="🛍️ Cửa Hàng",
-            value="• `/shop` (Slash only) - Xem menu shop\n"
-                  "• `/mua` (!mua) - Mua đồ (VD: `/mua cafe 1`)",
+            value="• `/mua` (!mua) - Mua quà & vật phẩm từ cửa hàng",
             inline=False
         )
 
@@ -139,6 +139,7 @@ class General(commands.Cog):
         embed.add_field(
             name="🎮 Minigames",
             value="• `/baucua` (!baucua) - Chơi Bầu Cua Tôm Cá\n"
+                  "• `/masoi` (!masoi) - Chơi Ma Sói\n"
                   "• `/ntrank` (!ntrank) - BXH Nối Từ\n"
                   "• `/themtu` (!themtu) - Đề xuất từ mới cho Nối Từ\n"
                   "• `/reset` (!reset) - Reset game (Nối từ/Ma sói) tại kênh",
@@ -163,15 +164,17 @@ class General(commands.Cog):
         )
 
         # 8. Admin Only (Separate field)
-        embed.add_field(
-            name="⚙️ Admin / Quản Lý (Admin Only)",
-            value="• `/config set ...` - Cài đặt kênh (Nối từ, Log, v.v.)\n"
-                  "• `/exclude add/remove` - Chặn kênh nhận hạt chat\n"
-                  "• `/themhat` (!themhat) - Cộng hạt cho member\n"
-                  "• `/sync` (!sync) - Đồng bộ lệnh Slash\n"
-                  "• `!cog load/reload` - Quản lý module",
-            inline=False
-        )
+        if is_admin:
+            embed.add_field(
+                name="⚙️ Admin / Quản Lý (Admin Only)",
+                value="• `/config set ...` - Cài đặt kênh (Nối từ, Log, v.v.)\n"
+                      "• `/exclude add/remove` - Chặn kênh nhận hạt chat\n"
+                      "• `/themhat` (!themhat) - Cộng hạt cho member\n"
+                      "• `/sync` (!sync) - Đồng bộ lệnh Slash\n"
+                      "• `/thuhoach` - Thu hoạch cây server\n"
+                      "• `!cog load/reload` - Quản lý module",
+                inline=False
+            )
 
         embed.set_footer(text="Gõ / hoặc ! tên lệnh để bắt đầu")
         

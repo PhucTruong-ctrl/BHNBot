@@ -188,26 +188,6 @@ class EconomyCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="bal", description="Xem số hạt hiện tại")
-    @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
-    async def balance(self, interaction: discord.Interaction, user: discord.User = None):
-        """Check balance"""
-        await interaction.response.defer(ephemeral=True)
-        
-        target_user = user or interaction.user
-        await self.get_or_create_user_local(target_user.id, target_user.name)
-        
-        seeds = await self.get_user_balance_local(target_user.id)
-        
-        embed = discord.Embed(
-            title=f"💰 Số dư của {target_user.name}",
-            color=discord.Color.green()
-        )
-        embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
-        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
     @app_commands.command(name="tuido", description="Xem số hạt và túi đồ của bạn")
     @app_commands.describe(user="Người chơi (để trống để xem của bạn)")
     async def balance_alias(self, interaction: discord.Interaction, user: discord.User = None):
