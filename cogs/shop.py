@@ -209,6 +209,69 @@ class ShopCog(commands.Cog):
             f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
         )
 
+    @app_commands.command(name="themitem", description="Thêm item cho user (Admin Only)")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(
+        user="Người nhận item",
+        item_key="Key của item (cá, consumable, etc.)",
+        count="Số lượng muốn thêm (mặc định: 1)"
+    )
+    async def themitem_slash(self, interaction: discord.Interaction, user: discord.User, item_key: str, count: int = 1):
+        """Add item to user's inventory (Admin Only)"""
+        await interaction.response.defer(ephemeral=True)
+        
+        # Validate count
+        if count <= 0:
+            await interaction.followup.send(
+                "❌ Số lượng phải lớn hơn 0!",
+                ephemeral=True
+            )
+            return
+        
+        # Add item to user's inventory
+        success = await self.add_item_local(user.id, item_key, count)
+        if not success:
+            await interaction.followup.send(
+                "❌ Có lỗi xảy ra khi thêm item!",
+                ephemeral=True
+            )
+            return
+        
+        embed = discord.Embed(
+            title="✅ Thêm Item Thành Công",
+            description=f"Đã thêm **{item_key} x{count}** cho {user.mention}",
+            color=discord.Color.green()
+        )
+        
+        print(f"[ADMIN] [ADD_ITEM] admin_id={interaction.user.id} target_user_id={user.id} item_key={item_key} count={count}")
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @commands.command(name="themitem", description="Thêm item cho user (Admin Only) - Dùng !themitem @user item_key [count]")
+    @commands.has_permissions(administrator=True)
+    async def themitem_prefix(self, ctx, user: discord.User, item_key: str, count: int = 1):
+        """Add item to user's inventory via prefix command (Admin Only)"""
+        
+        # Validate count
+        if count <= 0:
+            await ctx.send("❌ Số lượng phải lớn hơn 0!")
+            return
+        
+        # Add item to user's inventory
+        success = await self.add_item_local(user.id, item_key, count)
+        if not success:
+            await ctx.send("❌ Có lỗi xảy ra khi thêm item!")
+            return
+        
+        embed = discord.Embed(
+            title="✅ Thêm Item Thành Công",
+            description=f"Đã thêm **{item_key} x{count}** cho {user.mention}",
+            color=discord.Color.green()
+        )
+        
+        await ctx.send(embed=embed)
+        print(f"[ADMIN] [ADD_ITEM] admin_id={ctx.author.id} target_user_id={user.id} item_key={item_key} count={count}")
+
     async def _show_shop_menu(self, ctx_or_interaction, is_slash: bool):
         """Show shop menu with all items"""
         embed = discord.Embed(

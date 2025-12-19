@@ -539,89 +539,6 @@ class CommunityCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="thuhoach", description="Thu hoạch cây (Admin Only)")
-    async def thuhoach(self, interaction: discord.Interaction, season: int):
-        """Retroactively give memorabilia items to all contributors of a season (Admin Only)"""
-        await interaction.response.defer(ephemeral=False)
-        
-        if season < 1 or season > 5:
-            await interaction.followup.send("❌ Mùa phải từ 1 đến 5!", ephemeral=True)
-            return
-        
-        guild_id = interaction.guild.id
-        memorabilia_key = f"qua_ngot_mua_{season}"
-        
-        try:
-            # Get all contributors from tree_contributors table for specific season
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT user_id FROM tree_contributors WHERE guild_id = ? AND season = ?",
-                    (guild_id, season)
-                ) as cursor:
-                    contributor_ids = await cursor.fetchall()
-            
-            if not contributor_ids:
-                await interaction.followup.send(
-                    f"❌ Không có contributor nào trong database!",
-                    ephemeral=True
-                )
-                return
-            
-            # Give memorabilia to all contributors
-            async with aiosqlite.connect(DB_PATH) as db:
-                for (cid,) in contributor_ids:
-                    # Check if already has this item
-                    async with db.execute(
-                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                        (cid, memorabilia_key)
-                    ) as cursor:
-                        inv_row = await cursor.fetchone()
-                    
-                    if inv_row:
-                        await db.execute(
-                            "UPDATE inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_name = ?",
-                            (cid, memorabilia_key)
-                        )
-                    else:
-                        await db.execute(
-                            "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, 1)",
-                            (cid, memorabilia_key)
-                        )
-                
-                await db.commit()
-            
-            # Show success embed
-            embed = discord.Embed(
-                title="✅ TẶNG VẬT PHẨM THÀNH CÔNG",
-                color=discord.Color.green()
-            )
-            embed.add_field(
-                name="🎁 Vật phẩm",
-                value=f"Quả Ngọt Mùa {season}",
-                inline=False
-            )
-            embed.add_field(
-                name="👥 Số người nhận",
-                value=f"{len(contributor_ids)} contributor(s)",
-                inline=False
-            )
-            embed.add_field(
-                name="💡 Chi tiết",
-                value="Tất cả người đã góp trong mùa này đều nhận được 1x vật phẩm lưu niệm",
-                inline=False
-            )
-            
-            await interaction.followup.send(embed=embed)
-            print(f"[TREE] [MEMORABILIA] Given qua_ngot_mua_{season} to {len(contributor_ids)} contributors")
-        
-        except Exception as e:
-            print(f"[TREE] Error in give_memorabilia: {e}")
-            import traceback
-            traceback.print_exc()
-            await interaction.followup.send(
-                f"❌ Lỗi: {str(e)}",
-                ephemeral=True
-            )
-            
     @app_commands.checks.has_permissions(administrator=True)
     async def harvest_tree(self, interaction: discord.Interaction):
         """Harvest the tree when at max level - CLIMAX EVENT"""
@@ -645,65 +562,50 @@ class CommunityCog(commands.Cog):
         # === CLIMAX EVENT STARTS ===
         await interaction.followup.send("**ĐANG THU HOẠCH...** Xin chờ một chút! 🌟")
         
-        # Get top 3 contributors
-        contributors = await self.get_top_contributors(guild_id, 3)
+        # Get all contributors for current season
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC",
+                (guild_id, season)
+            ) as cursor:
+                all_contributors = await cursor.fetchall()
         
-        # Calculate rewards
-        top1_reward = 5000
-        top23_reward = 2000
-        global_reward = 2000  # For all members
+        if not all_contributors:
+            await interaction.followup.send("❌ Không có ai đóng góp trong mùa này!", ephemeral=True)
+            return
         
-        # === BUILD VINH DANH TEXT ===
-        honor_text = ""
-        top1_user = None
+        # Top contributor
+        top1_user_id, top1_exp = all_contributors[0]
         top1_user_obj = None
-        
-        for idx, (uid, exp) in enumerate(contributors):
-            medal = ["🥇", "🥈", "🥉"][idx]
-            reward_amt = top1_reward if idx == 0 else top23_reward
-            
-            try:
-                user = await self.bot.fetch_user(uid)
-                honor_text += f"{medal} **Top {idx+1}: {user.name}** - Kinh Nghiệm: {exp} → Nhận {reward_amt} Hạt 💪\n"
-                if idx == 0:
-                    top1_user = uid
-                    top1_user_obj = user
-            except:
-                honor_text += f"{medal} **Top {idx+1}: User #{uid}** - Kinh Nghiệm: {exp} → Nhận {reward_amt} Hạt\n"
-                if idx == 0:
-                    top1_user = uid
+        try:
+            top1_user_obj = await self.bot.fetch_user(top1_user_id)
+        except:
+            pass
         
         # === DATABASE TRANSACTIONS ===
         async with aiosqlite.connect(DB_PATH) as db:
-            # 1. REWARD TOP CONTRIBUTORS
-            for idx, (uid, exp) in enumerate(contributors):
-                reward_amt = top1_reward if idx == 0 else top23_reward
-                await db.execute(
-                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                    (reward_amt, uid)
-                )
-            
-            # 2. REWARD ALL ACTIVE MEMBERS with global buff
-            async with db.execute("SELECT user_id FROM users") as cursor:
-                all_users = await cursor.fetchall()
-            
-            for (uid,) in all_users:
-                await db.execute(
-                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                    (global_reward, uid)
-                )
-            
-            # 3. GIVE MEMORABILIA TO ALL CONTRIBUTORS OF CURRENT SEASON
-            async with db.execute(
-                "SELECT user_id FROM tree_contributors WHERE guild_id = ? AND season = ?",
-                (guild_id, season)
-            ) as cursor:
-                contributor_ids = await cursor.fetchall()
-            
-            # Use consistent item key instead of dynamic string
+            # 1. REWARD ALL CONTRIBUTORS: seeds + memorabilia item
             memorabilia_key = f"qua_ngot_mua_{season}"
-            for (cid,) in contributor_ids:
-                # Check if already has this item
+            contributor_rewards = []
+            
+            for idx, (cid, exp) in enumerate(all_contributors):
+                # Calculate reward based on rank
+                if idx == 0:  # Top 1
+                    reward_seeds = 10000
+                elif idx == 1:  # Top 2
+                    reward_seeds = 5000
+                elif idx == 2:  # Top 3
+                    reward_seeds = 3000
+                else:  # Other contributors
+                    reward_seeds = 1500
+                
+                # Add seeds
+                await db.execute(
+                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                    (reward_seeds, cid)
+                )
+                
+                # Add memorabilia item
                 async with db.execute(
                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
                     (cid, memorabilia_key)
@@ -720,28 +622,34 @@ class CommunityCog(commands.Cog):
                         "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, 1)",
                         (cid, memorabilia_key)
                     )
+                
+                contributor_rewards.append((cid, exp, reward_seeds))
             
-            # 4. ACTIVATE 24H BUFF by updating server_config
+            # 2. BONUS FOR TOP CONTRIBUTOR: extra seeds (e.g., 3000 more)
+            top1_bonus = 3000
+            await db.execute(
+                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                (top1_bonus, top1_user_id)
+            )
+            
+            # 3. ACTIVATE 24H BUFF
             await db.execute(
                 "UPDATE server_config SET harvest_buff_until = datetime('now', '+24 hours') WHERE guild_id = ?",
                 (guild_id,)
             )
             
-            # 5. RESET TREE FOR NEXT SEASON
+            # 4. RESET TREE FOR NEXT SEASON
             await db.execute(
                 "UPDATE server_tree SET current_level = 1, current_progress = 0, total_contributed = 0, season = season + 1, last_harvest = CURRENT_TIMESTAMP WHERE guild_id = ?",
                 (guild_id,)
             )
             
-            # 6. KEEP CONTRIBUTORS HISTORY (don't delete, just start fresh season)
-            
             await db.commit()
         
-        # === CREATE ROLE FOR TOP 1 (if exists and is a valid guild member) ===
+        # === CREATE ROLE FOR TOP 1 ===
         role_mention = ""
         if top1_user_obj and interaction.guild:
             try:
-                # Check if role already exists
                 role_name = f"🌟 Thần Nông Mùa {season}"
                 existing_role = discord.utils.get(interaction.guild.roles, name=role_name)
                 
@@ -755,13 +663,13 @@ class CommunityCog(commands.Cog):
                     role = existing_role
                 
                 # Assign role to top1 user
-                member = await interaction.guild.fetch_member(top1_user)
+                member = await interaction.guild.fetch_member(top1_user_id)
                 if member:
                     await member.add_roles(role)
-                    role_mention = f"\nĐã cấp role **{role_name}** cho **{top1_user_obj.name}**"
+                    role_mention = f"Đã cấp role **{role_name}** cho **{top1_user_obj.name}** và thưởng tổng cộng 13000 hạt (10000 + 3000 bonus)!"
             except Exception as e:
                 print(f"[TREE] Error creating role: {e}")
-                role_mention = ""
+                role_mention = f"Không thể cấp role cho {top1_user_obj.name if top1_user_obj else f'User {top1_user_id}'}"
         
         # === MAIN ANNOUNCEMENT EMBED ===
         embed = discord.Embed(
@@ -774,24 +682,26 @@ class CommunityCog(commands.Cog):
         # Field 1: Global Buff
         embed.add_field(
             name="✨ TOÀN SERVER BỰC LỪA (24 Giờ)",
-            value=f"**X2 Hạt** khi chat/voice\n**X2 Hạt** cho mọi activity\n"
-                  f"Tất cả member nhận **{global_reward} Hạt** ngay lập tức!",
+            value="**X2 Hạt** khi chat/voice\n**X2 Hạt** cho mọi activity",
             inline=False
         )
         
-        # Field 2: Top Contributors
+        # Field 2: Contributors Reward
         embed.add_field(
-            name="🏆 VINH DANH NGƯỜI LÀM VƯỜN",
-            value=honor_text if honor_text else "_(Chưa có ai góp)_",
+            name="🎁 PHẦN THƯỞNG CHO NGƯỜI ĐÓNG GÓP",
+            value=f"• **Top 1**: 10000 Hạt + Quả Ngọt Mùa {season}\n"
+                  f"• **Top 2**: 5000 Hạt + Quả Ngọt Mùa {season}\n"
+                  f"• **Top 3**: 3000 Hạt + Quả Ngọt Mùa {season}\n"
+                  f"• **Những người khác**: 1500 Hạt + Quả Ngọt Mùa {season}",
             inline=False
         )
         
-        # Field 3: Memorabilia
-        memorabilia_display_name = f"Quả Ngọt Mùa {season}"
+        # Field 3: Top Contributor
+        top1_name = top1_user_obj.name if top1_user_obj else f"User #{top1_user_id}"
         embed.add_field(
-            name="🎁 TẶNG QUÀ LƯU NIỆM",
-            value=f"Tất cả người đã góp được nhận **'{memorabilia_display_name}'** vào Túi đồ\n"
-                  f"💎 Vật phẩm này chứng tỏ bạn là người lập công xây dựng server!",
+            name="🏆 NGƯỜI CỐNG HIẾN NHIỀU NHẤT",
+            value=f"**{top1_name}** với {top1_exp} kinh nghiệm!\n"
+                  f"Nhận **13000 hạt** (10000 + 3000 bonus), role đặc biệt và Quả Ngọt Mùa {season}!",
             inline=False
         )
         
@@ -810,7 +720,7 @@ class CommunityCog(commands.Cog):
         
         # === ROLE ANNOUNCEMENT ===
         if role_mention:
-            await interaction.followup.send(role_mention)
+            await interaction.followup.send(f"🌟 {role_mention}")
         
         # === TAG EVERYONE ===
         try:
@@ -819,13 +729,13 @@ class CommunityCog(commands.Cog):
                 f"**MÙA THU HOẠCH CÂY HIÊN NHÀ ĐÃ KẾT THÚC!**\n\n"
                 f"Trong 24 giờ tới, mọi người sẽ nhận **X2 Hạt từ chat/voice**!\n"
                 f"Hãy tranh thủ online để tối đa hóa lợi nhuận!\n\n"
-                f"Chúc mừng {honor_text.split('**')[1] if honor_text else 'những người đã cống hiến'}"
+                f"Chúc mừng những người đã đóng góp!"
             )
             await interaction.followup.send(announce_msg)
         except:
             pass
         
-        print(f"[TREE] HARVEST EVENT - Season {season} completed! Top1: {top1_user}, Total: {total}")
+        print(f"[TREE] HARVEST EVENT - Season {season} completed! Top1: {top1_user_id} ({top1_exp} exp), Contributors: {len(all_contributors)}")
 
 async def setup(bot):
     await bot.add_cog(CommunityCog(bot))
