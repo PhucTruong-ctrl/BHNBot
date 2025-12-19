@@ -325,8 +325,8 @@ class FishingCog(commands.Cog):
                     print(f"[DISASTER] Error handling end of non-freeze disaster: {e}")
 
             # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
-            # Get current fish count (exclude legendary fish - they don't count toward bucket limit)
-            fish_count = sum(v for k, v in inventory.items() if k in ALL_FISH and k not in LEGENDARY_FISH_KEYS)
+            # Get current fish count (only real fish, exclude trash and special items)
+            fish_count = sum(v for k, v in inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS)
         
             # If bucket is full, block fishing immediately
             if fish_count >= FISH_BUCKET_LIMIT:
@@ -989,6 +989,17 @@ class FishingCog(commands.Cog):
         
             # Update caught items for sell button
             self.caught_items[user_id] = fish_only_items
+            
+            # Check if bucket is full after fishing, if so, sell all fish instead of just caught
+            updated_inventory = await get_inventory(user_id)
+            current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS)
+            if current_fish_count >= FISH_BUCKET_LIMIT:
+                all_fish_items = {k: v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS}
+                self.caught_items[user_id] = all_fish_items
+                sell_items = all_fish_items
+                print(f"[FISHING] Bucket full ({current_fish_count}/{FISH_BUCKET_LIMIT}), sell button will sell all fish")
+            else:
+                sell_items = fish_only_items
         
             # ==================== CHECK FOR LEGENDARY FISH ====================
             current_hour = datetime.now().hour
@@ -1138,9 +1149,9 @@ class FishingCog(commands.Cog):
         
             # Create view with sell button if there are fish to sell
             view = None
-            if fish_only_items:
-                view = FishSellView(self, user_id, fish_only_items, channel.guild.id)
-                print(f"[FISHING] Created sell button for {username} with {len(fish_only_items)} fish types")
+            if sell_items:
+                view = FishSellView(self, user_id, sell_items, channel.guild.id)
+                print(f"[FISHING] Created sell button for {username} with {len(sell_items)} fish types")
             else:
                 print(f"[FISHING] No fish to sell, button not shown")
         

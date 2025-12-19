@@ -104,41 +104,72 @@ class GiveawayCog(commands.Cog):
     async def update_giveaway_embed(self, giveaway_id: int):
         """Update giveaway embed with current participant count"""
         try:
+            print(f"[Giveaway] Updating embed for giveaway {giveaway_id}")
+            
             # Get participant count
             participants = await db_manager.execute(
                 "SELECT COUNT(*) FROM giveaway_participants WHERE giveaway_id = ?",
                 (giveaway_id,)
             )
             count = participants[0][0] if participants else 0
+            print(f"[Giveaway] Participant count for {giveaway_id}: {count}")
             
             # Get giveaway data
             row = await db_manager.fetchone("SELECT channel_id FROM giveaways WHERE message_id = ?", (giveaway_id,))
             if not row:
+                print(f"[Giveaway] No giveaway data found for {giveaway_id}")
                 return
             
             channel_id = row[0]
             channel = self.bot.get_channel(channel_id)
             if not channel:
+                print(f"[Giveaway] Channel {channel_id} not found")
                 return
             
             # Get message
             try:
                 msg = await channel.fetch_message(giveaway_id)
-            except:
+                print(f"[Giveaway] Fetched message {giveaway_id}")
+            except Exception as e:
+                print(f"[Giveaway] Failed to fetch message {giveaway_id}: {e}")
                 return
             
             # Update embed
             embed = msg.embeds[0]
-            # Find the participant field and update it
+            print(f"[Giveaway] Original embed fields: {[f.name for f in embed.fields]}")
+            
+            # Create new embed with updated participant count
+            new_embed = discord.Embed(
+                title=embed.title,
+                description=embed.description,
+                color=embed.color
+            )
+            
+            # Copy all fields, updating the participant count
             for field in embed.fields:
                 if field.name == "Số người tham gia":
-                    field.value = str(count)
-                    break
+                    new_embed.add_field(name=field.name, value=str(count), inline=field.inline)
+                    print(f"[Giveaway] Updated participant field to {count}")
+                else:
+                    new_embed.add_field(name=field.name, value=field.value, inline=field.inline)
             
-            await msg.edit(embed=embed)
+            # Copy other attributes
+            if embed.footer:
+                new_embed.set_footer(text=embed.footer.text, icon_url=embed.footer.icon_url)
+            if embed.author:
+                new_embed.set_author(name=embed.author.name, icon_url=embed.author.icon_url)
+            if embed.thumbnail:
+                new_embed.set_thumbnail(url=embed.thumbnail.url)
+            if embed.image:
+                new_embed.set_image(url=embed.image.url)
+            
+            await msg.edit(embed=new_embed)
+            print(f"[Giveaway] Successfully edited message {giveaway_id}")
             
         except Exception as e:
             print(f"[Giveaway] Error updating embed for giveaway {giveaway_id}: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             # Remove from update tasks
             if giveaway_id in self.update_tasks:

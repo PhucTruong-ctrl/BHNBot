@@ -156,6 +156,25 @@ class CommunityCog(commands.Cog):
             for level in BASE_LEVEL_REQS
         }
 
+    async def is_harvest_buff_active(self, guild_id: int) -> bool:
+        """Check if 24h harvest buff is active"""
+        try:
+            result = await db_manager.fetchone(
+                "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                (guild_id,),
+                use_cache=True,
+                cache_key=f"harvest_buff_{guild_id}",
+                cache_ttl=60
+            )
+            
+            if not result or not result[0]:
+                return False
+            
+            buff_until = datetime.fromisoformat(result[0])
+            return datetime.now() < buff_until
+        except:
+            return False
+
     async def get_tree_data(self, guild_id: int):
         """Get current tree data for guild"""
         async with aiosqlite.connect(DB_PATH) as db:
@@ -204,14 +223,14 @@ class CommunityCog(commands.Cog):
             try:
                 # Try to insert first (if not exists)
                 await db.execute(
-                    "INSERT OR IGNORE INTO tree_contributors (user_id, guild_id, contribution_exp, season) VALUES (?, ?, ?, ?)",
-                    (user_id, guild_id, exp_amount, current_season)
+                    "INSERT OR IGNORE INTO tree_contributors (user_id, guild_id, amount, contribution_exp, season) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, guild_id, amount, exp_amount, current_season)
                 )
                 
                 # Now update the row (either the one we just inserted or existing one)
                 await db.execute(
-                    "UPDATE tree_contributors SET contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ? AND season = ?",
-                    (exp_amount, user_id, guild_id, current_season)
+                    "UPDATE tree_contributors SET amount = amount + ?, contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ? AND season = ?",
+                    (amount, exp_amount, user_id, guild_id, current_season)
                 )
                 
                 await db.commit()
@@ -522,6 +541,16 @@ class CommunityCog(commands.Cog):
         
         embed = await self.create_tree_embed(interaction.guild.id)
         
+        # Add buff info if active
+        if await self.is_harvest_buff_active(interaction.guild.id):
+            result = await db_manager.fetchone("SELECT harvest_buff_until FROM server_config WHERE guild_id = ?", (interaction.guild.id,))
+            if result and result[0]:
+                buff_until = datetime.fromisoformat(result[0])
+                remaining = buff_until - datetime.now()
+                hours = remaining.seconds // 3600
+                minutes = (remaining.seconds % 3600) // 60
+                embed.add_field(name="🌟 Buff Toàn Server", value=f"X2 hạt còn {hours}h {minutes}m", inline=False)
+        
         # Add contributor info
         contributors = await self.get_top_contributors(interaction.guild.id, 3)
         
@@ -607,19 +636,19 @@ class CommunityCog(commands.Cog):
                 
                 # Add memorabilia item
                 async with db.execute(
-                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
+                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                     (cid, memorabilia_key)
                 ) as cursor:
                     inv_row = await cursor.fetchone()
                 
                 if inv_row:
                     await db.execute(
-                        "UPDATE inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_name = ?",
+                        "UPDATE inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?",
                         (cid, memorabilia_key)
                     )
                 else:
                     await db.execute(
-                        "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, 1)",
+                        "INSERT INTO inventory (user_id, item_id, quantity) VALUES (?, ?, 1)",
                         (cid, memorabilia_key)
                     )
                 
@@ -671,6 +700,12 @@ class CommunityCog(commands.Cog):
                 print(f"[TREE] Error creating role: {e}")
                 role_mention = f"Không thể cấp role cho {top1_user_obj.name if top1_user_obj else f'User {top1_user_id}'}"
         
+        # Create top contributors text
+        top_contrib_text = "\n".join([
+            f"**{self.bot.get_user(uid).name if self.bot.get_user(uid) else f'User #{uid}'}** - {exp} Kinh Nghiệm"
+            for uid, exp in all_contributors[:3]
+        ])
+        
         # === MAIN ANNOUNCEMENT EMBED ===
         embed = discord.Embed(
             title=f"🎉 THU HOẠCH THÀNH CÔNG - MÙA {season}! 🎉",
@@ -696,12 +731,10 @@ class CommunityCog(commands.Cog):
             inline=False
         )
         
-        # Field 3: Top Contributor
-        top1_name = top1_user_obj.name if top1_user_obj else f"User #{top1_user_id}"
+        # Field 3: Top Contributors
         embed.add_field(
-            name="🏆 NGƯỜI CỐNG HIẾN NHIỀU NHẤT",
-            value=f"**{top1_name}** với {top1_exp} kinh nghiệm!\n"
-                  f"Nhận **13000 hạt** (10000 + 3000 bonus), role đặc biệt và Quả Ngọt Mùa {season}!",
+            name="🏆 Top 3 Người Đóng Góp Nhiều Nhất",
+            value=top_contrib_text,
             inline=False
         )
         

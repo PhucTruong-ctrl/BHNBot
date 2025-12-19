@@ -276,6 +276,9 @@ class GameNoiTu(commands.Cog):
                     old_msg = await channel.fetch_message(old_message_id)
                     await old_msg.delete()
                     log(f"DELETED_OLD_RESUME_MSG [Guild {guild_id}] Message ID: {old_message_id}")
+                except discord.NotFound:
+                    # Message already deleted or doesn't exist
+                    log(f"OLD_RESUME_MSG_ALREADY_DELETED [Guild {guild_id}] Message ID: {old_message_id}")
                 except Exception as e:
                     log(f"COULD_NOT_DELETE_OLD_MSG [Guild {guild_id}] Message ID: {old_message_id}, Error: {e}")
             

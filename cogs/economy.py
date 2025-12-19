@@ -227,6 +227,7 @@ class EconomyCog(commands.Cog):
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
             from cogs.fishing.glitch import apply_display_glitch
+            from cogs.fishing.constants import ALL_ITEMS_DATA
             
             # Fish items
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
@@ -327,18 +328,18 @@ class EconomyCog(commands.Cog):
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
                 if is_glitch_active():
-                    trash_text = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
+                    trash_text = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
                 else:
-                    trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                    trash_text = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in sorted(trash_items.items())])
                 if len(trash_text) > 1024:
                     trash_list = sorted(trash_items.items())
                     mid = len(trash_list) // 2
                     if is_glitch_active():
-                        part1 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
+                        part1 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
                     else:
-                        part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
+                        part1 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[mid:]])
                     embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
                     embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
                 else:
@@ -364,6 +365,7 @@ class EconomyCog(commands.Cog):
         
         # Import glitch functions at the start
         from cogs.fishing.glitch import is_glitch_active, apply_display_glitch
+        from cogs.fishing.constants import ALL_ITEMS_DATA
         
         embed = discord.Embed(
             title=f"💰 Thông tin của {target_user.name}",
@@ -476,18 +478,18 @@ class EconomyCog(commands.Cog):
             trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
             if trash_items:
                 if is_glitch_active():
-                    trash_text = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
+                    trash_text = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
                 else:
-                    trash_text = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in sorted(trash_items.items())])
+                    trash_text = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in sorted(trash_items.items())])
                 if len(trash_text) > 1024:
                     trash_list = sorted(trash_items.items())
                     mid = len(trash_list) // 2
                     if is_glitch_active():
-                        part1 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{apply_display_glitch(k.replace('trash_', '').replace('_', ' '))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
+                        part1 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
                     else:
-                        part1 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{k.replace('trash_', '').replace('_', ' ')}** x{v}" for k, v in trash_list[mid:]])
+                        part1 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[:mid]])
+                        part2 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[mid:]])
                     embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
                     embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
                 else:
