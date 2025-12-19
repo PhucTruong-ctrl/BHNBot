@@ -78,13 +78,23 @@ class GiveawayJoinView(discord.ui.View):
         if not giveaway_row or giveaway_row[0] != 'active':
             return await interaction.response.send_message("❌ Giveaway này đã kết thúc hoặc không còn tồn tại!", ephemeral=True)
         
+        # Fetch current requirements from DB (in case they were updated)
+        req_row = await db_manager.fetchone(
+            "SELECT requirements FROM giveaways WHERE message_id = ?",
+            (self.giveaway_id,)
+        )
+        if not req_row:
+            return await interaction.response.send_message("❌ Giveaway không tồn tại!", ephemeral=True)
+        
+        current_reqs = json.loads(req_row[0]) if req_row[0] else {}
+        
         # 1. Check Requirements
-        passed, reason = await check_requirements(user, self.reqs)
+        passed, reason = await check_requirements(user, current_reqs)
         if not passed:
             return await interaction.response.send_message(f"❌ {reason}", ephemeral=True)
 
         # 2. Check Cost (Balance Check)
-        cost = self.reqs.get("cost", 0)
+        cost = current_reqs.get("cost", 0)
         if cost > 0:
             bal = await get_user_balance(user.id)
             if bal < cost:
@@ -129,9 +139,35 @@ class GiveawayResultView(discord.ui.View):
             await interaction.response.send_message("❌ Chỉ admin mới có thể reroll giveaway!", ephemeral=True)
             return
 
-        await interaction.response.defer()
+        # Open modal to input reroll count
+        modal = RerollModal(self.giveaway_id, self.current_winners, self.bot)
+        await interaction.response.send_modal(modal)
 
+class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
+    def __init__(self, giveaway_id: int, current_winners: list, bot):
+        super().__init__()
+        self.giveaway_id = giveaway_id
+        self.current_winners = current_winners
+        self.bot = bot
+
+    reroll_count = discord.ui.TextInput(
+        label="Số lượng người thắng cần reroll",
+        placeholder="Nhập số lượng (mặc định 1)",
+        default="1",
+        max_length=2,
+        required=True
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
         try:
+            # Parse reroll count
+            count = int(self.reroll_count.value)
+            if count <= 0:
+                await interaction.response.send_message("❌ Số lượng phải lớn hơn 0!", ephemeral=True)
+                return
+
+            await interaction.response.defer()
+
             # Get giveaway data
             row = await db_manager.fetchone("SELECT * FROM giveaways WHERE message_id = ?", (self.giveaway_id,))
             if not row:
@@ -161,24 +197,29 @@ class GiveawayResultView(discord.ui.View):
 
             # Pick new winners
             new_winners_ids = []
-            count = min(len(set(pool)), ga.winners_count)
+            available_count = min(len(set(pool)), count)
+            if available_count < count:
+                await interaction.followup.send(f"❌ Chỉ còn {available_count} người có thể reroll!", ephemeral=True)
+                count = available_count
+
             random.shuffle(pool)
             seen = set()
             for uid in pool:
-                if uid not in seen:
+                if uid not in seen and uid not in self.current_winners:
                     new_winners_ids.append(uid)
                     seen.add(uid)
                 if len(new_winners_ids) >= count:
                     break
 
             if new_winners_ids:
+                # Add new winners to current winners
+                self.current_winners.extend(new_winners_ids)
+                
                 new_winners_text = ", ".join([f"<@{uid}>" for uid in new_winners_ids])
-                result_text = f"🎉 **REROLL KẾT QUẢ!**\nXin chúc mừng {new_winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}"
+                all_winners_text = ", ".join([f"<@{uid}>" for uid in self.current_winners])
+                result_text = f"🎉 **REROLL KẾT QUẢ!**\nNgười thắng mới: {new_winners_text}\n\n**Tất cả người thắng:** {all_winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}"
                 
-                # Update current winners for next reroll
-                self.current_winners = new_winners_ids
-                
-                print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}")
+                print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}, Total: {self.current_winners}")
                 
                 # Edit the result message
                 embed = discord.Embed(
@@ -188,12 +229,17 @@ class GiveawayResultView(discord.ui.View):
                 )
                 embed.set_footer(text=f"Giveaway ID: {self.giveaway_id}")
                 
-                await interaction.message.edit(embed=embed, view=self)
+                # Update the view's current_winners
+                # Since view is persistent, we need to update it, but since it's the same instance, it should be fine
                 
-                await interaction.followup.send(f"✅ Đã reroll giveaway! Người thắng mới: {new_winners_text}", ephemeral=True)
+                await interaction.message.edit(embed=embed, view=interaction.message.view)
+                
+                await interaction.followup.send(f"✅ Đã reroll {len(new_winners_ids)} người thắng mới: {new_winners_text}", ephemeral=True)
             else:
                 await interaction.followup.send("❌ Không thể chọn người thắng mới!", ephemeral=True)
 
+        except ValueError:
+            await interaction.response.send_message("❌ Số lượng không hợp lệ!", ephemeral=True)
         except Exception as e:
             print(f"[Giveaway] Error rerolling giveaway {self.giveaway_id}: {e}")
             await interaction.followup.send("❌ Có lỗi xảy ra khi reroll!", ephemeral=True)

@@ -1357,7 +1357,7 @@ class FishingCog(commands.Cog):
             else:
                 selected_fish = fish_items
             
-            # 1. Tính tổng tiền gốc
+            # 1. Tính tổng tiền gốc (trước buff và event)
             base_total = 0
             for fish_key, quantity in selected_fish.items():
                 fish_info = ALL_FISH.get(fish_key)
@@ -1365,26 +1365,8 @@ class FishingCog(commands.Cog):
                     base_price = fish_info['sell_price']
                     base_total += base_price * quantity
             
-            # Apply harvest boost (x2) if active in the server
-            is_harvest_boosted = False
-            try:
-                guild_id = ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id
-                if guild_id:
-                    result = await db_manager.fetchone(
-                        "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                        (guild_id,)
-                    )
-                    if result and result[0]:
-                        buff_until = datetime.fromisoformat(result[0])
-                        if datetime.now() < buff_until:
-                            base_total = base_total * 2  # Double the base reward
-                            is_harvest_boosted = True
-                            print(f"[FISHING] [SELL_ACTION] Applied harvest boost x2 for user {user_id}")
-            except Exception as e:
-                print(f"[FISHING] [SELL_ACTION] Error checking harvest boost: {e}")
-            
-            # 2. Xử lý sự kiện bán hàng (Sell Event)
-            final_total = base_total
+            # 2. Xử lý sự kiện bán hàng (Sell Event) - áp dụng trước buff
+            event_total = base_total
             event_msg = ""
             event_name = ""
             event_color = discord.Color.green()  # Mặc định màu xanh lá
@@ -1416,17 +1398,17 @@ class FishingCog(commands.Cog):
                 
                 # Tính toán tiền sau sự kiện
                 # Công thức: (Gốc * Multiplier) + Flat Bonus
-                final_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
+                event_total = int(base_total * ev_data["mul"]) + ev_data["flat"]
                 
                 # Prevent negative balance
                 current_balance = await get_user_balance(user_id)
-                if final_total < 0 and current_balance + final_total < 0:
-                    final_total = -current_balance
-                    print(f"[FISHING] [SELL_EVENT] {username} (user_id={user_id}) Penalty capped to prevent negative balance: {final_total}")
+                if event_total < 0 and current_balance + event_total < 0:
+                    event_total = -current_balance
+                    print(f"[FISHING] [SELL_EVENT] {username} (user_id={user_id}) Penalty capped to prevent negative balance: {event_total}")
                 
                 # Cho phép âm tiền nếu sự kiện xấu quá nghiêm trọng (but capped above)
                 
-                diff = final_total - base_total
+                diff = event_total - base_total
                 sign = "+" if diff >= 0 else ""
                 
                 # Xử lý special effects (vật phẩm thưởng)
@@ -1473,7 +1455,7 @@ class FishingCog(commands.Cog):
                         if random.random() < 0.1:  # 10% win chance
                             lottery_reward = 500
                             await add_seeds(user_id, lottery_reward)
-                            final_total += lottery_reward
+                            event_total += lottery_reward
                             special_rewards.append(f"🎉 **TRÚNG SỐ! +{lottery_reward} Hạt!**")
                         else:
                             special_rewards.append("❌ Vé số không trúng")
@@ -1486,7 +1468,26 @@ class FishingCog(commands.Cog):
                     event_color = discord.Color.orange()
                     event_msg = f"\n⚠️ **SỰ CỐ: {event_name}**\n_{SELL_MESSAGES[triggered_event]}_\n👉 **Thiệt hại:** {diff} Hạt"
                     
-                print(f"[FISHING] [SELL_EVENT] {ctx.user.name if is_slash else ctx.author.name} (user_id={ctx.user.id if is_slash else ctx.author.id}) event={triggered_event} seed_change={final_total - base_total} fish_count={len(selected_fish)}")
+                print(f"[FISHING] [SELL_EVENT] {ctx.user.name if is_slash else ctx.author.name} (user_id={ctx.user.id if is_slash else ctx.author.id}) event={triggered_event} seed_change={event_total - base_total} fish_count={len(selected_fish)}")
+
+            # Apply harvest boost (x2) if active in the server - áp dụng sau sự kiện
+            final_total = event_total
+            is_harvest_boosted = False
+            try:
+                guild_id = ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id
+                if guild_id:
+                    result = await db_manager.fetchone(
+                        "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                        (guild_id,)
+                    )
+                    if result and result[0]:
+                        buff_until = datetime.fromisoformat(result[0])
+                        if datetime.now() < buff_until:
+                            final_total = final_total * 2  # Double the event reward
+                            is_harvest_boosted = True
+                            print(f"[FISHING] [SELL_ACTION] Applied harvest boost x2 for user {user_id}")
+            except Exception as e:
+                print(f"[FISHING] [SELL_ACTION] Error checking harvest boost: {e}")
 
             # Remove items & Add money (ATOMIC TRANSACTION - xảy ra cùng lúc)
             try:
@@ -1592,7 +1593,7 @@ class FishingCog(commands.Cog):
                     color=event_embed_color
                 )
                 
-                impact_text = f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {final_total} Hạt**"
+                impact_text = f"Gốc: {base_total} Hạt\n{sign}{diff} Hạt\n**= {event_total} Hạt**"
                 if is_glitch_active():
                     impact_text = glitch_text(impact_text)
                 
@@ -1621,11 +1622,23 @@ class FishingCog(commands.Cog):
             if is_glitch_active():
                 fish_summary = "\n".join([f"  • {_glitch(ALL_FISH[k]['name'])} x{_glitch(str(v))}" for k, v in selected_fish.items()])
                 embed_title = _glitch(f"💰 **{username}** bán {sum(selected_fish.values())} con cá")
-                embed_desc = _glitch(f"{fish_summary}\n\n💵 **Tổng nhận:** {_glitch(str(final_total))} Hạt")
+                embed_desc = _glitch(f"{fish_summary}")
             else:
                 fish_summary = "\n".join([f"  • {_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in selected_fish.items()])
                 embed_title = f"💰 **{username}** bán {sum(selected_fish.values())} con cá"
-                embed_desc = f"{fish_summary}\n\n💵 **Tổng nhận:** {final_total} Hạt"
+                embed_desc = f"{fish_summary}"
+            
+            # Add buff information
+            if is_harvest_boosted:
+                if is_glitch_active():
+                    embed_desc += _glitch(f"\n\n🌟 **Buff Từ Cây Server x2!**\n💵 **Gốc:** {_glitch(str(event_total))} Hạt → **Sau buff:** {_glitch(str(final_total))} Hạt")
+                else:
+                    embed_desc += f"\n\n🌟 **Buff Từ Cây Server x2!**\n💵 **Gốc:** {event_total} Hạt → **Sau buff:** {final_total} Hạt"
+            else:
+                if is_glitch_active():
+                    embed_desc += _glitch(f"\n\n💵 **Tổng nhận:** {_glitch(str(final_total))} Hạt")
+                else:
+                    embed_desc += f"\n\n💵 **Tổng nhận:** {final_total} Hạt"
             
             embed = discord.Embed(
                 title=embed_title,

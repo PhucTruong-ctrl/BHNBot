@@ -11,6 +11,9 @@ from .models import Giveaway
 from .constants import *
 from .helpers import end_giveaway
 
+# Create giveaway command group
+giveaway_group = app_commands.Group(name="giveaway", description="Quản lý giveaway")
+
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -102,7 +105,7 @@ class GiveawayCog(commands.Cog):
             await self.cache_invites(guild)
 
     async def update_giveaway_embed(self, giveaway_id: int):
-        """Update giveaway embed with current participant count"""
+        """Update giveaway embed with current participant count and any updated data"""
         try:
             print(f"[Giveaway] Updating embed for giveaway {giveaway_id}")
             
@@ -114,16 +117,16 @@ class GiveawayCog(commands.Cog):
             count = participants[0][0] if participants else 0
             print(f"[Giveaway] Participant count for {giveaway_id}: {count}")
             
-            # Get giveaway data
-            row = await db_manager.fetchone("SELECT channel_id FROM giveaways WHERE message_id = ?", (giveaway_id,))
+            # Get full giveaway data
+            row = await db_manager.fetchone("SELECT * FROM giveaways WHERE message_id = ?", (giveaway_id,))
             if not row:
                 print(f"[Giveaway] No giveaway data found for {giveaway_id}")
                 return
             
-            channel_id = row[0]
-            channel = self.bot.get_channel(channel_id)
+            ga = Giveaway.from_db(row)
+            channel = self.bot.get_channel(ga.channel_id)
             if not channel:
-                print(f"[Giveaway] Channel {channel_id} not found")
+                print(f"[Giveaway] Channel {ga.channel_id} not found")
                 return
             
             # Get message
@@ -134,37 +137,40 @@ class GiveawayCog(commands.Cog):
                 print(f"[Giveaway] Failed to fetch message {giveaway_id}: {e}")
                 return
             
-            # Update embed
-            embed = msg.embeds[0]
-            print(f"[Giveaway] Original embed fields: {[f.name for f in embed.fields]}")
+            # Create Discord timestamp for relative time display
+            unix_timestamp = int(ga.end_time.timestamp())
+            time_string = f"<t:{unix_timestamp}:R>"
             
-            # Create new embed with updated participant count
-            new_embed = discord.Embed(
-                title=embed.title,
-                description=embed.description,
-                color=embed.color
+            # Create new embed with updated data
+            embed = discord.Embed(
+                title=f"🎉 GIVEAWAY NÈ MẤY BÀ DÔ HÚP ĐI!",
+                description=f"**Giải thưởng:** {ga.prize}\n**Số người thắng:** {ga.winners_count}\n\n**Kết thúc:** {time_string}\n\nNhấn nút dưới để tham gia!",
+                color=COLOR_GIVEAWAY
             )
             
-            # Copy all fields, updating the participant count
-            for field in embed.fields:
-                if field.name == "Số người tham gia":
-                    new_embed.add_field(name=field.name, value=str(count), inline=field.inline)
-                    print(f"[Giveaway] Updated participant field to {count}")
-                else:
-                    new_embed.add_field(name=field.name, value=field.value, inline=field.inline)
+            # Add participant count
+            embed.add_field(name="Số người tham gia", value=str(count), inline=True)
             
-            # Copy other attributes
-            if embed.footer:
-                new_embed.set_footer(text=embed.footer.text, icon_url=embed.footer.icon_url)
-            if embed.author:
-                new_embed.set_author(name=embed.author.name, icon_url=embed.author.icon_url)
-            if embed.thumbnail:
-                new_embed.set_thumbnail(url=embed.thumbnail.url)
-            if embed.image:
-                new_embed.set_image(url=embed.image.url)
+            # Add requirements if any
+            if ga.requirements:
+                req_text = ""
+                if ga.requirements.get("min_invites", 0) > 0:
+                    req_text += f"• {ga.requirements['min_invites']} Invites (Acc > 7 ngày)\n"
+                if ga.requirements.get("min_rod_level", 0) > 0:
+                    req_text += f"• Cần Câu Cấp {ga.requirements['min_rod_level']}\n"
+                if ga.requirements.get("cost", 0) > 0:
+                    req_text += f"• {ga.requirements['cost']} Hạt\n"
+                if req_text:
+                    embed.add_field(name="Yêu cầu tham gia", value=req_text.strip(), inline=False)
             
-            await msg.edit(embed=new_embed)
-            print(f"[Giveaway] Successfully edited message {giveaway_id}")
+            embed.set_footer(text=f"Giveaway ID: {giveaway_id}")
+            
+            # Set image if available
+            if ga.image_url:
+                embed.set_image(url=ga.image_url)
+            
+            await msg.edit(embed=embed)
+            print(f"[Giveaway] Successfully updated embed for giveaway {giveaway_id}")
             
         except Exception as e:
             print(f"[Giveaway] Error updating embed for giveaway {giveaway_id}: {e}")
@@ -254,7 +260,7 @@ class GiveawayCog(commands.Cog):
                         return inv.inviter
         return None
 
-    @app_commands.command(name="gatest_invite", description="[Admin/Test] Thêm invite ảo để test")
+    @giveaway_group.command(name="test_inv", description="[Admin/Test] Thêm invite ảo để test")
     @app_commands.checks.has_permissions(administrator=True)
     async def gatest_invite(self, interaction: discord.Interaction, target: discord.User, amount: int = 1):
         """Add fake invites for testing"""
@@ -277,30 +283,7 @@ class GiveawayCog(commands.Cog):
         except Exception as e:
              await interaction.followup.send(f"❌ Lỗi: {e}")
 
-    @app_commands.command(name="gatest_invite", description="[Admin/Test] Thêm invite ảo để test")
-    @app_commands.checks.has_permissions(administrator=True)
-    async def gatest_invite(self, interaction: discord.Interaction, target: discord.User, amount: int = 1):
-        """Add fake invites for testing"""
-        try:
-            import random
-            await interaction.response.defer(ephemeral=True)
-            
-            for _ in range(amount):
-                # Generate random dummy user ID for the "joined" person
-                dummy_id = random.randint(100000000000000000, 999999999999999999)
-                await db_manager.modify(
-                    "INSERT INTO user_invites (inviter_id, joined_user_id, is_valid) VALUES (?, ?, 1)",
-                    (target.id, dummy_id)
-                )
-            
-            # Clear cache so new value is fetched immediately
-            db_manager.clear_cache_by_prefix(f"invites_{target.id}")
-            
-            await interaction.followup.send(f"✅ Đã thêm {amount} invite ảo cho {target.mention}")
-        except Exception as e:
-             await interaction.followup.send(f"❌ Lỗi: {e}")
-
-    @app_commands.command(name="gaend_now", description="[Admin] Kết thúc Giveaway ngay lập tức")
+    @giveaway_group.command(name="end", description="[Admin] Kết thúc Giveaway ngay lập tức")
     @app_commands.checks.has_permissions(administrator=True)
     async def gaend_now(self, interaction: discord.Interaction):
         """End a giveaway immediately by selecting from active giveaways."""
@@ -347,7 +330,7 @@ class GiveawayCog(commands.Cog):
             print(f"[Giveaway] Error in gaend_now: {e}")
             await interaction.followup.send(f"❌ Có lỗi xảy ra: {e}")
 
-    @app_commands.command(name="gacreate", description="Tạo Giveaway với các điều kiện")
+    @giveaway_group.command(name="create", description="Tạo Giveaway với các điều kiện")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         prize="Phần thưởng",
@@ -439,5 +422,6 @@ class GiveawayCog(commands.Cog):
 
 
 async def setup(bot):
+    bot.tree.add_command(giveaway_group)
     await bot.add_cog(GiveawayCog(bot))
 

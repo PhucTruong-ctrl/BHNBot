@@ -221,17 +221,26 @@ class CommunityCog(commands.Cog):
         
         async with aiosqlite.connect(DB_PATH) as db:
             try:
-                # Try to insert first (if not exists)
-                await db.execute(
-                    "INSERT OR IGNORE INTO tree_contributors (user_id, guild_id, amount, contribution_exp, season) VALUES (?, ?, ?, ?, ?)",
-                    (user_id, guild_id, amount, exp_amount, current_season)
+                # Check if contributor exists for this season
+                result = await db.execute_fetchall(
+                    "SELECT amount, contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ? AND season = ?",
+                    (user_id, guild_id, current_season)
                 )
-                
-                # Now update the row (either the one we just inserted or existing one)
-                await db.execute(
-                    "UPDATE tree_contributors SET amount = amount + ?, contribution_exp = contribution_exp + ? WHERE user_id = ? AND guild_id = ? AND season = ?",
-                    (amount, exp_amount, user_id, guild_id, current_season)
-                )
+                if result:
+                    # Update existing
+                    current_amount, current_exp = result[0]
+                    new_amount = current_amount + amount
+                    new_exp = current_exp + exp_amount
+                    await db.execute(
+                        "UPDATE tree_contributors SET amount = ?, contribution_exp = ? WHERE user_id = ? AND guild_id = ? AND season = ?",
+                        (new_amount, new_exp, user_id, guild_id, current_season)
+                    )
+                else:
+                    # Insert new
+                    await db.execute(
+                        "INSERT INTO tree_contributors (user_id, guild_id, amount, contribution_exp, season) VALUES (?, ?, ?, ?, ?)",
+                        (user_id, guild_id, amount, exp_amount, current_season)
+                    )
                 
                 await db.commit()
             except Exception as e:
@@ -246,8 +255,17 @@ class CommunityCog(commands.Cog):
         
         async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute(
-                "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC LIMIT ?",
+                "SELECT user_id, amount, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY amount DESC LIMIT ?",
                 (guild_id, current_season, limit)
+            ) as cursor:
+                return await cursor.fetchall()
+
+    async def get_top_contributors_all_time(self, guild_id: int, limit: int = 3):
+        """Get top contributors by total contribution experience across ALL seasons"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute(
+                "SELECT user_id, SUM(contribution_exp) as total_exp FROM tree_contributors WHERE guild_id = ? GROUP BY user_id ORDER BY total_exp DESC LIMIT ?",
+                (guild_id, limit)
             ) as cursor:
                 return await cursor.fetchall()
 
@@ -546,24 +564,37 @@ class CommunityCog(commands.Cog):
             result = await db_manager.fetchone("SELECT harvest_buff_until FROM server_config WHERE guild_id = ?", (interaction.guild.id,))
             if result and result[0]:
                 buff_until = datetime.fromisoformat(result[0])
-                remaining = buff_until - datetime.now()
-                hours = remaining.seconds // 3600
-                minutes = (remaining.seconds % 3600) // 60
-                embed.add_field(name="🌟 Buff Toàn Server", value=f"X2 hạt còn {hours}h {minutes}m", inline=False)
+                timestamp = int(buff_until.timestamp())
+                embed.add_field(name="🌟 Buff Toàn Server", value=f"X2 hạt còn <t:{timestamp}:R>", inline=False)
         
         # Add contributor info
-        contributors = await self.get_top_contributors(interaction.guild.id, 3)
+        current_season_contributors = await self.get_top_contributors(interaction.guild.id, 3)
+        all_time_contributors = await self.get_top_contributors_all_time(interaction.guild.id, 3)
         
-        if contributors:
-            contrib_text = ""
-            for idx, (uid, exp) in enumerate(contributors, 1):
+        # Get current season
+        _, _, _, current_season, _, _ = await self.get_tree_data(interaction.guild.id)
+        
+        if current_season_contributors:
+            season_text = ""
+            for idx, (uid, amount_val, exp_val) in enumerate(current_season_contributors, 1):
                 try:
                     user = await self.bot.fetch_user(uid)
-                    contrib_text += f"{idx}. **{user.name}** - {exp} Kinh Nghiệm\n"
+                    season_text += f"{idx}. **{user.name}** - {amount_val} Kinh Nghiệm\n"
                 except:
-                    contrib_text += f"{idx}. **User #{uid}** - {exp} Kinh Nghiệm\n"
+                    season_text += f"{idx}. **User #{uid}** - {amount_val} Kinh Nghiệm\n"
             
-            embed.add_field(name="🏆 Top 3 Người Góp (Kinh Nghiệm)", value=contrib_text, inline=False)
+            embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
+        
+        if all_time_contributors:
+            all_time_text = ""
+            for idx, (uid, total_exp) in enumerate(all_time_contributors, 1):
+                try:
+                    user = await self.bot.fetch_user(uid)
+                    all_time_text += f"{idx}. **{user.name}** - {total_exp} Kinh Nghiệm\n"
+                except:
+                    all_time_text += f"{idx}. **User #{uid}** - {total_exp} Kinh Nghiệm\n"
+            
+            embed.add_field(name="🏆 Top 3 Người Góp toàn thời gian", value=all_time_text, inline=False)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 

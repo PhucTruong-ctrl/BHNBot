@@ -137,6 +137,35 @@ def init_database():
                     PRIMARY KEY (user_id, guild_id, season)
                 )''')
 
+    # Migrate tree_contributors table if primary key is wrong
+    try:
+        c.execute("PRAGMA table_info(tree_contributors)")
+        columns = c.fetchall()
+        pk_columns = [col[1] for col in columns if col[5] == 1]  # col[5] is pk flag
+        if pk_columns != ['user_id', 'guild_id', 'season']:
+            print("Migrating tree_contributors table to include season in primary key...")
+            # Create new table
+            c.execute('''CREATE TABLE tree_contributors_new (
+                            user_id INTEGER,
+                            guild_id INTEGER,
+                            amount INTEGER DEFAULT 0,
+                            contribution_exp INTEGER DEFAULT 0,
+                            season INTEGER DEFAULT 1,
+                            PRIMARY KEY (user_id, guild_id, season)
+                        )''')
+            # Copy data, using current season from server_tree if exists, else 1
+            c.execute('''INSERT INTO tree_contributors_new (user_id, guild_id, amount, contribution_exp, season)
+                        SELECT tc.user_id, tc.guild_id, tc.amount, tc.contribution_exp, COALESCE(st.season, 1)
+                        FROM tree_contributors tc
+                        LEFT JOIN server_tree st ON tc.guild_id = st.guild_id''')
+            # Drop old table
+            c.execute("DROP TABLE tree_contributors")
+            # Rename new table
+            c.execute("ALTER TABLE tree_contributors_new RENAME TO tree_contributors")
+            print("✓ Migrated tree_contributors table")
+    except Exception as e:
+        print(f"Error migrating tree_contributors: {e}")
+
     c.execute('''CREATE TABLE IF NOT EXISTS giveaways (
                     message_id INTEGER PRIMARY KEY,
                     channel_id INTEGER,

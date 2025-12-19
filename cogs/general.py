@@ -158,8 +158,8 @@ class General(commands.Cog):
         # 7. Giveaway (Host)
         embed.add_field(
             name="🎁 Giveaway",
-            value="• `/gacreate` (Slash only) - Tạo Giveaway mới\n" 
-                  "• `/gaend` (Slash only) - Kết thúc Giveaway sớm\n",
+            value="• `/giveaway create` (Slash only) - Tạo Giveaway mới\n" 
+                  "• `/giveaway end` (Slash only) - Kết thúc Giveaway sớm\n",
             inline=False
         )
 

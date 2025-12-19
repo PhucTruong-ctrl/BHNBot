@@ -56,12 +56,12 @@ class RelationshipCog(commands.Cog):
             (u1, u2)
         )
         if row:
-            await db_manager.execute(
+            await db_manager.modify(
                 "UPDATE relationships SET affinity = affinity + ?, last_interaction = CURRENT_TIMESTAMP WHERE user_id_1 = ? AND user_id_2 = ?",
                 (amount, u1, u2)
             )
         else:
-            await db_manager.execute(
+            await db_manager.modify(
                 "INSERT INTO relationships (user_id_1, user_id_2, affinity, last_interaction, start_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 (u1, u2, amount)
             )
@@ -76,7 +76,7 @@ class RelationshipCog(commands.Cog):
         return row
         
     async def update_last_fed(self, pet_id):
-        await db_manager.execute(
+        await db_manager.modify(
             "UPDATE shared_pets SET last_fed = CURRENT_TIMESTAMP WHERE id = ?",
             (pet_id,)
         )
@@ -164,7 +164,7 @@ class RelationshipCog(commands.Cog):
         if view.value:
             # Create pet
             u1, u2 = sorted([interaction.user.id, user.id])
-            await db_manager.execute(
+            await db_manager.modify(
                 "INSERT INTO shared_pets (user_id_1, user_id_2, name, level, exp, last_fed, start_date) VALUES (?, ?, ?, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 (u1, u2, PET_DEFAULT_NAME)
             )
@@ -189,6 +189,7 @@ class RelationshipCog(commands.Cog):
         pets = rows
         
         if not pets:
+             logger.info(f"User {interaction.user.id} tried to interact with pet but has no pets")
              return await interaction.followup.send("❌ Bạn chưa nuôi thú cưng với ai cả! Hãy dùng `/kethop` với bạn thân nhé.")
         
         if len(pets) > 1:
@@ -198,6 +199,7 @@ class RelationshipCog(commands.Cog):
         pet = pets[0] 
         pet_id = pet[0]
         partner_id = pet[2] if pet[1] == interaction.user.id else pet[1]
+        logger.info(f"User {interaction.user.id} interacting with pet {pet_id} (partner {partner_id})")
         partner = await self.bot.fetch_user(partner_id)
         partner_name = partner.name if partner else "Unknown"
         
@@ -256,12 +258,12 @@ class RelationshipCog(commands.Cog):
             level_up_msg = f"\n🎉 **{pet_name}** đã lên cấp {level}! Bé lớn nhanh quá!"
             
             # Update DB
-            await db_manager.execute(
+            await db_manager.modify(
                 "UPDATE shared_pets SET level = ?, exp = ? WHERE id = ?",
                 (level, new_exp, pet_id)
             )
         else:
-            await db_manager.execute(
+            await db_manager.modify(
                 "UPDATE shared_pets SET exp = ? WHERE id = ?",
                 (new_exp, pet_id)
             )
