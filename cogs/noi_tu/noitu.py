@@ -223,7 +223,8 @@ class GameNoiTu(commands.Cog):
                 "current_word": game.get("current_word"),
                 "used_words": list(game.get("used_words", set())),
                 "last_author_id": game.get("last_author_id"),
-                "players": game.get("players", {})
+                "players": game.get("players", {}),
+                "start_message_id": game.get("start_message").id if game.get("start_message") else None
             })
             
             async with aiosqlite.connect(DB_PATH) as db:
@@ -268,6 +269,16 @@ class GameNoiTu(commands.Cog):
             
             game_state = json.loads(row[0])
             
+            # Delete old resume message if exists
+            old_message_id = game_state.get("start_message_id")
+            if old_message_id:
+                try:
+                    old_msg = await channel.fetch_message(old_message_id)
+                    await old_msg.delete()
+                    log(f"DELETED_OLD_RESUME_MSG [Guild {guild_id}] Message ID: {old_message_id}")
+                except Exception as e:
+                    log(f"COULD_NOT_DELETE_OLD_MSG [Guild {guild_id}] Message ID: {old_message_id}, Error: {e}")
+            
             # Restore game state
             # Convert old players format (just usernames) to new format (with word counts)
             old_players = game_state.get("players", {})
@@ -295,6 +306,9 @@ class GameNoiTu(commands.Cog):
             # Send resume message
             msg = await channel.send(self.games[guild_id]["start_message_content"])
             self.games[guild_id]["start_message"] = msg
+            
+            # Save updated game state with new message ID
+            await self.save_game_state(guild_id, channel.id)
             
             log(f"GAME_RESUMED [Guild {guild_id}] Current word: {game_state.get('current_word')}, Used: {len(game_state.get('used_words', []))}")
             return True
@@ -592,6 +606,9 @@ class GameNoiTu(commands.Cog):
         log(f"GAME_START [Guild {guild_id}] Starting word: '{word}'")
         msg = await channel.send(self.games[guild_id]["start_message_content"])
         self.games[guild_id]["start_message"] = msg
+        
+        # Save game state with message ID
+        await self.save_game_state(guild_id, channel.id)
         
         # Update ranking roles after game ends
         try:

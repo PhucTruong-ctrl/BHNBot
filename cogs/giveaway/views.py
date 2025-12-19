@@ -34,6 +34,8 @@ class GiveawayEndSelectView(discord.ui.View):
             await interaction.response.defer()
             await interaction.edit_original_response(view=self)
             
+            print(f"[Giveaway] Admin {interaction.user} ({interaction.user.id}) manually ended giveaway ID {message_id}")
+            
             # End the giveaway
             await end_giveaway(message_id, self.bot)
             
@@ -54,10 +56,11 @@ class GiveawayEndSelectView(discord.ui.View):
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class GiveawayJoinView(discord.ui.View):
-    def __init__(self, giveaway_id: int, requirements: str):
+    def __init__(self, giveaway_id: int, requirements: str, cog=None):
         super().__init__(timeout=None) # Persistent view
         self.giveaway_id = giveaway_id
         self.reqs = json.loads(requirements) if isinstance(requirements, str) else requirements
+        self.cog = cog
         
         # Update custom_id to be unique per giveaway
         # Assuming the button is the first item (index 0)
@@ -106,6 +109,10 @@ class GiveawayJoinView(discord.ui.View):
             msg_suffix = ""
 
         await interaction.response.send_message(f"✅ Đã tham gia thành công!{msg_suffix}", ephemeral=True)
+        
+        # Schedule embed update with 5 second delay
+        if self.cog:
+            self.cog.schedule_embed_update(self.giveaway_id)
 
 class GiveawayResultView(discord.ui.View):
     """View for giveaway results with reroll and end options (Admin only)"""
@@ -171,6 +178,8 @@ class GiveawayResultView(discord.ui.View):
                 # Update current winners for next reroll
                 self.current_winners = new_winners_ids
                 
+                print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}")
+                
                 # Edit the result message
                 embed = discord.Embed(
                     title="🎉 GIVEAWAY KẾT QUẢ (ĐÃ REROLL)",
@@ -215,6 +224,8 @@ class GiveawayResultView(discord.ui.View):
             embed.set_footer(text=f"Giveaway ID: {self.giveaway_id} - Đã kết thúc hoàn toàn")
 
             await interaction.message.edit(embed=embed, view=self)
+
+            print(f"[Giveaway] Giveaway ID {self.giveaway_id} completed by admin {interaction.user} ({interaction.user.id})")
 
             await interaction.followup.send("✅ Đã kết thúc giveaway hoàn toàn!", ephemeral=True)
             print(f"[Giveaway] Giveaway {self.giveaway_id} completed by admin")

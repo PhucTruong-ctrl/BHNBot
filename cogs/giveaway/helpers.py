@@ -97,6 +97,8 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
             if len(winners_ids) >= count:
                 break
     
+    print(f"[Giveaway] Giveaway ID {giveaway_id} ended - Prize: {ga.prize}, Winners: {winners_ids}, Participants: {len(set(pool))}")
+    
     # 4. Update Status
     await db_manager.modify(
         "UPDATE giveaways SET status = 'ended' WHERE message_id = ?", 

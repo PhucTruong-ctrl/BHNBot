@@ -15,6 +15,7 @@ class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.invite_cache = {} # {guild_id: {code: uses}}
+        self.update_tasks = {}  # {giveaway_id: asyncio.Task} for delayed embed updates
         self.check_giveaways_task.start()
 
     def cog_unload(self):
@@ -53,7 +54,7 @@ class GiveawayCog(commands.Cog):
                     channel = self.bot.get_channel(ga.channel_id)
                     if channel:
                         await channel.fetch_message(ga.message_id)
-                        view = GiveawayJoinView(ga.message_id, ga.requirements)
+                        view = GiveawayJoinView(ga.message_id, ga.requirements, self)
                         self.bot.add_view(view)
                         count += 1
                     else:
@@ -99,6 +100,65 @@ class GiveawayCog(commands.Cog):
         print(f"[Giveaway] Restored {result_count} ended giveaway result views.")
         for guild in self.bot.guilds:
             await self.cache_invites(guild)
+
+    async def update_giveaway_embed(self, giveaway_id: int):
+        """Update giveaway embed with current participant count"""
+        try:
+            # Get participant count
+            participants = await db_manager.execute(
+                "SELECT COUNT(*) FROM giveaway_participants WHERE giveaway_id = ?",
+                (giveaway_id,)
+            )
+            count = participants[0][0] if participants else 0
+            
+            # Get giveaway data
+            row = await db_manager.fetchone("SELECT channel_id FROM giveaways WHERE message_id = ?", (giveaway_id,))
+            if not row:
+                return
+            
+            channel_id = row[0]
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return
+            
+            # Get message
+            try:
+                msg = await channel.fetch_message(giveaway_id)
+            except:
+                return
+            
+            # Update embed
+            embed = msg.embeds[0]
+            # Find the participant field and update it
+            for field in embed.fields:
+                if field.name == "Số người tham gia":
+                    field.value = str(count)
+                    break
+            
+            await msg.edit(embed=embed)
+            
+        except Exception as e:
+            print(f"[Giveaway] Error updating embed for giveaway {giveaway_id}: {e}")
+        finally:
+            # Remove from update tasks
+            if giveaway_id in self.update_tasks:
+                del self.update_tasks[giveaway_id]
+
+    def schedule_embed_update(self, giveaway_id: int):
+        """Schedule embed update with 5 second delay, cancelling previous if exists"""
+        import asyncio
+        
+        # Cancel existing task if any
+        if giveaway_id in self.update_tasks:
+            self.update_tasks[giveaway_id].cancel()
+        
+        # Create new task
+        async def delayed_update():
+            await asyncio.sleep(5)
+            await self.update_giveaway_embed(giveaway_id)
+        
+        task = asyncio.create_task(delayed_update())
+        self.update_tasks[giveaway_id] = task
 
     async def cache_invites(self, guild):
         try:
@@ -298,6 +358,7 @@ class GiveawayCog(commands.Cog):
         # 3. Create Embed
         embed = discord.Embed(title="🎉 GIVEAWAY NÈ! DÔ LỤM LÚA!", description=f"**Phần thưởng:** {prize}\n**Kết thúc:** <t:{int(end_time.timestamp())}:R> ({duration})", color=COLOR_GIVEAWAY)
         embed.add_field(name="Số lượng giải", value=f"{winners} giải")
+        embed.add_field(name="Số người tham gia", value="0", inline=True)
         embed.set_footer(text=f"Hosted by {interaction.user.display_name}")
         
         if req_invite > 0: embed.add_field(name="Điều kiện", value=f"✉️ **{req_invite} Lời mời hợp lệ (Mời người vào server)**", inline=True)
@@ -321,7 +382,7 @@ class GiveawayCog(commands.Cog):
         msg = await interaction.channel.send(embed=embed)
         
         # 5. Create View with real ID
-        view = GiveawayJoinView(msg.id, reqs)
+        view = GiveawayJoinView(msg.id, reqs, self)
         await msg.edit(view=view)
         
         # 6. Save to DB
@@ -331,6 +392,8 @@ class GiveawayCog(commands.Cog):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (msg.id, msg.channel.id, interaction.guild.id, interaction.user.id, prize, winners, end_time, json.dumps(reqs), 'active', image_url)
         )
+        
+        print(f"[Giveaway] Created giveaway ID {msg.id} by {interaction.user} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id}) - Prize: {prize}, Winners: {winners}, Duration: {duration}, Requirements: {reqs}")
         
         await interaction.edit_original_response(content="✅ Đã tạo Giveaway thành công!")
 
