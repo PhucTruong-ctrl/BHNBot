@@ -260,9 +260,14 @@ class FishSellView(discord.ui.View):
                         from database_manager import db_manager
                         db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
                         
+                        # Generate item summary
+                        fish_summary = ", ".join([f"{ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
+                        if len(fish_summary) > 200: 
+                            fish_summary = fish_summary[:197] + "..."
+                        
                         embed = discord.Embed(
                             title="😎 **GIAO DỊCH TRÓT LỌT!**",
-                            description=f"🕵️ Dân chơi không sợ mưa rơi!\n\n💰 Nhận: **{total_money} Hạt** (x3 giá gốc)\n\n✨ Hôm nay bạn là ông trùm chợ đen!",
+                            description=f"🕵️ Dân chơi không sợ mưa rơi!\n\n**Đã bán:** {fish_summary}\n\n💰 Nhận: **{total_money} Hạt** (x3 giá gốc)\n\n✨ Hôm nay bạn là ông trùm chợ đen!",
                             color=discord.Color.gold()
                         )
                         await interaction.followup.send(embed=embed, ephemeral=False)
@@ -311,9 +316,14 @@ class FishSellView(discord.ui.View):
                         from database_manager import db_manager
                         db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
                         
+                        # Generate item summary
+                        fish_summary = ", ".join([f"{ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
+                        if len(fish_summary) > 200: 
+                            fish_summary = fish_summary[:197] + "..."
+                        
                         embed = discord.Embed(
                             title="🚔 **O E O E!**",
-                            description=f"Công an ập tới!\n\n💔 Mất sạch cá\n💸 Phạt {fine} Hạt tội buôn lậu\n\n😭 Lần sau không dám chơi xấu nữa!",
+                            description=f"Công an ập tới!\n\n💔 Mất sạch cá: {fish_summary}\n💸 Phạt {fine} Hạt tội buôn lậu\n\n😭 Lần sau không dám chơi xấu nữa!",
                             color=discord.Color.red()
                         )
                         await interaction.followup.send(embed=embed, ephemeral=False)

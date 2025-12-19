@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 TU_DIEN_PATH = "./data/tu_dien.txt"
 
@@ -12,8 +13,64 @@ def add_word_to_tu_dien(word: str):
     except Exception as e:
         print(f"[ADD_WORD] Error adding to tu_dien.txt: {e}")
 
-# New words to add
-new_words = {
+def load_existing_words():
+    """Load all existing words from tu_dien.txt"""
+    words = set()
+    try:
+        with open(TU_DIEN_PATH, "r", encoding="utf-8") as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    word = entry.get("text", "").strip()
+                    if word:
+                        words.add(word)
+                except json.JSONDecodeError as e:
+                    print(f"[WARNING] Line {line_num}: Invalid JSON - {e}")
+    except FileNotFoundError:
+        print(f"[ERROR] {TU_DIEN_PATH} not found")
+    return words
+
+def clean_duplicates():
+    """Remove duplicate words from tu_dien.txt, keeping the first occurrence"""
+    try:
+        with open(TU_DIEN_PATH, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        
+        seen_words = set()
+        unique_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                word = entry.get("text", "").strip()
+                if word and word not in seen_words:
+                    seen_words.add(word)
+                    unique_lines.append(line + "\n")
+                elif word in seen_words:
+                    print(f"[CLEAN] Removed duplicate: {word}")
+            except json.JSONDecodeError:
+                # Keep invalid lines as is
+                unique_lines.append(line + "\n")
+        
+        # Write back unique lines
+        with open(TU_DIEN_PATH, "w", encoding="utf-8") as f:
+            f.writelines(unique_lines)
+        
+        print(f"[CLEAN] Cleaned duplicates. Kept {len(unique_lines)} lines.")
+    
+    except Exception as e:
+        print(f"[CLEAN] Error cleaning duplicates: {e}")
+
+def add_words():
+    """Add new words, skipping existing ones"""
+    # New words to add
+    new_words = {
 "check": [
     "in",
     "out",
@@ -210,6 +267,158 @@ new_words = {
     "một"
   ],
   "trà": [
+    "sữa",
+    "chanh",
+    "tắc",
+    "đào",
+    "vải",
+    "dâu",
+    "bí",
+    "xanh",
+    "đen",
+    "đá",
+    "tấm",
+    "mót"
+  ],
+  "bún": [
+    "đậu",
+    "mắm",
+    "chả",
+    "thịt",
+    "nướng",
+    "bò",
+    "riêu",
+    "ốc",
+    "quậy"
+  ],
+  "bánh": [
+    "tráng",
+    "mì",
+    "trộn",
+    "nướng",
+    "cuốn",
+    "xèo",
+    "khọt",
+    "căn",
+    "bèo",
+    "lọc",
+    "nậm",
+    "gai",
+    "ít",
+    "pía",
+    "đa",
+    "đúc"
+  ],
+  "phô": [
+    "mai",
+    "trương",
+    "diễn"
+  ],
+  "trân": [
+    "châu",
+    "trọng",
+    "quý"
+  ],
+  "sương": [
+    "sáo",
+    "sâm",
+    "mai",
+    "mù"
+  ],
+  "tà": [
+    "tưa",
+    "tà",
+    "dâm",
+    "đạo"
+  ],
+  "siêu": [
+    "to",
+    "khổng",
+    "phẩm",
+    "xe",
+    "nhân",
+    "thị",
+    "cấp"
+  ],
+  "lẩu": [
+    "thái",
+    "nấm",
+    "dê",
+    "bò",
+    "gà",
+    "cá",
+    "mắm",
+    "riêu",
+    "hải",
+    "sản"
+  ],
+  "nướng": [
+    "ngói",
+    "mọi",
+    "lu",
+    "giấy",
+    "bạc",
+    "bơ",
+    "mỡ",
+    "hành"
+  ],
+  "chân": [
+    "gà",
+    "ái",
+    "lý",
+    "trời",
+    "tình",
+    "dung"
+  ],
+  "cánh": [
+    "gà",
+    "cụt",
+    "tay",
+    "chim",
+    "buồm"
+  ],
+  "nem": [
+    "chua",
+    "nướng",
+    "lụi",
+    "rán",
+    "cuốn"
+  ],
+  "gỏi": [
+    "cuốn",
+    "khô",
+    "bò",
+    "gà",
+    "cá",
+    "xoài",
+    "đu"
+  ],
+  "xoài": [
+    "lắc",
+    "chấm",
+    "xanh",
+    "tượng",
+    "cát"
+  ],
+  "cóc": [
+    "lắc",
+    "bao",
+    "tử",
+    "ghẻ",
+    "nhái"
+  ],
+  "me": [
+    "đá",
+    "ngâm",
+    "chua",
+    "tây"
+  ],
+  "mận": [
+    "hà",
+    "nội",
+    "cơm",
+    "đỏ"
+  ],"trà": [
     "sữa",
     "chanh",
     "tắc",
@@ -591,6 +800,263 @@ new_words = {
     "chốt",
     "cô",
     "hiếu"
+  ],
+  "cắm": [
+    "sừng",
+    "trại",
+    "chốt",
+    "cọc",
+    "rễ",
+    "đầu"
+  ],
+  "đổ": [
+    "vỏ",
+    "bê",
+    "nát",
+    "đốn",
+    "thừa",
+    "bộ"
+  ],
+  "tiểu": [
+    "tam",
+    "thư",
+    "nhân",
+    "xảo",
+    "học",
+    "tiên"
+  ],
+  "chính": [
+    "thất",
+    "chuyên",
+    "trực",
+    "xác",
+    "đáng"
+  ],
+  "phi": [
+    "công",
+    "hành",
+    "vụ",
+    "pháp",
+    "thường",
+    "tần"
+  ],
+  "máy": [
+    "bay",
+    "móc",
+    "lạnh",
+    "bơm",
+    "chém"
+  ],
+  "nóc": [
+    "nhà",
+    "tủ",
+    "hầm"
+  ],
+  "bạch": [
+    "liên",
+    "nguyệt",
+    "kim",
+    "tạng",
+    "cầu",
+    "đằng"
+  ],
+  "lật": [
+    "mặt",
+    "kèo",
+    "bàn",
+    "đật",
+    "tẩy",
+    "ngửa"
+  ],
+  "quay": [
+    "xe",
+    "lưng",
+    "phim",
+    "cuồng",
+    "vòng",
+    "tắt"
+  ],
+  "giả": [
+    "trân",
+    "tạo",
+    "dối",
+    "vờ",
+    "nai",
+    "danh",
+    "định"
+  ],
+  "cẩu": [
+    "lương",
+    "thả",
+    "xập"
+  ],
+  "cơm": [
+    "chó",
+    "tró",
+    "nhà",
+    "bụi",
+    "hộp",
+    "tấm",
+    "lam"
+  ],
+  "tương": [
+    "tác",
+    "tư",
+    "lai",
+    "thích",
+    "đồng",
+    "khắc",
+    "bần"
+  ],
+  "bơ": [
+    "đẹp",
+    "nhau",
+    "vơ",
+    "lác"
+  ],
+  "lờ": [
+    "đi",
+    "tịt",
+    "đờ"
+  ],
+  "người": [
+    "lạ",
+    "cũ",
+    "dưng",
+    "âm",
+    "nhện",
+    "mẫu"
+  ],
+  "hack": [
+    "tuổi",
+    "dáng",
+    "não",
+    "game"
+  ],
+  "bắt": [
+    "trend",
+    "sóng",
+    "bẻ",
+    "kèo",
+    "lỗi"
+  ],
+  "đu": [
+    "idol",
+    "trend",
+    "dây",
+    "đưa",
+    "bám"
+  ],
+  "tấm": [
+    "chiếu",
+    "lòng",
+    "thân",
+    "cám",
+    "mẳn"
+  ],
+  "luật": [
+    "hoa",
+    "sư",
+    "pháp",
+    "lệ",
+    "rừng",
+    "nhân"
+  ],
+  "nghiệp": [
+    "quật",
+    "vụ",
+    "chướng",
+    "dư",
+    "tụ"
+  ],
+  "gáy": [
+    "to",
+    "sớm",
+    "bẩn",
+    "ngọ"
+  ],
+  "khẩu": [
+    "chiến",
+    "nghiệp",
+    "trang",
+    "hiệu",
+    "cung",
+    "độ"
+  ],
+  "hóng": [
+    "biến",
+    "hớt",
+    "gió",
+    "chuyện"
+  ],
+  "phốt": [
+    "to",
+    "nhỏ"
+  ],
+  "trò": [
+    "đùa",
+    "cười",
+    "trống",
+    "chơi",
+    "mèo"
+  ],
+  "tấu": [
+    "hài",
+    "sớ",
+    "khúc"
+  ],
+  "diễn": [
+    "sâu",
+    "giả",
+    "viên",
+    "biến",
+    "thuyết"
+  ],
+  "chiếm": [
+    "sóng",
+    "đoạt",
+    "hữu",
+    "đóng"
+  ],
+  "lên": [
+    "xu",
+    "thớt",
+    "hương",
+    "đồ",
+    "lớp",
+    "mặt"
+  ],
+  "xuống": [
+    "lỗ",
+    "xác",
+    "nước",
+    "cấp",
+    "tay"
+  ],
+  "bay": [
+    "màu",
+    "lắc",
+    "phòng",
+    "nhảy"
+  ],
+  "mất": [
+    "gốc",
+    "nết",
+    "mạng",
+    "mặt",
+    "lượt",
+    "ngủ"
+  ],
+  "xỉu": [
+    "ngang",
+    "up",
+    "down"
+  ],
+  "còn": [
+    "cái",
+    "nịt",
+    "thở",
+    "nguyên"
   ],
   "cắm": [
     "sừng",
@@ -1668,6 +2134,559 @@ new_words = {
     "sa",
     "quang",
     "nhắt"
+  ],
+  "mưa": [
+    "rào",
+    "phùn",
+    "dầm",
+    "đá",
+    "lũ",
+    "ngâu",
+    "móc",
+    "sa",
+    "bão",
+    "giông",
+    "tuôn",
+    "rơi",
+    "bay"
+  ],
+  "gió": [
+    "mùa",
+    "bấc",
+    "lào",
+    "heo",
+    "máy",
+    "lốc",
+    "chướng",
+    "nồm",
+    "thổi",
+    "chiều",
+    "trăng",
+    "bụi"
+  ],
+  "bão": [
+    "táp",
+    "bùng",
+    "tố",
+    "giá",
+    "lụt",
+    "mạng",
+    "cát",
+    "đạn"
+  ],
+  "nắng": [
+    "nôi",
+    "chói",
+    "chang",
+    "gắt",
+    "lửa",
+    "hạ",
+    "quái",
+    "cực",
+    "chiều",
+    "sớm"
+  ],
+  "sấm": [
+    "sét",
+    "chớp",
+    "rền",
+    "động",
+    "truyền",
+    "trạng"
+  ],
+  "núi": [
+    "non",
+    "cao",
+    "đồi",
+    "lửa",
+    "rừng",
+    "đá",
+    "sông",
+    "đôi"
+  ],
+  "sông": [
+    "hồ",
+    "ngòi",
+    "suối",
+    "nước",
+    "cầu",
+    "núi",
+    "đà",
+    "hồng",
+    "hương",
+    "cửu"
+  ],
+  "biển": [
+    "cả",
+    "đông",
+    "hồ",
+    "khơi",
+    "đảo",
+    "lận",
+    "thủ",
+    "báo",
+    "hiệu",
+    "số"
+  ],
+  "trăng": [
+    "sao",
+    "non",
+    "tròn",
+    "khuyết",
+    "lưỡi",
+    "liềm",
+    "mật",
+    "hoa",
+    "gió"
+  ],
+  "sao": [
+    "hỏa",
+    "kim",
+    "chổi",
+    "băng",
+    "biển",
+    "chép",
+    "y",
+    "đâu",
+    "vậy",
+    "nhãng"
+  ],
+  "đất": [
+    "đai",
+    "cát",
+    "đá",
+    "nước",
+    "trời",
+    "khách",
+    "lành",
+    "mẹ",
+    "hứa"
+  ],
+  "trời": [
+    "đất",
+    "cao",
+    "xanh",
+    "mây",
+    "phú",
+    "cho",
+    "sinh",
+    "ơi"
+  ],
+  "cá": [
+    "sấu",
+    "mập",
+    "voi",
+    "heo",
+    "chép",
+    "rô",
+    "lóc",
+    "trê",
+    "tra",
+    "ngừ",
+    "thu",
+    "cơm",
+    "nục",
+    "cược",
+    "độ",
+    "biệt",
+    "nhân",
+    "tính",
+    "tháng"
+  ],
+  "chim": [
+    "sẻ",
+    "sâu",
+    "chích",
+    "bồ",
+    "câu",
+    "én",
+    "yến",
+    "ưng",
+    "cụt",
+    "lợn",
+    "chóc",
+    "chuột",
+    "mồi",
+    "bao"
+  ],
+  "chó": [
+    "mực",
+    "vàng",
+    "đốm",
+    "phốc",
+    "cỏ",
+    "sói",
+    "nghiệp",
+    "má",
+    "săn",
+    "chết",
+    "ngáp"
+  ],
+  "mèo": [
+    "mướp",
+    "tam",
+    "đen",
+    "hoang",
+    "rừng",
+    "mả",
+    "cào",
+    "già"
+  ],
+  "hổ": [
+    "mang",
+    "báo",
+    "cốt",
+    "phách",
+    "lửa",
+    "thẹn",
+    "tướng",
+    "dữ",
+    "đói"
+  ],
+  "bò": [
+    "tót",
+    "sữa",
+    "sát",
+    "cạp",
+    "húc",
+    "đội",
+    "né",
+    "lăn",
+    "lê",
+    "cười"
+  ],
+  "gà": [
+    "trống",
+    "mái",
+    "nòi",
+    "chọi",
+    "tây",
+    "ta",
+    "ác",
+    "đồng",
+    "mờ",
+    "gật",
+    "công",
+    "nghiệp",
+    "rù"
+  ],
+  "khỉ": [
+    "gió",
+    "khô",
+    "ho",
+    "đột",
+    "thật"
+  ],
+  "ngựa": [
+    "vằn",
+    "ô",
+    "thồ",
+    "đua",
+    "non",
+    "chứng",
+    "người",
+    "xe"
+  ],
+  "trâu": [
+    "bò",
+    "nước",
+    "mộng",
+    "cày",
+    "chấu",
+    "giật",
+    "chậm"
+  ],
+  "voi": [
+    "ma",
+    "rừng",
+    "bản",
+    "giày"
+  ],
+  "chuột": [
+    "đồng",
+    "cống",
+    "túi",
+    "bạch",
+    "rút",
+    "lắt",
+    "sa",
+    "quang",
+    "nhắt"
+  ],
+  "mưa": [
+    "rào",
+    "phùn",
+    "dầm",
+    "đá",
+    "lũ",
+    "ngâu",
+    "móc",
+    "sa",
+    "bão",
+    "giông",
+    "tuôn",
+    "rơi",
+    "bay"
+  ],
+  "gió": [
+    "mùa",
+    "bấc",
+    "lào",
+    "heo",
+    "máy",
+    "lốc",
+    "chướng",
+    "nồm",
+    "thổi",
+    "chiều",
+    "trăng",
+    "bụi"
+  ],
+  "bão": [
+    "táp",
+    "bùng",
+    "tố",
+    "giá",
+    "lụt",
+    "mạng",
+    "cát",
+    "đạn"
+  ],
+  "nắng": [
+    "nôi",
+    "chói",
+    "chang",
+    "gắt",
+    "lửa",
+    "hạ",
+    "quái",
+    "cực",
+    "chiều",
+    "sớm"
+  ],
+  "sấm": [
+    "sét",
+    "chớp",
+    "rền",
+    "động",
+    "truyền",
+    "trạng"
+  ],
+  "núi": [
+    "non",
+    "cao",
+    "đồi",
+    "lửa",
+    "rừng",
+    "đá",
+    "sông",
+    "đôi"
+  ],
+  "sông": [
+    "hồ",
+    "ngòi",
+    "suối",
+    "nước",
+    "cầu",
+    "núi",
+    "đà",
+    "hồng",
+    "hương",
+    "cửu"
+  ],
+  "biển": [
+    "cả",
+    "đông",
+    "hồ",
+    "khơi",
+    "đảo",
+    "lận",
+    "thủ",
+    "báo",
+    "hiệu",
+    "số"
+  ],
+  "trăng": [
+    "sao",
+    "non",
+    "tròn",
+    "khuyết",
+    "lưỡi",
+    "liềm",
+    "mật",
+    "hoa",
+    "gió"
+  ],
+  "sao": [
+    "hỏa",
+    "kim",
+    "chổi",
+    "băng",
+    "biển",
+    "chép",
+    "y",
+    "đâu",
+    "vậy",
+    "nhãng"
+  ],
+  "đất": [
+    "đai",
+    "cát",
+    "đá",
+    "nước",
+    "trời",
+    "khách",
+    "lành",
+    "mẹ",
+    "hứa"
+  ],
+  "trời": [
+    "đất",
+    "cao",
+    "xanh",
+    "mây",
+    "phú",
+    "cho",
+    "sinh",
+    "ơi"
+  ],
+  "đấm": [
+    "đá",
+    "bốc",
+    "lưng",
+    "mõm",
+    "ngực",
+    "phát",
+    "cú"
+  ],
+  "đá": [
+    "bóng",
+    "cầu",
+    "gà",
+    "đểu",
+    "xoáy",
+    "quý",
+    "lửa",
+    "tảng",
+    "hoa",
+    "mài",
+    "thúng"
+  ],
+  "chạy": [
+    "bộ",
+    "đua",
+    "trốn",
+    "thoát",
+    "án",
+    "chọt",
+    "vạy",
+    "làng",
+    "giặc",
+    "pin",
+    "chương"
+  ],
+  "nhảy": [
+    "dây",
+    "cóc",
+    "dù",
+    "múa",
+    "nhót",
+    "lầu",
+    "cầu",
+    "bậc",
+    "việc",
+    "dựng",
+    "ổ"
+  ],
+  "bơi": [
+    "lội",
+    "sải",
+    "ngửa",
+    "bướm",
+    "ếch",
+    "chải",
+    "xuồng",
+    "thuyền"
+  ],
+  "cười": [
+    "đùa",
+    "cợt",
+    "duyên",
+    "trừ",
+    "gượng",
+    "khẩy",
+    "bò",
+    "lăn",
+    "lóc",
+    "nụ",
+    "vỡ"
+  ],
+  "khóc": [
+    "lóc",
+    "thét",
+    "than",
+    "ròng",
+    "mướt",
+    "thầm",
+    "nhè",
+    "thuê",
+    "òa"
+  ],
+  "hát": [
+    "hò",
+    "ca",
+    "xướng",
+    "rong",
+    "dạo",
+    "hay",
+    "chèo",
+    "bội"
+  ],
+  "múa": [
+    "may",
+    "lân",
+    "rối",
+    "bụng",
+    "cột",
+    "lửa",
+    "rìu",
+    "tay"
+  ],
+  "vẽ": [
+    "tranh",
+    "vời",
+    "chuyện",
+    "đường",
+    "bùa",
+    "hình"
+  ],
+  "viết": [
+    "lách",
+    "bài",
+    "tay",
+    "thư",
+    "báo",
+    "văn",
+    "tắt",
+    "hoa"
+  ],
+  "đọc": [
+    "sách",
+    "báo",
+    "hiểu",
+    "lệnh",
+    "vị",
+    "thầm",
+    "nhẩm"
+  ],
+  "nghe": [
+    "ngóng",
+    "nhìn",
+    "lén",
+    "thấy",
+    "lời",
+    "đồn",
+    "nhạc"
   ],
   "mưa": [
     "rào",
@@ -3242,511 +4261,33 @@ new_words = {
     "xanh",
     "thề",
     "tém"
-  ],
-  "cao": [
-    "lớn",
-    "ráo",
-    "sang",
-    "cả",
-    "quý",
-    "hứng",
-    "ngạo",
-    "tay",
-    "thủ",
-    "kiến",
-    "số",
-    "nguyên",
-    "su",
-    "bồi",
-    "độ"
-  ],
-  "thấp": [
-    "bé",
-    "hèn",
-    "kém",
-    "thoáng",
-    "thỏm",
-    "khớp",
-    "cơ",
-    "thò"
-  ],
-  "béo": [
-    "phì",
-    "mập",
-    "bở",
-    "ngậy",
-    "trục",
-    "tròn",
-    "tốt",
-    "mầm",
-    "núm",
-    "úp"
-  ],
-  "gầy": [
-    "gò",
-    "guộc",
-    "còm",
-    "yếu",
-    "mòn",
-    "nhom",
-    "đét",
-    "dựng"
-  ],
-  "xinh": [
-    "đẹp",
-    "xắn",
-    "tươi",
-    "trai",
-    "gái",
-    "xẻo"
-  ],
-  "xấu": [
-    "xí",
-    "hổ",
-    "tính",
-    "nết",
-    "số",
-    "máu",
-    "bụng",
-    "mặt",
-    "xa",
-    "hoắc"
-  ],
-  "già": [
-    "cỗi",
-    "nua",
-    "dặn",
-    "làng",
-    "đời",
-    "mồm",
-    "trẻ",
-    "cốc",
-    "hó",
-    "họ"
-  ],
-  "mập": [
-    "mờ",
-    "mạp",
-    "ú",
-    "địch"
-  ],
-  "ốm": [
-    "yếu",
-    "đau",
-    "nhom",
-    "o",
-    "đòn",
-    "nghén",
-    "tong"
-  ],
-  "lùn": [
-    "tịt",
-    "xịt",
-    "phát"
-  ],
-  "mảnh": [
-    "mai",
-    "khảnh",
-    "vỡ",
-    "đất",
-    "vườn",
-    "tình",
-    "đời",
-    "dẻ",
-    "trăng"
-  ],
-  "tròn": [
-    "trĩnh",
-    "xoe",
-    "vo",
-    "trịu",
-    "vành",
-    "trên",
-    "xoay",
-    "vẹn",
-    "đầy"
-  ],
-  "nguyễn": [
-    "y",
-    "tiêu",
-    "đán",
-    "du",
-    "trãi",
-    "huệ"
-  ],
-  "trần": [
-    "nhà",
-    "gian",
-    "tục",
-    "trụi",
-    "ai",
-    "lệ",
-    "tình",
-    "thuật",
-    "thiết",
-    "trương",
-    "hưng",
-    "đạo"
-  ],
-  "lê": [
-    "thê",
-    "lết",
-    "la",
-    "bước",
-    "dân",
-    "thẩm",
-    "lợi"
-  ],
-  "phạm": [
-    "vi",
-    "trù",
-    "quy",
-    "luật",
-    "tội",
-    "lỗi",
-    "thượng",
-    "nhân",
-    "húy"
-  ],
-  "hoàng": [
-    "gia",
-    "đế",
-    "hậu",
-    "cung",
-    "tộc",
-    "kim",
-    "đạo",
-    "hôn",
-    "mang",
-    "phủ",
-    "cầm",
-    "oanh"
-  ],
-  "huỳnh": [
-    "quang",
-    "đệ",
-    "đàn",
-    "hoặc"
-  ],
-  "phan": [
-    "thiết",
-    "rang",
-    "bội",
-    "đình",
-    "xi",
-    "phu"
-  ],
-  "vũ": [
-    "trụ",
-    "trang",
-    "khí",
-    "đài",
-    "lực",
-    "đạo",
-    "phu",
-    "công",
-    "sư",
-    "khúc",
-    "bão",
-    "môn"
-  ],
-  "đặng": [
-    "chẳng",
-    "tiểu",
-    "sơn"
-  ],
-  "bùi": [
-    "ngùi",
-    "tai",
-    "lông",
-    "nhùi"
-  ],
-  "đỗ": [
-    "quyên",
-    "đạt",
-    "xanh",
-    "đen",
-    "bến",
-    "xe",
-    "thủ",
-    "nghèo",
-    "vỡ"
-  ],
-  "hồ": [
-    "nước",
-    "ly",
-    "quảng",
-    "sơ",
-    "hởi",
-    "dán",
-    "tinh",
-    "điệp",
-    "khẩu",
-    "đồ"
-  ],
-  "ngô": [
-    "khoai",
-    "sắn",
-    "nghê",
-    "quyền",
-    "công"
-  ],
-  "dương": [
-    "cầm",
-    "lịch",
-    "tính",
-    "tiễn",
-    "vật",
-    "bản",
-    "quá",
-    "gian",
-    "liễu",
-    "xỉ"
-  ],
-  "lý": [
-    "do",
-    "lẽ",
-    "thuyết",
-    "tưởng",
-    "giải",
-    "trí",
-    "sự",
-    "lịch",
-    "số",
-    "thú",
-    "tính"
-  ],
-  "giám": [
-    "đốc",
-    "sát",
-    "thị",
-    "khảo",
-    "mục",
-    "hộ",
-    "định",
-    "ngục",
-    "binh"
-  ],
-  "tổng": [
-    "cộng",
-    "đài",
-    "kết",
-    "hợp",
-    "thống",
-    "quát",
-    "cục",
-    "trấn",
-    "quan",
-    "duyệt",
-    "thể",
-    "số"
-  ],
-  "trưởng": [
-    "phòng",
-    "ban",
-    "nhóm",
-    "thành",
-    "lão",
-    "bối",
-    "đoàn",
-    "tộc",
-    "giả",
-    "ga",
-    "bạ"
-  ],
-  "phó": [
-    "bản",
-    "mặc",
-    "thác",
-    "nháy",
-    "hội",
-    "từ",
-    "mát",
-    "đà",
-    "gia"
-  ],
-  "kỹ": [
-    "sư",
-    "thuật",
-    "năng",
-    "xảo",
-    "càng",
-    "lưỡng",
-    "tính",
-    "nghệ",
-    "nữ"
-  ],
-  "thợ": [
-    "xây",
-    "hồ",
-    "mộc",
-    "điện",
-    "mỏ",
-    "lặn",
-    "săn",
-    "may",
-    "cắt",
-    "chụp",
-    "rèn",
-    "cả"
-  ],
-  "bác": [
-    "sĩ",
-    "học",
-    "ái",
-    "cổ",
-    "bỏ",
-    "đơn",
-    "mẹ",
-    "vật"
-  ],
-  "giáo": [
-    "viên",
-    "sư",
-    "dục",
-    "khoa",
-    "án",
-    "trình",
-    "lý",
-    "điều",
-    "đường",
-    "hoàng",
-    "phái",
-    "đầu",
-    "dở"
-  ],
-  "sinh": [
-    "viên",
-    "học",
-    "sống",
-    "tồn",
-    "sản",
-    "đẻ",
-    "tử",
-    "lý",
-    "kế",
-    "nhật",
-    "thái",
-    "dục",
-    "lợi",
-    "thành",
-    "tố"
-  ],
-  "lao": [
-    "xao",
-    "nha",
-    "đao",
-    "tâm",
-    "lực",
-    "công",
-    "động",
-    "phổi",
-    "lý",
-    "vút"
-  ],
-  "xôn": [
-    "xao"
-  ],
-  "xao": [
-    "xuyến",
-    "động",
-    "nhãng",
-    "xác",
-    "lãng"
-  ],
-  "lộp": [
-    "độp",
-    "bộp"
-  ],
-  "rầm": [
-    "rập",
-    "rì",
-    "rộ",
-    "trời"
-  ],
-  "ầm": [
-    "ĩ",
-    "ầm",
-    "trĩ",
-    "ừ"
-  ],
-  "khe": [
-    "khẽ",
-    "khắt",
-    "cửa",
-    "hở",
-    "suối",
-    "ngực"
-  ],
-  "khẽ": [
-    "khàng"
-  ],
-  "thình": [
-    "lình",
-    "thịch"
-  ],
-  "lình": [
-    "xình",
-    "bình"
-  ],
-  "hì": [
-    "hục",
-    "hụi",
-    "hì"
-  ],
-  "hối": [
-    "hả",
-    "thúc",
-    "hận",
-    "lộ",
-    "phiếu",
-    "đoái",
-    "lỗi"
-  ],
-  "hả": [
-    "hê",
-    "dạ",
-    "giận",
-    "hơi"
-  ],
-  "lung": [
-    "linh",
-    "tung",
-    "lay",
-    "lạc"
-  ],
-  "linh": [
-    "tinh",
-    "thiêng",
-    "đình",
-    "cảm",
-    "hồn",
-    "đan",
-    "chi",
-    "lăng",
-    "hoạt",
-    "nghiệm",
-    "cữu"
-  ],
-  "long": [
-    "lanh",
-    "trọng",
-    "mạch",
-    "nhãn",
-    "não",
-    "đong",
-    "sòng",
-    "vương",
-    "bào",
-    "thể",
-    "móng"
   ]
 }
+    
+    existing_words = load_existing_words()
+    added_count = 0
+    
+    for key, words in new_words.items():
+        for word in words:
+            full_word = f"{key} {word}"
+            if full_word not in existing_words:
+                add_word_to_tu_dien(full_word)
+                added_count += 1
+            else:
+                print(f"[SKIP] Word already exists: {full_word}")
+    
+    print(f"[ADD] Added {added_count} new words.")
 
-# Add words to tu_dien.txt
-for key, words in new_words.items():
-    for word in words:
-        full_word = f"{key} {word}"
-        add_word_to_tu_dien(full_word)
-
-print("Words added to tu_dien.txt successfully!")
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python add_words.py --add | --clean")
+        sys.exit(1)
+    
+    action = sys.argv[1]
+    if action == "--add":
+        add_words()
+    elif action == "--clean":
+        clean_duplicates()
+    else:
+        print("Invalid action. Use --add or --clean")
+        sys.exit(1)

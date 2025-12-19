@@ -4,8 +4,8 @@ from discord.ext import commands
 import aiosqlite
 from datetime import datetime, timedelta
 import asyncio
-
-DB_PATH = "./data/database.db"
+from configs.settings import DB_PATH
+from database_manager import db_manager
 
 # Tree Level Requirements (Hạt cần thêm)
 # Base requirements for season 1
@@ -308,6 +308,7 @@ class CommunityCog(commands.Cog):
 
     async def update_or_create_pin_message(self, guild_id: int, tree_channel_id: int):
         """Delete old tree message and create new one (no pinning)"""
+        print(f"[TREE] Updating tree message for guild {guild_id} in channel {tree_channel_id}")
         # Get or create lock for this guild
         if guild_id not in self.tree_update_locks:
             self.tree_update_locks[guild_id] = asyncio.Lock()
@@ -317,8 +318,12 @@ class CommunityCog(commands.Cog):
             try:
                 channel = self.bot.get_channel(tree_channel_id)
                 if not channel:
-                    print(f"[TREE] Channel {tree_channel_id} not found")
-                    return
+                    # Try fetching if get returns None
+                    try:
+                        channel = await self.bot.fetch_channel(tree_channel_id)
+                    except Exception as e:
+                        print(f"[TREE] Channel {tree_channel_id} not found: {e}")
+                        return
                 
                 embed = await self.create_tree_embed(guild_id)
                 
@@ -331,6 +336,7 @@ class CommunityCog(commands.Cog):
                 view = TreeContributeView(self)
                 
                 # Try to get existing tree message
+                tree_message_id = None
                 async with aiosqlite.connect(DB_PATH) as db:
                     async with db.execute(
                         "SELECT tree_message_id FROM server_tree WHERE guild_id = ?",
@@ -344,9 +350,9 @@ class CommunityCog(commands.Cog):
                     try:
                         old_message = await channel.fetch_message(tree_message_id)
                         await old_message.delete()
-                        print(f"[TREE] Deleted old tree message in {channel.name}")
-                    except:
-                        pass
+                        print(f"[TREE] Deleted old tree message {tree_message_id} in {channel.name}")
+                    except Exception as e:
+                        print(f"[TREE] Could not delete old message: {e}")
                 
                 # Create new message (without pinning)
                 new_message = await channel.send(embed=embed, view=view)
@@ -359,10 +365,12 @@ class CommunityCog(commands.Cog):
                     )
                     await db.commit()
                 
-                print(f"[TREE] Created new tree message in {channel.name}")
+                print(f"[TREE] Created new tree message {new_message.id} in {channel.name}")
             
             except Exception as e:
                 print(f"[TREE] Error updating tree message: {e}")
+                import traceback
+                traceback.print_exc()
 
     async def process_contribution(self, interaction: discord.Interaction, amount: int):
         """Process seed contribution"""

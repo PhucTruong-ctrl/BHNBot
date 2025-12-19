@@ -1585,7 +1585,7 @@ class FishingCog(commands.Cog):
                 if is_glitch_active():
                     title = glitch_text(title)
                 
-                diff = final_total - base_total
+                diff = event_total - base_total
                 sign = "+" if diff >= 0 else ""
                 event_detail = f"{SELL_MESSAGES[triggered_event]}\n\n💰 **{event_name}**"
                 

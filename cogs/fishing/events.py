@@ -240,26 +240,22 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
     for event_type, event_data in RANDOM_EVENTS.items():
         current_chance += event_data["chance"]
         if rand < current_chance:
-            # Update stats in DB
-            try:
-                from database_manager import db_manager
-                try:
-                    if event_data.get("type") == "bad":
-                        await increment_stat(user_id, "fishing", "bad_events_encountered", 1)
-                    if event_data.get("effect") == "global_reset":
-                        await increment_stat(user_id, "fishing", "global_reset_triggered", 1)
-                        # Check child_of_sea achievement
-                        if hasattr(cog, 'check_achievement'):
-                            await cog.check_achievement(user_id, "child_of_sea", channel, guild_id)
-                    await db.commit()
-                finally:
-                    await db.close()
-            except:
-                pass
-            
             # Skip global_reset if rod level < 3
             if event_data.get("effect") == "global_reset" and rod_level < 3:
                 return result
+            
+            # Update stats in DB
+            try:
+                from database_manager import db_manager
+                if event_data.get("type") == "bad":
+                    await increment_stat(user_id, "fishing", "bad_events_encountered", 1)
+                if event_data.get("effect") == "global_reset":
+                    await increment_stat(user_id, "fishing", "global_reset_triggered", 1)
+                    # Check child_of_sea achievement
+                    if hasattr(cog, 'check_achievement'):
+                        await cog.check_achievement(user_id, "child_of_sea", channel, guild_id)
+            except:
+                pass
             
             # If protection active and bad event, avoid it
             if has_protection and event_data.get("type") == "bad":
