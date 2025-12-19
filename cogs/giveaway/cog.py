@@ -46,10 +46,22 @@ class GiveawayCog(commands.Cog):
         active_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
         count = 0
         for row in active_giveaways:
-            ga = Giveaway.from_db(row)
-            view = GiveawayJoinView(ga.message_id, ga.requirements)
-            self.bot.add_view(view)
-            count += 1
+            try:
+                ga = Giveaway.from_db(row)
+                # Check if message still exists before restoring view
+                try:
+                    channel = self.bot.get_channel(ga.channel_id)
+                    if channel:
+                        await channel.fetch_message(ga.message_id)
+                        view = GiveawayJoinView(ga.message_id, ga.requirements)
+                        self.bot.add_view(view)
+                        count += 1
+                    else:
+                        print(f"[Giveaway] Channel {ga.channel_id} not found for giveaway {ga.message_id}, skipping view restore")
+                except:
+                    print(f"[Giveaway] Message {ga.message_id} not found, skipping view restore")
+            except Exception as e:
+                print(f"[Giveaway] Error restoring view for giveaway {row[0]}: {e}")
         print(f"[Giveaway] Restored {count} active giveaway views.")
 
         # 2. Cache Invites
@@ -213,6 +225,7 @@ class GiveawayCog(commands.Cog):
             await interaction.followup.send(f"❌ Có lỗi xảy ra: {e}")
 
     @app_commands.command(name="gacreate", description="Tạo Giveaway với các điều kiện")
+    @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         prize="Phần thưởng",
         duration="Thời gian (vd: 1h, 30m, 1d)",
@@ -251,7 +264,7 @@ class GiveawayCog(commands.Cog):
         if cost > 0: reqs["cost"] = cost
         
         # 3. Create Embed
-        embed = discord.Embed(title="🎉 GIVEAWAY!", description=f"**Phần thưởng:** {prize}\n**Kết thúc:** <t:{int(end_time.timestamp())}:R> ({duration})", color=COLOR_GIVEAWAY)
+        embed = discord.Embed(title="🎉 GIVEAWAY NÈ! DÔ LỤM LÚA!", description=f"**Phần thưởng:** {prize}\n**Kết thúc:** <t:{int(end_time.timestamp())}:R> ({duration})", color=COLOR_GIVEAWAY)
         embed.add_field(name="Số lượng giải", value=f"{winners} giải")
         embed.set_footer(text=f"Hosted by {interaction.user.display_name}")
         

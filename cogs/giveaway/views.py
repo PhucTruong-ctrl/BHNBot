@@ -65,6 +65,14 @@ class GiveawayJoinView(discord.ui.View):
     async def join_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = interaction.user
         
+        # 0. Check if giveaway is still active
+        giveaway_row = await db_manager.fetchone(
+            "SELECT status FROM giveaways WHERE message_id = ?", 
+            (self.giveaway_id,)
+        )
+        if not giveaway_row or giveaway_row[0] != 'active':
+            return await interaction.response.send_message("❌ Giveaway này đã kết thúc hoặc không còn tồn tại!", ephemeral=True)
+        
         # 1. Check Requirements
         passed, reason = await check_requirements(user, self.reqs)
         if not passed:

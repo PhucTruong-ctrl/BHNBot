@@ -118,7 +118,7 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
 
         if winners_ids:
             winners_text = ", ".join([f"<@{uid}>" for uid in winners_ids])
-            result_text = f"Xin chúc mừng {winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}"
+            result_text = f"Xin chúc mừng {winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}. Hẹn các bạn trong các giveaway sau!"
         else:
             result_text = "Không có ai tham gia, không có người thắng. 😢"
 

@@ -411,7 +411,7 @@ class RelationshipCog(commands.Cog):
                     # Add small affinity (2 points)
                     await self.add_affinity(message.author.id, replied_msg.author.id, 2)
                     logger.info(f"Auto affinity reply: {message.author.id} -> {replied_msg.author.id}, +2")
-            except:
+            except (discord.NotFound, discord.Forbidden):
                 pass
         
         # Check if message mentions someone

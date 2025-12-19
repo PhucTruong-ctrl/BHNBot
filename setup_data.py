@@ -157,6 +157,17 @@ def init_database():
         # Column already exists
         pass
 
+    # Add start_date column to relationships if not exists
+    try:
+        c.execute("ALTER TABLE relationships ADD COLUMN start_date DATETIME")
+        print("✓ Added start_date column to relationships table")
+        # Update existing rows with current timestamp
+        c.execute("UPDATE relationships SET start_date = CURRENT_TIMESTAMP WHERE start_date IS NULL")
+        print("✓ Updated existing relationships with start_date")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+
     c.execute('''CREATE TABLE IF NOT EXISTS giveaway_participants (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     giveaway_id INTEGER,

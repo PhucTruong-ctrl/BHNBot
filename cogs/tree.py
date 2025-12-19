@@ -539,6 +539,7 @@ class CommunityCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @app_commands.command(name="thuhoach", description="Thu hoạch cây (Admin Only)")
+    async def thuhoach(self, interaction: discord.Interaction, season: int):
         """Retroactively give memorabilia items to all contributors of a season (Admin Only)"""
         await interaction.response.defer(ephemeral=False)
         
