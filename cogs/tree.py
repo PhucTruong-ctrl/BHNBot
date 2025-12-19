@@ -621,8 +621,7 @@ class CommunityCog(commands.Cog):
                 f"❌ Lỗi: {str(e)}",
                 ephemeral=True
             )
-
-    @app_commands.command(name="thuhoach", description="Thu hoạch cây (Admin Only)")
+            
     @app_commands.checks.has_permissions(administrator=True)
     async def harvest_tree(self, interaction: discord.Interaction):
         """Harvest the tree when at max level - CLIMAX EVENT"""

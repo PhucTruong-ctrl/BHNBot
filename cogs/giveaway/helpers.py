@@ -2,6 +2,8 @@ import json
 import random
 import discord
 from database_manager import db_manager, get_rod_data, get_user_balance
+from .constants import COLOR_GIVEAWAY, EMOJI_WINNER
+from .models import Giveaway
 
 async def get_valid_invites(user_id: int) -> int:
     """Count valid invites for a user"""
@@ -122,13 +124,25 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
         else:
             result_text = "Không có ai tham gia, không có người thắng. 😢"
 
+        # Create result embed
+        embed = discord.Embed(
+            title="🎉 GIVEAWAY KẾT QUẢ",
+            description=result_text,
+            color=COLOR_GIVEAWAY
+        )
+        embed.set_footer(text=f"Giveaway ID: {giveaway_id}")
+
+        # Create result view with admin controls
+        from .views import GiveawayResultView
+        result_view = GiveawayResultView(giveaway_id, winners_ids, bot)
+
         # Reply to giveaway message
         if msg:
             # Disable view
             await msg.edit(view=None)
-            await msg.reply(result_text)
+            await msg.reply(embed=embed, view=result_view)
         else:
-            await channel.send(f"Giveaway **{ga.prize}** đã kết thúc.\n{result_text}")
+            await channel.send(embed=embed, view=result_view)
             
     except Exception as e:
         print(f"Error ending giveaway {giveaway_id}: {e}")

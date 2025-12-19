@@ -6,7 +6,7 @@ import json
 import asyncio
 from typing import Optional
 from database_manager import db_manager
-from .views import GiveawayJoinView
+from .views import GiveawayJoinView, GiveawayResultView
 from .models import Giveaway
 from .constants import *
 from .helpers import end_giveaway
@@ -64,7 +64,39 @@ class GiveawayCog(commands.Cog):
                 print(f"[Giveaway] Error restoring view for giveaway {row[0]}: {e}")
         print(f"[Giveaway] Restored {count} active giveaway views.")
 
-        # 2. Cache Invites
+        # 2. Restore Ended Giveaway Result Views (for reroll/end functionality)
+        ended_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'ended'")
+        result_count = 0
+        for row in ended_giveaways:
+            try:
+                ga = Giveaway.from_db(row)
+                # Get current winners from participants (assuming winners are still in the pool)
+                participants = await db_manager.execute(
+                    "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ? ORDER BY id LIMIT ?",
+                    (ga.message_id, ga.winners_count)
+                )
+                current_winners = [row[0] for row in participants]
+                
+                # Try to find the result message (it's a reply to the original giveaway message)
+                try:
+                    channel = self.bot.get_channel(ga.channel_id)
+                    if channel:
+                        original_msg = await channel.fetch_message(ga.message_id)
+                        # Get the last reply (assuming it's the result message)
+                        async for message in original_msg.channel.history(after=original_msg, limit=5):
+                            if message.author == self.bot.user and message.embeds:
+                                embed = message.embeds[0]
+                                if "GIVEAWAY KẾT QUẢ" in embed.title:
+                                    # This is likely the result message
+                                    view = GiveawayResultView(ga.message_id, current_winners, self.bot)
+                                    self.bot.add_view(view)
+                                    result_count += 1
+                                    break
+                except Exception as e:
+                    print(f"[Giveaway] Could not restore result view for giveaway {ga.message_id}: {e}")
+            except Exception as e:
+                print(f"[Giveaway] Error restoring result view for giveaway {row[0]}: {e}")
+        print(f"[Giveaway] Restored {result_count} ended giveaway result views.")
         for guild in self.bot.guilds:
             await self.cache_invites(guild)
 
