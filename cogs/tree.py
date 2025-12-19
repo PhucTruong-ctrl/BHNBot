@@ -327,11 +327,42 @@ class CommunityCog(commands.Cog):
                 
                 embed = await self.create_tree_embed(guild_id)
                 
+                # Add buff info if active
+                if await self.is_harvest_buff_active(guild_id):
+                    result = await db_manager.fetchone("SELECT harvest_buff_until FROM server_config WHERE guild_id = ?", (guild_id,))
+                    if result and result[0]:
+                        buff_until = datetime.fromisoformat(result[0])
+                        timestamp = int(buff_until.timestamp())
+                        embed.add_field(name="🌟 Buff Toàn Server", value=f"X2 hạt còn <t:{timestamp}:R>", inline=False)
+                
                 # Add contributor info
-                contributors = await self.get_top_contributors(guild_id, 3)
-                if contributors:
-                    contrib_text = "\n".join([f"{self.bot.get_user(uid).mention if self.bot.get_user(uid) else f'<@{uid}>'} - {exp} Kinh Nghiệm" for uid, exp in contributors])
-                    embed.add_field(name="🏆 Top 3 Người Góp (Kinh Nghiệm)", value=contrib_text, inline=False)
+                current_season_contributors = await self.get_top_contributors(guild_id, 3)
+                all_time_contributors = await self.get_top_contributors_all_time(guild_id, 3)
+                
+                # Get current season
+                _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
+                
+                if current_season_contributors:
+                    season_text = ""
+                    for idx, (uid, amount_val, exp_val) in enumerate(current_season_contributors, 1):
+                        try:
+                            user = await self.bot.fetch_user(uid)
+                            season_text += f"{idx}. **{user.name}** - {amount_val} Kinh Nghiệm\n"
+                        except:
+                            season_text += f"{idx}. **User #{uid}** - {amount_val} Kinh Nghiệm\n"
+                    
+                    embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
+                
+                if all_time_contributors:
+                    all_time_text = ""
+                    for idx, (uid, total_exp) in enumerate(all_time_contributors, 1):
+                        try:
+                            user = await self.bot.fetch_user(uid)
+                            all_time_text += f"{idx}. **{user.name}** - {total_exp} Kinh Nghiệm\n"
+                        except:
+                            all_time_text += f"{idx}. **User #{uid}** - {total_exp} Kinh Nghiệm\n"
+                    
+                    embed.add_field(name="🏆 Top 3 Người Góp toàn thời gian", value=all_time_text, inline=False)
                 
                 view = TreeContributeView(self)
                 

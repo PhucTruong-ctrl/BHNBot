@@ -179,13 +179,15 @@ class ConfigCog(commands.Cog):
     @app_commands.describe(
         kenh_noitu="Kênh chơi nối từ (Game Channel)",
         kenh_logs="Kênh ghi log (Log Channel)",
-        kenh_cay="Kênh trồng cây server (Tree Channel)"
+        kenh_cay="Kênh trồng cây server (Tree Channel)",
+        kenh_fishing="Kênh thông báo sự kiện câu cá (Fishing Channel)"
     )
     @app_commands.checks.has_permissions(administrator=True)
     async def config_set(self, interaction: discord.Interaction, 
                          kenh_noitu: discord.TextChannel = None, 
                          kenh_logs: discord.TextChannel = None,
-                         kenh_cay: discord.TextChannel = None):
+                         kenh_cay: discord.TextChannel = None,
+                         kenh_fishing: discord.TextChannel = None):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
@@ -201,7 +203,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -210,14 +212,16 @@ class ConfigCog(commands.Cog):
             print(f"CONFIG [Guild {guild_id}] Setting channels")
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get old config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
                 old_logs = row[0] if row else None
                 old_noitu = row[1] if row else None
+                old_fishing = row[2] if row else None
 
                 # Merge
                 new_logs = kenh_logs.id if kenh_logs else old_logs
                 new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
+                new_fishing = kenh_fishing.id if kenh_fishing else old_fishing
                 
                 # Validate: một kênh không được có nhiều hơn 1 game
                 # (Không còn cần validate với kênh sói)
@@ -235,8 +239,8 @@ class ConfigCog(commands.Cog):
                     new_tree = None
                 
                 # Save
-                await db.execute("UPDATE server_config SET logs_channel_id = ?, noitu_channel_id = ? WHERE guild_id = ?", 
-                                 (new_logs, new_noitu, guild_id))
+                await db.execute("UPDATE server_config SET logs_channel_id = ?, noitu_channel_id = ?, fishing_channel_id = ? WHERE guild_id = ?", 
+                                 (new_logs, new_noitu, new_fishing, guild_id))
                 
                 if kenh_cay:
                     await db.execute("UPDATE server_tree SET tree_channel_id = ? WHERE guild_id = ?",
@@ -249,6 +253,7 @@ class ConfigCog(commands.Cog):
             if kenh_noitu: msg += f"📝 Nối Từ: {kenh_noitu.mention}\n"
             if kenh_logs: msg += f"📋 Logs: {kenh_logs.mention}\n"
             if kenh_cay: msg += f"🌳 Cây: {kenh_cay.mention}\n"
+            if kenh_fishing: msg += f"🎣 Câu Cá: {kenh_fishing.mention}\n"
             
             await interaction.followup.send(msg)
 
@@ -288,6 +293,7 @@ class ConfigCog(commands.Cog):
             msg = "**Các option cấu hình:**\n"
             msg += "• `!config kenh_noitu #channel` - Kênh chơi nối từ\n"
             msg += "• `!config kenh_logs #channel` - Kênh logs (admin channel)\n"
+            msg += "• `!config kenh_fishing #channel` - Kênh thông báo sự kiện câu cá\n"
             await ctx.send(msg)
             return
         
@@ -300,35 +306,34 @@ class ConfigCog(commands.Cog):
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get current config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
                 
                 current_logs = row[0] if row else None
                 current_noitu = row[1] if row else None
+                current_fishing = row[2] if row else None
                 
                 # Update based on key
                 if key == "kenh_noitu":
-                    new_logs, new_noitu = current_logs, channel.id
+                    new_logs, new_noitu, new_fishing = current_logs, channel.id, current_fishing
                     msg_key = "Nối Từ"
                 elif key == "kenh_logs":
-                    new_logs, new_noitu = channel.id, current_noitu
+                    new_logs, new_noitu, new_fishing = channel.id, current_noitu, current_fishing
                     msg_key = "Logs"
+                elif key == "kenh_fishing":
+                    new_logs, new_noitu, new_fishing = current_logs, current_noitu, channel.id
+                    msg_key = "Câu Cá"
                 else:
-                    await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs")
+                    await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_fishing")
                     return
                 
                 # Save
-                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id) VALUES (?, ?, ?)", 
-                                 (guild_id, new_logs, new_noitu))
+                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) VALUES (?, ?, ?, ?)", 
+                                 (guild_id, new_logs, new_noitu, new_fishing))
                 await db.commit()
                 
                 # Get channel mention for confirmation
-                if key == "kenh_noitu":
-                    channel_mention = f"<#{channel.id}>"
-                elif key == "kenh_logs":
-                    channel_mention = f"<#{channel.id}>"
-                else:  # kenh_soi
-                    channel_mention = f"<#{new_wolf}>"
+                channel_mention = f"<#{channel.id}>"
                 
                 await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
                 print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention if key != 'kenh_soi' else new_wolf}")

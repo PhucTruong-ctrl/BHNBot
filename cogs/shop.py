@@ -9,6 +9,8 @@ from database_manager import (
     add_item,
     remove_item
 )
+from .fishing.legendary_quest_helper import is_legendary_caught
+from .fishing.consumables import CONSUMABLE_ITEMS
 
 DB_PATH = "./data/database.db"
 
@@ -110,6 +112,13 @@ class ShopCog(commands.Cog):
             return
         
         item_info = SHOP_ITEMS[item_key]
+        
+        # Check if legendary item already obtained
+        if item_key == "may_do_song":
+            if await is_legendary_caught(user_id, "ca_voi_52hz"):
+                await interaction.followup.send("📡 **TẦN SỐ ĐÃ ĐƯỢC KẾT NỐI**\n\n\"Máy dò sóng chỉ phát ra những tiếng rè tĩnh lặng... Tần số 52Hz cô đơn nhất đại dương không còn lạc lõng nữa, vì nó đã tìm thấy bạn. Không còn tín hiệu nào khác để dò tìm.\"", ephemeral=True)
+                return
+        
         cost_per_item = item_info['cost']
         total_cost = cost_per_item * soluong
         user_id = interaction.user.id
@@ -179,6 +188,13 @@ class ShopCog(commands.Cog):
             return
         
         item_info = SHOP_ITEMS[item_key]
+        
+        # Check if legendary item already obtained
+        if item_key == "may_do_song":
+            if await is_legendary_caught(user_id, "ca_voi_52hz"):
+                await ctx.send("📡 **TẦN SỐ ĐÃ ĐƯỢC KẾT NỐI**\n\n\"Máy dò sóng chỉ phát ra những tiếng rè tĩnh lặng... Tần số 52Hz cô đơn nhất đại dương không còn lạc lõng nữa, vì nó đã tìm thấy bạn. Không còn tín hiệu nào khác để dò tìm.\"")
+                return
+        
         cost_per_item = item_info['cost']
         total_cost = cost_per_item * soluong
         user_id = ctx.author.id
@@ -218,7 +234,7 @@ class ShopCog(commands.Cog):
     )
     async def themitem_slash(self, interaction: discord.Interaction, user: discord.User, item_key: str, count: int = 1):
         """Add item to user's inventory (Admin Only)"""
-        await interaction.response.defer(ephemeral=True)
+        # await interaction.response.defer(ephemeral=True)
         
         # Validate count
         if count <= 0:
@@ -229,23 +245,24 @@ class ShopCog(commands.Cog):
             return
         
         # Add item to user's inventory
-        success = await self.add_item_local(user.id, item_key, count)
-        if not success:
-            await interaction.followup.send(
+        try:
+            await self.add_item_local(user.id, item_key, count)
+            
+            embed = discord.Embed(
+                title="✅ Thêm Item Thành Công",
+                description=f"Đã thêm **{item_key} x{count}** cho {user.mention}",
+                color=discord.Color.green()
+            )
+            
+            print(f"[ADMIN] [ADD_ITEM] admin_id={interaction.user.id} target_user_id={user.id} item_key={item_key} count={count}")
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            print(f"[SHOP] Error adding item {item_key} to {user.id}: {e}")
+            await interaction.response.send_message(
                 "❌ Có lỗi xảy ra khi thêm item!",
                 ephemeral=True
             )
-            return
-        
-        embed = discord.Embed(
-            title="✅ Thêm Item Thành Công",
-            description=f"Đã thêm **{item_key} x{count}** cho {user.mention}",
-            color=discord.Color.green()
-        )
-        
-        print(f"[ADMIN] [ADD_ITEM] admin_id={interaction.user.id} target_user_id={user.id} item_key={item_key} count={count}")
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @commands.command(name="themitem", description="Thêm item cho user (Admin Only) - Dùng !themitem @user item_key [count]")
     @commands.has_permissions(administrator=True)

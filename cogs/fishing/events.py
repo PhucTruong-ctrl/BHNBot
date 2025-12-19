@@ -175,6 +175,73 @@ async def handle_lag_debuff(result: dict, event_data: dict, **kwargs) -> dict:
     result["lag_delay"] = 3  # 3 second delay
     return result
 
+# --- CÁC HANDLER MỚI ---
+
+async def handle_audit_check(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Sao Kê - Trừ % nếu giàu, tặng tiền nếu nghèo."""
+    if "user_id" in kwargs:
+        from database_manager import get_user_balance
+        balance = await get_user_balance(kwargs["user_id"])
+        
+        if balance >= 5000:
+            tax = int(balance * 0.1)
+            result["lose_money"] = tax
+            result["message"] += f"\n📉 Bạn quá giàu nên bị thu thuế **{tax} Hạt**!"
+        elif balance <= 100:
+            support = 200
+            result["gain_money"] = support
+            result["message"] += f"\n📈 Bạn thuộc hộ nghèo, được trợ cấp **{support} Hạt**!"
+        else:
+            result["message"] += "\n😐 Tài khoản minh bạch, không ai quan tâm."
+    return result
+
+async def handle_blind_box(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Hộp Mù - Random kết quả."""
+    outcome = random.choices(["trash", "money", "fee"], weights=[40, 30, 30])[0]
+    
+    if outcome == "trash":
+        result["convert_to_trash"] = True  # Giả định code chính có xử lý cờ này để biến cá thành rác
+        result["message"] += "\n📦 Mở ra toàn giấy lộn! (Nhận được Rác)"
+    elif outcome == "money":
+        result["gain_money"] = 500
+        result["message"] += "\n💰 Mở ra thấy 500 Hạt kẹp trong đáy hộp!"
+    else:
+        result["lose_money"] = 100
+        result["message"] += "\n💸 Phải trả 100 Hạt tiền Ship COD. Cay!"
+    return result
+
+async def handle_flexing(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Flexing - Tăng tiền nhưng hỏng cần."""
+    result["gain_money"] = 150
+    result["durability_loss"] = -20  # Trừ nhiều độ bền
+    return result
+
+async def handle_free_cast(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Quên lắp mồi - Không tốn mồi."""
+    result["gain_items"] = {"worm": 1}  # Trả lại 1 mồi (coi như không mất)
+    return result
+
+async def handle_isekai(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Isekai - Nhận Cá Isekai + Cooldown 10 phút."""
+    # Nhận cá legendary từ thế giới khác
+    result["gain_items"] = {"ca_isekai": 1}
+    result["cooldown_increase"] = 600  # 10 phút choáng
+    return result
+
+async def handle_inflation(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Bão giá - Debuff giảm giá bán."""
+    result["custom_effect"] = "market_crash"
+    result["debuff_type"] = "price_drop"
+    result["debuff_duration"] = 600
+    return result
+
+async def handle_hack_map(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Hack Map - Nhận nhiều cá + Ban."""
+    # Logic cộng item cần xử lý ở main cog, ở đây trả về dict
+    result["bonus_catch"] = 3 
+    result["cooldown_increase"] = 300  # Phạt 5 phút
+    return result
+
 # ==================== EFFECT HANDLERS MAPPING ====================
 # Dictionary mapping effect names to their handlers
 # EASY TO EXTEND: Just add a new handler + add entry to this dict
@@ -218,6 +285,16 @@ EFFECT_HANDLERS = {
     "suy_debuff": handle_suy_debuff,
     "keo_ly_buff": handle_keo_ly_buff,
     "lag_debuff": handle_lag_debuff,
+    "audit_check": handle_audit_check,
+    "blind_box": handle_blind_box,
+    "flexing": handle_flexing,
+    "free_cast": handle_free_cast,
+    "isekai": handle_isekai,
+    "inflation": handle_inflation,
+    "hack_map": handle_hack_map,
+    "mlm_scheme": handle_lose_money(200),
+    "lucky_cat": handle_lucky_buff,
+    "football_bet": handle_crypto_loss,
 }
 
 async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1, channel=None) -> dict:

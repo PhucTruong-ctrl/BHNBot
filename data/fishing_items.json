@@ -6,7 +6,7 @@
       "name": "Ủng Rách",
       "emoji": "🥾",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Jordan 1 phiên bản 'lội ruộng' limited, rách vì phong cách chứ không phải nghèo."
     },
     "trash_02": {
       "type": "trash",
@@ -14,7 +14,7 @@
       "name": "Lon Nước",
       "emoji": "🥫",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Cú sút của Messi đã đưa nó bay thẳng xuống đây."
     },
     "trash_03": {
       "type": "trash",
@@ -22,7 +22,7 @@
       "name": "Xà Phòng Cũ",
       "emoji": "🧼",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Rơi cái này thì đừng có dại mà cúi xuống nhặt nhé bro."
     },
     "trash_04": {
       "type": "trash",
@@ -30,7 +30,7 @@
       "name": "Mảnh Kính",
       "emoji": "🔨",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Sắc bén hơn cả lời chia tay lạnh lùng của người yêu cũ."
     },
     "trash_05": {
       "type": "trash",
@@ -38,7 +38,7 @@
       "name": "Túi Ni Lông",
       "emoji": "🛍️",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Bay phấp phới trong gió như cái cách crush bơ tin nhắn của bạn."
     },
     "trash_06": {
       "type": "trash",
@@ -46,7 +46,7 @@
       "name": "Chai Nhựa",
       "emoji": "🥤",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Di sản của một thanh niên ý thức tồi để lại."
     },
     "trash_07": {
       "type": "trash",
@@ -54,7 +54,7 @@
       "name": "Lốp Xe Hư",
       "emoji": "🍩",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Donut vị cao su cháy, ăn vào là gãy răng cấm."
     },
     "trash_08": {
       "type": "trash",
@@ -62,7 +62,7 @@
       "name": "Cành Củi Khô",
       "emoji": "🪵",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Que củi mục nát, chả làm nên mùa xuân gì cả."
     },
     "trash_09": {
       "type": "trash",
@@ -70,7 +70,7 @@
       "name": "Giấy Báo Cũ",
       "emoji": "📰",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Tin tức nóng hổi từ năm 1900 hồi đó."
     },
     "trash_10": {
       "type": "trash",
@@ -78,7 +78,7 @@
       "name": "Hộp Xốp",
       "emoji": "🥡",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Hộp cơm sinh viên cuối tháng, thoang thoảng mùi của sự nghèo khổ."
     },
     "trash_11": {
       "type": "trash",
@@ -86,7 +86,7 @@
       "name": "Vỏ Chuối",
       "emoji": "🍌",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Vũ khí tối thượng trong Mario Kart, dẫm vào là té sấp mặt."
     },
     "trash_12": {
       "type": "trash",
@@ -94,7 +94,7 @@
       "name": "Xương Cá",
       "emoji": "🦴",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Phần còn lại của một bữa nhậu linh đình."
     },
     "trash_13": {
       "type": "trash",
@@ -102,7 +102,7 @@
       "name": "Rong Biển",
       "emoji": "🌿",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Mắc vào cần câu thì cay hơn ăn ớt chỉ thiên."
     },
     "trash_14": {
       "type": "trash",
@@ -110,7 +110,7 @@
       "name": "Xác Gián",
       "emoji": "🪳",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Tiểu Cường đã tử nạn. R.I.P my friend."
     },
     "trash_15": {
       "type": "trash",
@@ -118,15 +118,15 @@
       "name": "Cùi Bắp",
       "emoji": "🌽",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Giống y hệt trình độ chơi game của bạn vậy: Quá cùi bắp!"
     },
     "trash_16": {
       "type": "trash",
       "key": "trash_16",
       "name": "Trứng Ung",
-      "emoji": "��",
+      "emoji": "🥚",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Sở hữu mùi hương quyến rũ chết người (theo nghĩa đen)."
     },
     "trash_17": {
       "type": "trash",
@@ -134,7 +134,7 @@
       "name": "Đầu Tôm",
       "emoji": "🦐",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Chứa gạch hay chứa gì bên trong thì chịu."
     },
     "trash_18": {
       "type": "trash",
@@ -142,7 +142,7 @@
       "name": "Táo Cắn Dở",
       "emoji": "🍎",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Steve Jobs đã từng ở đây hay là Bạch Tuyết?"
     },
     "trash_19": {
       "type": "trash",
@@ -150,7 +150,7 @@
       "name": "Hoa Héo",
       "emoji": "🥀",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Tình yêu đã chết, hoa cũng tàn phai. Sad story."
     },
     "trash_20": {
       "type": "trash",
@@ -158,7 +158,7 @@
       "name": "Cơm Thiu",
       "emoji": "🍚",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Đặc sản lên men tự nhiên, khuyến mãi thêm vé đi gặp bác sĩ."
     },
     "trash_21": {
       "type": "trash",
@@ -166,7 +166,7 @@
       "name": "Quần Xì Rách",
       "emoji": "🩲",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Giặt sạch rồi bịt mặt đi cướp ngân hàng cũng ổn."
     },
     "trash_22": {
       "type": "trash",
@@ -174,7 +174,7 @@
       "name": "Cục Cứt",
       "emoji": "💩",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Vàng thật không sợ lửa, nhưng sợ thối. Sô-cô-la vị lạ."
     },
     "trash_23": {
       "type": "trash",
@@ -182,7 +182,7 @@
       "name": "Ba Con Sói",
       "emoji": "🎈",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "An toàn là bạn, tai nạn là lên chức Bố."
     },
     "trash_24": {
       "type": "trash",
@@ -190,7 +190,7 @@
       "name": "Băng Vệ Sinh",
       "emoji": "🩸",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Vật phẩm phong ấn huyết tế, chống chỉ định cho đàn ông."
     },
     "trash_25": {
       "type": "trash",
@@ -198,7 +198,7 @@
       "name": "Áo Dú Cũ",
       "emoji": "👙",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Hàng second-hand, chắc là của bà hàng xóm ném xuống."
     },
     "trash_26": {
       "type": "trash",
@@ -206,7 +206,7 @@
       "name": "Vớ Thối",
       "emoji": "🧦",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Vũ khí sinh học cấp độ 1, ngửi phát ngất luôn."
     },
     "trash_27": {
       "type": "trash",
@@ -214,7 +214,7 @@
       "name": "Răng Giả",
       "emoji": "🦷",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Cười rớt cả hàm là có thật nhé các fen."
     },
     "trash_28": {
       "type": "trash",
@@ -222,7 +222,7 @@
       "name": "Giấy Chùi Đít",
       "emoji": "🧻",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Đã qua sử dụng (Ewww!). Rửa tay kỹ sau khi chạm vào."
     },
     "trash_29": {
       "type": "trash",
@@ -230,7 +230,7 @@
       "name": "Tả Em Bé",
       "emoji": "👶",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Combo hương vị nồng nàn khó quên của trẻ thơ."
     },
     "trash_30": {
       "type": "trash",
@@ -238,7 +238,167 @@
       "name": "Dép Tổ Ong Rách",
       "emoji": "🩴",
       "sell_price": 0,
-      "description": "Rác thải từ dưới đáy sông"
+      "description": "Huyền thoại ngàn lỗ của Việt Nam, dẫm shit bao phê."
+    },
+    "trash_31": {
+      "type": "trash",
+      "key": "trash_31",
+      "name": "Cái Nịt",
+      "emoji": "🧶",
+      "sell_price": 0,
+      "description": "Còn đúng cái nịt theo nghĩa đen. Tiền thì không thấy đâu."
+    },
+    "trash_32": {
+      "type": "trash",
+      "key": "trash_32",
+      "name": "Vé Số Chiều Qua",
+      "emoji": "🎫",
+      "sell_price": 0,
+      "description": "Giấc mộng đổi đời đã tan thành mây khói lúc 16h30."
+    },
+    "trash_33": {
+      "type": "trash",
+      "key": "trash_33",
+      "name": "Nokia Cục Gạch",
+      "emoji": "📱",
+      "sell_price": 0,
+      "description": "Vũ khí sát thương vật lý huyền thoại, ném chó chó lủng đầu."
+    },
+    "trash_34": {
+      "type": "trash",
+      "key": "trash_34",
+      "name": "Tai Nghe Rối",
+      "emoji": "🎧",
+      "sell_price": 0,
+      "description": "Rối hơn cả chuyện tình cảm mập mờ của bạn. Gỡ được chết liền."
+    },
+    "trash_35": {
+      "type": "trash",
+      "key": "trash_35",
+      "name": "Gấu Bông Chột Mắt",
+      "emoji": "🧸",
+      "sell_price": 0,
+      "description": "Quà người yêu cũ tặng. Chia tay xong vứt xuống sông trôi về đâu?"
+    },
+    "trash_36": {
+      "type": "trash",
+      "key": "trash_36",
+      "name": "Bài Kiểm Tra 1 Điểm",
+      "emoji": "📝",
+      "sell_price": 0,
+      "description": "Phi tang chứng cứ phạm tội. Mẹ mà thấy là 'tới công chuyện'."
+    },
+    "trash_37": {
+      "type": "trash",
+      "key": "trash_37",
+      "name": "Khẩu Trang Bẩn",
+      "emoji": "😷",
+      "sell_price": 0,
+      "description": "Đeo 7 ngày 7 đêm chưa giặt, ổ vi khuẩn sinh học cấp quốc gia."
+    },
+    "trash_38": {
+      "type": "trash",
+      "key": "trash_38",
+      "name": "Tóc Giả",
+      "emoji": "🦱",
+      "sell_price": 0,
+      "description": "Của ông hói nào rớt xuống đây? Nhìn cứ tưởng rong biển."
+    },
+    "trash_39": {
+      "type": "trash",
+      "key": "trash_39",
+      "name": "Lông Mi Giả",
+      "emoji": "🐛",
+      "sell_price": 0,
+      "description": "Trôi lềnh bềnh nhìn y chang con rết, xém tí nữa thì ngất."
+    },
+    "trash_40": {
+      "type": "trash",
+      "key": "trash_40",
+      "name": "Thẻ Cào Đã Nạp",
+      "emoji": "💳",
+      "sell_price": 0,
+      "description": "Cào nát tay, nạp thử thì báo 'Mã thẻ đã sử dụng'. Cay!"
+    },
+    "trash_41": {
+      "type": "trash",
+      "key": "trash_41",
+      "name": "Đĩa CD Xước",
+      "emoji": "💿",
+      "sell_price": 0,
+      "description": "Đĩa cài Win dạo hay phim hành động Nhật Bản? Xước nát rồi không check được."
+    },
+    "trash_42": {
+      "type": "trash",
+      "key": "trash_42",
+      "name": "Dép Lào Đứt Quai",
+      "emoji": "🩴",
+      "sell_price": 0,
+      "description": "Đi bộ về nhà chân đất nhé cưng. Cái kết của dân tổ lái."
+    },
+    "trash_43": {
+      "type": "trash",
+      "key": "trash_43",
+      "name": "Bàn Chải Toè Lông",
+      "emoji": "🪥",
+      "sell_price": 0,
+      "description": "Đánh răng hay đánh giày mà lông lá nó toè ra như hoa nở thế này?"
+    },
+    "trash_44": {
+      "type": "trash",
+      "key": "trash_44",
+      "name": "Mũ Bảo Hiểm Vỡ",
+      "emoji": "⛑️",
+      "sell_price": 0,
+      "description": "Chứng tích của một pha 'ôm cua' đi vào lòng đất."
+    },
+    "trash_45": {
+      "type": "trash",
+      "key": "trash_45",
+      "name": "Ổ Khoá Rỉ",
+      "emoji": "🔐",
+      "sell_price": 0,
+      "description": "Khoá chặt trái tim nhưng quên chìa, giờ thì vứt luôn."
+    },
+    "trash_46": {
+      "type": "trash",
+      "key": "trash_46",
+      "name": "Kính Râm Gãy",
+      "emoji": "🕶️",
+      "sell_price": 0,
+      "description": "Hết ngầu, đeo vào nhìn giống thầy bói mù xem voi."
+    },
+    "trash_47": {
+      "type": "trash",
+      "key": "trash_47",
+      "name": "Bật Lửa Hết Ga",
+      "emoji": "🔥",
+      "sell_price": 0,
+      "description": "Quẹt mòn cả tay không lên lửa, chỉ tổ đau ngón cái."
+    },
+    "trash_48": {
+      "type": "trash",
+      "key": "trash_48",
+      "name": "Sim Rác",
+      "emoji": "📲",
+      "sell_price": 0,
+      "description": "Sim khuyến mãi dùng một lần rồi vứt, chứa đầy tin nhắn spam."
+    },
+    "trash_49": {
+      "type": "trash",
+      "key": "trash_49",
+      "name": "Quạt Nhựa Rách",
+      "emoji": "🪭",
+      "sell_price": 0,
+      "description": "Quạt quảng cáo phòng khám nam khoa, rách tơi tả."
+    },
+    "trash_50": {
+      "type": "trash",
+      "key": "trash_50",
+      "name": "Cục Sạc Hư",
+      "emoji": "🔌",
+      "sell_price": 0,
+      "description": "Cắm cả đêm sáng dậy pin vẫn 1%, muốn đập máy ghê."
     },
     "manh_ban_do_a": {
       "type": "legendary_component",
@@ -246,7 +406,7 @@
       "name": "Mảnh Bản Đồ A",
       "emoji": "🗺️",
       "sell_price": 0,
-      "description": "Một mảnh bản đồ cổ xưa"
+      "description": "Một góc giấy nhăn nheo, nhìn chả hiểu vẽ cái gì."
     },
     "manh_ban_do_b": {
       "type": "legendary_component",
@@ -254,7 +414,7 @@
       "name": "Mảnh Bản Đồ B",
       "emoji": "🗺️",
       "sell_price": 0,
-      "description": "Một mảnh bản đồ cổ xưa"
+      "description": "Vẽ đường đi nước bước, nhưng thiếu 3 mảnh kia thì chịu."
     },
     "manh_ban_do_c": {
       "type": "legendary_component",
@@ -262,7 +422,7 @@
       "name": "Mảnh Bản Đồ C",
       "emoji": "🗺️",
       "sell_price": 0,
-      "description": "Một mảnh bản đồ cổ xưa"
+      "description": "Có vẻ như nó chỉ dẫn đến một kho báu... hoặc một bãi rác."
     },
     "manh_ban_do_d": {
       "type": "legendary_component",
@@ -270,47 +430,7 @@
       "name": "Mảnh Bản Đồ D",
       "emoji": "🗺️",
       "sell_price": 0,
-      "description": "Một mảnh bản đồ cổ xưa"
-    },
-    "manh_sao_bang": {
-      "type": "legendary_component",
-      "key": "manh_sao_bang",
-      "name": "Mảnh Sao Băng",
-      "emoji": "⭐",
-      "sell_price": 0,
-      "description": "Mảnh sao băng rơi từ bầu trời"
-    },
-    "moi_bui_sao": {
-      "type": "legendary_component",
-      "key": "moi_bui_sao",
-      "name": "Mồi Bụi Sao",
-      "emoji": "✨",
-      "sell_price": 0,
-      "description": "Mồi đặc biệt để câu Cá Ngân Hà (dùng ban đêm 00:00-04:00)"
-    },
-    "long_vu_lua": {
-      "type": "legendary_component",
-      "key": "long_vu_lua",
-      "name": "Lông Vũ Lửa",
-      "emoji": "🔥",
-      "sell_price": 0,
-      "description": "Lông vũ lửa để thu hút Phượng Hoàng (1 giờ)"
-    },
-    "ban_do_ham_am": {
-      "type": "legendary_component",
-      "key": "ban_do_ham_am",
-      "name": "Bản Đồ Hắc Ám",
-      "emoji": "🌑",
-      "sell_price": 0,
-      "description": "Bản đồ để tìm Cthulhu Non (dùng trong 10 lượt câu)"
-    },
-    "may_do_song": {
-      "type": "legendary_component",
-      "key": "may_do_song",
-      "name": "Máy Dò Sóng",
-      "emoji": "📡",
-      "sell_price": 0,
-      "description": "Dụng cụ để dò tần số Cá Voi 52Hz"
+      "description": "Mảnh ghép nhân phẩm cuối cùng. Gom đủ đi rồi tính."
     },
     "cafe": {
       "type": "gift",
@@ -318,15 +438,15 @@
       "name": "☕ Cà Phê",
       "emoji": "☕",
       "sell_price": 50,
-      "description": "Quà tặng yêu thương"
+      "description": "Uống cho tỉnh táo để còn cày deadline và chạy bo."
     },
     "flower": {
       "type": "gift",
       "key": "flower",
       "name": "🌹 Hoa Hồng",
-      "emoji": "��",
+      "emoji": "🌹",
       "sell_price": 50,
-      "description": "Quà tặng yêu thương"
+      "description": "Hơi sến súa nhưng mấy bạn nữ (hoặc nam) sẽ thích."
     },
     "ring": {
       "type": "gift",
@@ -334,7 +454,7 @@
       "name": "💍 Nhẫn",
       "emoji": "💍",
       "sell_price": 50,
-      "description": "Quà tặng yêu thương"
+      "description": "Còng số 8 phiên bản kim loại quý. Đeo vào là 'game over'."
     },
     "gift": {
       "type": "gift",
@@ -342,7 +462,7 @@
       "name": "🎁 Quà Tặng",
       "emoji": "🎁",
       "sell_price": 50,
-      "description": "Quà tặng yêu thương"
+      "description": "Hộp rỗng hay có gì bên trong thì mở ra mới biết."
     },
     "chocolate": {
       "type": "gift",
@@ -350,7 +470,7 @@
       "name": "🍫 Sô-cô-la",
       "emoji": "🍫",
       "sell_price": 50,
-      "description": "Quà tặng yêu thương"
+      "description": "Ngọt ngào như lời hứa của mấy anh 'trap boy'."
     },
     "card": {
       "type": "gift",
@@ -358,7 +478,7 @@
       "name": "💌 Thiệp",
       "emoji": "💌",
       "sell_price": 50,
-      "description": "Quà tặng yêu thương"
+      "description": "Văn mẫu tán tỉnh, dùng để viết lời yêu thương."
     },
     "nuoc_tang_luc": {
       "type": "consumable",
@@ -366,7 +486,7 @@
       "name": "💪 Nước Tăng Lực",
       "emoji": "💪",
       "sell_price": 0,
-      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 90% (1 lần sử dụng)",
+      "description": "Uống vào tay to như Lý Đức, kéo cá bao mượt (Tỉ lệ thắng 90%).",
       "effect_type": "legendary_fish_boost",
       "effect_value": 0.9,
       "original_value": 0.65,
@@ -376,9 +496,9 @@
       "type": "consumable",
       "key": "gang_tay_xin",
       "name": "🥊 Găng Tay Câu Cá",
-      "emoji": "��",
+      "emoji": "🥊",
       "sell_price": 0,
-      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 90% (1 lần sử dụng)",
+      "description": "Chống trượt tay khi bạn đang run rẩy vì gặp cá to (Tỉ lệ thắng 90%).",
       "effect_type": "legendary_fish_boost",
       "effect_value": 0.9,
       "original_value": 0.65,
@@ -390,7 +510,7 @@
       "name": "🎯 Thao Tác Tinh Vi",
       "emoji": "🎯",
       "sell_price": 0,
-      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 92% (1 lần sử dụng)",
+      "description": "Hack não con cá, khiến nó tưởng bạn là đồng loại (Tỉ lệ thắng 92%).",
       "effect_type": "legendary_fish_boost",
       "effect_value": 0.92,
       "original_value": 0.65,
@@ -402,10 +522,53 @@
       "name": "❤️ Tình Yêu Với Cá",
       "emoji": "❤️",
       "sell_price": 0,
-      "description": "Tăng tỉ lệ thắng 'Dìu Cá' từ 65% → 88% (1 lần sử dụng)",
+      "description": "Thả thính cực mạnh, cá tự nguyện lên bờ vì yêu bạn (Tỉ lệ thắng 88%).",
       "effect_type": "legendary_fish_boost",
       "effect_value": 0.88,
       "original_value": 0.65,
+      "one_time_use": true
+    },
+    "manh_sao_bang": {
+      "type": "legendary_component",
+      "key": "manh_sao_bang",
+      "name": "Mảnh Sao Băng",
+      "emoji": "✨",
+      "sell_price": 150,
+      "description": "Mảnh sao băng lấp lánh ánh sáng kỳ ảo, thu hút những sinh vật trôi dạt từ dải thiên hà xa xôi (21:00-21:30). (Có thể bán lấy tiền)"
+    },
+    "long_vu_lua": {
+      "type": "consumable",
+      "key": "long_vu_lua",
+      "name": "Lông Vũ Lửa",
+      "emoji": "🔥",
+      "sell_price": 250,
+      "description": "Lông vũ còn vương hơi ấm, dùng để đánh thức sinh vật bất tử tái sinh từ tro tàn. (Có thể bán lấy tiền)"
+    },
+    "ban_do_ham_am": {
+      "type": "legendary_component",
+      "key": "ban_do_ham_am",
+      "name": "Bản Đồ Hắc Ám",
+      "emoji": "🌑",
+      "sell_price": 0,
+      "description": "Tấm bản đồ toát lên khí tức u ám, chỉ lối đến nơi say ngủ của cổ thần đáy biển (Hiệu lực 10 lượt)."
+    },
+    "may_do_song": {
+      "type": "legendary_component",
+      "key": "may_do_song",
+      "name": "Máy Dò Sóng",
+      "emoji": "📡",
+      "sell_price": 0,
+      "description": "Thiết bị chuyên dụng để tìm kiếm tần số âm thanh cô đơn nhất đại dương."
+    },
+    "tinh_cau": {
+      "type": "consumable",
+      "key": "tinh_cau",
+      "name": "🌌 Tinh Cầu Không Gian",
+      "emoji": "🌌",
+      "sell_price": 0,
+      "description": "Vật phẩm chứa đựng tinh hoa vũ trụ, dùng để mở ra cánh cổng kết nối với những vì sao.",
+      "effect_type": "legendary_summon",
+      "effect_value": "ca_ngan_ha",
       "one_time_use": true
     }
   }

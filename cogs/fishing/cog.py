@@ -2,9 +2,9 @@
 
 import discord
 import aiosqlite
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
-from datetime import datetime
+from datetime import datetime, time as dt_time
 import asyncio
 import random
 import time
@@ -28,8 +28,60 @@ from .legendary_quest_helper import (
     set_phoenix_prep_status, get_phoenix_prep_status,
     set_map_pieces_count, get_map_pieces_count, set_quest_completed, is_quest_completed,
     set_frequency_hunt_status, get_frequency_hunt_status,
-    is_legendary_caught, set_legendary_caught
+    is_legendary_caught, set_legendary_caught,
+    get_manh_sao_bang_count, set_manh_sao_bang_count, increment_manh_sao_bang,
+    has_tinh_cau, set_has_tinh_cau, get_tinh_cau_cooldown, set_tinh_cau_cooldown, craft_tinh_cau
 )
+
+# ==================== METEOR SHOWER EVENT ====================
+
+class MeteorWishView(discord.ui.View):
+    """View for wishing on shooting stars"""
+    def __init__(self, cog):
+        super().__init__(timeout=30)
+        self.cog = cog
+        self.wished_users = set()
+    
+    @discord.ui.button(label="🙏 Ước Nguyện", style=discord.ButtonStyle.primary, emoji="💫")
+    async def wish_on_star(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user_id = interaction.user.id
+        
+        # Check daily limit using user_stats
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        stat_key = f'meteor_shards_today_{today_str}'
+        current_count = await get_stat(user_id, 'fishing', stat_key, 0)
+        
+        if current_count >= 2:
+            await interaction.response.send_message("Bạn đã ước đủ 2 lần hôm nay rồi! Hãy quay lại ngày mai.", ephemeral=True)
+            return
+        
+        # Prevent double-click
+        if user_id in self.wished_users:
+            await interaction.response.send_message("Bạn đã ước rồi!", ephemeral=True)
+            return
+        
+        self.wished_users.add(user_id)
+        
+        # 20% chance for manh_sao_bang, else seeds/exp
+        if random.random() < 0.2:
+            await increment_manh_sao_bang(user_id, 1)
+            await increment_stat(user_id, 'fishing', stat_key, 1)
+            reward_msg = "Bạn nhận được **Mảnh Sao Băng**! ⭐"
+        else:
+            seeds = random.randint(10, 50)
+            await add_seeds(user_id, seeds)
+            await increment_stat(user_id, 'fishing', stat_key, 1)
+            reward_msg = f"Bạn nhận được **{seeds} hạt**! 🌱"
+        
+        await interaction.response.send_message(f"🌟 Ước nguyện thành! {reward_msg}", ephemeral=True)
+        
+        # Disable button after 15s
+        await asyncio.sleep(15)
+        button.disabled = True
+        try:
+            await interaction.message.edit(view=self)
+        except:
+            pass
 
 # ==================== NPC ENCOUNTER VIEW ====================
 
@@ -83,6 +135,7 @@ class FishingCog(commands.Cog):
         self.avoid_event_users = {}
         self.legendary_buff_users = {}  # For ghost NPC buff
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
+        self.guaranteed_catch_users = {}  # {user_id: True} - Guaranteed legendary catch from tinh cau win
         
         # Emotional state tracking
         self.emotional_states = {}  # {user_id: {type: "suy"|"keo_ly"|"lag", duration: int, start_time: float}}
@@ -103,6 +156,11 @@ class FishingCog(commands.Cog):
         self.current_disaster = None  # Store current disaster info
         self.disaster_culprit = None  # User who caused the disaster
         self.pending_disaster = {}  # {user_id: disaster_key} - Force trigger disaster on next fishing
+        
+        self.meteor_wish_count = {}  # {user_id: {'date': date, 'count': int}}
+        
+        # Start meteor shower task
+        self.meteor_shower_event.start()
         
         # Disaster effects tracking (expire when disaster ends)
         self.disaster_catch_rate_penalty = 0.0  # Percentage to reduce catch rate (0.2 = -20%)
@@ -132,6 +190,33 @@ class FishingCog(commands.Cog):
             print(f"[ACHIEVEMENT] Loaded {sum(len(v) for v in self.user_achievements.values())} achievements from database")
         except Exception as e:
             print(f"[ACHIEVEMENT] Error loading achievements from database: {e}")
+    
+    @tasks.loop(time=dt_time(21, 0))
+    async def meteor_shower_event(self):
+        """Daily meteor shower event at 21:00"""
+        try:
+            if random.random() < 0.4:  # 40% chance
+                # Get all guilds with fishing channels configured
+                from database_manager import db_manager
+                rows = await db_manager.execute("SELECT guild_id, fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
+                
+                for guild_id, channel_id in rows:
+                    channel = self.bot.get_channel(channel_id)
+                    if channel:
+                        await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
+                        
+                        # Send 5-10 messages over 30 minutes
+                        for _ in range(random.randint(5, 10)):
+                            await asyncio.sleep(random.randint(120, 300))  # 2-5 minutes
+                            embed = discord.Embed(
+                                title="💫 Một ngôi sao vừa vụt qua!",
+                                description="Ước mau!",
+                                color=discord.Color.blue()
+                            )
+                            view = MeteorWishView(self)
+                            await channel.send(embed=embed, view=view)
+        except Exception as e:
+            print(f"[METEOR] Error in meteor shower event: {e}")
     
     # ==================== COMMANDS ====================
     
@@ -688,6 +773,25 @@ class FishingCog(commands.Cog):
                 )
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             
+                # Special embed for Isekai event - show legendary fish info
+                if event_type == "isekai_truck":
+                    # Find the legendary fish data
+                    legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == "ca_isekai"), None)
+                    if legendary_fish:
+                        fish_embed = discord.Embed(
+                            title=f"🌌 **CÁ HUYỀN THOẠI MỚI!** 🌌",
+                            description=f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n\n"
+                                       f"{legendary_fish['description']}\n\n"
+                                       f"**Giá bán:** {legendary_fish['sell_price']} Hạt (Không thể bán)\n"
+                                       f"**Cấp độ:** {legendary_fish['level']}\n"
+                                       f"**Thành tựu:** {legendary_fish['achievement']}",
+                            color=discord.Color.purple()
+                        )
+                        if legendary_fish.get("image_url"):
+                            fish_embed.set_image(url=legendary_fish["image_url"])
+                        await channel.send(embed=fish_embed)
+                        await asyncio.sleep(1)  # Brief pause before continuing
+            
                 # Handle global reset events
                 if event_result.get("custom_effect") == "global_reset":
                     triggers_global_reset = True
@@ -911,9 +1015,18 @@ class FishingCog(commands.Cog):
                         trash_items_caught[item_key] = 0
                     trash_items_caught[item_key] += 1
             
+                # Determine if only trash was caught
+                only_trash = not fish_only_items and chest_count == 0
+            
                 for key, qty in trash_items_caught.items():
-                    trash_name = key.replace("trash_", "").replace("_", " ").title()
-                    fish_display.append(f"🥾 {trash_name} x{qty}")
+                    if only_trash:
+                        trash_info = ALL_FISH.get(key, {"description": "Unknown trash", "emoji": "🥾"})
+                        trash_desc = trash_info.get('description', 'Unknown trash')
+                        trash_emoji = trash_info.get('emoji', '🥾')
+                        fish_display.append(f"{trash_emoji} {self.apply_display_glitch(trash_desc)}")
+                    else:
+                        trash_name = key.replace("trash_", "").replace("_", " ").title()
+                        fish_display.append(f"🥾 {self.apply_display_glitch(trash_name)} x{qty}")
             
                 # Track trash caught for achievement
                 try:
@@ -1026,8 +1139,9 @@ class FishingCog(commands.Cog):
                 print(f"[LEGENDARY] {username} encountered {legendary_key}!")
             
                 # Create warning embed
+                user = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
                 legendary_embed = discord.Embed(
-                    title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
+                    title=f"⚠️ {user.display_name} - CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
                     description=f"🌊 Có một con quái vật đang cắn câu!\n"
                                f"💥 Nó đang kéo bạn xuống nước!\n\n"
                                f"**{legendary_fish['emoji']} {self.apply_display_glitch(legendary_fish['name'])}**\n"
@@ -1044,7 +1158,7 @@ class FishingCog(commands.Cog):
                 legendary_embed.set_footer(text="Chọn chiến thuật chinh phục quái vật! ⏱️ 60 giây")
             
                 # Create boss fight view
-                boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_lvl, channel, guild_id)
+                boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_lvl, channel, guild_id, user)
             
                 # Send boss fight message
                 boss_msg = await channel.send(f"<@{user_id}>", embed=legendary_embed, view=boss_view)
@@ -1063,6 +1177,24 @@ class FishingCog(commands.Cog):
                     print(f"[LEGENDARY] {username} didn't choose - boss escaped!")
         
             # ==================== END LEGENDARY CHECK ====================
+            
+            # ==================== PHOENIX FEATHER DROP ====================
+            # Drop Lông Vũ Lửa when failing to catch boss or rare fish (5-10% chance)
+            if not legendary_fish and (chest_count > 0 or any(fish_key in RARE_FISH_KEYS for fish_key in fish_only_items.keys())):
+                # Check if caught rare fish or chest (indicating boss-like encounter)
+                drop_chance = random.random()
+                if drop_chance < 0.08:  # 8% chance
+                    from database_manager import add_item
+                    await add_item(user_id, "long_vu_lua", 1)
+                    print(f"[PHOENIX] {username} dropped Lông Vũ Lửa!")
+                    
+                    # Send notification
+                    feather_embed = discord.Embed(
+                        title="⭐ SAO BĂNG RƠI!",
+                        description=f"Con quái vật đã thoát mất, nhưng sức nóng của nó để lại một chiếc **Lông Vũ Lửa** đang rực cháy trên tay bạn!\n\n🔥 **Lông Vũ Lửa** (x1)",
+                        color=discord.Color.orange()
+                    )
+                    await channel.send(embed=feather_embed)
         
             # Check if collection is complete and award title if needed
             is_complete = await check_collection_complete(user_id)
@@ -1335,6 +1467,10 @@ class FishingCog(commands.Cog):
                 if not fish_items:
                     return  # No other fish to sell
             
+            # Exclude pearl from auto-sell unless explicitly requested
+            if not fish_types:
+                fish_items = {k: v for k, v in fish_items.items() if k != "pearl"}
+            
             if not fish_items:
                 msg = "❌ Bạn không có cá nào để bán!"
                 if is_slash:
@@ -1347,7 +1483,14 @@ class FishingCog(commands.Cog):
             selected_fish = None
             if fish_types:
                 requested = [f.strip().lower().replace(" ", "_") for f in fish_types.split(",")]
-                selected_fish = {k: v for k, v in fish_items.items() if k in requested}
+                # Map ngoc_trai to pearl
+                requested_mapped = []
+                for req in requested:
+                    if req == "ngoc_trai":
+                        requested_mapped.append("pearl")
+                    else:
+                        requested_mapped.append(req)
+                selected_fish = {k: v for k, v in fish_items.items() if k in requested_mapped}
                 
                 if not selected_fish:
                     available = ", ".join(fish_items.keys())
@@ -1719,97 +1862,121 @@ class FishingCog(commands.Cog):
         # Remove chest from inventory
         await remove_item(user_id, "treasure_chest", 1)
         
-        # Roll loot
-        items = list(CHEST_LOOT.keys())
-        weights = list(CHEST_LOOT.values())
-        loot_type = random.choices(items, weights=weights, k=1)[0]
+        # Get rod level for luck calculation
+        rod_level, _ = await get_rod_data(user_id)
         
-        # Process loot
-        if loot_type == "nothing":
+        # Calculate item count based on rod level (luck)
+        # Higher rod level = better luck = more items
+        # Level 1: 0: 80%, 1: 15%, 2: 4%, 3: 1%
+        # Level 2: 0: 70%, 1: 20%, 2: 8%, 3: 2%
+        # Level 3: 0: 60%, 1: 25%, 2: 12%, 3: 3%
+        # Level 4: 0: 50%, 1: 30%, 2: 16%, 3: 4%
+        # Level 5: 0: 40%, 1: 35%, 2: 20%, 3: 5%
+        base_zero_chance = 80 - (rod_level - 1) * 10  # Decrease by 10% per level
+        zero_chance = max(40, base_zero_chance)  # Min 40%
+        one_chance = 15 + (rod_level - 1) * 5  # Increase by 5% per level
+        two_chance = 4 + (rod_level - 1) * 4  # Increase by 4% per level
+        three_chance = 1 + (rod_level - 1) * 1  # Increase by 1% per level
+        
+        # Normalize to ensure sum = 100%
+        total = zero_chance + one_chance + two_chance + three_chance
+        zero_chance = int(zero_chance / total * 100)
+        one_chance = int(one_chance / total * 100)
+        two_chance = int(two_chance / total * 100)
+        three_chance = 100 - zero_chance - one_chance - two_chance  # Ensure sum = 100
+        
+        item_counts = [0, 1, 2, 3]
+        weights = [zero_chance, one_chance, two_chance, three_chance]
+        num_items = random.choices(item_counts, weights=weights, k=1)[0]
+        
+        print(f"[CHEST] {user_name} (rod_level={rod_level}) rolled {num_items} items")
+        
+        # Roll items
+        loot_items = []
+        for _ in range(num_items):
+            items = list(CHEST_LOOT.keys())
+            weights = list(CHEST_LOOT.values())
+            loot_type = random.choices(items, weights=weights, k=1)[0]
+            loot_items.append(loot_type)
+        
+        # Process loot and build display
+        loot_display = []
+        trash_only = all(item in [t.get("key") for t in TRASH_ITEMS] for item in loot_items) and len(loot_items) == 1
+        
+        for loot_type in loot_items:
+            if loot_type == "nothing":
+                # Skip nothing items
+                continue
+            
+            elif loot_type == "fertilizer":
+                await self.add_inventory_item(user_id, "fertilizer", "tool")
+                loot_display.append("🌾 Phân Bón (Dùng `/bonphan` để nuôi cây)")
+            
+            elif loot_type == "puzzle_piece":
+                pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
+                piece = random.choice(pieces)
+                await self.add_inventory_item(user_id, piece, "tool")
+                piece_display = piece.split("_")[1].upper()
+                
+                # Check if user now has all 4 pieces (A, B, C, D)
+                inventory = await get_inventory(user_id)
+                has_all_pieces = all(inventory.get(f"puzzle_{p}", 0) > 0 for p in ["a", "b", "c", "d"])
+                
+                if has_all_pieces:
+                    # Remove all 4 pieces from inventory
+                    await remove_item(user_id, "puzzle_a", 1)
+                    await remove_item(user_id, "puzzle_b", 1)
+                    await remove_item(user_id, "puzzle_c", 1)
+                    await remove_item(user_id, "puzzle_d", 1)
+                    
+                    # Award random 5000-10000 seeds
+                    reward = random.randint(5000, 10000)
+                    await add_seeds(user_id, reward)
+                    
+                    loot_display.append(f"🧩 Mảnh Ghép {piece_display} → 🎉 **ĐỦ 4 MẢNH - TỰ ĐỘNG GHÉP!** 💰 **{reward} Hạt!**")
+                else:
+                    loot_display.append(f"🧩 Mảnh Ghép {piece_display} (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)")
+            
+            elif loot_type == "coin_pouch":
+                coins = random.randint(100, 200)
+                await add_seeds(user_id, coins)
+                loot_display.append(f"💰 Túi Hạt - **{coins} Hạt**")
+            
+            # Check if it's a trash item
+            elif loot_type in [t.get("key") for t in TRASH_ITEMS]:
+                trash_item = next((t for t in TRASH_ITEMS if t.get("key") == loot_type), None)
+                if trash_item:
+                    await self.add_inventory_item(user_id, loot_type, "trash")
+                    if trash_only:
+                        # Display description for single trash
+                        trash_desc = trash_item.get('description', 'Unknown trash')
+                        loot_display.append(f"{trash_item['emoji']} {self.apply_display_glitch(trash_desc)}")
+                    else:
+                        loot_display.append(f"🗑️ {trash_item['name']}")
+            
+            else:  # gift_random
+                gift = random.choice(GIFT_ITEMS)
+                await self.add_inventory_item(user_id, gift, "gift")
+                gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
+                             "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp"}
+                loot_display.append(f"{gift_names[gift]} (Dùng `/tangqua` để tặng cho ai đó)")
+        
+        # Build embed
+        if num_items == 0 or not loot_display:
             embed = discord.Embed(
                 title="🎁 Rương Kho Báu",
                 description="**❌ Rương trống không - Không có gì cả!**",
                 color=discord.Color.greyple()
             )
-            embed.set_footer(text=f"👤 {user_name}")
-        
-        elif loot_type == "fertilizer":
-            await self.add_inventory_item(user_id, "fertilizer", "tool")
+        else:
+            loot_text = "\n".join(loot_display)
             embed = discord.Embed(
                 title="🎁 Rương Kho Báu",
-                description="**🌾 Phân Bón** (Dùng `/bonphan` để nuôi cây)",
+                description=loot_text,
                 color=discord.Color.gold()
             )
-            embed.set_footer(text=f"👤 {user_name}")
         
-        elif loot_type == "puzzle_piece":
-            pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
-            piece = random.choice(pieces)
-            await self.add_inventory_item(user_id, piece, "tool")
-            piece_display = piece.split("_")[1].upper()
-            
-            # Check if user now has all 4 pieces (A, B, C, D)
-            inventory = await get_inventory(user_id)
-            has_all_pieces = all(inventory.get(f"puzzle_{p}", 0) > 0 for p in ["a", "b", "c", "d"])
-            
-            if has_all_pieces:
-                # Remove all 4 pieces from inventory
-                await remove_item(user_id, "puzzle_a", 1)
-                await remove_item(user_id, "puzzle_b", 1)
-                await remove_item(user_id, "puzzle_c", 1)
-                await remove_item(user_id, "puzzle_d", 1)
-                
-                # Award random 5000-10000 seeds
-                reward = random.randint(5000, 10000)
-                await add_seeds(user_id, reward)
-                
-                embed = discord.Embed(
-                    title="🎁 Rương Kho Báu",
-                    description=f"**🧩 Mảnh Ghép {piece_display}**\n\n🎉 **ĐỦ 4 MẢNH - TỰ ĐỘNG GHÉP!**\n💰 **Bạn nhận được {reward} Hạt!**",
-                    color=discord.Color.gold()
-                )
-                embed.set_footer(text=f"👤 {user_name}")
-            else:
-                embed = discord.Embed(
-                    title="🎁 Rương Kho Báu",
-                    description=f"**🧩 Mảnh Ghép {piece_display}** (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)",
-                    color=discord.Color.blue()
-                )
-                embed.set_footer(text=f"👤 {user_name}")
-        
-        elif loot_type == "coin_pouch":
-            coins = random.randint(100, 200)
-            await add_seeds(user_id, coins)
-            embed = discord.Embed(
-                title="🎁 Rương Kho Báu",
-                description=f"**💰 Túi Hạt** - Bạn nhận được **{coins} Hạt**!",
-                color=discord.Color.green()
-            )
-            embed.set_footer(text=f"👤 {user_name}")
-        
-        # Check if it's a trash item
-        elif loot_type in [t.get("key") for t in TRASH_ITEMS]:
-            trash_item = next((t for t in TRASH_ITEMS if t.get("key") == loot_type), None)
-            if trash_item:
-                await self.add_inventory_item(user_id, loot_type, "trash")
-                embed = discord.Embed(
-                    title="🎁 Rương Kho Báu",
-                    description=f"**🗑️ {trash_item['name']}** - Rác vô dụng!",
-                    color=discord.Color.greyple()
-                )
-                embed.set_footer(text=f"👤 {user_name}")
-        
-        else:  # gift_random
-            gift = random.choice(GIFT_ITEMS)
-            await self.add_inventory_item(user_id, gift, "gift")
-            gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
-                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp"}
-            embed = discord.Embed(
-                title="🎁 Rương Kho Báu",
-                description=f"**{gift_names[gift]}** (Dùng `/tangqua` để tặng cho ai đó)",
-                color=discord.Color.magenta()
-            )
-            embed.set_footer(text=f"👤 {user_name}")
+        embed.set_footer(text=f"👤 {user_name} | Cấp Cần: {rod_level}")
         
         if is_slash:
             await ctx.followup.send(embed=embed)
@@ -1867,8 +2034,8 @@ class FishingCog(commands.Cog):
                     row = await cursor.fetchone()
                     if row and row[0] > 0:
                         embed = discord.Embed(
-                            title="🌊 Đã Hoàn Thành Nhiệm Vụ",
-                            description="Bạn đã sở hữu **Thuồng Luồng** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                            title="🌊 DÒNG SÔNG TỪ CHỐI!",
+                            description="Mặt nước tĩnh lặng không gợn sóng... Bóng ma dưới đáy sông đã chấp nhận bạn là chủ nhân rồi. Thủy Thần không cần thêm lễ vật nữa, hãy giữ lại những chú cá này đi!",
                             color=discord.Color.gold()
                         )
                         if is_slash_cmd:
@@ -1955,17 +2122,17 @@ class FishingCog(commands.Cog):
         else:
             await ctx_or_interaction.send(embed=embed)
     
-    @app_commands.command(name="chetao", description="✨ Chế Tạo Mồi Bụi Sao - Dùng /chetao moi_sao")
-    @app_commands.describe(recipe="Recipe key: moi_sao (Cần: 1 manh_sao_bang + 5 worm)")
-    async def chetao_slash(self, interaction: discord.Interaction, recipe: str = None):
-        await self._chetao_action(interaction, recipe, is_slash=True)
+    @app_commands.command(name="chetao", description="✨ Chế Tạo Vật Phẩm - Dùng /chetao item_key")
+    @app_commands.describe(item_key="Item key: moi_sao, tinh_cau, etc.")
+    async def chetao_slash(self, interaction: discord.Interaction, item_key: str = None):
+        await self._chetao_action(interaction, item_key, is_slash=True)
     
-    @commands.command(name="chetao", description="✨ Chế Tạo Mồi - Dùng !chetao [recipe_key]")
-    async def chetao_prefix(self, ctx, recipe: str = None):
-        await self._chetao_action(ctx, recipe, is_slash=False)
+    @commands.command(name="chetao", description="✨ Chế Tạo Vật Phẩm - Dùng !chetao [item_key]")
+    async def chetao_prefix(self, ctx, item_key: str = None):
+        await self._chetao_action(ctx, item_key, is_slash=False)
     
-    async def _chetao_action(self, ctx_or_interaction, recipe: str, is_slash: bool):
-        """Craft special bait"""
+    async def _chetao_action(self, ctx_or_interaction, item_key: str, is_slash: bool):
+        """Craft items"""
         is_slash_cmd = is_slash
         
         if is_slash_cmd:
@@ -1977,87 +2144,105 @@ class FishingCog(commands.Cog):
         if self.check_emotional_state(user_id, "lag"):
             await asyncio.sleep(3)
             username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
-            print(f"[EVENT] {username} experienced lag delay (3s) - craft bait")
+            print(f"[EVENT] {username} experienced lag delay (3s) - craft item")
         
         if is_slash_cmd:
             await ctx_or_interaction.response.defer()
         
-        # Check if user already has Cá Ngân Hà (for moi_sao recipe)
-        if recipe == "moi_sao":
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'ca_ngan_ha'",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0] > 0:
-                            embed = discord.Embed(
-                                title="✨ Đã Hoàn Thành Nhiệm Vụ",
-                                description="Bạn đã sở hữu **Cá Ngân Hà** rồi! Không thể thực hiện nhiệm vụ này nữa.",
-                                color=discord.Color.gold()
-                            )
-                            if is_slash_cmd:
-                                await ctx_or_interaction.followup.send(embed=embed)
-                            else:
-                                await ctx_or_interaction.send(embed=embed)
-                            return
-            except Exception as e:
-                print(f"[CHETAO] Error checking ca_ngan_ha ownership: {e}")
+        # Define recipes
+        recipes = {
+            "moi_sao": {
+                "ingredients": {"manh_sao_bang": 1, "worm": 5},
+                "result": "manh_sao_bang",
+                "description": "Mảnh Sao Băng để thu hút Cá Ngân Hà (legacy)"
+            },
+            "tinh_cau": {
+                "ingredients": {"manh_sao_bang": 5, "pearl": 1},
+                "result": "tinh_cau",
+                "description": "Tinh Cầu Không Gian để triệu hồi Cá Ngân Hà"
+            }
+        }
         
-        # Show recipes if no recipe specified
-        if not recipe:
+        # Show recipes if no item_key specified
+        if not item_key:
             embed = discord.Embed(
                 title="✨ CÔNG THỨC CHẾ TẠO ✨",
-                description="Sử dụng các công thức dưới đây để chế tạo mồi hoặc vật phẩm đặc biệt",
+                description="Sử dụng các công thức dưới đây để chế tạo vật phẩm đặc biệt",
                 color=discord.Color.purple()
             )
-            embed.add_field(
-                name="🌟 Mồi Bụi Sao (moi_sao)",
-                value="**Nguyên liệu:** 1 Mảnh Sao Băng ⭐ + 5 Giun 🪱\n**Tác dụng:** Thu hút Cá Ngân Hà vào ban đêm",
-                inline=False
-            )
-            embed.set_footer(text="Sử dụng: !chetao moi_sao hoặc /chetao moi_sao")
+            for key, data in recipes.items():
+                ingredients_str = ", ".join([f"{qty} {ALL_FISH.get(ing, {}).get('name', ing)}" for ing, qty in data["ingredients"].items()])
+                embed.add_field(
+                    name=f"🔧 {key}",
+                    value=f"**Nguyên liệu:** {ingredients_str}\n**Kết quả:** {data['description']}",
+                    inline=False
+                )
+            embed.set_footer(text="Sử dụng: !chetao item_key hoặc /chetao item_key")
             if is_slash_cmd:
                 await ctx_or_interaction.followup.send(embed=embed)
             else:
                 await ctx_or_interaction.send(embed=embed)
             return
         
-        # Check recipe
-        inventory = await get_inventory(user_id)
-        
-        if recipe == "moi_sao":
-            # 1 Mảnh Sao Băng + 5 Giun
-            if inventory.get("manh_sao_bang", 0) < 1:
-                embed = discord.Embed(
-                    title="❌ Không Đủ Nguyên Liệu",
-                    description="Cần: 1 Mảnh Sao Băng ⭐\nCó: 0",
-                    color=discord.Color.red()
-                )
-            elif inventory.get("worm", 0) < 5:
-                embed = discord.Embed(
-                    title="❌ Không Đủ Nguyên Liệu",
-                    description="Cần: 5 Giun 🪱\nCó: " + str(inventory.get("worm", 0)),
-                    color=discord.Color.red()
-                )
-            else:
-                # Craft!
-                await remove_item(user_id, "manh_sao_bang", 1)
-                await remove_item(user_id, "worm", 5)
-                await add_item(user_id, "moi_bui_sao", 1)
-                
-                embed = discord.Embed(
-                    title="✨ CHẾ TẠO THÀNH CÔNG ✨",
-                    description="Bạn đã chế tạo **Mồi Bụi Sao**!\n\n🌟 Mồi này sẽ thu hút **Cá Ngân Hà** vào ban đêm (00:00-04:00)\n💡 Hãy câu vào đúng giờ để gặp nó!",
-                    color=discord.Color.gold()
-                )
-        else:
+        # Check if item_key exists
+        if item_key not in recipes:
             embed = discord.Embed(
                 title="❌ Công Thức Không Tồn Tại",
-                description=f"Không tìm thấy công thức: `{recipe}`",
+                description=f"Không tìm thấy công thức: `{item_key}`",
                 color=discord.Color.red()
             )
+            if is_slash_cmd:
+                await ctx_or_interaction.followup.send(embed=embed)
+            else:
+                await ctx_or_interaction.send(embed=embed)
+            return
+        
+        recipe = recipes[item_key]
+        inventory = await get_inventory(user_id)
+        
+        # Check ingredients
+        missing = []
+        for ing, qty in recipe["ingredients"].items():
+            if inventory.get(ing, 0) < qty:
+                item_name = ALL_FISH.get(ing, {}).get('name', ing)
+                missing.append(f"{qty} {item_name}")
+        
+        if missing:
+            embed = discord.Embed(
+                title="❌ Không Đủ Nguyên Liệu",
+                description="Cần:\n" + "\n".join(missing),
+                color=discord.Color.red()
+            )
+        else:
+            # Craft!
+            if item_key == "tinh_cau":
+                # Special handling for Tinh Cầu - use quest system
+                success = await craft_tinh_cau(user_id)
+                if not success:
+                    embed = discord.Embed(
+                        title="❌ Chế Tạo Thất Bại",
+                        description="Không đủ nguyên liệu hoặc lỗi hệ thống.",
+                        color=discord.Color.red()
+                    )
+                else:
+                    result_name = "Tinh Cầu Không Gian"
+                    embed = discord.Embed(
+                        title="✨ CHẾ TẠO THÀNH CÔNG ✨",
+                        description=f"Bạn đã chế tạo **{result_name}**!\n\n{recipe['description']}",
+                        color=discord.Color.gold()
+                    )
+            else:
+                # Normal crafting
+                for ing, qty in recipe["ingredients"].items():
+                    await remove_item(user_id, ing, qty)
+                await add_item(user_id, recipe["result"], 1)
+                
+                result_name = ALL_FISH.get(recipe["result"], {}).get('name', recipe["result"])
+                embed = discord.Embed(
+                    title="✨ CHẾ TẠO THÀNH CÔNG ✨",
+                    description=f"Bạn đã chế tạo **{result_name}**!\n\n{recipe['description']}",
+                    color=discord.Color.gold()
+                )
         
         if is_slash_cmd:
             await ctx_or_interaction.followup.send(embed=embed)
@@ -2100,8 +2285,8 @@ class FishingCog(commands.Cog):
                     row = await cursor.fetchone()
                     if row and row[0] > 0:
                         embed = discord.Embed(
-                            title="🐋 Đã Hoàn Thành Nhiệm Vụ",
-                            description="Bạn đã sở hữu **Cá Voi 52Hz** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                            title="� TẦN SỐ ĐÃ ĐƯỢC KẾT NỐI",
+                            description="Máy dò sóng chỉ phát ra những tiếng rè tĩnh lặng... Tần số 52Hz cô đơn nhất đại dương không còn lạc lõng nữa, vì nó đã tìm thấy bạn. Không còn tín hiệu nào khác để dò tìm.",
                             color=discord.Color.gold()
                         )
                         if is_slash_cmd:
@@ -2755,10 +2940,16 @@ class FishingCog(commands.Cog):
             elif fish_key in COMMON_FISH_KEYS:
                 common_caught.add(fish_key)
         
+        # Display total: 5 normally, 6 if has Isekai
+        total_display = 6 if has_isekai else 5
+        
         # Get total count (including legendary fish)
         total_all_fish = len(COMMON_FISH_KEYS + RARE_FISH_KEYS) + len(LEGENDARY_FISH)
         total_caught = len(common_caught) + len(rare_caught) + len(legendary_caught)
         completion_percent = int((total_caught / total_all_fish) * 100)
+        
+        # Display total for progress: adjust for hidden Isekai
+        total_all_display = len(COMMON_FISH_KEYS + RARE_FISH_KEYS) + total_display
         
         # Check if completed (all common + rare + legendary)
         is_complete = await check_collection_complete(user_id) and len(legendary_caught) == len(LEGENDARY_FISH)
@@ -2769,7 +2960,7 @@ class FishingCog(commands.Cog):
         # Build common fish embed (Page 1)
         embed_common = discord.Embed(
             title=f"📖 Bộ Sưu Tập Cá của {username}",
-            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%)\n📄 **Trang 1/2 - Cá Thường**",
+            description=f"**Tiến Độ: {total_caught}/{total_all_display}** ({completion_percent}%)\n📄 **Trang 1/2 - Cá Thường**",
             color=discord.Color.gold() if is_complete else discord.Color.blue()
         )
         
@@ -2811,7 +3002,7 @@ class FishingCog(commands.Cog):
         # Build rare fish embed (Page 2)
         embed_rare = discord.Embed(
             title=f"📖 Bộ Sưu Tập Cá của {username}",
-            description=f"**Tiến Độ: {total_caught}/{total_all_fish}** ({completion_percent}%)\n📄 **Trang 2/2 - Cá Hiếm & Huyền Thoại**",
+            description=f"**Tiến Độ: {total_caught}/{total_all_display}** ({completion_percent}%)\n📄 **Trang 2/2 - Cá Hiếm & Huyền Thoại**",
             color=discord.Color.gold() if is_complete else discord.Color.blue()
         )
         
@@ -2852,6 +3043,9 @@ class FishingCog(commands.Cog):
         legendary_display = []
         for legendary_fish in LEGENDARY_FISH:
             fish_key = legendary_fish['key']
+            # Skip ca_isekai unless caught
+            if fish_key == 'ca_isekai' and not has_isekai:
+                continue
             if fish_key in legendary_caught:
                 # Caught: show name with ✅
                 fish_name = self.apply_display_glitch(legendary_fish['name'])
@@ -2861,7 +3055,7 @@ class FishingCog(commands.Cog):
                 legendary_display.append(f"❓ {legendary_fish['emoji']} ????")
         
         embed_rare.add_field(
-            name=f"🌟 Cá Huyền Thoại ({len(legendary_caught)}/{len(LEGENDARY_FISH)})",
+            name=f"🌟 Cá Huyền Thoại ({len(legendary_caught)}/{total_display})",
             value="\n".join(legendary_display) if legendary_display else "❓ 🌟 ????",
             inline=False
         )
@@ -2973,8 +3167,10 @@ class FishingCog(commands.Cog):
             print(f"[LEGENDARY] Error fetching hall of fame: {e}")
         
         # Create list of ALL legendary fish with their catchers (or empty list if uncaught)
+        # Exclude ca_isekai from hall of fame as it's event-only
+        visible_legendaries = [fish for fish in LEGENDARY_FISH if fish['key'] != 'ca_isekai']
         all_legendaries = [(fish, legendary_catches.get(fish['key'], []))
-                           for fish in LEGENDARY_FISH]
+                           for fish in visible_legendaries]
         
         # Create pagination view for all legendaries
         class LegendaryHallView(discord.ui.View):
@@ -3064,11 +3260,11 @@ class FishingCog(commands.Cog):
             def _get_conditions(self, fish_key: str) -> str:
                 """Get condition/task description for each legendary fish."""
                 conditions_map = {
-                    "thuong_luong": "🌊 **Hiến Tế Cá**\n📌 Dùng `/hiente` để hiến tế 3 con cá thường\n📌 Sau khi hoàn thành, câu cá để gặp Thuồng Luồng",
-                    "ca_ngan_ha": "✨ **Chế Tạo Mồi Đặc Biệt**\n📌 Dùng `/chetao` để tạo Mồi Bụi Sao (1 Mảnh Sao Băng + 5 Giun)\n📌 Câu cá vào giữa đêm (00:00-04:00)",
-                    "ca_phuong_hoang": "🔥 **Chuẩn Bị Vật Phẩm**\n📌 Có trong túi đồ: Lông Vũ Lửa (500 Hạt) hoặc kích hoạt buff từ cây server\n📌 Câu cá vào buổi trưa (12:00-14:00)",
-                    "cthulhu_con": "🗺️ **Ghép Bản Đồ Hắc Ám**\n📌 Thu thập 4 Mảnh Bản Đồ (A, B, C, D) từ rác\n📌 Dùng `/ghepbando` để ghép thành Bản Đồ Hắc Ám\n📌 Dùng `/ghepbando` để kích hoạt (10 lần câu cá)",
-                    "ca_voi_52hz": "📡 **Dò Tần Số**\n📌 Mua Máy Dò Sóng (2000 Hạt)\n📌 Dùng `/dosong` để chơi mini-game\n📌 Tìm tần số 52Hz để kích hoạt gặp cá voi",
+                    "thuong_luong": "🌊 **Nghi Thức Hiến Tế**\n📌 Dùng `/hiente` để hiến tế 3 sinh vật to lớn (> 150 hạt)\n📌 Nhận bùa chú để dẫn dụ \"Bóng Ma Dưới Đáy Sông\" xuất hiện",
+                    "ca_ngan_ha": "🌌 **Kết Nối Tinh Tú**\n📌 Săn Mảnh Sao Băng từ sự kiện lúc 21:00 hằng ngày\n📌 Chế tạo **Tinh Cầu Không Gian** (5 Mảnh + 1 Ngọc Trai)\n📌 Sử dụng Tinh Cầu để giải mã tín hiệu vũ trụ bí ẩn",
+                    "ca_phuong_hoang": "🔥 **Thử Thách Giữ Lửa**\n📌 Tìm **Lông Vũ Lửa** (Tỉ lệ rớt khi câu hụt Boss)\n📌 Sử dụng Lông Vũ để bắt đầu nghi lễ hồi sinh\n📌 Canh nhiệt độ chuẩn xác để đánh thức \"Thần Thú Bất Tử\"",
+                    "cthulhu_con": "🗺️ **Bản Đồ Hắc Ám**\n📌 Thu thập 4 Mảnh Bản Đồ rách nát từ rương kho báu\n📌 Ghép lại thành Bản Đồ hoàn chỉnh\n📌 Kích hoạt để tìm hang ổ của \"Cổ Thần Say Ngủ\" (Hiệu lực 10 lần câu)",
+                    "ca_voi_52hz": "📡 **Tần Số Cô Đơn**\n📌 Sở hữu **Máy Dò Sóng** chuyên dụng\n📌 Dùng lệnh `/dosong` để quét tín hiệu đại dương\n📌 Tìm ra tần số **52Hz** để kết nối với sinh vật cô độc nhất thế giới",
                 }
                 return conditions_map.get(fish_key, "❌ Chưa xác định điều kiện")
         
@@ -3116,8 +3312,9 @@ class FishingCog(commands.Cog):
         rod_config = ROD_LEVELS.get(rod_level, ROD_LEVELS[1])
         
         # Create legendary fish embed (same as normal encounter)
+        user = ctx.author
         legendary_embed = discord.Embed(
-            title="⚠️ CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
+            title=f"⚠️ {user.display_name} - CẢNH BÁO: DÂY CÂU CĂNG CỰC ĐỘ!",
             description=f"🌊 Có một con quái vật đang cắn câu!\n"
                        f"💥 Nó đang kéo bạn xuống nước!\n\n"
                        f"**{legendary_fish['emoji']} {self.apply_display_glitch(legendary_fish['name'])}**\n"
@@ -3139,7 +3336,7 @@ class FishingCog(commands.Cog):
         legendary_embed.set_footer(text="[DEBUG] Chọn chiến thuật chinh phục quái vật! ⏱️ 60 giây")
         
         # Create boss fight view
-        boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_level, channel, guild_id)
+        boss_view = LegendaryBossFightView(self, user_id, legendary_fish, rod_durability, rod_level, channel, guild_id, user)
         
         # Send boss fight message
         boss_msg = await channel.send(f"<@{user_id}> [🧪 DEBUG TEST]", embed=legendary_embed, view=boss_view)

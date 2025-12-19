@@ -17,7 +17,7 @@
       {
         "key": "ca_ngan_ha",
         "name": "Cá Ngân Hà",
-        "emoji": "��✨",
+        "emoji": "🌌✨",
         "sell_price": 600,
         "description": "Cơ thể nó chứa đựng cả một vũ trụ thu nhỏ. Chỉ bơi xuống trần gian vào những đêm đầy sao.",
         "condition": "clear_night",
@@ -71,10 +71,23 @@
         "spawn_chance": 0.0005,
         "achievement": "lonely_frequency",
         "time_restriction": null
+      },
+      {
+        "key": "ca_isekai",
+        "name": "Cá Isekai",
+        "emoji": "🌌🐟",
+        "sell_price": 10000,
+        "description": "Một sinh vật kỳ lạ từ thế giới khác. Bị Truck-kun chuyển sinh mang theo. Không thể bán được vì quá quý hiếm.",
+        "condition": null,
+        "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/legendary-fish/caisekai.png",
+        "level": 5,
+        "spawn_chance": 0,
+        "achievement": "isekai_summoned",
+        "time_restriction": null
       }
     ],
     "metadata": {
-      "total": 5,
+      "total": 6,
       "description": "Legendary fish with special conditions, descriptions, and images"
     }
   }

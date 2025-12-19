@@ -289,7 +289,7 @@ class EconomyCog(commands.Cog):
                 "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
                 "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
                 "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
-                "moi_bui_sao": ("Mồi Bụi Sao", "✨🎣"),
+                "manh_sao_bang": ("Mảnh Sao Băng", "✨🎣"),
                 "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
                 "may_do_song": ("Máy Dò Sóng", "📡"),
                 # Commemorative items (season rewards)
@@ -299,10 +299,11 @@ class EconomyCog(commands.Cog):
                 "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
                 "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
                 # Consumable buff items
-                "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
-                "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
-                "thao_tac_tinh_vi": ("🎯 Thao Tác Tinh Vi", "🎯"),
-                "tinh_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
+                "nuoc_tang_luc": ("Nước Tăng Lực", "💪"),
+                "gang_tay_xin": ("Găng Tay Câu Cá", "🥊"),
+                "thao_tac_tinh_vi": ("Thao Tác Tinh Vi", "🎯"),
+                "tinh_yeu_ca": ("Tình Yêu Với Cá", "❤️"),
+                "tinh_cau": ("Tinh Cầu Không Gian", "🌌"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:
@@ -439,7 +440,7 @@ class EconomyCog(commands.Cog):
                 "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
                 "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
                 "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
-                "moi_bui_sao": ("Mồi Bụi Sao", "✨🎣"),
+                "manh_sao_bang": ("Mảnh Sao Băng", "✨🎣"),
                 "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
                 "may_do_song": ("Máy Dò Sóng", "📡"),
                 # Commemorative items (season rewards)
@@ -449,10 +450,11 @@ class EconomyCog(commands.Cog):
                 "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
                 "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
                 # Consumable buff items
-                "nuoc_tang_luc": ("💪 Nước Tăng Lực", "💪"),
-                "gang_tay_xin": ("🥊 Găng Tay Câu Cá", "🥊"),
-                "thao_tac_tinh_vi": ("🎯 Thao Tác Tinh Vi", "🎯"),
-                "tinh_yeu_ca": ("❤️ Tình Yêu Với Cá", "❤️"),
+                "nuoc_tang_luc": ("Nước Tăng Lực", "💪"),
+                "gang_tay_xin": ("Găng Tay Câu Cá", "🥊"),
+                "thao_tac_tinh_vi": ("Thao Tác Tinh Vi", "🎯"),
+                "tinh_yeu_ca": ("Tình Yêu Với Cá", "❤️"),
+                "tinh_cau": ("Tinh Cầu Không Gian", "🌌"),
             }
             tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
             if tool_items:

@@ -10,7 +10,7 @@ from .glitch import apply_display_glitch
 
 class LegendaryBossFightView(discord.ui.View):
     """Interactive boss fight for legendary fish with balanced difficulty."""
-    def __init__(self, cog, user_id, legendary_fish: dict, rod_durability: int, rod_level: int, channel=None, guild_id=None):
+    def __init__(self, cog, user_id, legendary_fish: dict, rod_durability: int, rod_level: int, channel=None, guild_id=None, user=None):
         super().__init__(timeout=60)
         self.cog = cog
         self.user_id = user_id
@@ -19,6 +19,7 @@ class LegendaryBossFightView(discord.ui.View):
         self.rod_level = rod_level
         self.channel = channel
         self.guild_id = guild_id
+        self.user = user
         self.fought = False
         
         # Add buttons conditionally
@@ -29,7 +30,15 @@ class LegendaryBossFightView(discord.ui.View):
         
         # Only add "Dìu Cá" button if rod is level 5
         if self.rod_level >= 5:
-            guide_btn = discord.ui.Button(label="🌊 DÌU CÁ (65%)", style=discord.ButtonStyle.primary)
+            # Check for active boosts to show correct percentage
+            chance = 0.65
+            consumable_cog = self.cog.bot.get_cog("ConsumableCog")
+            if consumable_cog:
+                active_boost = consumable_cog.peek_active_boost(self.user_id)
+                if active_boost and active_boost.get("effect_type") == "legendary_fish_boost":
+                    chance = active_boost.get("effect_value", 0.65)
+            
+            guide_btn = discord.ui.Button(label=f"🌊 DÌU CÁ ({int(chance*100)}%)", style=discord.ButtonStyle.primary)
             guide_btn.callback = self.guide_fish
             self.add_item(guide_btn)
         
@@ -51,8 +60,9 @@ class LegendaryBossFightView(discord.ui.View):
         success = random.random() < 0.10
         
         if success:
+            username = self.user.display_name if self.user else "Unknown"
             result_embed = discord.Embed(
-                title="✨ THÀNH CÔNG! ✨",
+                title=f"✨ {username} - THÀNH CÔNG! ✨",
                 description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {apply_display_glitch(self.legendary_fish['name'])}**!\n\n💪 Một cú giật mạnh tuyệt diệu!",
                 color=discord.Color.gold()
             )
@@ -81,8 +91,9 @@ class LegendaryBossFightView(discord.ui.View):
                 self.cog.dark_map_casts[self.user_id] = 0
                 self.cog.dark_map_cast_count[self.user_id] = 0
         else:
+            username = self.user.display_name if self.user else "Unknown"
             result_embed = discord.Embed(
-                title="💥 CẦN ĐÃ GÃY! 💥",
+                title=f"💥 {username} - CẦN ĐÃ GÃY! 💥",
                 description=f"❌ Quá mạnh! Cần câu của bạn không chịu được lực và **GÃY TOÁC**!\n\n⚠️ Bạn sẽ cần sửa chữa.",
                 color=discord.Color.red()
             )
@@ -106,8 +117,9 @@ class LegendaryBossFightView(discord.ui.View):
         
         # Check if rod is level 5
         if self.rod_level < 5:
+            username = self.user.display_name if self.user else "Unknown"
             fail_embed = discord.Embed(
-                title="🔒 KHÔNG ĐỦ ĐIỀU KIỆN",
+                title=f"🔒 {username} - KHÔNG ĐỦ ĐIỀU KIỆN",
                 description=f"🎣 Kỹ thuật \"Dìu Cá\" chỉ dành riêng cho **Cần Poseidon (Cấp 5)**!\n\nCần hiện tại: Cấp {self.rod_level}/5\n\n💡 Hãy chọn \"Giật Mạnh\" hoặc tiếp tục cày để nâng cấp cần.",
                 color=discord.Color.orange()
             )
@@ -135,8 +147,9 @@ class LegendaryBossFightView(discord.ui.View):
         success = random.random() < base_chance
         
         if success:
+            username = self.user.display_name if self.user else "Unknown"
             result_embed = discord.Embed(
-                title="✨ THÀNH CÔNG! ✨",
+                title=f"✨ {username} - THÀNH CÔNG! ✨",
                 description=f"🎉 Bạn đã **bắt được {self.legendary_fish['emoji']} {apply_display_glitch(self.legendary_fish['name'])}**!\n\n🌊 Một động tác dìu cá hoàn hảo!{boost_message}",
                 color=discord.Color.gold()
             )
@@ -165,10 +178,11 @@ class LegendaryBossFightView(discord.ui.View):
                 self.cog.dark_map_casts[self.user_id] = 0
                 self.cog.dark_map_cast_count[self.user_id] = 0
         else:
+            username = self.user.display_name if self.user else "Unknown"
             # Lose 40 durability on failure (not breaking)
             new_durability = max(0, self.rod_durability - 40)
             result_embed = discord.Embed(
-                title="💔 THẤT BẠI! 💔",
+                title=f"💔 {username} - THẤT BẠI! 💔",
                 description=f"❌ Quá mạnh! Cá chạy thoát!\n\n🛡️ Cần câu mất **-40 Độ Bền** (Còn: {new_durability})",
                 color=discord.Color.red()
             )
@@ -188,8 +202,9 @@ class LegendaryBossFightView(discord.ui.View):
             return
         
         self.fought = True
+        username = self.user.display_name if self.user else "Unknown"
         result_embed = discord.Embed(
-            title="🏃 ĐÃ BỎ CUỘC 🏃",
+            title=f"🏃 {username} - ĐÃ BỎ CUỘC 🏃",
             description=f"✂️ Bạn cắt dây cá.\n\n{self.legendary_fish['emoji']} **{apply_display_glitch(self.legendary_fish['name'])}** thoát khỏi an toàn!\n\n💡 Ít nhất cần của bạn còn nguyên vẹn.",
             color=discord.Color.greyple()
         )
@@ -282,14 +297,12 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     return legendary
             continue
         
-        # 2. CÁ NGÂN HÀ - Special bait condition (Mồi Bụi Sao + night time)
+        # 2. CÁ NGÂN HÀ - Guaranteed catch from tinh cau mini-game win
         if legendary_key == "ca_ngan_ha":
-            if inventory.get("moi_bui_sao", 0) > 0 and (0 <= current_hour < 4):
-                if random.random() < legendary["spawn_chance"]:
-                    # Use the bait
-                    from database_manager import remove_item
-                    await remove_item(user_id, "moi_bui_sao", 1)
-                    return legendary
+            if user_id in cog.guaranteed_catch_users:
+                # Remove the buff after use
+                del cog.guaranteed_catch_users[user_id]
+                return legendary
             continue
         
         # 3. CÁ PHƯỢNG HOÀNG - Server tree level + time + optional item condition
@@ -358,6 +371,16 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 return legendary
             continue
         
+        # 6. CÁ PHƯỢNG HOÀNG - Guaranteed catch from phoenix buff
+        if legendary_key == "ca_phuong_hoang":
+            from .legendary_quest_helper import has_phoenix_buff
+            if await has_phoenix_buff(user_id):
+                # Reset buff after guaranteed catch
+                from .legendary_quest_helper import set_phoenix_buff
+                await set_phoenix_buff(user_id, False)
+                return legendary
+            continue
+        
         # Fallback: basic spawn check with time restriction
         time_restriction = legendary.get("time_restriction")
         if time_restriction is not None:
@@ -398,6 +421,11 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
                 "INSERT OR IGNORE INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
                 (user_id, legendary_key, 1)
             )
+            
+            # Mark as caught in quest system
+            from .legendary_quest_helper import set_legendary_caught
+            await set_legendary_caught(user_id, legendary_key, True)
+            
             return legendary_list
     except Exception as e:
         pass

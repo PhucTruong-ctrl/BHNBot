@@ -77,6 +77,9 @@ class FishSellView(discord.ui.View):
         try:
             total_money = 0
             for fish_key, quantity in self.caught_items.items():
+                # Skip legendary fish - they cannot be sold
+                if fish_key in LEGENDARY_FISH_KEYS:
+                    continue
                 fish_info = ALL_FISH.get(fish_key)
                 if fish_info:
                     base_price = fish_info['sell_price']
@@ -190,9 +193,9 @@ class FishSellView(discord.ui.View):
             if self.user_id in self.cog.caught_items:
                 del self.cog.caught_items[self.user_id]
             
-            fish_summary = "\n".join([f"  • {apply_display_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in self.caught_items.items()])
+            fish_summary = "\n".join([f"  • {apply_display_glitch(ALL_FISH[k]['name'])} x{v}" for k, v in self.caught_items.items() if k not in LEGENDARY_FISH_KEYS])
             embed = discord.Embed(
-                title=f"**{interaction.user.name}** đã bán {sum(self.caught_items.values())} con cá",
+                title=f"**{interaction.user.name}** đã bán {sum(v for k, v in self.caught_items.items() if k not in LEGENDARY_FISH_KEYS)} con cá",
                 description=f"\n{fish_summary}\n**Nhận: {total_money} Hạt**{keo_ly_message}",
                 color=discord.Color.green()
             )

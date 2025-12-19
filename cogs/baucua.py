@@ -170,10 +170,10 @@ class BauCuaCog(commands.Cog):
             await interaction.followup.send("❌ Game đã kết thúc!", ephemeral=True)
             return
         
-        # Check betting time remaining (must have at least 5 seconds left)
-        time_remaining = 30 - int(time.time() - self.active_games[channel_id]['start_time'])
-        if time_remaining < 5:
-            await interaction.followup.send("⏰ Hết thời gian cược rồi! (Còn dưới 5 giây)", ephemeral=True)
+        # Check betting time remaining (must have at least 3 seconds left)
+        time_remaining = 45 - int(time.time() - self.active_games[channel_id]['start_time'])
+        if time_remaining < 3:
+            await interaction.followup.send("⏰ Hết thời gian cược rồi! (Còn dưới 3 giây)", ephemeral=True)
             return
         
         # Validate bet amount (max 250k)
@@ -225,7 +225,7 @@ class BauCuaCog(commands.Cog):
         )
         print(f"[BAUCUA] [BET] {interaction.user.name} (user_id={user_id}) seed_change=-{bet_amount} animal={animal_key} action=placed_bet")
     
-    async def animate_roll(self, message: discord.Message, duration: float = 6.0):
+    async def animate_roll(self, message: discord.Message, duration: float = 3.0):
         """Animate the roll for duration seconds"""
         start_time = time.time()
         
@@ -402,7 +402,7 @@ class BauCuaCog(commands.Cog):
             }
             
             # Send betting embed
-            embed = self.create_betting_embed(30)
+            embed = self.create_betting_embed(45)
             view = BauCuaBetView(self, game_id)
             
             if is_slash:
@@ -412,8 +412,8 @@ class BauCuaCog(commands.Cog):
             
             print(f"[BAUCUA] Game {game_id} started in channel {channel.name}")
             
-            # Countdown betting phase (30 seconds)
-            betting_duration = 30
+            # Countdown betting phase (45 seconds)
+            betting_duration = 45
             start_time = time.time()
             last_update = 0
             
@@ -460,7 +460,7 @@ class BauCuaCog(commands.Cog):
             rolling_message = await channel.send(rolling_text)
             
             # Animate for 10 seconds
-            result1, result2, result3 = await self.animate_roll(rolling_message, duration=10.0)
+            result1, result2, result3 = await self.animate_roll(rolling_message, duration=5.0)
             
             # Get bets data before cleanup
             bets_data = self.active_games[channel_id]['bets'].copy() if channel_id in self.active_games else {}

@@ -112,6 +112,7 @@ def init_database():
                     guild_id INTEGER PRIMARY KEY,
                     logs_channel_id INTEGER,
                     noitu_channel_id INTEGER,
+                    fishing_channel_id INTEGER,
                     giveaway_channel_id INTEGER,
                     exclude_chat_channels TEXT,
                     harvest_buff_until DATETIME

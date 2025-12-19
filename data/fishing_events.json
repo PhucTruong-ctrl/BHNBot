@@ -509,6 +509,66 @@
       "type": "bad",
       "name": "📶 Mạng 4 Chữ!",
       "effect": "lag_debuff"
+    },
+    "audit_check": {
+      "chance": 0.003,
+      "type": "neutral",
+      "name": "📑 Sao Kê!",
+      "effect": "audit_check"
+    },
+    "isekai_truck": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🚚 Xe Tải Isekai!",
+      "effect": "isekai"
+    },
+    "blind_box": {
+      "chance": 0.004,
+      "type": "neutral",
+      "name": "📦 Hộp Mù!",
+      "effect": "blind_box"
+    },
+    "flexing_fail": {
+      "chance": 0.004,
+      "type": "mixed",
+      "name": "📸 Sống Ảo!",
+      "effect": "flexing"
+    },
+    "football_bet": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "⚽ Về Bờ!",
+      "effect": "football_bet"
+    },
+    "lucky_cat": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "🐱 Mèo Thần Tài!",
+      "effect": "lucky_cat"
+    },
+    "inflation_hit": {
+      "chance": 0.002,
+      "type": "bad",
+      "name": "📉 Bão Giá!",
+      "effect": "inflation"
+    },
+    "forgot_bait": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "🧠 Não Cá Vàng!",
+      "effect": "free_cast"
+    },
+    "hack_detected": {
+      "chance": 0.001,
+      "type": "mixed",
+      "name": "🚫 Hack Map!",
+      "effect": "hack_map"
+    },
+    "mlm_invite": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "🤝 Khởi Nghiệp!",
+      "effect": "mlm_scheme"
     }
   },
   "messages": {
@@ -596,6 +656,16 @@
     "drama_queen": "Nghe bàn bên cạnh đang bóc phốt 'tiểu tam'. Máu hóng hớt nổi lên, bạn bỏ cần sang hóng chuyện quên cả câu. 👂🔥",
     "crypto_scam": "Nghe lời thằng bạn rủ đầu tư tiền ảo 'câu cá coin'. Vừa vào lệnh thì sập sàn. Bay màu 50% số tiền hiện có! 📉📉",
     "sugar_baby": "Một phú bà/phú ông đi ngang qua thấy bạn vất vả quá. Tặng nóng một cục tiền bảo 'Về nhà với chị/anh'. 🤑💋",
-    "wifi_lag": "Nhà mạng 4 chữ bóp băng thông! Ping 999ms, bạn giật cần nhưng server không phản hồi. Bot sẽ delay 5 giây cho mỗi lần câu trong 5 phút tới. Cá ăn no rồi bơi đi. 📶❌"
+    "wifi_lag": "Nhà mạng 4 chữ bóp băng thông! Ping 999ms, bạn giật cần nhưng server không phản hồi. Bot sẽ delay 5 giây cho mỗi lần câu trong 5 phút tới. Cá ăn no rồi bơi đi. 📶❌",
+    "audit_check": "Công an thuế bất ngờ kiểm tra! Bạn phải chứng minh nguồn gốc số tiền câu cá. Tốn 200 Hạt phí kiểm toán. 📋💸",
+    "isekai_truck": "Bị xe tải tông (Truck-kun) chuyển sinh sang thế giới khác! Nhận được Cá Isekai từ thế giới khác nhưng bị choáng 10 phút. 🚛💥🌌",
+    "blind_box": "Mở hộp quà bí mật! Bên trong có thể là cá hiếm hoặc... rác rưởi. Quay số may rủi! 🎁❓",
+    "crypto_pump": "Đầu tư crypto đúng lúc pump! Giá lên vùn vụt, lời gấp 3 lần. 🚀📈",
+    "tiktok_viral": "Video câu cá của bạn viral trên Tiktok! Hàng nghìn view, tiền donate chảy về như thác. 📱💰",
+    "sugar_daddy": "Gặp được 'sugar daddy/mommy' chân chính! Họ spoil bạn hết mực, tặng tiền mua cần câu mới. 🍬🤑",
+    "wifi_hack": "Bạn hack được wifi công cộng tốc độ cao! Câu cá nhanh như gió, x2 sản lượng. 💻⚡",
+    "nyc_reunion": "Tình cũ quay lại! Họ muốn hàn gắn, tặng quà để xin lỗi. Nhưng... bạn có tin không? 💔➡️❤️",
+    "diarrhea_2": "Ăn phải đồ lạ ở quán vỉa hè! Bụng dạ biểu tình dữ dội, phải chạy toilet gấp. 🚽🤢 (Chờ 5 phút)",
+    "tiktok_viral_2": "Quay video câu cá điệu nghệ, đăng Tiktok. Viral ngập màng! Tiền donate đủ mua cả làng. 📱🎉"
   }
 }

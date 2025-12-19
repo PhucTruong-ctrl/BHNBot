@@ -173,6 +173,7 @@ async def add_item(user_id: int, item_id: str, quantity: int = 1):
         )
     
     db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
+    return True
 
 
 async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
