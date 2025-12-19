@@ -382,7 +382,10 @@ class FishingCog(commands.Cog):
                 if is_slash:
                     await ctx.followup.send(msg, ephemeral=True)
                 else:
-                    await ctx.send(msg)
+                    try:
+                        await ctx.send(msg)
+                    except Exception as e:
+                        print(f"[FISHING] Error sending cooldown message: {e}")
                 return
         
             # Ensure user exists
@@ -1483,8 +1486,10 @@ class FishingCog(commands.Cog):
                     if result and result[0]:
                         buff_until = datetime.fromisoformat(result[0])
                         if datetime.now() < buff_until:
-                            final_total = final_total * 2  # Double the event reward
-                            is_harvest_boosted = True
+                            # Only apply buff to positive earnings
+                            if final_total > 0:
+                                final_total = final_total * 2  # Double the event reward
+                                is_harvest_boosted = True
                             print(f"[FISHING] [SELL_ACTION] Applied harvest boost x2 for user {user_id}")
             except Exception as e:
                 print(f"[FISHING] [SELL_ACTION] Error checking harvest boost: {e}")

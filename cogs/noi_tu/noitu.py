@@ -513,10 +513,10 @@ class GameNoiTu(commands.Cog):
                 log(f"ERROR: Bot missing MANAGE_ROLES permission in guild {guild.id}")
                 return
             
-            # Get top 3 players
+            # Get top 3 players based on correct words
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute(
-                    "SELECT user_id, value FROM user_stats WHERE game_id = 'noitu' AND stat_key = 'wins' ORDER BY value DESC LIMIT 3"
+                    "SELECT user_id, value FROM user_stats WHERE game_id = 'noitu' AND stat_key = 'correct_words' ORDER BY value DESC LIMIT 3"
                 ) as cursor:
                     rows = await cursor.fetchall()
             

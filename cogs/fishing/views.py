@@ -102,7 +102,9 @@ class FishSellView(discord.ui.View):
                     if result and result[0]:
                         buff_until = datetime.fromisoformat(result[0])
                         if datetime.now() < buff_until:
-                            total_money = total_money * 2  # Double the reward
+                            # Only apply buff to positive earnings, not penalties
+                            if total_money > 0:
+                                total_money = total_money * 2  # Double the reward
                             print(f"[FISHING] [SELL] Applied harvest boost x2 for guild {guild_id}")
             except:
                 pass

@@ -201,12 +201,12 @@ class General(commands.Cog):
         
         try:
             async with aiosqlite.connect(DB_PATH) as db:
-                # Query user_stats table for noi tu wins
+                # Query user_stats table for noi tu correct words
                 async with db.execute("""
-                    SELECT u.username, us.value as wins
+                    SELECT u.username, us.value as correct_words
                     FROM user_stats us
                     JOIN users u ON us.user_id = u.user_id
-                    WHERE us.game_id = 'noitu' AND us.stat_key = 'wins'
+                    WHERE us.game_id = 'noitu' AND us.stat_key = 'correct_words'
                     ORDER BY us.value DESC
                     LIMIT 10
                 """) as cursor:
@@ -230,12 +230,12 @@ class General(commands.Cog):
             medals = ["🥇", "🥈", "🥉"]
             
             rank_text = ""
-            for idx, (username, wins) in enumerate(rows, 1):
+            for idx, (username, correct_words) in enumerate(rows, 1):
                 medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
-                rank_text += f"{medal} **{username}** - {wins} thắng\n"
+                rank_text += f"{medal} **{username}** - {correct_words} từ đúng\n"
             
             embed.description = rank_text
-            embed.set_footer(text="Xếp hạng dựa trên số thắng")
+            embed.set_footer(text="Xếp hạng dựa trên số từ đúng")
             
             if isinstance(ctx_or_interaction, commands.Context):
                 await ctx_or_interaction.send(embed=embed)
