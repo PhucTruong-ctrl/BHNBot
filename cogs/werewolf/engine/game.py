@@ -651,6 +651,11 @@ class WerewolfGame:
         # NEW: Judgment Phase (Biểu quyết sống/chết)
         should_execute = await self._run_judgment_phase(target_player)
         
+        # Track fool hanged for achievement
+        if should_execute and target_player.role and target_player.role.name == "Fool":
+            target_player.fool_hanged = True
+            logger.info("Fool hanged tracked | guild=%s fool=%s", self.guild.id, target_player.user_id)
+        
         if not should_execute or not target_player.alive:
             # Player was spared or already dead from defense phase
             logger.info("Player spared or dead | guild=%s player=%s", self.guild.id, target_player.user_id)
@@ -1512,6 +1517,10 @@ class WerewolfGame:
                 await announce_task
             logger.info("Guard protected | guild=%s night=%s target=%s", self.guild.id, self.night_number, protected_id)
             killed_id = target_id if target_id != protected_id else None
+            # Track bodyguard save achievement
+            if guard and target_id == protected_id and killed_id is None:
+                guard.bodyguard_saves += 1
+                logger.info("Bodyguard save counted | guild=%s bodyguard=%s saves=%s", self.guild.id, guard.user_id, guard.bodyguard_saves)
             if killed_id and self._handle_elder_resistance(killed_id):
                 killed_id = None
             
@@ -1942,7 +1951,14 @@ class WerewolfGame:
             await seer.member.send(message)
         except discord.HTTPException:
             pass
-        logger.info("Seer peek | guild=%s seer=%s target=%s faction=%s", self.guild.id, seer.user_id, target_id, faction)
+        
+        # Track seer wolf streak for achievement
+        if faction == Alignment.WEREWOLF:
+            seer.seer_wolf_streak += 1
+        else:
+            seer.seer_wolf_streak = 0
+        
+        logger.info("Seer peek | guild=%s seer=%s target=%s faction=%s streak=%s", self.guild.id, seer.user_id, target_id, faction, seer.seer_wolf_streak)
 
     async def _handle_witch(self, witch: PlayerState, killed_id: Optional[int]) -> Optional[int]:
         role = witch.role
@@ -1966,6 +1982,7 @@ class WerewolfGame:
             if choice == 1:
                 saved = True
                 role.heal_available = False  # type: ignore[attr-defined]
+                witch.witch_used_save = True  # Track for achievement
                 await witch.member.send("Bạn đã dùng bình hồi sinh.")
                 logger.info("Witch used heal potion | guild=%s witch=%s target=%s night=%s", 
                             self.guild.id, witch.user_id, killed_id, self.night_number)
@@ -1999,6 +2016,7 @@ class WerewolfGame:
                     return None if saved else killed_id
                 kill_target = choice
                 role.kill_available = False  # type: ignore[attr-defined]
+                witch.witch_used_kill = True  # Track for achievement
                 if kill_target == witch.user_id:
                     witch.role.mark_self_target()
                     await witch.member.send("Bạn đã tự kết liễu chính mình.")
@@ -2272,6 +2290,9 @@ class WerewolfGame:
         if remaining >= 1:
             return False
         elder_role.wolf_hits = remaining + 1  # type: ignore[attr-defined]
+        
+        # Track elder bitten for achievement
+        target.elder_bitten = True
 
         async def notify() -> None:
             with contextlib.suppress(discord.HTTPException):
@@ -2627,6 +2648,129 @@ class WerewolfGame:
         
         except Exception as e:
             logger.error("Error distributing rewards: %s", str(e), exc_info=True)
+
+    async def _check_werewolf_achievements(self) -> None:
+        """Check and unlock werewolf achievements based on game outcome."""
+        try:
+            # Import here to avoid circular imports
+            from database_manager import increment_stat
+            from core.achievement_system import AchievementManager
+
+            # Get achievement manager
+            if not hasattr(self.bot, 'achievement_manager'):
+                self.bot.achievement_manager = AchievementManager(self.bot)
+
+            # Check achievements for all players
+            for player in self.players.values():
+                user_id = player.user_id
+
+                # 1. Check win-based achievements
+                if self._winner == Alignment.WEREWOLF:
+                    # Check if player was White Wolf and won alone
+                    if player.role.name == "Sói Trắng":
+                        # Count alive wolves
+                        alive_wolves = [p for p in self.alive_players() if p.get_alignment_priority() == Alignment.WEREWOLF]
+                        if len(alive_wolves) == 1 and alive_wolves[0].user_id == user_id:
+                            await increment_stat(user_id, "werewolf", "white_wolf_win", 1)
+                            current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "white_wolf_win", 0)
+                            await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "white_wolf_win", current, self.channel)
+
+                elif self._winner == Alignment.NEUTRAL:
+                    # Check if player was Pied Piper and charmed everyone
+                    if player.role.name == "Thổi Sáo":
+                        await increment_stat(user_id, "werewolf", "pied_piper_win", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "pied_piper_win", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "pied_piper_win", current, self.channel)
+
+                    # Check if player was part of winning couple
+                    if user_id in getattr(self, '_lovers', set()):
+                        await increment_stat(user_id, "werewolf", "couple_win", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "couple_win", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "couple_win", current, self.channel)
+
+                # 2. Check role-specific achievements
+                # Perfect Witch: used both potions in one game
+                if player.role.name == "Phù Thủy":
+                    if player.witch_used_save and player.witch_used_kill:
+                        await increment_stat(user_id, "werewolf", "witch_perfect_play", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "witch_perfect_play", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "witch_perfect_play", current, self.channel)
+
+                # Hunter kill wolf
+                if player.role.name == "Hunter" and player.hunter_killed_wolf:
+                    await increment_stat(user_id, "werewolf", "hunter_kill_wolf", 1)
+                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "hunter_kill_wolf", 0)
+                    await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "hunter_kill_wolf", current, self.channel)
+
+                # Bodyguard save
+                if player.role.name == "Bodyguard":
+                    # Count successful saves during the game
+                    save_count = player.bodyguard_saves
+                    if save_count > 0:
+                        await increment_stat(user_id, "werewolf", "bodyguard_save", save_count)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "bodyguard_save", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "bodyguard_save", current, self.channel)
+
+                # Arsonist burn 3+ players
+                if player.role.name == "Arsonist":
+                    burn_count = player.arsonist_burns
+                    if burn_count >= 3:
+                        await increment_stat(user_id, "werewolf", "arsonist_burn", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "arsonist_burn", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "arsonist_burn", current, self.channel)
+
+                # Seer find wolf streak
+                if player.role.name == "Seer":
+                    streak = player.seer_wolf_streak
+                    if streak >= 3:
+                        await increment_stat(user_id, "werewolf", "seer_find_wolf_streak", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "seer_find_wolf_streak", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "seer_find_wolf_streak", current, self.channel)
+
+                # Fool hanged
+                if player.fool_hanged:
+                    await increment_stat(user_id, "werewolf", "fool_hanged", 1)
+                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "fool_hanged", 0)
+                    await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "fool_hanged", current, self.channel)
+
+                # Die first night/day
+                death_phase = None
+                for pid, cause, phase in self._death_log:
+                    if pid == user_id:
+                        death_phase = phase
+                        break
+
+                if death_phase:
+                    if "Night 1" in death_phase or "Day 1" in death_phase:
+                        await increment_stat(user_id, "werewolf", "die_first_night", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "die_first_night", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "die_first_night", current, self.channel)
+
+                # Elder survive bite
+                if player.role.name == "Elder" and player in self.alive_players():
+                    # Check if elder was bitten but survived
+                    if player.elder_bitten:
+                        await increment_stat(user_id, "werewolf", "elder_survive_bite", 1)
+                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "elder_survive_bite", 0)
+                        await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "elder_survive_bite", current, self.channel)
+
+                # Fire Wolf win alive
+                if player.role.name == "Fire Wolf" and self._winner == Alignment.WEREWOLF and player in self.alive_players():
+                    await increment_stat(user_id, "werewolf", "fire_wolf_win_alive", 1)
+                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "fire_wolf_win_alive", 0)
+                    await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "fire_wolf_win_alive", current, self.channel)
+
+                # Assassin kill
+                if player.assassin_killed:
+                    await increment_stat(user_id, "werewolf", "assassin_kill", 1)
+                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "assassin_kill", 0)
+                    await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "assassin_kill", current, self.channel)
+
+        except Exception as e:
+            logger.error("Error checking werewolf achievements: %s", str(e), exc_info=True)
+
+        # Check werewolf achievements after game ends
+        await self._check_werewolf_achievements()
 
     async def _announce_winner(self) -> None:
         if self._winner is None:

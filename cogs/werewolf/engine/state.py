@@ -89,6 +89,17 @@ class PlayerState:
     is_sister: bool = False
     marked_by_raven: bool = False
     death_pending: bool = False
+    
+    # Achievement tracking
+    bodyguard_saves: int = 0
+    hunter_killed_wolf: bool = False
+    arsonist_burns: int = 0
+    seer_wolf_streak: int = 0
+    elder_bitten: bool = False
+    assassin_killed: bool = False
+    witch_used_kill: bool = False
+    witch_used_save: bool = False
+    fool_hanged: bool = False
 
     @property
     def role(self) -> Optional[Role]:

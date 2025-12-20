@@ -77,6 +77,10 @@ class Assassin(Role):
         if target_id and target_id in targets:
             # Silently execute the target
             game._pending_deaths.append((target_id, "assassin"))
+            
+            # Track assassin kill for achievement
+            player.assassin_killed = True
+            
             logger.info(
                 "Assassin executed target | guild=%s assassin=%s target=%s night=%s",
                 game.guild.id, player.user_id, target_id, night_number

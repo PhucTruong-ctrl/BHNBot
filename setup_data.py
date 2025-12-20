@@ -36,6 +36,16 @@ def init_database():
                     PRIMARY KEY (user_id, game_id, stat_key)
                 )''')
 
+    # 2.5. CORE: USER ACHIEVEMENTS (Lưu thành tựu đã đạt được)
+    # Tránh trao thưởng lặp lại
+    c.execute('''CREATE TABLE IF NOT EXISTS user_achievements (
+                    user_id INTEGER,
+                    achievement_key TEXT,
+                    unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, achievement_key),
+                    FOREIGN KEY(user_id) REFERENCES users(user_id)
+                )''')
+
     # 3. CORE: INVENTORY
     # Using item_id to match database_manager.py (NOT item_name)
     c.execute('''CREATE TABLE IF NOT EXISTS inventory (

@@ -74,6 +74,10 @@ class Hunter(Role):
             if target_id and target_id in choices:
                 logger.info("Hunter lynch revenge kill queued | guild=%s hunter=%s victim=%s", game.guild.id, player.user_id, target_id)
                 game._pending_deaths.append((target_id, "hunter"))  # pylint: disable=protected-access
+                # Check for achievement: Hunter kill wolf
+                target_player = game.players.get(target_id)
+                if target_player and target_player.get_alignment_priority() == Alignment.WEREWOLF:
+                    player.hunter_killed_wolf = True
             else:
                 logger.info("Hunter skipped revenge | guild=%s hunter=%s", game.guild.id, player.user_id)
         else:
@@ -84,6 +88,9 @@ class Hunter(Role):
                 if target_player and target_player.alive:
                     logger.info("Hunter mark revenge kill queued | guild=%s hunter=%s victim=%s", game.guild.id, player.user_id, self.marked_target)
                     game._pending_deaths.append((self.marked_target, "hunter"))  # pylint: disable=protected-access
+                    # Check for achievement: Hunter kill wolf
+                    if target_player.get_alignment_priority() == Alignment.WEREWOLF:
+                        player.hunter_killed_wolf = True
                 else:
                     logger.info("Hunter marked target already dead | guild=%s hunter=%s target=%s", game.guild.id, player.user_id, self.marked_target)
             else:

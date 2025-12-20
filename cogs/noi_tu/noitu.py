@@ -7,6 +7,7 @@ import json
 import time
 import traceback
 from datetime import datetime
+from database_manager import db_manager
 
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
@@ -322,20 +323,10 @@ class GameNoiTu(commands.Cog):
     async def update_player_stats(self, user_id, username, is_winner=False):
         """Update player stats: wins and correct words count"""
         try:
-            from database_manager import get_stat, increment_stat
+            # Update words_correct
+            await self.increment_stat(user_id, 'words_correct', 1)
             
-            # Get current stats
-            wins = await get_stat(user_id, 'noitu', 'wins', default=0)
-            correct_words = await get_stat(user_id, 'noitu', 'correct_words', default=0)
-            
-            # Update stats
-            wins += 1 if is_winner else 0
-            correct_words += 1
-            
-            await increment_stat(user_id, 'noitu', 'wins', 1 if is_winner else 0)
-            await increment_stat(user_id, 'noitu', 'correct_words', 1)
-            
-            log(f"STATS_UPDATE [User {username}] Wins: +{'1' if is_winner else '0'}, CorrectWords: +1")
+            log(f"STATS_UPDATE [User {username}] WordsCorrect: +1")
         except Exception as e:
             log(f"ERROR updating player stats: {e}")
     
@@ -836,6 +827,16 @@ class GameNoiTu(commands.Cog):
                 except:
                     pass
                 
+                # Track invalid words for achievement
+                await self.increment_stat(message.author.id, 'invalid_words', 1)
+                
+                # Check invalid words achievement
+                try:
+                    current_invalid = await self.get_stat_value(message.author.id, 'invalid_words')
+                    await self.bot.achievement_manager.check_unlock(message.author.id, "noitu", "invalid_words", current_invalid, message.channel)
+                except Exception as e:
+                    log(f"ERROR checking invalid_words achievement: {e}")
+                
                 # Import QuickAddWordView from add_word cog
                 try:
                     from cogs.noi_tu.add_word import QuickAddWordView
@@ -875,6 +876,52 @@ class GameNoiTu(commands.Cog):
             
             # Update player stats (correct word count)
             await self.update_player_stats(message.author.id, message.author.name, is_winner=False)
+            
+            # Track additional achievement stats
+            user_id = message.author.id
+            
+            # 1. Track game starters (first player in new game)
+            if game['player_count'] == 0:  # First player
+                await self.increment_stat(user_id, 'game_starters', 1)
+            
+            # 2. Track low time answers (clutch moments)
+            if game.get('last_message_time'):
+                time_since_last = time.time() - game['last_message_time']
+                if time_since_last < 3.0:  # Less than 3 seconds
+                    await self.increment_stat(user_id, 'low_time_answers', 1)
+            
+            # 3. Track night answers (0-5 AM)
+            current_hour = datetime.now().hour
+            if current_hour >= 0 and current_hour <= 5:
+                await self.increment_stat(user_id, 'night_answers', 1)
+            
+            # 4. Track reduplicative words (từ láy)
+            if await self.is_reduplicative_word(content):
+                await self.increment_stat(user_id, 'reduplicative_words', 1)
+            
+            # Check achievements
+            try:
+                current_words = await self.get_stat_value(user_id, 'words_correct')
+                await self.bot.achievement_manager.check_unlock(user_id, "noitu", "words_correct", current_words, message.channel)
+                
+                if game['player_count'] == 0:  # First player
+                    current_starters = await self.get_stat_value(user_id, 'game_starters')
+                    await self.bot.achievement_manager.check_unlock(user_id, "noitu", "game_starters", current_starters, message.channel)
+                
+                if game.get('last_message_time') and (time.time() - game['last_message_time']) < 3.0:
+                    current_low_time = await self.get_stat_value(user_id, 'low_time_answers')
+                    await self.bot.achievement_manager.check_unlock(user_id, "noitu", "low_time_answers", current_low_time, message.channel)
+                
+                if current_hour >= 0 and current_hour <= 5:
+                    current_night = await self.get_stat_value(user_id, 'night_answers')
+                    await self.bot.achievement_manager.check_unlock(user_id, "noitu", "night_answers", current_night, message.channel)
+                
+                if await self.is_reduplicative_word(content):
+                    current_reduplicative = await self.get_stat_value(user_id, 'reduplicative_words')
+                    await self.bot.achievement_manager.check_unlock(user_id, "noitu", "reduplicative_words", current_reduplicative, message.channel)
+                    
+            except Exception as e:
+                log(f"ERROR checking achievements for {user_id}: {e}")
             
             # Cancel old timer
             if game['timer_task']:
@@ -946,6 +993,21 @@ class GameNoiTu(commands.Cog):
                 
                 await message.channel.send(embed=embed)
                 
+                # Track game ending words for the last player
+                await self.increment_stat(message.author.id, 'game_ending_words', 1)
+                
+                # Check game ending words achievement
+                try:
+                    current_ending = await self.get_stat_value(message.author.id, 'game_ending_words')
+                    await self.bot.achievement_manager.check_unlock(message.author.id, "noitu", "game_ending_words", current_ending, message.channel)
+                except Exception as e:
+                    log(f"ERROR checking game_ending_words achievement: {e}")
+                
+                # Track long chain participation if streak >= 50
+                if current_streak >= 50:
+                    for player_id in game['players'].keys():
+                        await self.increment_stat(player_id, 'long_chain_participation', 1)
+                
                 # Distribute rewards to all participants
                 if game.get('players'):
                     await self.distribute_streak_rewards(guild_id, game['players'], current_streak, message.channel)
@@ -975,6 +1037,40 @@ class GameNoiTu(commands.Cog):
             import traceback
             traceback.print_exc()
             return "error"
+
+    # Helper functions for achievement stats tracking
+    async def increment_stat(self, user_id, stat_key, value):
+        """Tăng giá trị stat cho user trong game noitu"""
+        try:
+            game_id = 'noitu'
+            # Đảm bảo record tồn tại
+            sql_check = "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?"
+            row = await db_manager.fetchone(sql_check, (user_id, game_id, stat_key))
+            
+            if row:
+                sql_update = "UPDATE user_stats SET value = value + ? WHERE user_id = ? AND game_id = ? AND stat_key = ?"
+                await db_manager.execute(sql_update, (value, user_id, game_id, stat_key))
+            else:
+                sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
+                await db_manager.execute(sql_insert, (user_id, game_id, stat_key, value))
+        except Exception as e:
+            log(f"[NoiTu] Error updating stat {stat_key} for {user_id}: {e}")
+    
+    async def is_reduplicative_word(self, word):
+        """Check if word is reduplicative (từ láy) like 'xinh xắn', 'lung linh'"""
+        try:
+            parts = word.split()
+            if len(parts) != 2:
+                return False
+            
+            first, second = parts
+            # Simple check: if both parts have same consonants and similar vowels
+            # This is a basic implementation - can be improved
+            if len(first) == len(second) and first[0] == second[0]:  # Same starting consonant
+                return True
+            return False
+        except:
+            return False
 
 async def setup(bot):
     await bot.add_cog(GameNoiTu(bot))

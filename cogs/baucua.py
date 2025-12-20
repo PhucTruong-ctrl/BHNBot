@@ -269,42 +269,135 @@ class BauCuaCog(commands.Cog):
         
         return results_text
     
+    # Helper function để update stat
+    async def increment_stat(self, user_id, stat_key, value):
+        """Tăng giá trị stat cho user"""
+        try:
+            game_id = 'baucua'
+            # Đảm bảo record tồn tại
+            sql_check = "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?"
+            row = await db_manager.fetchone(sql_check, (user_id, game_id, stat_key))
+            
+            if row:
+                sql_update = "UPDATE user_stats SET value = value + ? WHERE user_id = ? AND game_id = ? AND stat_key = ?"
+                await db_manager.execute(sql_update, (value, user_id, game_id, stat_key))
+            else:
+                sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
+                await db_manager.execute(sql_insert, (user_id, game_id, stat_key, value))
+        except Exception as e:
+            print(f"[BAUCUA] Error updating stat {stat_key} for {user_id}: {e}")
+    
     async def update_game_results_batch(self, channel_id: int, result1: str, result2: str, result3: str, bets_data: dict = None):
-        """OPTIMIZED: Update all game results in a SINGLE BATCH transaction"""
+        """OPTIMIZED: Update seed balances AND statistics for achievements"""
         final_result = [result1, result2, result3]
         bets = bets_data if bets_data is not None else {}
         
-        # Prepare batch updates (calculate all updates first, then execute once)
         updates = {}  # {user_id: net_change}
         
+        # Dictionary để lưu thống kê cần update
+        # Structure: {user_id: {'played': 1, 'won': 0, 'lost': 0, 'triple': 0}}
+        stats_updates = {} 
+
+        # Kiểm tra nổ hũ (3 con giống nhau)
+        is_triple_result = (result1 == result2 == result3)
+
         for user_id, bet_list in bets.items():
             user_change = 0
-            bet_details = []
+            user_winnings = 0
+            user_losses = 0
+            triple_hit = 0
             
+            # Khởi tạo stat cho user này
+            stats_updates[user_id] = {
+                'baucua_played': 1, # Cộng 1 lần chơi
+                'baucua_total_won': 0,
+                'baucua_total_lost': 0,
+                'baucua_triple_wins': 0
+            }
+
             for animal_key, bet_amount in bet_list:
                 matches = sum(1 for r in final_result if r == animal_key)
                 
                 if matches > 0:
                     # Formula: bet_amount * (matches + 1)
-                    winnings = bet_amount * (matches + 1)
-                    user_change += winnings
-                    bet_details.append(f"{animal_key}:{bet_amount}x{matches}")
+                    # Ví dụ cược 100, ra 1 con -> nhận 200. Lời (won) = 100.
+                    # Tổng nhận về (để cộng vào ví)
+                    payout = bet_amount * (matches + 1)
+                    user_change += payout
+                    
+                    # Tính tiền thắng thực tế (Net Profit) để tính thành tựu
+                    profit = payout - bet_amount
+                    user_winnings += profit
+
+                    # Kiểm tra trúng Triple (User cược đúng con vật ra 3 lần)
+                    if matches == 3:
+                        triple_hit = 1
                 else:
-                    # Already deducted at bet time, no additional change
-                    bet_details.append(f"{animal_key}:{bet_amount}x0")
-                    user_change += 0
-            
+                    # Thua cược
+                    user_change += 0 # Tiền đã trừ lúc đặt cược
+                    user_losses += bet_amount # Cộng vào thống kê thua
+
+            # Lưu vào danh sách update hạt giống
             if user_change > 0:
                 updates[user_id] = user_change
-                detail_str = ";".join(bet_details)
-                print(
-                    f"[BAUCUA] [PAYOUT] user_id={user_id} seed_change=+{user_change} bets={len(bet_list)} details={detail_str}"
-                )
-        
-        # Execute all updates in single batch operation
+
+            # Lưu vào danh sách update stats
+            stats_updates[user_id]['baucua_total_won'] = user_winnings
+            stats_updates[user_id]['baucua_total_lost'] = user_losses
+            stats_updates[user_id]['baucua_triple_wins'] = triple_hit
+
+        # 1. Cập nhật tiền (Batch update seeds)
         if updates:
             await batch_update_seeds(updates)
-            print(f"[BAUCUA] [RESULTS] Batch updated {len(updates)} users with seed changes: {updates}")
+            print(f"[BAUCUA] [RESULTS] Batch updated seeds for {len(updates)} users")
+
+        # 2. Cập nhật Stats (Cần viết loop hoặc batch update tùy database manager của bạn)
+        # Đây là đoạn logic quan trọng để kích hoạt thành tựu
+        for user_id, stats in stats_updates.items():
+            try:
+                # Update số lần chơi
+                await self.increment_stat(user_id, 'baucua_played', 1)
+                
+                # Update tiền thắng
+                if stats['baucua_total_won'] > 0:
+                    await self.increment_stat(user_id, 'baucua_total_won', stats['baucua_total_won'])
+                
+                # Update tiền thua
+                if stats['baucua_total_lost'] > 0:
+                    await self.increment_stat(user_id, 'baucua_total_lost', stats['baucua_total_lost'])
+                    
+                # Update nổ hũ
+                if stats['baucua_triple_wins'] > 0:
+                    await self.increment_stat(user_id, 'baucua_triple_wins', 1)
+                    
+                # Check achievements
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    # Check từng stat
+                    await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_played", stats_updates[user_id]['baucua_played'], channel)
+                    if stats['baucua_total_won'] > 0:
+                        # Get current total won
+                        current_won = await self.get_stat_value(user_id, 'baucua_total_won')
+                        await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_total_won", current_won, channel)
+                    if stats['baucua_total_lost'] > 0:
+                        current_lost = await self.get_stat_value(user_id, 'baucua_total_lost')
+                        await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_total_lost", current_lost, channel)
+                    if stats['baucua_triple_wins'] > 0:
+                        current_triple = await self.get_stat_value(user_id, 'baucua_triple_wins')
+                        await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_triple_wins", current_triple, channel)
+                        
+            except Exception as e:
+                print(f"[BAUCUA] Error updating stats for {user_id}: {e}")
+    
+    async def get_stat_value(self, user_id, stat_key):
+        """Get current stat value"""
+        try:
+            game_id = 'baucua'
+            row = await db_manager.fetchone("SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?", (user_id, game_id, stat_key))
+            return row[0] if row else 0
+        except Exception as e:
+            print(f"[BAUCUA] Error getting stat {stat_key} for {user_id}: {e}")
+            return 0
     
     async def create_summary_text(self, result1: str, result2: str, result3: str, bets_data: dict = None):
         """Create detailed summary text of results per user"""

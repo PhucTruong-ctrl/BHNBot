@@ -4,7 +4,7 @@ import discord
 import random
 import aiosqlite
 from database_manager import remove_item, add_seeds, get_inventory
-from .constants import ALL_FISH, DB_PATH
+from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
 from .glitch import apply_display_glitch
 
 class FishSellView(discord.ui.View):
@@ -69,7 +69,8 @@ class FishSellView(discord.ui.View):
         
         # Disable button IMMEDIATELY to prevent double-click
         for item in self.children:
-            item.disabled = True
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
         await interaction.response.edit_message(view=self)
         
         await interaction.followup.send("⏳ Đang xử lý...", ephemeral=True)
@@ -112,82 +113,65 @@ class FishSellView(discord.ui.View):
             except:
                 pass
             
-            # Use ATOMIC TRANSACTION to prevent exploits
-            import aiosqlite
-            from .constants import DB_PATH
+            # Use ATOMIC TRANSACTION via database_manager to prevent exploits
+            from database_manager import db_manager
             
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute("BEGIN TRANSACTION")
+                # Prepare batch operations
+                operations = []
+                
+                # 1. VERIFY inventory quantities (we'll do this separately first)
+                for fish_key, quantity in self.caught_items.items():
+                    row = await db_manager.fetchone(
+                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
+                        (self.user_id, fish_key)
+                    )
+                    actual_qty = row[0] if row else 0
                     
-                    try:
-                        # 1. VERIFY inventory quantities INSIDE transaction
-                        for fish_key, quantity in self.caught_items.items():
-                            cursor = await db.execute(
-                                "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                                (self.user_id, fish_key)
-                            )
-                            row = await cursor.fetchone()
-                            actual_qty = row[0] if row else 0
-                            
-                            if actual_qty < quantity:
-                                await db.execute("ROLLBACK")
-                                self.sold = False  # Reset flag on insufficient inventory
-                                await interaction.followup.send(
-                                    f"❌ **Khôn vậy má!** Không đủ `{apply_display_glitch(ALL_FISH[fish_key]['name'])}` để bán.\n"
-                                    f"Cần: {quantity}, Có: {actual_qty}\n"
-                                    f"(Đã bán qua `/banca` rồi?)",
-                                    ephemeral=True
-                                )
-                                return
-                        
-                        # 2. Remove all fish items (safe now - quantities verified)
-                        for fish_key, quantity in self.caught_items.items():
-                            await db.execute(
-                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                                (quantity, self.user_id, fish_key)
-                            )
-                        
-                        # 3. Delete items with quantity <= 0
-                        await db.execute(
-                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                            (self.user_id,)
+                    if actual_qty < quantity:
+                        self.sold = False  # Reset flag on insufficient inventory
+                        await interaction.followup.send(
+                            f"❌ **Khôn vậy má!** Không đủ `{apply_display_glitch(ALL_FISH[fish_key]['name'])}` để bán.\n"
+                            f"Cần: {quantity}, Có: {actual_qty}\n"
+                            f"(Đã bán qua `/banca` rồi?)",
+                            ephemeral=True
                         )
-                        
-                        # 4. Add seeds to user (with balance logging)
-                        # Get balance before
-                        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (self.user_id,))
-                        row = await cursor.fetchone()
-                        balance_before = row[0] if row else 0
-                        
-                        # Update seeds
-                        await db.execute(
-                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                            (total_money, self.user_id)
-                        )
-                        
-                        # Log the balance change
-                        balance_after = balance_before + total_money
-                        print(f"[FISHING] [SELL_TRANSACTION] user_id={self.user_id} amount=+{total_money} balance_before={balance_before} balance_after={balance_after}")
-                        
-                        # Commit transaction
-                        await db.commit()
-                        print(f"[FISHING] [SELL_TRANSACTION] COMMITTED - user_id={self.user_id}")
-                        
-                        # CRITICAL: Invalidate caches after successful transaction
-                        from database_manager import db_manager
-                        db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-                        db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
-                        db_manager.clear_cache_by_prefix("leaderboard")
-                        
-                    except Exception as e:
-                        await db.execute("ROLLBACK")
-                        self.sold = False  # Reset flag on error
-                        print(f"[FISHING] [SELL_TRANSACTION] ROLLED_BACK due to error: {e}")
-                        raise
+                        return
+                
+                # 2. Remove all fish items
+                for fish_key, quantity in self.caught_items.items():
+                    operations.append((
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                        (quantity, self.user_id, fish_key)
+                    ))
+                
+                # 3. Delete items with quantity <= 0
+                operations.append((
+                    "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                    (self.user_id,)
+                ))
+                
+                # 4. Add seeds to user
+                operations.append((
+                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                    (total_money, self.user_id)
+                ))
+                
+                # Execute all operations in a single transaction
+                await db_manager.batch_modify(operations)
+                
+                # Log the transaction
+                print(f"[FISHING] [SELL_TRANSACTION] COMMITTED - user_id={self.user_id} amount=+{total_money}")
+                
+                # CRITICAL: Invalidate caches after successful transaction
+                db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+                db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+                db_manager.clear_cache_by_prefix("leaderboard")
+                
             except Exception as e:
                 await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
                 self.sold = False  # Reset flag on error
+                print(f"[FISHING] [SELL_ERROR] Transaction failed: {e}")
                 return
             
             if self.user_id in self.cog.caught_items:
@@ -202,7 +186,8 @@ class FishSellView(discord.ui.View):
             
             # Disable all buttons to prevent further interactions
             for item in self.children:
-                item.disabled = True
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
             
             await interaction.followup.send(embed=embed, ephemeral=False, view=self)
             
@@ -226,7 +211,8 @@ class FishSellView(discord.ui.View):
         
         self.sold = True
         for item in self.children:
-            item.disabled = True
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
         await interaction.response.edit_message(view=self)
         
         # 50/50 success
@@ -236,110 +222,109 @@ class FishSellView(discord.ui.View):
             # Success: x3 money
             total_money = self.base_total * 3
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute("BEGIN TRANSACTION")
-                    
-                    try:
-                        # Remove fish items
-                        for fish_key, quantity in self.caught_items.items():
-                            await db.execute(
-                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                                (quantity, self.user_id, fish_key)
-                            )
-                        
-                        await db.execute(
-                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                            (self.user_id,)
-                        )
-                        
-                        # Add seeds (x3)
-                        await db.execute(
-                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                            (total_money, self.user_id)
-                        )
-                        
-                        await db.commit()
-                        
-                        from database_manager import db_manager
-                        db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-                        
-                        # Generate item summary
-                        fish_summary = ", ".join([f"{ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
-                        if len(fish_summary) > 200: 
-                            fish_summary = fish_summary[:197] + "..."
-                        
-                        embed = discord.Embed(
-                            title="😎 **GIAO DỊCH TRÓT LỌT!**",
-                            description=f"🕵️ Dân chơi không sợ mưa rơi!\n\n**Đã bán:** {fish_summary}\n\n💰 Nhận: **{total_money} Hạt** (x3 giá gốc)\n\n✨ Hôm nay bạn là ông trùm chợ đen!",
-                            color=discord.Color.gold()
-                        )
-                        await interaction.followup.send(embed=embed, ephemeral=False)
-                        print(f"[FISHING] [BLACK_MARKET_SUCCESS] {interaction.user.name} (user_id={self.user_id}) earned {total_money} seeds (x3)")
-                        
-                    except Exception as e:
-                        await db.execute("ROLLBACK")
-                        await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
-                        self.sold = False
-                        
+                from database_manager import db_manager
+                
+                # Prepare batch operations
+                operations = []
+                
+                # Remove fish items
+                for fish_key, quantity in self.caught_items.items():
+                    operations.append((
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                        (quantity, self.user_id, fish_key)
+                    ))
+                
+                operations.append((
+                    "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                    (self.user_id,)
+                ))
+                
+                # Add seeds (x3)
+                operations.append((
+                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                    (total_money, self.user_id)
+                ))
+                
+                # Execute transaction
+                await db_manager.batch_modify(operations)
+                
+                # Clear caches
+                db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+                db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+                db_manager.clear_cache_by_prefix("leaderboard")
+                
+                # Generate item summary
+                fish_summary = ", ".join([f"{ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
+                if len(fish_summary) > 200: 
+                    fish_summary = fish_summary[:197] + "..."
+                
+                embed = discord.Embed(
+                    title="😎 **GIAO DỊCH TRÓT LỌT!**",
+                    description=f"🕵️ Dân chơi không sợ mưa rơi!\n\n**Đã bán:** {fish_summary}\n\n💰 Nhận: **{total_money} Hạt** (x3 giá gốc)\n\n✨ Hôm nay bạn là ông trùm chợ đen!",
+                    color=discord.Color.gold()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=False)
+                print(f"[FISHING] [BLACK_MARKET_SUCCESS] {interaction.user.name} (user_id={self.user_id}) earned {total_money} seeds (x3)")
+                
             except Exception as e:
-                await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
+                await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
                 self.sold = False
+                print(f"[FISHING] [BLACK_MARKET_ERROR] Transaction failed: {e}")
         
         else:
             # Failure: Lose all fish + 500 seed fine
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute("BEGIN TRANSACTION")
-                    
-                    try:
-                        # Remove fish items without giving money
-                        for fish_key, quantity in self.caught_items.items():
-                            await db.execute(
-                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                                (quantity, self.user_id, fish_key)
-                            )
-                        
-                        await db.execute(
-                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                            (self.user_id,)
-                        )
-                        
-                        # Deduct 500 seeds as fine, but cap to prevent negative balance
-                        from database_manager import get_user_balance
-                        current_balance = await get_user_balance(self.user_id)
-                        fine = min(500, current_balance)
-                        
-                        await db.execute(
-                            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                            (fine, self.user_id)
-                        )
-                        
-                        await db.commit()
-                        
-                        from database_manager import db_manager
-                        db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-                        
-                        # Generate item summary
-                        fish_summary = ", ".join([f"{ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
-                        if len(fish_summary) > 200: 
-                            fish_summary = fish_summary[:197] + "..."
-                        
-                        embed = discord.Embed(
-                            title="🚔 **O E O E!**",
-                            description=f"Công an ập tới!\n\n💔 Mất sạch cá: {fish_summary}\n💸 Phạt {fine} Hạt tội buôn lậu\n\n😭 Lần sau không dám chơi xấu nữa!",
-                            color=discord.Color.red()
-                        )
-                        await interaction.followup.send(embed=embed, ephemeral=False)
-                        print(f"[FISHING] [BLACK_MARKET_FAIL] {interaction.user.name} (user_id={self.user_id}) lost fish + {fine} seeds fine")
-                        
-                    except Exception as e:
-                        await db.execute("ROLLBACK")
-                        await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
-                        self.sold = False
-                        
+                from database_manager import db_manager, get_user_balance
+                
+                # Prepare batch operations
+                operations = []
+                
+                # Remove fish items without giving money
+                for fish_key, quantity in self.caught_items.items():
+                    operations.append((
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                        (quantity, self.user_id, fish_key)
+                    ))
+                
+                operations.append((
+                    "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                    (self.user_id,)
+                ))
+                
+                # Deduct 500 seeds as fine, but cap to prevent negative balance
+                current_balance = await get_user_balance(self.user_id)
+                fine = min(500, current_balance)
+                
+                operations.append((
+                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                    (fine, self.user_id)
+                ))
+                
+                # Execute transaction
+                await db_manager.batch_modify(operations)
+                
+                # Clear caches
+                db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+                db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+                db_manager.clear_cache_by_prefix("leaderboard")
+                
+                # Generate item summary
+                fish_summary = ", ".join([f"{ALL_FISH[k]['name']} x{v}" for k, v in self.caught_items.items()])
+                if len(fish_summary) > 200: 
+                    fish_summary = fish_summary[:197] + "..."
+                
+                embed = discord.Embed(
+                    title="🚔 **O E O E!**",
+                    description=f"Công an ập tới!\n\n💔 Mất sạch cá: {fish_summary}\n💸 Phạt {fine} Hạt tội buôn lậu\n\n😭 Lần sau không dám chơi xấu nữa!",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=False)
+                print(f"[FISHING] [BLACK_MARKET_FAILURE] {interaction.user.name} (user_id={self.user_id}) lost all fish + {fine} seeds fine")
+                
             except Exception as e:
-                await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
+                await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
                 self.sold = False
+                print(f"[FISHING] [BLACK_MARKET_ERROR] Transaction failed: {e}")
     
     # ==================== HAGGLE MECHANIC ====================
     
@@ -355,7 +340,8 @@ class FishSellView(discord.ui.View):
         
         self.sold = True
         for item in self.children:
-            item.disabled = True
+            if isinstance(item, discord.ui.Button):
+                item.disabled = True
         await interaction.response.edit_message(view=self)
         
         # Create haggle view
@@ -382,7 +368,7 @@ class HagglingView(discord.ui.View):
         self.completed = False
     
     @discord.ui.button(label="🤝 Chốt Luôn", style=discord.ButtonStyle.green)
-    async def accept_price(self, interaction: discord.Interaction):
+    async def accept_price(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Accept current price"""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Không phải chuyện của bạn!", ephemeral=True)
@@ -394,53 +380,54 @@ class HagglingView(discord.ui.View):
         self.completed = True
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute("BEGIN TRANSACTION")
-                
-                try:
-                    # Remove fish items
-                    for fish_key, quantity in self.caught_items.items():
-                        await db.execute(
-                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                            (quantity, self.user_id, fish_key)
-                        )
-                    
-                    await db.execute(
-                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                        (self.user_id,)
-                    )
-                    
-                    # Add seeds
-                    await db.execute(
-                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                        (self.base_total, self.user_id)
-                    )
-                    
-                    await db.commit()
-                    
-                    from database_manager import db_manager
-                    db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-                    
-                    embed = discord.Embed(
-                        title="🤝 **CHỐT XONG!**",
-                        description=f"💰 Nhận: **{self.base_total} Hạt**\n\n✅ An toàn là trên hết!",
-                        color=discord.Color.green()
-                    )
-                    
-                    for item in self.children:
-                        item.disabled = True
-                    await interaction.response.edit_message(embed=embed, view=self)
-                    print(f"[FISHING] [HAGGLE_ACCEPT] {self.username} (user_id={self.user_id}) earned {self.base_total} seeds")
-                    
-                except Exception as e:
-                    await db.execute("ROLLBACK")
-                    await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
-                    
+            from database_manager import db_manager
+            
+            # Prepare batch operations
+            operations = []
+            
+            # Remove fish items
+            for fish_key, quantity in self.caught_items.items():
+                operations.append((
+                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                    (quantity, self.user_id, fish_key)
+                ))
+            
+            operations.append((
+                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                (self.user_id,)
+            ))
+            
+            # Add seeds
+            operations.append((
+                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                (self.base_total, self.user_id)
+            ))
+            
+            # Execute transaction
+            await db_manager.batch_modify(operations)
+            
+            # Clear caches
+            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+            db_manager.clear_cache_by_prefix("leaderboard")
+            
+            embed = discord.Embed(
+                title="🤝 **CHỐT XONG!**",
+                description=f"💰 Nhận: **{self.base_total} Hạt**\n\n✅ An toàn là trên hết!",
+                color=discord.Color.green()
+            )
+            
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+            await interaction.response.edit_message(embed=embed, view=self)
+            print(f"[FISHING] [HAGGLE_ACCEPT] {self.username} (user_id={self.user_id}) earned {self.base_total} seeds")
+            
         except Exception as e:
             await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
     
     @discord.ui.button(label="😏 Đòi Thêm", style=discord.ButtonStyle.primary)
-    async def demand_more(self, interaction: discord.Interaction):
+    async def demand_more(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Demand more money - 40% success rate"""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Không phải chuyện của bạn!", ephemeral=True)
@@ -466,47 +453,48 @@ class HagglingView(discord.ui.View):
             action = "FAIL"
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute("BEGIN TRANSACTION")
-                
-                try:
-                    # Remove fish items
-                    for fish_key, quantity in self.caught_items.items():
-                        await db.execute(
-                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                            (quantity, self.user_id, fish_key)
-                        )
-                    
-                    await db.execute(
-                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                        (self.user_id,)
-                    )
-                    
-                    # Add seeds
-                    await db.execute(
-                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                        (final_total, self.user_id)
-                    )
-                    
-                    await db.commit()
-                    
-                    from database_manager import db_manager
-                    db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-                    
-                    embed = discord.Embed(
-                        title=f"😏 **MẶC CÀ {action}!**",
-                        description=message,
-                        color=color
-                    )
-                    
-                    for item in self.children:
-                        item.disabled = True
-                    await interaction.response.edit_message(embed=embed, view=self)
-                    print(f"[FISHING] [HAGGLE_{action}] {self.username} (user_id={self.user_id}) earned {final_total} seeds")
-                    
-                except Exception as e:
-                    await db.execute("ROLLBACK")
-                    await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
-                    
+            from database_manager import db_manager
+            
+            # Prepare batch operations
+            operations = []
+            
+            # Remove fish items
+            for fish_key, quantity in self.caught_items.items():
+                operations.append((
+                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                    (quantity, self.user_id, fish_key)
+                ))
+            
+            operations.append((
+                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                (self.user_id,)
+            ))
+            
+            # Add seeds
+            operations.append((
+                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                (final_total, self.user_id)
+            ))
+            
+            # Execute transaction
+            await db_manager.batch_modify(operations)
+            
+            # Clear caches
+            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
+            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+            db_manager.clear_cache_by_prefix("leaderboard")
+            
+            embed = discord.Embed(
+                title=f"😏 **MẶC CÀ {action}!**",
+                description=message,
+                color=color
+            )
+            
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+            await interaction.response.edit_message(embed=embed, view=self)
+            print(f"[FISHING] [HAGGLE_{action}] {self.username} (user_id={self.user_id}) earned {final_total} seeds")
+            
         except Exception as e:
             await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)

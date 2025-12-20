@@ -5,6 +5,7 @@ import subprocess
 import logging
 from discord.ext import commands
 from dotenv import load_dotenv
+from core.achievement_system import AchievementManager
 
 # Load biến môi trường từ file .env
 load_dotenv()
@@ -32,6 +33,10 @@ async def on_ready():
     print('------')
     # Set trạng thái cho bot
     await bot.change_presence(activity=discord.Game(name="Cuộn len bên hiên nhà 🧶"))
+    
+    # Initialize Achievement Manager
+    bot.achievement_manager = AchievementManager(bot)
+    print("✓ Achievement Manager initialized")
     
     # Load cogs on first ready only
     if not bot.cogs_loaded:

@@ -328,9 +328,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                     await increment_stat(user_id, "fishing", "bad_events_encountered", 1)
                 if event_data.get("effect") == "global_reset":
                     await increment_stat(user_id, "fishing", "global_reset_triggered", 1)
-                    # Check child_of_sea achievement
-                    if hasattr(cog, 'check_achievement'):
-                        await cog.check_achievement(user_id, "child_of_sea", channel, guild_id)
+                    # Achievement check for global reset is handled by the stat tracking above
             except:
                 pass
             
@@ -338,14 +336,27 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             if has_protection and event_data.get("type") == "bad":
                 result["triggered"] = True
                 result["type"] = event_type
-                result["message"] = f"**{event_data['name']}** {RANDOM_EVENT_MESSAGES[event_type]}"
+                result["message"] = RANDOM_EVENT_MESSAGES[event_type]
                 result["avoided"] = True
                 return result
             
             # Build result
             result["triggered"] = True
             result["type"] = event_type
-            result["message"] = f"**{event_data['name']}** {RANDOM_EVENT_MESSAGES[event_type]}"
+            result["message"] = RANDOM_EVENT_MESSAGES[event_type]
+            
+            # Track achievement stats for fishing events
+            from .constants import FISHING_EVENT_STAT_MAPPING
+            if event_type in FISHING_EVENT_STAT_MAPPING:
+                stat_key = FISHING_EVENT_STAT_MAPPING[event_type]
+                try:
+                    await increment_stat(user_id, "fishing", stat_key, 1)
+                    current_value = await get_stat(user_id, "fishing", stat_key)
+                    if hasattr(cog, 'bot') and hasattr(cog.bot, 'achievement_manager'):
+                        await cog.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
+                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on fishing event {event_type}")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
             
             # Skip bad events if user has no seeds
             from database_manager import get_user_balance

@@ -75,15 +75,22 @@ class LegendaryBossFightView(discord.ui.View):
             
             # Check achievement
             legendary_key = self.legendary_fish['key']
-            achievement_map = {
-                "thuong_luong": "river_lord",
-                "ca_ngan_ha": "star_walker",
-                "ca_phuong_hoang": "sun_guardian",
-                "cthulhu_con": "void_gazer",
-                "ca_voi_52hz": "lonely_frequency"
+            legendary_stat_map = {
+                "thuong_luong": "legendary_caught",
+                "ca_ngan_ha": "ca_ngan_ha_caught",
+                "ca_phuong_hoang": "ca_phuong_hoang_caught",
+                "cthulhu_con": "cthulhu_con_caught",
+                "ca_voi_52hz": "ca_voi_52hz_caught"
             }
-            if legendary_key in achievement_map:
-                await self.cog.check_achievement(self.user_id, achievement_map[legendary_key], self.channel, self.guild_id)
+            if legendary_key in legendary_stat_map:
+                stat_key = legendary_stat_map[legendary_key]
+                try:
+                    await increment_stat(self.user_id, "fishing", stat_key, 1)
+                    current_value = await get_stat(self.user_id, "fishing", stat_key)
+                    await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", stat_key, current_value, self.channel)
+                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {self.user_id} on legendary catch {legendary_key}")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {self.user_id}: {e}")
             
             # Clean up dark map if caught Cthulhu non
             if legendary_key == "cthulhu_con":
@@ -160,17 +167,24 @@ class LegendaryBossFightView(discord.ui.View):
             from .helpers import track_caught_fish
             await track_caught_fish(self.user_id, self.legendary_fish['key'])
             
-            # Check achievement
+            # Track legendary achievement
             legendary_key = self.legendary_fish['key']
-            achievement_map = {
-                "thuong_luong": "river_lord",
-                "ca_ngan_ha": "star_walker",
-                "ca_phuong_hoang": "sun_guardian",
-                "cthulhu_con": "void_gazer",
-                "ca_voi_52hz": "lonely_frequency"
+            legendary_stat_map = {
+                "thuong_luong": "legendary_caught",
+                "ca_ngan_ha": "ca_ngan_ha_caught",
+                "ca_phuong_hoang": "ca_phuong_hoang_caught",
+                "cthulhu_con": "cthulhu_con_caught",
+                "ca_voi_52hz": "ca_voi_52hz_caught"
             }
-            if legendary_key in achievement_map:
-                await self.cog.check_achievement(self.user_id, achievement_map[legendary_key], self.channel, self.guild_id)
+            if legendary_key in legendary_stat_map:
+                stat_key = legendary_stat_map[legendary_key]
+                try:
+                    await increment_stat(self.user_id, "fishing", stat_key, 1)
+                    current_value = await get_stat(self.user_id, "fishing", stat_key)
+                    await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", stat_key, current_value, self.channel)
+                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {self.user_id} on legendary catch {legendary_key}")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {self.user_id}: {e}")
             
             # Clean up dark map if caught Cthulhu non
             if legendary_key == "cthulhu_con":
@@ -425,6 +439,20 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
             # Mark as caught in quest system
             from .legendary_quest_helper import set_legendary_caught
             await set_legendary_caught(user_id, legendary_key, True)
+            
+            # Track legendary caught for achievements
+            from database_manager import increment_stat
+            await increment_stat(user_id, "fishing", "legendary_caught", 1)
+            
+            # Check if all legendary fish caught
+            from .constants import LEGENDARY_FISH_KEYS
+            if len(legendary_list) >= len(LEGENDARY_FISH_KEYS):
+                try:
+                    await increment_stat(user_id, "fishing", "all_legendary_caught", 1)
+                    # Note: This stat should only be 1, but we use increment to ensure it's set
+                    print(f"[ACHIEVEMENT] User {user_id} has caught all legendary fish!")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error tracking all_legendary_caught for {user_id}: {e}")
             
             return legendary_list
     except Exception as e:

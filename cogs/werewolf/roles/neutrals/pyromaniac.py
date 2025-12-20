@@ -186,6 +186,9 @@ class Pyromaniac(Role):
         killed_count = len(game._pyro_soaked)
         game._pyro_soaked.clear()
 
+        # Track arsonist burns for achievement
+        player.arsonist_burns = max(player.arsonist_burns, killed_count)
+
         embed = discord.Embed(
             title="🔥 Đốt hoàn tất",
             description=f"Bạn đã đốt {killed_count} người.",

@@ -130,7 +130,6 @@ class FishingCog(commands.Cog):
         self.caught_items = {}
         self.user_titles = {}
         self.user_stats = {}
-        self.user_achievements = {}
         self.lucky_buff_users = {}
         self.avoid_event_users = {}
         self.legendary_buff_users = {}  # For ghost NPC buff
@@ -169,27 +168,6 @@ class FishingCog(commands.Cog):
         self.disaster_display_glitch = False  # Whether to show garbled fish names
         self.disaster_effect_end_time = 0  # When current disaster effects expire
         self.disaster_channel = None  # Channel to send disaster end notification
-        
-        # Load achievements from database on startup
-        try:
-            import asyncio
-            asyncio.create_task(self._load_achievements_from_db())
-        except Exception as e:
-            print(f"[ACHIEVEMENT] Could not schedule achievement loading: {e}")
-    
-    async def _load_achievements_from_db(self):
-        """Load all earned achievements from database into memory on startup."""
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT user_id, achievement_key FROM user_achievements") as cursor:
-                    rows = await cursor.fetchall()
-                    for user_id, achievement_key in rows:
-                        if user_id not in self.user_achievements:
-                            self.user_achievements[user_id] = []
-                        self.user_achievements[user_id].append(achievement_key)
-            print(f"[ACHIEVEMENT] Loaded {sum(len(v) for v in self.user_achievements.values())} achievements from database")
-        except Exception as e:
-            print(f"[ACHIEVEMENT] Error loading achievements from database: {e}")
     
     @tasks.loop(time=dt_time(21, 0))
     async def meteor_shower_event(self):
@@ -448,8 +426,15 @@ class FishingCog(commands.Cog):
                     # Track rods repaired for achievement
                     try:
                         await increment_stat(user_id, "fishing", "rods_repaired", 1)
+                        current_repairs = await get_stat(user_id, "fishing", "rods_repaired")
                         # Check achievement: diligent_smith (100 repairs)
-                        await self.check_achievement(user_id, "diligent_smith", channel, guild_id)
+                        await self.bot.achievement_manager.check_unlock(
+                            user_id=user_id,
+                            game_category="fishing",
+                            stat_key="rods_repaired",
+                            current_value=current_repairs,
+                            channel=channel
+                        )
                     except Exception as e:
                         print(f"[ACHIEVEMENT] Error updating rods_repaired for {user_id}: {e}")
                 else:
@@ -513,8 +498,15 @@ class FishingCog(commands.Cog):
                 # Track worms used for achievement
                 try:
                     await increment_stat(user_id, "fishing", "worms_used", 1)
-                    # Check achievement: worm_destroyer (500 worms)
-                    await self.check_achievement(user_id, "worm_destroyer", channel, guild_id)
+                    current_worms = await get_stat(user_id, "fishing", "worms_used")
+                    # Check achievement: worm_destroyer (100 worms)
+                    await self.bot.achievement_manager.check_unlock(
+                        user_id=user_id,
+                        game_category="fishing",
+                        stat_key="worms_used",
+                        current_value=current_worms,
+                        channel=channel
+                    )
                 except:
                     pass
                 print(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
@@ -609,16 +601,13 @@ class FishingCog(commands.Cog):
                 try:
                     if is_event_good:
                         await increment_stat(user_id, "fishing", "good_events_encountered", 1)  # stat update
+                        current_good_events = await get_stat(user_id, "fishing", "good_events_encountered")
+                        await self.bot.achievement_manager.check_unlock(user_id, "fishing", "good_events", current_good_events, channel)
                     else:
                         # Track bad events
                         await increment_stat(user_id, "fishing", "bad_events_encountered", 1)  # stat update
-                    # Check achievements for events
-                    if is_event_good:
-                        await self.check_achievement(user_id, "lucky", channel, guild_id)
-                    else:
-                        # Check bad event achievements
-                        await self.check_achievement(user_id, "unlucky", channel, guild_id)
-                        await self.check_achievement(user_id, "survivor", channel, guild_id)
+                        current_bad_events = await get_stat(user_id, "fishing", "bad_events_encountered")
+                        await self.bot.achievement_manager.check_unlock(user_id, "fishing", "bad_events", current_bad_events, channel)
                 except:
                     pass
             
@@ -941,18 +930,35 @@ class FishingCog(commands.Cog):
                 
                     # Check boss_hunter achievement
                     if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
-                        await self.check_achievement(user_id, "boss_hunter", channel, guild_id, inventory_data=inventory)
+                        current_legendary = await get_stat(user_id, "fishing", "legendary_caught") or 0
+                        await self.bot.achievement_manager.check_unlock(
+                            user_id=user_id,
+                            game_category="fishing",
+                            stat_key="legendary_caught",
+                            current_value=current_legendary + 1,
+                            channel=channel
+                        )
                 
                     # Track in collection
                     is_new_collection = await track_caught_fish(user_id, fish['key'])
                     if is_new_collection:
                         print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
                         # Check first_catch achievement (catch any fish for the first time)
-                        await self.check_achievement(user_id, "first_catch", channel, guild_id)
+                        # Get current collection count to see if this is the first fish ever
+                        collection = await get_collection(user_id)
+                        if len(collection) == 1:  # This is the first fish ever caught
+                            await increment_stat(user_id, "fishing", "first_catch", 1)
+                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "first_catch", 1, channel)
                         # Check if collection is complete
                         is_collection_complete = await check_collection_complete(user_id)
                         if is_collection_complete:
-                            await self.check_achievement(user_id, "collection_master", channel, guild_id)
+                            await self.bot.achievement_manager.check_unlock(
+                                user_id=user_id,
+                                game_category="fishing",
+                                stat_key="collection_complete",
+                                current_value=1,
+                                channel=channel
+                            )
                     if fish['key'] not in fish_only_items:
                         fish_only_items[fish['key']] = 0
                     fish_only_items[fish['key']] += 1
@@ -966,11 +972,21 @@ class FishingCog(commands.Cog):
                     if is_new_collection:
                         print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
                         # Check first_catch achievement (catch any fish for the first time)
-                        await self.check_achievement(user_id, "first_catch", channel, guild_id)
+                        # Get current collection count to see if this is the first fish ever
+                        collection = await get_collection(user_id)
+                        if len(collection) == 1:  # This is the first fish ever caught
+                            await increment_stat(user_id, "fishing", "first_catch", 1)
+                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "first_catch", 1, channel)
                         # Check if collection is complete
                         is_collection_complete = await check_collection_complete(user_id)
                         if is_collection_complete:
-                            await self.check_achievement(user_id, "collection_master", channel, guild_id)
+                            await self.bot.achievement_manager.check_unlock(
+                                user_id=user_id,
+                                game_category="fishing",
+                                stat_key="collection_complete",
+                                current_value=1,
+                                channel=channel
+                            )
                     if fish['key'] not in fish_only_items:
                         fish_only_items[fish['key']] = 0
                     fish_only_items[fish['key']] += 1
@@ -1036,8 +1052,13 @@ class FishingCog(commands.Cog):
                             (trash_count, user_id)
                         )
                         await db.commit()
-                    # Check achievement: trash_master (100 trash)
-                    await self.check_achievement(user_id, "trash_master", channel, guild_id)
+                    # Track achievement: trash_master
+                    try:
+                        await increment_stat(user_id, "fishing", "trash_recycled", trash_count)
+                        current_trash = await get_stat(user_id, "fishing", "trash_recycled")
+                        await self.bot.achievement_manager.check_unlock(user_id, "fishing", "trash_recycled", current_trash, channel)
+                    except Exception as e:
+                        print(f"[ACHIEVEMENT] Error tracking trash_recycled for {user_id}: {e}")
                 except:
                     pass
                 print(f"[FISHING] {username} caught trash: {trash_items_caught}")
@@ -1050,14 +1071,9 @@ class FishingCog(commands.Cog):
                 print(f"[FISHING] {username} caught {chest_count}x TREASURE CHEST! 🎁")
                 # Track chests caught for achievement
                 try:
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        await db.execute(
-                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                            (chest_count, user_id)
-                        )
-                        await db.commit()
-                    # Check achievement: treasure_hunter (50 chests)
-                    await self.check_achievement(user_id, "treasure_hunter", channel, guild_id)
+                    await increment_stat(user_id, "fishing", "chests_caught", chest_count)
+                    current_chests = await get_stat(user_id, "fishing", "chests_caught")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "chests_caught", current_chests, channel)
                 except Exception as e:
                     print(f"[ACHIEVEMENT] Error updating chests_caught for {user_id}: {e}")
         
@@ -1096,8 +1112,8 @@ class FishingCog(commands.Cog):
                     # Track robbed count (cat steal counts as being robbed)
                     try:
                         await increment_stat(user_id, "fishing", "robbed_count", 1)  # stat update,
-                        # Check achievement: market_unluckiest (3 times robbed)
-                        await self.check_achievement(user_id, "market_unluckiest", channel, guild_id)
+                        current_robbed = await get_stat(user_id, "fishing", "robbed_count")
+                        await self.bot.achievement_manager.check_unlock(user_id, "fishing", "robbed_count", current_robbed, channel)
                     except Exception as e:
                         print(f"[ACHIEVEMENT] Error updating robbed_count for {user_id}: {e}")
                     if fish_display:
@@ -1184,7 +1200,6 @@ class FishingCog(commands.Cog):
                 # Check if caught rare fish or chest (indicating boss-like encounter)
                 drop_chance = random.random()
                 if drop_chance < 0.08:  # 8% chance
-                    from database_manager import add_item
                     await add_item(user_id, "long_vu_lua", 1)
                     print(f"[PHOENIX] {username} dropped Lông Vũ Lửa!")
                     
@@ -1334,6 +1349,19 @@ class FishingCog(commands.Cog):
             
                 # Send NPC message with buttons
                 npc_view = NPCEncounterView(user_id, npc_type, npc_data, caught_fish_key)
+                
+                # Track achievement stats for NPC encounters
+                from .constants import NPC_EVENT_STAT_MAPPING
+                if npc_type in NPC_EVENT_STAT_MAPPING:
+                    stat_key = NPC_EVENT_STAT_MAPPING[npc_type]
+                    try:
+                        await increment_stat(user_id, "fishing", stat_key, 1)
+                        current_value = await get_stat(user_id, "fishing", stat_key)
+                        await self.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
+                        print(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on NPC encounter {npc_type}")
+                    except Exception as e:
+                        print(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
+                
                 npc_msg = await channel.send(content=f"<@{user_id}>", embed=npc_embed, view=npc_view)
             
                 await npc_view.wait()
@@ -1539,6 +1567,18 @@ class FishingCog(commands.Cog):
             # Apply event logic
             special_rewards = []
             if triggered_event:
+                # Track achievement stats for events
+                from .constants import SELL_EVENT_STAT_MAPPING
+                if triggered_event in SELL_EVENT_STAT_MAPPING:
+                    stat_key = SELL_EVENT_STAT_MAPPING[triggered_event]
+                    try:
+                        await increment_stat(user_id, "fishing", stat_key, 1)
+                        current_value = await get_stat(user_id, "fishing", stat_key)
+                        await self.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, ctx.channel)
+                        print(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on sell event {triggered_event}")
+                    except Exception as e:
+                        print(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
+                
                 ev_data = SELL_EVENTS[triggered_event]
                 event_name = ev_data["name"]
                 
@@ -1566,14 +1606,9 @@ class FishingCog(commands.Cog):
                         special_rewards.append("🎁 +1 Rương Kho Báu")
                         # Track chest gained from sell event
                         try:
-                            async with aiosqlite.connect(DB_PATH) as db:
-                                await db.execute(
-                                    "UPDATE users SET seeds = seeds + 1 WHERE user_id = ?",
-                                    (user_id,)
-                                )
-                                await db.commit()
-                            # Check achievement: treasure_hunter (50 chests)
-                            await self.check_achievement(user_id, "treasure_hunter", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+                            await increment_stat(user_id, "fishing", "chests_caught", 1)
+                            current_chests = await get_stat(user_id, "fishing", "chests_caught")
+                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "chests_caught", current_chests, ctx.channel)
                         except Exception as e:
                             print(f"[ACHIEVEMENT] Error updating chests_caught (sell special) for {user_id}: {e}")
                     
@@ -1669,6 +1704,9 @@ class FishingCog(commands.Cog):
                             (final_total, user_id)
                         )
                         
+                        # Track total money earned for achievements
+                        await increment_stat(user_id, "fishing", "total_money_earned", final_total)
+                        
                         # Log the balance change
                         balance_after = balance_before + final_total
                         print(f"[FISHING] [SEED_CHANGE] user_id={user_id} amount=+{final_total} balance_before={balance_before} balance_after={balance_after}")
@@ -1689,11 +1727,14 @@ class FishingCog(commands.Cog):
                         
                         # Check achievements for sell events
                         if triggered_event == "market_boom":
-                            await self.check_achievement(user_id, "market_manipulator", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+                            current_market_boom = await get_stat(user_id, "fishing", "market_boom_sales")
+                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "market_boom_sales", current_market_boom, ctx.channel)
                         elif triggered_event == "god_of_wealth":
-                            await self.check_achievement(user_id, "god_of_wealth", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+                            current_god_wealth = await get_stat(user_id, "fishing", "god_of_wealth_encountered")
+                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "god_of_wealth_encountered", current_god_wealth, ctx.channel)
                         elif triggered_event == "thief_run":
-                            await self.check_achievement(user_id, "market_unluckiest", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id)
+                            current_robbed = await get_stat(user_id, "fishing", "robbed_count")
+                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "robbed_count", current_robbed, ctx.channel)
                         
                         # CRITICAL: Invalidate inventory cache after successful transaction
                         db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
@@ -1795,8 +1836,8 @@ class FishingCog(commands.Cog):
             )
             
             # Check achievement "millionaire" after sale
-            stats = await self._get_all_user_stats(user_id)
-            await self.check_achievement(user_id, "millionaire", ctx.channel, ctx.guild.id if hasattr(ctx, 'guild') else ctx_or_interaction.guild.id, stats_data=stats)
+            current_money_earned = await get_stat(user_id, "fishing", "total_money_earned")
+            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "total_money_earned", current_money_earned, ctx.channel)
 
             if is_slash:
                 await ctx.followup.send(embed=embed)
@@ -2097,7 +2138,8 @@ class FishingCog(commands.Cog):
         current_sacrifices = await self.add_sacrifice_count(user_id, 1)
         
         # Check dragon_slayer achievement (100 sacrifices)
-        await self.check_achievement(user_id, "dragon_slayer", channel, guild_id)
+        current_legendary = await get_stat(user_id, "fishing", "legendary_caught")
+        await self.bot.achievement_manager.check_unlock(user_id, "fishing", "legendary_caught", current_legendary, channel)
         
         fish_name = global_apply_display_glitch(ALL_FISH[fish_key]['name'])
         fish_emoji = ALL_FISH[fish_key]['emoji']
@@ -2461,9 +2503,13 @@ class FishingCog(commands.Cog):
         if is_slash:
             user_id = ctx_or_interaction.user.id
             ctx = ctx_or_interaction
+            channel = ctx_or_interaction.channel
+            guild_id = ctx_or_interaction.guild_id
         else:
             user_id = ctx_or_interaction.author.id
             ctx = ctx_or_interaction
+            channel = ctx_or_interaction.channel
+            guild_id = ctx_or_interaction.guild.id
         
         # *** CHECK AND APPLY LAG DEBUFF DELAY ***
         if self.check_emotional_state(user_id, "lag"):
@@ -2516,14 +2562,9 @@ class FishingCog(commands.Cog):
 
         # Track recycled trash for achievement (counts units recycled)
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute(
-                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                    (trash_used, user_id)
-                )
-                await db.commit()
-            # Check achievement: master_recycler (1000 trash recycled)
-            await self.check_achievement(user_id, "master_recycler", channel, guild_id)
+            await increment_stat(user_id, "fishing", "trash_recycled", trash_used)
+            current_trash_recycled = await get_stat(user_id, "fishing", "trash_recycled")
+            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "trash_recycled", current_trash_recycled, channel)
         except Exception as e:
             print(f"[ACHIEVEMENT] Error updating trash_recycled for {user_id}: {e}")
         
@@ -2636,6 +2677,21 @@ class FishingCog(commands.Cog):
             
             # Upgrade rod: restore full durability
             await update_rod_data_module(user_id, rod_info["durability"], next_lvl)
+            
+            # Track rod upgrades for achievement
+            await increment_stat(user_id, "fishing", "rod_upgrades", 1)
+            current_upgrades = await get_stat(user_id, "fishing", "rod_upgrades")
+            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "rod_upgrades", current_upgrades, ctx_or_interaction.channel)
+            
+            # Track max rod level achievement
+            if next_lvl >= 5:
+                try:
+                    await increment_stat(user_id, "fishing", "rod_level_max", next_lvl)
+                    current_max = await get_stat(user_id, "fishing", "rod_level_max")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "rod_level_max", current_max, ctx_or_interaction.channel)
+                    print(f"[ACHIEVEMENT] User {user_id} reached max rod level {next_lvl}")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error tracking rod_level_max for {user_id}: {e}")
         except Exception as e:
             # Rollback on error
             embed = discord.Embed(
@@ -2649,11 +2705,7 @@ class FishingCog(commands.Cog):
                 await ctx.send(embed=embed)
             return
         
-        # Check rod_tycoon achievement if level 5
-        if next_lvl == 5:
-            guild_id = ctx_or_interaction.guild.id if hasattr(ctx_or_interaction, 'guild') else ctx_or_interaction.guild.id
-            stats = await self._get_all_user_stats(user_id)
-            await self.check_achievement(user_id, "rod_tycoon", ctx_or_interaction.channel, guild_id, stats_data=stats)
+        # Achievement check is now handled above with rod_upgrades stat
         
         # Build response embed
         embed = discord.Embed(
@@ -2939,6 +2991,9 @@ class FishingCog(commands.Cog):
                 rare_caught.add(fish_key)
             elif fish_key in COMMON_FISH_KEYS:
                 common_caught.add(fish_key)
+        
+        # Check if user has Isekai fish (hidden legendary)
+        has_isekai = "ca_isekai" in legendary_caught
         
         # Display total: 5 normally, 6 if has Isekai
         total_display = 6 if has_isekai else 5
@@ -3477,6 +3532,19 @@ class FishingCog(commands.Cog):
         try:
             await channel.send(embed=embed)
             print(f"[DISASTER] {disaster['key']} triggered by {username}. Duration: {disaster_duration}s")
+            
+            # Track achievement stats for disaster trigger
+            from .constants import DISASTER_STAT_MAPPING
+            if disaster['key'] in DISASTER_STAT_MAPPING:
+                stat_key = DISASTER_STAT_MAPPING[disaster['key']]
+                try:
+                    await increment_stat(user_id, "fishing", stat_key, 1)
+                    current_value = await get_stat(user_id, "fishing", stat_key)
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
+                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on disaster {disaster['key']}")
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
+                    
         except Exception as e:
             print(f"[DISASTER] Error sending announcement: {e}")
         
@@ -3520,386 +3588,6 @@ class FishingCog(commands.Cog):
                 await db.commit()
         except:
             pass
-    
-    async def _get_all_user_stats(self, user_id: int) -> dict:
-        """Fetches all achievement-related stats for a user in one query."""
-        try:
-            from database_manager import db_manager
-            
-            # Get stats from user_stats table
-            all_stats = await get_all_stats(user_id, "fishing")
-            
-            # Get seeds from users table
-            seeds_row = await db_manager.fetchone("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-            seeds = seeds_row[0] if seeds_row else 0
-            
-            # Get rod_level from fishing_profiles
-            rod_row = await db_manager.fetchone("SELECT rod_level FROM fishing_profiles WHERE user_id = ?", (user_id,))
-            rod_level = rod_row[0] if rod_row else 0
-            
-            # Convert stats dict to dict with proper values (default 0 if not found)
-            stat_keys = [
-                'bad_events_encountered', 'global_reset_triggered', 'chests_caught',
-                'market_boom_sales', 'robbed_count', 'god_of_wealth_encountered',
-                'rods_repaired', 'trash_recycled', 'worms_used', 'trash_caught', 'good_events_encountered'
-            ]
-            
-            stats_dict = {'seeds': seeds, 'rod_level': rod_level}
-            for key in stat_keys:
-                # all_stats returns {key: value} where value is int, not {key: {stat_value: value}}
-                stats_dict[key] = int(all_stats.get(key, 0)) if key in all_stats else 0
-            
-            return stats_dict
-        except Exception as e:
-            print(f"[ACHIEVEMENT] Error fetching all stats for {user_id}: {e}")
-        return {}
-
-    async def check_achievement(self, user_id: int, achievement_key: str, channel = None, guild_id: int = None, stats_data: dict = None, inventory_data: dict = None):
-        """Check and award achievement if conditions are met. Only awards once per user."""
-        # Check if achievement already earned in database
-        try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT id FROM user_achievements WHERE user_id = ? AND achievement_key = ?",
-                    (user_id, achievement_key)
-                ) as cursor:
-                    already_earned = await cursor.fetchone()
-                    if already_earned:
-                        # Already earned, don't award again
-                        return False
-        except Exception as e:
-            print(f"[ACHIEVEMENT] Error checking if achievement already earned: {e}")
-            # Fall through to continue
-        
-        achievement = ACHIEVEMENTS.get(achievement_key)
-        if not achievement:
-            return False
-        
-        # Get user stats from database if not provided
-        stats = stats_data
-        if stats is None:
-            stats = await self._get_all_user_stats(user_id)
-
-        if not stats:
-            return False
-            
-        bad_events = stats.get("bad_events_encountered", 0)
-        global_reset = stats.get("global_reset_triggered", 0)
-        chests = stats.get("chests_caught", 0)
-        market_boom = stats.get("market_boom_sales", 0)
-        robbed = stats.get("robbed_count", 0)
-        god_wealth = stats.get("god_of_wealth_encountered", 0)
-        rods_rep = stats.get("rods_repaired", 0)
-        rod_lvl = stats.get("rod_level", 0)
-        trash_rec = stats.get("trash_recycled", 0)
-        worms_used = stats.get("worms_used", 0)
-        trash_caught = stats.get("trash_caught", 0)
-        good_events = stats.get("good_events_encountered", 0)
-        seeds = stats.get("seeds", 0)
-
-        # Check conditions based on achievement type
-        condition_met = False
-        
-        if achievement_key == "first_catch":
-            # Check if user has caught at least 1 fish (using fish_collection table)
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT COUNT(*) FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        count = await cursor.fetchone()
-                        if count and count[0] >= 1:
-                            condition_met = True
-            except:
-                pass
-        elif achievement_key == "worm_destroyer" and worms_used >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "trash_master" and trash_caught >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "millionaire" and seeds >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "dragon_slayer":
-            # Check if user has caught ca_rong
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'ca_rong'",
-                        (user_id,)
-                    ) as cursor:
-                        count = await cursor.fetchone()
-                        if count and count[0] >= 1:
-                            condition_met = True
-            except:
-                pass
-        elif achievement_key == "unlucky" and bad_events >= 50:
-            condition_met = True
-        elif achievement_key == "lucky" and good_events >= 50:
-            condition_met = True
-        elif achievement_key == "survivor" and bad_events >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "child_of_sea" and global_reset >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "treasure_hunter" and chests >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "market_manipulator" and market_boom >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "market_unluckiest" and robbed >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "god_of_wealth" and god_wealth >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "diligent_smith" and rods_rep >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "rod_tycoon" and rod_lvl >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "master_recycler" and trash_rec >= achievement["target"]:
-            condition_met = True
-        elif achievement_key == "boss_hunter":
-            boss_fish_keys = {'megalodon', 'thuy_quai_kraken', 'leviathan'}
-            if inventory_data:
-                caught_boss_fish = {key for key in inventory_data if key in boss_fish_keys}
-                if len(caught_boss_fish) >= 3:
-                    condition_met = True
-            else:
-                # Fallback to DB query if inventory_data not provided
-                try:
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        async with db.execute(
-                            "SELECT item_name FROM inventory WHERE user_id = ? AND item_name IN ('megalodon', 'thuy_quai_kraken', 'leviathan')",
-                            (user_id,)
-                        ) as cursor:
-                            boss_fish = await cursor.fetchall()
-                            if len(boss_fish) >= 3:
-                                condition_met = True
-                except:
-                    pass
-        elif achievement_key == "river_lord":
-            # Check if user has caught thuong_luong
-            import json
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0]:
-                            legendary_list = json.loads(row[0])
-                            if "thuong_luong" in legendary_list:
-                                condition_met = True
-            except:
-                pass
-        elif achievement_key == "star_walker":
-            # Check if user has caught ca_ngan_ha
-            import json
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0]:
-                            legendary_list = json.loads(row[0])
-                            if "ca_ngan_ha" in legendary_list:
-                                condition_met = True
-            except:
-                pass
-        elif achievement_key == "sun_guardian":
-            # Check if user has caught ca_phuong_hoang
-            import json
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0]:
-                            legendary_list = json.loads(row[0])
-                            if "ca_phuong_hoang" in legendary_list:
-                                condition_met = True
-            except:
-                pass
-        elif achievement_key == "void_gazer":
-            # Check if user has caught cthulhu_con
-            import json
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0]:
-                            legendary_list = json.loads(row[0])
-                            if "cthulhu_con" in legendary_list:
-                                condition_met = True
-            except:
-                pass
-        elif achievement_key == "lonely_frequency":
-            # Check if user has caught ca_voi_52hz
-            import json
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0]:
-                            legendary_list = json.loads(row[0])
-                            if "ca_voi_52hz" in legendary_list:
-                                condition_met = True
-            except:
-                pass
-        elif achievement_key == "legendary_hunter":
-            # Check if user has all 5 legendary fish
-            import json
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                        (user_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        if row and row[0]:
-                            legendary_list = json.loads(row[0])
-                            required_legendaries = ["thuong_luong", "ca_ngan_ha", "ca_phuong_hoang", "cthulhu_con", "ca_voi_52hz"]
-                            if all(fish in legendary_list for fish in required_legendaries):
-                                condition_met = True
-            except:
-                pass
-        elif achievement_key == "collection_master":
-            condition_met = True  # This is checked separately in _fish_action
-        
-        if condition_met:
-            # Save to database (IMPORTANT: persistent storage)
-            try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute(
-                        "INSERT INTO user_achievements (user_id, achievement_key, earned_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
-                        (user_id, achievement_key)
-                    )
-                    await db.commit()
-            except Exception as e:
-                print(f"[ACHIEVEMENT] Error saving achievement to DB: {e}")
-            
-            # Also save to memory for faster lookup during session
-            if user_id not in self.user_achievements:
-                self.user_achievements[user_id] = []
-            self.user_achievements[user_id].append(achievement_key)
-            
-            # Award role if specified
-            if achievement.get("role_id") and guild_id:
-                try:
-                    guild = self.bot.get_guild(guild_id)
-                    if guild:
-                        user = guild.get_member(user_id)
-                        role = guild.get_role(achievement["role_id"])
-                        if user and role:
-                            await user.add_roles(role)
-                            print(f"[ACHIEVEMENT] {user_id} awarded role '{role.name}' for achievement '{achievement_key}'")
-                except Exception as e:
-                    print(f"[ACHIEVEMENT] Error awarding role for {achievement_key}: {e}")
-            
-            # Award coins in database using add_seeds to invalidate cache
-            try:
-                from database_manager import add_seeds
-                await add_seeds(user_id, achievement["reward_coins"])
-            except Exception as e:
-                print(f"[ACHIEVEMENT] Error awarding coins for {achievement_key}: {e}")
-            
-            # Get user info for @mention (IMPORTANT: Define BEFORE using)
-            user_name = f"<@{user_id}>"
-            if guild_id:
-                try:
-                    guild = self.bot.get_guild(guild_id)
-                    if guild:
-                        user = guild.get_member(user_id)
-                        if user:
-                            user_name = user.mention
-                except:
-                    pass
-            
-            # Count total players and players with this achievement for rarity calculation
-            rarity_percent = 0
-            try:
-                # Count how many users have this achievement in memory
-                achievement_count = sum(1 for user_achievements in self.user_achievements.values() if achievement_key in user_achievements)
-                
-                # Get total registered users (non-zero seed balance or has played)
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT COUNT(*) FROM users WHERE seeds >= 0"
-                    ) as cursor:
-                        total_row = await cursor.fetchone()
-                        total_users = total_row[0] if total_row else 1
-                
-                # Calculate rarity percentage (now including the new achiever)
-                rarity_percent = round((achievement_count / total_users * 100), 2) if total_users > 0 else 0
-            except Exception as e:
-                print(f"[ACHIEVEMENT] Error calculating rarity: {e}")
-                rarity_percent = 0
-            
-            # Send announcement with full details
-            if channel:
-                from datetime import datetime
-                current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                
-                # Apply glitch to all achievement info
-                achievement_title = f"🏆 THÀNH TỰU MỚI! {achievement['emoji']}"
-                achievement_desc = f"**{achievement['name']}**\n\n{achievement['description']}"
-                
-                embed = discord.Embed(
-                    title=self.apply_display_glitch(achievement_title),
-                    description=self.apply_display_glitch(achievement_desc),
-                    color=discord.Color.gold(),
-                    timestamp=datetime.now()
-                )
-                
-                # User info with mention
-                embed.add_field(
-                    name="👤 Người Chơi",
-                    value=self.apply_display_glitch(user_name),
-                    inline=True
-                )
-                
-                # Rarity
-                rarity_emoji = "🔥" if rarity_percent <= 5 else "⭐" if rarity_percent <= 15 else "✨"
-                rarity_text = f"{rarity_percent}% người chơi sở hữu"
-                embed.add_field(
-                    name=f"{rarity_emoji} Độ Hiếm",
-                    value=self.apply_display_glitch(rarity_text),
-                    inline=True
-                )
-                
-                # Reward
-                reward_text = f"+{achievement['reward_coins']} Hạt"
-                embed.add_field(
-                    name="💰 Phần Thưởng",
-                    value=self.apply_display_glitch(reward_text),
-                    inline=True
-                )
-                
-                # Role if applicable
-                if achievement.get("role_id"):
-                    embed.add_field(
-                        name="🎖️ Role Cấp",
-                        value=self.apply_display_glitch("Nhân được role thành tựu!"),
-                        inline=False
-                    )
-                
-                embed.set_footer(text=self.apply_display_glitch(f"Thời gian: {current_time}"))
-                
-                try:
-                    await channel.send(embed=embed)
-                except Exception as e:
-                    print(f"[ACHIEVEMENT] Error sending announcement: {e}")
-            
-            return True
-        
-        return False
     
     async def get_title(self, user_id: int, guild_id: int) -> str:
         """Get user's title."""

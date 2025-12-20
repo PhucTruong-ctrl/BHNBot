@@ -172,3 +172,60 @@ NPC_ENCOUNTERS = load_json_config(NPC_EVENTS_PATH, {})
 _disaster_events_data = load_json_config(DISASTER_EVENTS_PATH, {"disasters": []})
 DISASTER_EVENTS = _disaster_events_data.get("disasters", [])
 GLOBAL_DISASTER_COOLDOWN = _disaster_events_data.get("global_cooldown", 3600)
+
+# Achievement stat mappings for events
+SELL_EVENT_STAT_MAPPING = {
+    "maybach_crash": "luxury_car_crashes",
+    "bugatti_crash": "luxury_car_crashes", 
+    "ferrari_crash": "luxury_car_crashes",
+    "vinfast_crash": "luxury_car_crashes",
+    "crypto_loss": "crypto_fails",
+    "scam": "crypto_fails",
+    "market_crash": "crypto_fails",
+    "shark_tank": "shark_tank_event",
+    "land_fever": "land_fever_event",
+    "drama": "drama_events",
+    "tiktok_drama": "drama_events",
+    "check_var": "drama_events",
+    "phat": "drama_events",
+    "fake_money": "scam_events",
+    "broken_scale": "scam_events",
+    "pickpocket": "scam_events",
+    "gangster_fee": "scam_events",
+    "scammer": "scam_events",
+    "thief_run": "scam_events",
+    "hole_in_bag": "scam_events",
+    "cat_steal_sell": "scam_events",
+    "stray_dog": "scam_events",
+    "parking_fee": "scam_events",
+    "plastic_bag_fee": "scam_events",
+    "rent_increase": "scam_events",
+    "sanitation_fine": "scam_events",
+    "tax_collector": "scam_events",
+    "market_management": "scam_events",
+    "maybach_crash": "scam_events",
+    "bugatti_crash": "scam_events",
+    "ferrari_crash": "scam_events",
+    "vinfast_crash": "scam_events",
+}
+
+FISHING_EVENT_STAT_MAPPING = {
+    "truck_isekai": "isekai_event",
+    "global_reset": "global_reset_triggered",
+    "time_reset": "global_reset_triggered",
+    "space_portal": "global_reset_triggered",
+    "broken_hourglass": "global_reset_triggered",
+}
+
+NPC_EVENT_STAT_MAPPING = {
+    "ninja_lead": "ninja_lead_encounter",
+}
+
+DISASTER_STAT_MAPPING = {
+    "hacker_attack": "disaster_triggered",
+    "earthquake": "disaster_triggered",
+    "tsunami": "disaster_triggered",
+    "volcano_eruption": "disaster_triggered",
+    "meteor_shower": "disaster_triggered",
+    "alien_invasion": "disaster_triggered",
+}
