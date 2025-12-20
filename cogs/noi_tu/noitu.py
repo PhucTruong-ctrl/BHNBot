@@ -7,7 +7,7 @@ import json
 import time
 import traceback
 from datetime import datetime
-from database_manager import db_manager, get_stat
+from database_manager import db_manager, get_stat, get_or_create_user
 
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
@@ -314,8 +314,14 @@ class GameNoiTu(commands.Cog):
     async def update_player_stats(self, user_id, username, is_winner=False):
         """Update player stats: wins and correct words count"""
         try:
-            # Update words_correct
-            await self.increment_stat(user_id, 'words_correct', 1)
+            # Ensure user exists in database
+            user = await get_or_create_user(user_id, username)
+            if not user:
+                log(f"ERROR: Failed to create/get user {username} ({user_id})")
+                return
+            
+            # Update correct_words
+            await self.increment_stat(user_id, 'correct_words', 1)
             
             log(f"STATS_UPDATE [User {username}] WordsCorrect: +1")
         except Exception as e:
@@ -890,8 +896,8 @@ class GameNoiTu(commands.Cog):
             
             # Check achievements
             try:
-                current_words = await get_stat(user_id, 'noitu', 'words_correct')
-                await self.bot.achievement_manager.check_unlock(user_id, "noitu", "words_correct", current_words, message.channel)
+                current_words = await get_stat(user_id, 'noitu', 'correct_words')
+                await self.bot.achievement_manager.check_unlock(user_id, "noitu", "correct_words", current_words, message.channel)
                 
                 if game['player_count'] == 0:  # First player
                     current_starters = await get_stat(user_id, 'noitu', 'game_starters')
@@ -1032,16 +1038,22 @@ class GameNoiTu(commands.Cog):
         """Tăng giá trị stat cho user trong game noitu"""
         try:
             game_id = 'noitu'
+            log(f"[NoiTu] Incrementing stat {stat_key} for user {user_id} by {value}")
+            
             # Đảm bảo record tồn tại
             sql_check = "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?"
             row = await db_manager.fetchone(sql_check, (user_id, game_id, stat_key))
             
             if row:
+                current_value = row[0]
+                new_value = current_value + value
                 sql_update = "UPDATE user_stats SET value = value + ? WHERE user_id = ? AND game_id = ? AND stat_key = ?"
-                await db_manager.execute(sql_update, (value, user_id, game_id, stat_key))
+                await db_manager.modify(sql_update, (value, user_id, game_id, stat_key))
+                log(f"[NoiTu] Updated stat {stat_key} from {current_value} to {new_value}")
             else:
                 sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
-                await db_manager.execute(sql_insert, (user_id, game_id, stat_key, value))
+                await db_manager.modify(sql_insert, (user_id, game_id, stat_key, value))
+                log(f"[NoiTu] Inserted new stat {stat_key} with value {value}")
         except Exception as e:
             log(f"[NoiTu] Error updating stat {stat_key} for {user_id}: {e}")
     

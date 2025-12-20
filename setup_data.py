@@ -15,6 +15,10 @@ def init_database():
     print("Initializing SQLite Database...")
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
+    # Enable foreign key constraints
+    c.execute("PRAGMA foreign_keys = ON")
+    print("✓ Foreign key constraints enabled")
 
     # 1. CORE: USERS (Thay thế economy_users)
     c.execute('''CREATE TABLE IF NOT EXISTS users (

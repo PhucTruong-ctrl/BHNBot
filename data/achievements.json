@@ -403,7 +403,7 @@
         "word_novice": {
             "name": "Tập Sự Nối Từ",
             "description": "Nối đúng 10 từ",
-            "condition_stat": "words_correct",
+            "condition_stat": "correct_words",
             "target_value": 10,
             "reward_seeds": 50,
             "reward_role_key": "role_tap_su_noi_tu",
@@ -412,7 +412,7 @@
         "word_master": {
             "name": "Thánh Nối Từ",
             "description": "Nối đúng 100 từ",
-            "condition_stat": "words_correct",
+            "condition_stat": "correct_words",
             "target_value": 100,
             "reward_seeds": 500,
             "reward_role_key": "role_thanh_noi_tu",
@@ -439,7 +439,7 @@
         "noitu_legend": {
             "name": "Huyền Thoại Nối Từ",
             "description": "Nối đúng 1000 từ",
-            "condition_stat": "words_correct",
+            "condition_stat": "correct_words",
             "target_value": 1000,
             "reward_seeds": 2000,
             "reward_role_key": "role_huyen_thoai_noi_tu",
@@ -466,7 +466,7 @@
         "dictionary_god": {
             "name": "Từ Điển Sống",
             "description": "Đạt mốc 5000 từ nối đúng (Nâng cấp của Huyền Thoại)",
-            "condition_stat": "words_correct",
+            "condition_stat": "correct_words",
             "target_value": 5000,
             "reward_seeds": 10000,
             "reward_role_key": "role_tu_dien_song",

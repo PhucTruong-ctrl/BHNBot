@@ -8,19 +8,25 @@ from core.database import db_manager, get_user_balance, get_user_full, add_seeds
 
 async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
     """Get or create user (no cache as it modifies)"""
-    user = await db_manager.fetchone(
-        "SELECT user_id, username, seeds FROM users WHERE user_id = ?",
-        (user_id,)
-    )
-    
-    if not user:
-        await db_manager.modify(
-            "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0)",
-            (user_id, username)
+    try:
+        user = await db_manager.fetchone(
+            "SELECT user_id, username, seeds FROM users WHERE user_id = ?",
+            (user_id,)
         )
-        db_manager.clear_cache_by_prefix("leaderboard")
-    
-    return user
+        
+        if not user:
+            print(f"[DB] Creating new user: {username} ({user_id})")
+            await db_manager.modify(
+                "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0)",
+                (user_id, username)
+            )
+            db_manager.clear_cache_by_prefix("leaderboard")
+            user = (user_id, username, 0)
+        
+        return user
+    except Exception as e:
+        print(f"[DB] Error in get_or_create_user: {e}")
+        return None
 
 
 async def batch_update_seeds(updates: Dict[int, int]):
@@ -207,8 +213,8 @@ async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
 async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
     """Get server config field with caching"""
     result = await db_manager.fetchone(
-        "SELECT value FROM server_config WHERE guild_id = ? AND field = ?",
-        (guild_id, field),
+        f"SELECT {field} FROM server_config WHERE guild_id = ?",
+        (guild_id,),
         use_cache=True,
         cache_key=f"config_{guild_id}_{field}",
         cache_ttl=300
@@ -219,8 +225,8 @@ async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
 async def set_server_config(guild_id: int, field: str, value: Any):
     """Set server config field"""
     await db_manager.modify(
-        "INSERT OR REPLACE INTO server_config (guild_id, field, value) VALUES (?, ?, ?)",
-        (guild_id, field, value)
+        f"INSERT OR REPLACE INTO server_config (guild_id, {field}) VALUES (?, ?)",
+        (guild_id, value)
     )
     db_manager.clear_cache_by_prefix(f"config_{guild_id}")
 

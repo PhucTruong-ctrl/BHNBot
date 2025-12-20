@@ -93,7 +93,7 @@ class AchievementManager:
 
             # 1. Save to database
             try:
-                await db_manager.execute(
+                await db_manager.modify(
                     "INSERT OR IGNORE INTO user_achievements (user_id, achievement_key) VALUES (?, ?)",
                     (user_id, achievement_key)
                 )

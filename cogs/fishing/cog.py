@@ -3084,7 +3084,11 @@ class FishingCog(commands.Cog):
         for fish in COMMON_FISH:
             emoji = "✅" if fish['key'] in common_caught else "❌"
             fish_name = self.apply_display_glitch(fish['name'])
-            common_display.append(f"{emoji} {fish['emoji']} {fish_name}")
+            if fish['key'] in common_caught:
+                sell_price = fish.get('sell_price', 0)
+                common_display.append(f"{emoji} {fish['emoji']} {fish_name} - {sell_price} hạt")
+            else:
+                common_display.append(f"{emoji} {fish['emoji']} {fish_name}")
         
         # Split common fish into 2 columns if too many
         if len(common_display) > 30:
@@ -3126,7 +3130,11 @@ class FishingCog(commands.Cog):
         for fish in RARE_FISH:
             emoji = "✅" if fish['key'] in rare_caught else "❌"
             fish_name = self.apply_display_glitch(fish['name'])
-            rare_display.append(f"{emoji} {fish['emoji']} {fish_name}")
+            if fish['key'] in rare_caught:
+                sell_price = fish.get('sell_price', 0)
+                rare_display.append(f"{emoji} {fish['emoji']} {fish_name} - {sell_price} hạt")
+            else:
+                rare_display.append(f"{emoji} {fish['emoji']} {fish_name}")
         
         # Split rare fish into 2 columns if too many
         if len(rare_display) > 20:
@@ -3159,9 +3167,10 @@ class FishingCog(commands.Cog):
             if fish_key == 'ca_isekai' and not has_isekai:
                 continue
             if fish_key in legendary_caught:
-                # Caught: show name with ✅
+                # Caught: show name with ✅ and price
                 fish_name = self.apply_display_glitch(legendary_fish['name'])
-                legendary_display.append(f"✅ {legendary_fish['emoji']} {fish_name}")
+                sell_price = legendary_fish.get('sell_price', 0)
+                legendary_display.append(f"✅ {legendary_fish['emoji']} {fish_name} - {sell_price} hạt")
             else:
                 # Not caught: show ????
                 legendary_display.append(f"❓ {legendary_fish['emoji']} ????")
