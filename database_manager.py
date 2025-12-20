@@ -207,8 +207,8 @@ async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
 async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
     """Get server config field with caching"""
     result = await db_manager.fetchone(
-        f"SELECT {field} FROM server_config WHERE guild_id = ?",
-        (guild_id,),
+        "SELECT value FROM server_config WHERE guild_id = ? AND field = ?",
+        (guild_id, field),
         use_cache=True,
         cache_key=f"config_{guild_id}_{field}",
         cache_ttl=300
@@ -219,8 +219,8 @@ async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
 async def set_server_config(guild_id: int, field: str, value: Any):
     """Set server config field"""
     await db_manager.modify(
-        f"INSERT OR REPLACE INTO server_config (guild_id, {field}) VALUES (?, ?)",
-        (guild_id, value)
+        "INSERT OR REPLACE INTO server_config (guild_id, field, value) VALUES (?, ?, ?)",
+        (guild_id, field, value)
     )
     db_manager.clear_cache_by_prefix(f"config_{guild_id}")
 

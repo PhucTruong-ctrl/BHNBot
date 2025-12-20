@@ -75,19 +75,32 @@ class AchievementManager:
                 "SELECT 1 FROM user_achievements WHERE user_id = ? AND achievement_key = ?",
                 (user_id, achievement_key)
             )
-            return bool(row)
+            unlocked = bool(row)
+            if unlocked:
+                print(f"[ACHIEVEMENT] User {user_id} has already unlocked {achievement_key}")
+            return unlocked
         except Exception as e:
             print(f"[ACHIEVEMENT] Error checking unlock status for {achievement_key}: {e}")
-            return False
+            return True  # Assume unlocked to prevent spam if DB error
 
     async def unlock_achievement(self, user_id: int, achievement_key: str, achievement_data: dict, channel: discord.TextChannel = None):
         """Unlock an achievement and send notification."""
         try:
+            # Double-check if already unlocked (prevent race conditions)
+            if await self.is_unlocked(user_id, achievement_key):
+                print(f"[ACHIEVEMENT] Achievement {achievement_key} already unlocked for user {user_id}, skipping")
+                return
+
             # 1. Save to database
-            await db_manager.execute(
-                "INSERT INTO user_achievements (user_id, achievement_key) VALUES (?, ?)",
-                (user_id, achievement_key)
-            )
+            try:
+                await db_manager.execute(
+                    "INSERT OR IGNORE INTO user_achievements (user_id, achievement_key) VALUES (?, ?)",
+                    (user_id, achievement_key)
+                )
+                print(f"[ACHIEVEMENT] Successfully inserted {achievement_key} for user {user_id}")
+            except Exception as e:
+                print(f"[ACHIEVEMENT] Failed to insert {achievement_key} for user {user_id}: {e}")
+                return  # Don't proceed if can't save to DB
 
             # 2. Give reward
             reward_seeds = achievement_data.get("reward_seeds", 0)

@@ -21,6 +21,7 @@ class LegendaryBossFightView(discord.ui.View):
         self.guild_id = guild_id
         self.user = user
         self.fought = False
+        self.failed = False
         
         # Add buttons conditionally
         # Always add "Giật Mạnh" button
@@ -98,6 +99,7 @@ class LegendaryBossFightView(discord.ui.View):
                 self.cog.dark_map_casts[self.user_id] = 0
                 self.cog.dark_map_cast_count[self.user_id] = 0
         else:
+            self.failed = True  # Mark as failed
             username = self.user.display_name if self.user else "Unknown"
             result_embed = discord.Embed(
                 title=f"💥 {username} - CẦN ĐÃ GÃY! 💥",
@@ -192,6 +194,7 @@ class LegendaryBossFightView(discord.ui.View):
                 self.cog.dark_map_casts[self.user_id] = 0
                 self.cog.dark_map_cast_count[self.user_id] = 0
         else:
+            self.failed = True  # Mark as failed
             username = self.user.display_name if self.user else "Unknown"
             # Lose 40 durability on failure (not breaking)
             new_durability = max(0, self.rod_durability - 40)

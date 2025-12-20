@@ -767,7 +767,7 @@ class FishingCog(commands.Cog):
                     legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == "ca_isekai"), None)
                     if legendary_fish:
                         fish_embed = discord.Embed(
-                            title=f"🌌 **CÁ HUYỀN THOẠI MỚI!** 🌌",
+                            title=f"🌌 {username} - CÁ HUYỀN THOẠI MỚI! 🌌",
                             description=f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n\n"
                                        f"{legendary_fish['description']}\n\n"
                                        f"**Giá bán:** {legendary_fish['sell_price']} Hạt (Không thể bán)\n"
@@ -1114,22 +1114,26 @@ class FishingCog(commands.Cog):
                         fish_display[0] = fish_display[0] + f"\n(🐈 Mèo cướp mất {fish_info['name']} giá {highest_price} Hạt!)"
         
             # Update caught items for sell button
-            self.caught_items[user_id] = fish_only_items
+            self.caught_items[user_id] = {k: v for k, v in fish_only_items.items() if k != "ca_isekai"}
             
             # Check if bucket is full after fishing, if so, sell all fish instead of just caught
             updated_inventory = await get_inventory(user_id)
             current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS)
             if current_fish_count >= FISH_BUCKET_LIMIT:
                 all_fish_items = {k: v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS}
+                # Exclude ca_isekai from sellable items
+                all_fish_items = {k: v for k, v in all_fish_items.items() if k != "ca_isekai"}
                 self.caught_items[user_id] = all_fish_items
                 sell_items = all_fish_items
                 print(f"[FISHING] Bucket full ({current_fish_count}/{FISH_BUCKET_LIMIT}), sell button will sell all fish")
             else:
-                sell_items = fish_only_items
+                # Exclude ca_isekai from sellable items
+                sell_items = {k: v for k, v in fish_only_items.items() if k != "ca_isekai"}
         
             # ==================== CHECK FOR LEGENDARY FISH ====================
             current_hour = datetime.now().hour
             legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=self)
+            legendary_failed = False  # Track if legendary boss fight failed
 
             if legendary_fish == "thuong_luong_expired":
                 user_mention = f"<@{user_id}>"
@@ -1182,25 +1186,30 @@ class FishingCog(commands.Cog):
                 # Check if battle was fought
                 if boss_view.fought:
                     print(f"[LEGENDARY] {username} fought the boss!")
+                    if boss_view.failed:
+                        print(f"[LEGENDARY] {username} failed the boss fight!")
+                        legendary_failed = True
                     # Continue to show normal fishing results as well
                 else:
                     print(f"[LEGENDARY] {username} didn't choose - boss escaped!")
+                    # No phoenix drop for timeout - only for actual fight failures
         
             # ==================== END LEGENDARY CHECK ====================
             
             # ==================== PHOENIX FEATHER DROP ====================
-            # Drop Lông Vũ Lửa when failing to catch boss or rare fish (5-10% chance)
-            if not legendary_fish and (chest_count > 0 or any(fish_key in RARE_FISH_KEYS for fish_key in fish_only_items.keys())):
-                # Check if caught rare fish or chest (indicating boss-like encounter)
+            # Drop Lông Vũ Lửa when actually failing legendary boss fight (not timeout/cut line) (8% chance)
+            if legendary_failed:
                 drop_chance = random.random()
                 if drop_chance < 0.08:  # 8% chance
                     await add_item(user_id, "long_vu_lua", 1)
-                    print(f"[PHOENIX] {username} dropped Lông Vũ Lửa!")
+                    print(f"[PHOENIX] {username} dropped Lông Vũ Lửa from failed legendary boss fight!")
                     
                     # Send notification
                     feather_embed = discord.Embed(
-                        title="⭐ SAO BĂNG RƠI!",
-                        description=f"Con quái vật đã thoát mất, nhưng sức nóng của nó để lại một chiếc **Lông Vũ Lửa** đang rực cháy trên tay bạn!\n\n🔥 **Lông Vũ Lửa** (x1)",
+                        title=f"🔥 TÀN DƯ PHƯỢNG HOÀNG - {username}",
+                        description=f"Mặt nước bỗng sôi sục! Một bóng đỏ rực vừa vụt qua tầm mắt...\n"
+                                    f"Dù sinh vật huyền thoại đã biến mất, nhưng nó đã đánh rơi một bảo vật linh thiêng.\n\n"
+                                    f"🪶 **Bạn nhận được:** **Lông Vũ Lửa** (x1)",
                         color=discord.Color.orange()
                     )
                     await channel.send(embed=feather_embed)
@@ -1467,8 +1476,8 @@ class FishingCog(commands.Cog):
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
             
             # ==================== CHECK FOR LEGENDARY FISH ====================
-            # Remove legendary fish from sellable items
-            legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS}
+            # Remove legendary fish from sellable items (exclude ca_isekai as it's from consumables)
+            legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS and k != "ca_isekai"}
             if legendary_fish_in_inventory:
                 # Show warning that legendary fish cannot be sold
                 from .glitch import apply_display_glitch as _glitch
@@ -1483,11 +1492,14 @@ class FishingCog(commands.Cog):
                 else:
                     await ctx.send(msg)
                 
-                # Remove legendary fish from sellable list
-                fish_items = {k: v for k, v in fish_items.items() if k not in LEGENDARY_FISH_KEYS}
+                # Remove legendary fish from sellable list (exclude ca_isekai)
+                fish_items = {k: v for k, v in fish_items.items() if k not in LEGENDARY_FISH_KEYS or k == "ca_isekai"}
                 
                 if not fish_items:
                     return  # No other fish to sell
+            
+            # Exclude ca_isekai from sellable items (treat as non-sellable like legendary fish)
+            fish_items = {k: v for k, v in fish_items.items() if k != "ca_isekai"}
             
             # Exclude pearl from auto-sell unless explicitly requested
             if not fish_types:

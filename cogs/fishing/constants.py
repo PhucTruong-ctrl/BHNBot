@@ -210,7 +210,7 @@ SELL_EVENT_STAT_MAPPING = {
 }
 
 FISHING_EVENT_STAT_MAPPING = {
-    "truck_isekai": "isekai_event",
+    "isekai_truck": "isekai_event",
     "global_reset": "global_reset_triggered",
     "time_reset": "global_reset_triggered",
     "space_portal": "global_reset_triggered",

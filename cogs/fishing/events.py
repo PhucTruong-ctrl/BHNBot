@@ -288,6 +288,7 @@ EFFECT_HANDLERS = {
     "blind_box": handle_blind_box,
     "flexing": handle_flexing,
     "free_cast": handle_free_cast,
+    "forgot_bait": handle_free_cast,  # Alias for free_cast
     "isekai": handle_isekai,
     "inflation": handle_inflation,
     "hack_map": handle_hack_map,

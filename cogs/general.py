@@ -219,7 +219,7 @@ class General(commands.Cog):
             medals = ["🥇", "🥈", "🥉"]
             
             rank_text = ""
-            for idx, (username, correct_words) in enumerate(rows, 1):
+            for idx, (_, username, correct_words) in enumerate(rows, 1):
                 medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
                 rank_text += f"{medal} **{username}** - {correct_words} từ đúng\n"
             

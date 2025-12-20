@@ -254,6 +254,7 @@ class ConsumableCog(commands.Cog):
             return
         
         user_id = ctx_or_interaction.user.id if is_slash else ctx_or_interaction.author.id
+        user = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
         print(f"[CONSUMABLE] User {user_id} attempting to use {item_key}")
         
         # Validate item exists

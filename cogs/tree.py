@@ -150,7 +150,7 @@ class CommunityCog(commands.Cog):
         """
         multiplier = SEASON_SCALING ** (season - 1)
         return {
-            level: int(BASE_LEVEL_REQS[level] * multiplier) if level > 1 else 0
+            int(level): int(float(BASE_LEVEL_REQS[level]) * multiplier) if int(level) > 1 else 0
             for level in BASE_LEVEL_REQS
         }
 
@@ -238,7 +238,7 @@ class CommunityCog(commands.Cog):
         _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
         
         result = await db_manager.execute(
-            "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC LIMIT ?",
+            "SELECT user_id, amount, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY amount DESC LIMIT ?",
             (guild_id, current_season, limit)
         )
         return result
@@ -329,9 +329,9 @@ class CommunityCog(commands.Cog):
                     for idx, (uid, amount_val, exp_val) in enumerate(current_season_contributors, 1):
                         try:
                             user = await self.bot.fetch_user(uid)
-                            season_text += f"{idx}. **{user.name}** - {amount_val} Kinh Nghiệm\n"
+                            season_text += f"{idx}. **{user.name}** - {amount_val} Hạt\n"
                         except:
-                            season_text += f"{idx}. **User #{uid}** - {amount_val} Kinh Nghiệm\n"
+                            season_text += f"{idx}. **User #{uid}** - {amount_val} Hạt\n"
                     
                     embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
                 
@@ -511,13 +511,13 @@ class CommunityCog(commands.Cog):
         
         try:
             # Get tree channel for this guild
-            from database_manager import get_server_config
-            tree_channel_id = await get_server_config(guild_id, 'kenh_cay')
-            
-            if not tree_channel_id:
+            tree_data = await self.get_tree_data(guild_id)
+            if not tree_data:
                 return
+            _, _, _, _, tree_channel_id, _ = tree_data
             
-            # Check if this message is in the tree channel
+            if not tree_channel_id or message.channel.id != tree_channel_id:
+                return
             if message.channel.id != tree_channel_id:
                 return
             
@@ -580,9 +580,9 @@ class CommunityCog(commands.Cog):
             for idx, (uid, amount_val, exp_val) in enumerate(current_season_contributors, 1):
                 try:
                     user = await self.bot.fetch_user(uid)
-                    season_text += f"{idx}. **{user.name}** - {amount_val} Kinh Nghiệm\n"
+                    season_text += f"{idx}. **{user.name}** - {amount_val} Hạt\n"
                 except:
-                    season_text += f"{idx}. **User #{uid}** - {amount_val} Kinh Nghiệm\n"
+                    season_text += f"{idx}. **User #{uid}** - {amount_val} Hạt\n"
             
             embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
         

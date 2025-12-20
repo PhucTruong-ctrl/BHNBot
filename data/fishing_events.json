@@ -517,7 +517,7 @@
       "effect": "audit_check"
     },
     "isekai_truck": {
-      "chance": 0.001,
+      "chance": 0.0001,
       "type": "good",
       "name": "🚚 Xe Tải Isekai!",
       "effect": "isekai"
@@ -660,6 +660,13 @@
     "audit_check": "Công an thuế bất ngờ kiểm tra! Bạn phải chứng minh nguồn gốc số tiền câu cá. Tốn 200 Hạt phí kiểm toán. 📋💸",
     "isekai_truck": "Bị xe tải tông (Truck-kun) chuyển sinh sang thế giới khác! Nhận được Cá Isekai từ thế giới khác nhưng bị choáng 10 phút. 🚛💥🌌",
     "blind_box": "Mở hộp quà bí mật! Bên trong có thể là cá hiếm hoặc... rác rưởi. Quay số may rủi! 🎁❓",
+    "flexing_fail": "Bạn cố gắng flexing với mấy tay câu khác bằng cách khoe cần câu mới. Họ ghen tị ném đá làm hỏng cần của bạn (-20 Độ bền)! Nhưng bạn được họ bồi thường 150 Hạt vì tội 'khoe của'. 💸📸",
+    "football_bet": "Bạn cá cược với thằng bạn về trận bóng tối qua. Đội bạn chọn thua sấp mặt! Mất 50% số tiền hiện có. ⚽😭",
+    "lucky_cat": "Một con mèo trắng chạy qua đường. Bạn vuốt ve nó và nhận được phước lành! Tỉ lệ ra cá hiếm tăng trong 5 lần câu tiếp theo. 🐱✨",
+    "inflation_hit": "Tin tức kinh tế xấu! Giá cả leo thang, giá bán cá giảm 50% trong 10 phút tới. 📉💸",
+    "forgot_bait": "Bạn quên lắp mồi nhưng vẫn câu được cá! Não cá vàng của bạn hoạt động rồi. 🧠🐟",
+    "hack_detected": "Bạn hack map câu được 3 con cá cùng lúc! Nhưng bị phát hiện, bị phạt chờ 5 phút. 🚫💻",
+    "mlm_invite": "Một thằng lạ mặt rủ bạn tham gia 'khởi nghiệp' bán hàng đa cấp. Bạn bị dụ dỗ tham gia và mất 200 Hạt mua 'gói khởi nghiệp'. 🤝💸",
     "crypto_pump": "Đầu tư crypto đúng lúc pump! Giá lên vùn vụt, lời gấp 3 lần. 🚀📈",
     "tiktok_viral": "Video câu cá của bạn viral trên Tiktok! Hàng nghìn view, tiền donate chảy về như thác. 📱💰",
     "sugar_daddy": "Gặp được 'sugar daddy/mommy' chân chính! Họ spoil bạn hết mực, tặng tiền mua cần câu mới. 🍬🤑",
