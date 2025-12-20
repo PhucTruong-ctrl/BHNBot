@@ -1,7 +1,6 @@
 """Random event system for fishing with Strategy Pattern."""
 
 import random
-import aiosqlite
 from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
 from database_manager import increment_stat
 

@@ -1,11 +1,11 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import aiosqlite
 import json
 import tempfile
 import shutil
 import os
+from database_manager import get_server_config
 
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
@@ -90,11 +90,9 @@ class QuickAddWordView(discord.ui.View):
                 return
             
             # Get admin channel from config
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT logs_channel_id FROM server_config WHERE guild_id = ?", (interaction.guild.id,)) as cursor:
-                    row = await cursor.fetchone()
+            logs_channel_id = await get_server_config(interaction.guild.id, "logs_channel_id")
             
-            if not row or not row[0]:
+            if not logs_channel_id:
                 await interaction.followup.send("Kênh admin chưa được cấu hình", ephemeral=True)
                 return
             
@@ -311,16 +309,14 @@ class AddWordCog(commands.Cog):
                 return
             
             # Get admin channel from config
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute("SELECT logs_channel_id FROM server_config WHERE guild_id = ?", (guild.id,)) as cursor:
-                    row = await cursor.fetchone()
+            logs_channel_id = await get_server_config(guild.id, "logs_channel_id")
             
-            if not row or not row[0]:
+            if not logs_channel_id:
                 if isinstance(ctx_or_interaction, commands.Context):
                     await ctx_or_interaction.send("Kênh admin chưa được cấu hình. Dùng `/config set kenh_admin`")
                 return
             
-            admin_channel = self.bot.get_channel(row[0])
+            admin_channel = self.bot.get_channel(logs_channel_id)
             if not admin_channel:
                 if isinstance(ctx_or_interaction, commands.Context):
                     await ctx_or_interaction.send("Kênh admin không tìm thấy")

@@ -1,0 +1,38 @@
+{
+    "tree_names": {
+        "1": "🌱 Hạt mầm",
+        "2": "🌿 Nảy mầm",
+        "3": "🎋 Cây non",
+        "4": "🌳 Trưởng thành",
+        "5": "🌸 Ra hoa",
+        "6": "🍎 Kết trái"
+    },
+    "tree_descriptions": {
+        "1": "Một mầm sống nhỏ bé đang ngủ yên...",
+        "2": "Mầm non đã vươn lên đón nắng!",
+        "3": "Cây bắt đầu ra những cành lá đầu tiên.",
+        "4": "Cây đã cao lớn, tỏa bóng mát cho Hiên Nhà.",
+        "5": "Những đóa hoa rực rỡ báo hiệu mùa quả ngọt.",
+        "6": "Cây trĩu quả! Dùng lệnh /thuhoach ngay!"
+    },
+    "tree_images": {
+        "1": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(1).png",
+        "2": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(2).png",
+        "3": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(3).png",
+        "4": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(4).png",
+        "5": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(5).png",
+        "6": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/tree/image(6).png"
+    },
+    "base_level_reqs": {
+        "1": 0,
+        "2": 1000,
+        "3": 2000,
+        "4": 3000,
+        "5": 4000,
+        "6": 5000
+    },
+    "season_scaling": 1.25,
+    "harvest_rewards": {
+        "seeds": 2000
+    }
+}

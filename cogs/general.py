@@ -195,22 +195,11 @@ class General(commands.Cog):
 
     async def _show_ranking(self, ctx_or_interaction):
         """Hiển thị xếp hạng"""
-        import aiosqlite
-        
-        DB_PATH = "./data/database.db"
+        from database_manager import get_stat_leaderboard
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Query user_stats table for noi tu correct words
-                async with db.execute("""
-                    SELECT u.username, us.value as correct_words
-                    FROM user_stats us
-                    JOIN users u ON us.user_id = u.user_id
-                    WHERE us.game_id = 'noitu' AND us.stat_key = 'correct_words'
-                    ORDER BY us.value DESC
-                    LIMIT 10
-                """) as cursor:
-                    rows = await cursor.fetchall()
+            # Query user_stats table for noi tu correct words
+            rows = await get_stat_leaderboard('noitu', 'correct_words', 10)
             
             if not rows:
                 msg = "Chưa có ai chơi cả 🥺"
@@ -260,24 +249,17 @@ class General(commands.Cog):
         target_user = user or interaction.user
         
         try:
-            # Get user data from economy and leaderboard
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get seeds
-                async with db.execute(
-                    "SELECT seeds FROM users WHERE user_id = ?",
-                    (target_user.id,)
-                ) as cursor:
-                    economy_row = await cursor.fetchone()
-                
-                # Get rank
-                async with db.execute(
-                    "SELECT COUNT(*) FROM users WHERE seeds > (SELECT seeds FROM users WHERE user_id = ?)",
-                    (target_user.id,)
-                ) as cursor:
-                    rank_row = await cursor.fetchone()
-                    rank = rank_row[0] + 1 if rank_row else 999
+            from database_manager import get_user_balance, get_leaderboard
             
-            seeds = economy_row[0] if economy_row else 0
+            seeds = await get_user_balance(target_user.id)
+            
+            # Get rank
+            leaderboard = await get_leaderboard(1000)  # Get enough to find rank
+            rank = 999
+            for i, (uid, uname, seed_count) in enumerate(leaderboard, 1):
+                if uid == target_user.id:
+                    rank = i
+                    break
             
             # Create profile card image
             profile_img = await self._create_profile_card_new(target_user, seeds, rank)
@@ -298,23 +280,17 @@ class General(commands.Cog):
         target_user = user or ctx.author
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get seeds
-                async with db.execute(
-                    "SELECT seeds FROM users WHERE user_id = ?",
-                    (target_user.id,)
-                ) as cursor:
-                    economy_row = await cursor.fetchone()
-                
-                # Get rank
-                async with db.execute(
-                    "SELECT COUNT(*) FROM users WHERE seeds > (SELECT seeds FROM users WHERE user_id = ?)",
-                    (target_user.id,)
-                ) as cursor:
-                    rank_row = await cursor.fetchone()
-                    rank = rank_row[0] + 1 if rank_row else 999
+            from database_manager import get_user_balance, get_leaderboard
             
-            seeds = economy_row[0] if economy_row else 0
+            seeds = await get_user_balance(target_user.id)
+            
+            # Get rank
+            leaderboard = await get_leaderboard(1000)  # Get enough to find rank
+            rank = 999
+            for i, (uid, uname, seed_count) in enumerate(leaderboard, 1):
+                if uid == target_user.id:
+                    rank = i
+                    break
             
             # Create profile card image
             profile_img = await self._create_profile_card_new(target_user, seeds, rank)
@@ -499,24 +475,12 @@ class General(commands.Cog):
         return img_bytes
 
     async def _get_best_friend(self, user_id):
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                """SELECT user_id_2, affinity FROM relationships 
-                   WHERE user_id_1 = ? ORDER BY affinity DESC LIMIT 1""",
-                (user_id,)
-            ) as cursor:
-                r1 = await cursor.fetchone()
-            
-            async with db.execute(
-                """SELECT user_id_1, affinity FROM relationships 
-                   WHERE user_id_2 = ? ORDER BY affinity DESC LIMIT 1""",
-                (user_id,)
-            ) as cursor:
-                r2 = await cursor.fetchone()
+        from database_manager import get_top_affinity_friends
         
-        if r1 and r2:
-            return r1 if r1[1] >= r2[1] else r2
-        return r1 or r2
+        friends = await get_top_affinity_friends(user_id, 1)
+        if friends:
+            return friends[0]
+        return None
 
     def _get_rank_title_no_emoji(self, seeds: int) -> str:
         """Get rank title based on seeds earned (without emoji)"""

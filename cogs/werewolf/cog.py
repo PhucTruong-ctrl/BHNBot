@@ -12,6 +12,7 @@ from discord import app_commands
 from .engine.game import WerewolfGame
 from .engine.manager import WerewolfManager
 from .roles.base import Expansion
+from database_manager import get_server_config
 
 EXPANSION_ALIASES = {
     "newmoon": Expansion.NEW_MOON,
@@ -65,17 +66,9 @@ class WerewolfCog(commands.Cog):
             voice_channel_id = voice_channel.id
         
         # Check if current channel is set as NoiTu channel
-        import aiosqlite
-        DB_PATH = "./data/database.db"
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
-                    (ctx.guild.id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-            
-            if row and row[0] == ctx.channel.id:
+            noitu_channel_id = await get_server_config(ctx.guild.id, "noitu_channel_id")
+            if noitu_channel_id == ctx.channel.id:
                 await ctx.send("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", delete_after=8)
                 return
         except Exception as e:
@@ -150,17 +143,9 @@ class WerewolfCog(commands.Cog):
             voice_channel_id = voice_channel.id
         
         # Check if current channel is set as NoiTu channel
-        import aiosqlite
-        DB_PATH = "./data/database.db"
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
-                    (interaction.guild.id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-            
-            if row and row[0] == interaction.channel.id:
+            noitu_channel_id = await get_server_config(interaction.guild.id, "noitu_channel_id")
+            if noitu_channel_id == interaction.channel.id:
                 await interaction.response.send_message("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", ephemeral=True)
                 return
         except Exception as e:

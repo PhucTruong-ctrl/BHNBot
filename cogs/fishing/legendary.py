@@ -2,11 +2,11 @@
 
 import discord
 import random
-import aiosqlite
 import json
 from datetime import datetime
 from .constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
 from .glitch import apply_display_glitch
+from database_manager import get_fish_collection
 
 class LegendaryBossFightView(discord.ui.View):
     """Interactive boss fight for legendary fish with balanced difficulty."""
@@ -234,13 +234,8 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     from database_manager import get_inventory
 
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-                legendary_list = [row[0] for row in rows]
+        fish_collection = await get_fish_collection(user_id)
+        legendary_list = list(fish_collection.keys())
     except:
         legendary_list = []
     
@@ -410,49 +405,35 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
 async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
     """Add legendary fish to user's collection. Returns updated legendary list."""
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT COUNT(*) as count FROM fish_collection WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-                count = row[0] if row else 0
-            
-            legendary_list = []
-            async with db.execute(
-                "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                (user_id,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-                legendary_list = [row[0] for row in rows]
-            
-            legendary_list.append(legendary_key)
-            count += 1
-            
-            # Store the legendary fish using the insert function
-            from database_manager import db_manager
-            await db_manager.modify(
-                "INSERT OR IGNORE INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
-                (user_id, legendary_key, 1)
-            )
-            
-            # Mark as caught in quest system
-            from .legendary_quest_helper import set_legendary_caught
-            await set_legendary_caught(user_id, legendary_key, True)
-            
-            # Track legendary caught for achievements
-            from database_manager import increment_stat
-            await increment_stat(user_id, "fishing", "legendary_caught", 1)
-            
-            # Check if all legendary fish caught
-            from .constants import LEGENDARY_FISH_KEYS
-            if len(legendary_list) >= len(LEGENDARY_FISH_KEYS):
-                try:
-                    await increment_stat(user_id, "fishing", "all_legendary_caught", 1)
-                    # Note: This stat should only be 1, but we use increment to ensure it's set
-                    print(f"[ACHIEVEMENT] User {user_id} has caught all legendary fish!")
-                except Exception as e:
-                    print(f"[ACHIEVEMENT] Error tracking all_legendary_caught for {user_id}: {e}")
+        fish_collection = await get_fish_collection(user_id)
+        legendary_list = list(fish_collection.keys())
+        
+        legendary_list.append(legendary_key)
+        
+        # Store the legendary fish using the insert function
+        from database_manager import db_manager
+        await db_manager.modify(
+            "INSERT OR IGNORE INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
+            (user_id, legendary_key, 1)
+        )
+        
+        # Mark as caught in quest system
+        from .legendary_quest_helper import set_legendary_caught
+        await set_legendary_caught(user_id, legendary_key, True)
+        
+        # Track legendary caught for achievements
+        from database_manager import increment_stat
+        await increment_stat(user_id, "fishing", "legendary_caught", 1)
+        
+        # Check if all legendary fish caught
+        from .constants import LEGENDARY_FISH_KEYS
+        if len(legendary_list) >= len(LEGENDARY_FISH_KEYS):
+            try:
+                await increment_stat(user_id, "fishing", "all_legendary_caught", 1)
+                # Note: This stat should only be 1, but we use increment to ensure it's set
+                print(f"[ACHIEVEMENT] User {user_id} has caught all legendary fish!")
+            except Exception as e:
+                print(f"[ACHIEVEMENT] Error tracking all_legendary_caught for {user_id}: {e}")
             
             return legendary_list
     except Exception as e:

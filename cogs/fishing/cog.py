@@ -1,7 +1,6 @@
 """Main Fishing Cog."""
 
 import discord
-import aiosqlite
 from discord.ext import commands, tasks
 from discord import app_commands
 from datetime import datetime, time as dt_time
@@ -20,7 +19,7 @@ from .views import FishSellView
 from .glitch import apply_display_glitch as global_apply_display_glitch, set_glitch_state
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
-    get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats
+    get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats, get_fish_count, get_fish_collection
 )
 from .legendary_quest_helper import (
     increment_sacrifice_count, get_sacrifice_count, reset_sacrifice_count,
@@ -1046,12 +1045,7 @@ class FishingCog(commands.Cog):
             
                 # Track trash caught for achievement
                 try:
-                    async with aiosqlite.connect(DB_PATH) as db:
-                        await db.execute(
-                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                            (trash_count, user_id)
-                        )
-                        await db.commit()
+                    await add_seeds(user_id, trash_count)
                     # Track achievement: trash_master
                     try:
                         await increment_stat(user_id, "fishing", "trash_recycled", trash_count)
@@ -1674,77 +1668,65 @@ class FishingCog(commands.Cog):
 
             # Remove items & Add money (ATOMIC TRANSACTION - xảy ra cùng lúc)
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    # Start transaction
-                    await db.execute("BEGIN TRANSACTION")
-                    
-                    try:
-                        # 1. Remove all fish items
-                        for fish_key in selected_fish.keys():
-                            await db.execute(
-                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                                (selected_fish[fish_key], user_id, fish_key)
-                            )
-                        
-                        # 1.1. Delete items with quantity <= 0
-                        await db.execute(
-                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                            (user_id,)
-                        )
-                        
-                        # 2. Add seeds to user (with balance tracking)
-                        # Get balance before
-                        async with db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,)) as cursor:
-                            row = await cursor.fetchone()
-                            balance_before = row[0] if row else 0
-                        
-                        # Update seeds
-                        await db.execute(
-                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                            (final_total, user_id)
-                        )
-                        
-                        # Track total money earned for achievements
-                        await increment_stat(user_id, "fishing", "total_money_earned", final_total)
-                        
-                        # Log the balance change
-                        balance_after = balance_before + final_total
-                        print(f"[FISHING] [SEED_CHANGE] user_id={user_id} amount=+{final_total} balance_before={balance_before} balance_after={balance_after}")
+                # Prepare batch operations
+                operations = []
+                
+                # 1. Remove all fish items
+                for fish_key in selected_fish.keys():
+                    operations.append((
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                        (selected_fish[fish_key], user_id, fish_key)
+                    ))
+                
+                # 1.1. Delete items with quantity <= 0
+                operations.append((
+                    "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                    (user_id,)
+                ))
+                
+                # 2. Add seeds to user
+                operations.append((
+                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                    (final_total, user_id)
+                ))
+                
+                # Execute all operations in a single transaction
+                await db_manager.batch_modify(operations)
+                
+                # Track total money earned for achievements
+                await increment_stat(user_id, "fishing", "total_money_earned", final_total)
+                
+                # Log the balance change
+                print(f"[FISHING] [SEED_CHANGE] user_id={user_id} amount=+{final_total} fish_count={len(selected_fish)}")
 
-                        # 2.1. Track event-based achievements
-                        try:
-                            if triggered_event == "market_boom":
-                                await increment_stat(user_id, "fishing", "market_boom_sales", 1)  # stat update,
-                            elif triggered_event == "god_of_wealth":
-                                await increment_stat(user_id, "fishing", "god_of_wealth_encountered", 1)  # stat update,
-                            elif triggered_event == "thief_run":
-                                await increment_stat(user_id, "fishing", "robbed_count", 1)  # stat update,
-                        except Exception as e:
-                            print(f"[ACHIEVEMENT] Error updating sell-event counters for {user_id}: {e}")
-                        
-                        # Commit transaction
-                        await db.commit()
-                        
-                        # Check achievements for sell events
-                        if triggered_event == "market_boom":
-                            current_market_boom = await get_stat(user_id, "fishing", "market_boom_sales")
-                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "market_boom_sales", current_market_boom, ctx.channel)
-                        elif triggered_event == "god_of_wealth":
-                            current_god_wealth = await get_stat(user_id, "fishing", "god_of_wealth_encountered")
-                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "god_of_wealth_encountered", current_god_wealth, ctx.channel)
-                        elif triggered_event == "thief_run":
-                            current_robbed = await get_stat(user_id, "fishing", "robbed_count")
-                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "robbed_count", current_robbed, ctx.channel)
-                        
-                        # CRITICAL: Invalidate inventory cache after successful transaction
-                        db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
-                        print(f"[FISHING] [SELL_TRANSACTION] Success: user_id={user_id} total={final_total} fish_count={len(selected_fish)}")
-                        
-                    except Exception as e:
-                        # Rollback on error
-                        await db.execute("ROLLBACK")
-                        print(f"[FISHING] [SELL_TRANSACTION] Rollback due to error: {e}")
-                        raise
+                # 2.1. Track event-based achievements
+                try:
+                    if triggered_event == "market_boom":
+                        await increment_stat(user_id, "fishing", "market_boom_sales", 1)  # stat update,
+                    elif triggered_event == "god_of_wealth":
+                        await increment_stat(user_id, "fishing", "god_of_wealth_encountered", 1)  # stat update,
+                    elif triggered_event == "thief_run":
+                        await increment_stat(user_id, "fishing", "robbed_count", 1)  # stat update,
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error updating sell-event counters for {user_id}: {e}")
+                
+                # Check achievements for sell events
+                if triggered_event == "market_boom":
+                    current_market_boom = await get_stat(user_id, "fishing", "market_boom_sales")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "market_boom_sales", current_market_boom, ctx.channel)
+                elif triggered_event == "god_of_wealth":
+                    current_god_wealth = await get_stat(user_id, "fishing", "god_of_wealth_encountered")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "god_of_wealth_encountered", current_god_wealth, ctx.channel)
+                elif triggered_event == "thief_run":
+                    current_robbed = await get_stat(user_id, "fishing", "robbed_count")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "robbed_count", current_robbed, ctx.channel)
+                
+                # CRITICAL: Invalidate inventory cache after successful transaction
+                db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
+                db_manager.clear_cache_by_prefix(f"balance_{user_id}")
+                db_manager.clear_cache_by_prefix("leaderboard")
+                print(f"[FISHING] [SELL_TRANSACTION] Success: user_id={user_id} total={final_total} fish_count={len(selected_fish)}")
+                
             except Exception as e:
                 print(f"[FISHING] [SELL_ERROR] Transaction failed: {e}")
                 err_msg = f"❌ Lỗi khi bán cá: {str(e)}"
@@ -2067,23 +2049,18 @@ class FishingCog(commands.Cog):
         
         # Check if user already has Thuồng Luồng
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'thuong_luong'",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row and row[0] > 0:
-                        embed = discord.Embed(
-                            title="🌊 DÒNG SÔNG TỪ CHỐI!",
-                            description="Mặt nước tĩnh lặng không gợn sóng... Bóng ma dưới đáy sông đã chấp nhận bạn là chủ nhân rồi. Thủy Thần không cần thêm lễ vật nữa, hãy giữ lại những chú cá này đi!",
-                            color=discord.Color.gold()
-                        )
-                        if is_slash_cmd:
-                            await ctx_or_interaction.followup.send(embed=embed)
-                        else:
-                            await ctx_or_interaction.send(embed=embed)
-                        return
+            count = await get_fish_count(user_id, 'thuong_luong')
+            if count > 0:
+                embed = discord.Embed(
+                    title="🌊 DÒNG SÔNG TỪ CHỐI!",
+                    description="Mặt nước tĩnh lặng không gợn sóng... Bóng ma dưới đáy sông đã chấp nhận bạn là chủ nhân rồi. Thủy Thần không cần thêm lễ vật nữa, hãy giữ lại những chú cá này đi!",
+                    color=discord.Color.gold()
+                )
+                if is_slash_cmd:
+                    await ctx_or_interaction.followup.send(embed=embed)
+                else:
+                    await ctx_or_interaction.send(embed=embed)
+                return
         except Exception as e:
             print(f"[HIENTE] Error checking thuong_luong ownership: {e}")
         
@@ -2319,23 +2296,18 @@ class FishingCog(commands.Cog):
         
         # Check if user already has Cá Voi 52Hz
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'ca_voi_52hz'",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row and row[0] > 0:
-                        embed = discord.Embed(
-                            title="� TẦN SỐ ĐÃ ĐƯỢC KẾT NỐI",
-                            description="Máy dò sóng chỉ phát ra những tiếng rè tĩnh lặng... Tần số 52Hz cô đơn nhất đại dương không còn lạc lõng nữa, vì nó đã tìm thấy bạn. Không còn tín hiệu nào khác để dò tìm.",
-                            color=discord.Color.gold()
-                        )
-                        if is_slash_cmd:
-                            await ctx_or_interaction.followup.send(embed=embed)
-                        else:
-                            await ctx_or_interaction.send(embed=embed)
-                        return
+            count = await get_fish_count(user_id, 'ca_voi_52hz')
+            if count > 0:
+                embed = discord.Embed(
+                    title="� TẦN SỐ ĐÃ ĐƯỢC KẾT NỐI",
+                    description="Máy dò sóng chỉ phát ra những tiếng rè tĩnh lặng... Tần số 52Hz cô đơn nhất đại dương không còn lạc lõng nữa, vì nó đã tìm thấy bạn. Không còn tín hiệu nào khác để dò tìm.",
+                    color=discord.Color.gold()
+                )
+                if is_slash_cmd:
+                    await ctx_or_interaction.followup.send(embed=embed)
+                else:
+                    await ctx_or_interaction.send(embed=embed)
+                return
         except Exception as e:
             print(f"[DOSONG] Error checking ca_voi_52hz ownership: {e}")
         
@@ -2410,23 +2382,18 @@ class FishingCog(commands.Cog):
         
         # Check if user already has Cthulhu Non
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT COUNT(*) FROM fish_collection WHERE user_id = ? AND fish_key = 'cthulhu_con'",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row and row[0] > 0:
-                        embed = discord.Embed(
-                            title="🐙 Đã Hoàn Thành Nhiệm Vụ",
-                            description="Bạn đã sở hữu **Cthulhu Non** rồi! Không thể thực hiện nhiệm vụ này nữa.",
-                            color=discord.Color.gold()
-                        )
-                        if is_slash_cmd:
-                            await ctx_or_interaction.followup.send(embed=embed)
-                        else:
-                            await ctx_or_interaction.send(embed=embed)
-                        return
+            count = await get_fish_count(user_id, 'cthulhu_con')
+            if count > 0:
+                embed = discord.Embed(
+                    title="🐙 Đã Hoàn Thành Nhiệm Vụ",
+                    description="Bạn đã sở hữu **Cthulhu Non** rồi! Không thể thực hiện nhiệm vụ này nữa.",
+                    color=discord.Color.gold()
+                )
+                if is_slash_cmd:
+                    await ctx_or_interaction.followup.send(embed=embed)
+                else:
+                    await ctx_or_interaction.send(embed=embed)
+                return
         except Exception as e:
             print(f"[GHEPBANDO] Error checking cthulhu_con ownership: {e}")
         
@@ -2801,12 +2768,8 @@ class FishingCog(commands.Cog):
                 req = level_reqs.get(new_level + 1, level_reqs[6])
             
             # Update tree in database
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute(
-                    "UPDATE server_tree SET current_level = ?, current_progress = ?, total_contributed = ? WHERE guild_id = ?",
-                    (new_level, new_progress, new_total, guild_id)
-                )
-                await db.commit()
+            from database_manager import update_tree_progress
+            await update_tree_progress(guild_id, new_level, new_progress, new_total)
             
             # Add contributor entry for fertilizer
             await tree_cog.add_contributor(user_id, guild_id, total_exp, contribution_type="fertilizer")
@@ -2952,23 +2915,8 @@ class FishingCog(commands.Cog):
         
         # Get legendary fish caught - check both sources (legacy and new)
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get legendary fish from new fish_collection table
-                async with db.execute(
-                    "SELECT COUNT(*) as count FROM fish_collection WHERE user_id = ?",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    legendary_caught = []
-                    if row and row[0] > 0:
-                        async with db.execute(
-                            "SELECT fish_id FROM fish_collection WHERE user_id = ?",
-                            (user_id,)
-                        ) as cursor2:
-                            rows = await cursor2.fetchall()
-                            legendary_caught = [r[0] for r in rows]
-                    else:
-                        legendary_caught = []
+            fish_collection = await get_fish_collection(user_id)
+            legendary_caught = [fish_id for fish_id, qty in fish_collection.items() if qty > 0 and fish_id in LEGENDARY_FISH_KEYS]
         except:
             legendary_caught = []
         
@@ -3193,31 +3141,28 @@ class FishingCog(commands.Cog):
         # Fetch all legendary catches
         legendary_catches = {}
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Query all legendary fish caught by users
-                async with db.execute(
-                    "SELECT user_id, fish_key FROM fish_collection WHERE fish_key IN (?, ?, ?, ?, ?)",
-                    ('thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz')
-                ) as cursor:
-                    rows = await cursor.fetchall()
-                    
-                    for user_id, fish_key in rows:
-                        if fish_key not in legendary_catches:
-                            legendary_catches[fish_key] = []
-                        
-                        try:
-                            user = await client.fetch_user(user_id)
-                            legendary_catches[fish_key].append({
-                                "user_id": user_id,
-                                "username": user.name,
-                                "avatar_url": user.avatar.url if user.avatar else None
-                            })
-                        except:
-                            legendary_catches[fish_key].append({
-                                "user_id": user_id,
-                                "username": f"User {user_id}",
-                                "avatar_url": None
-                            })
+            rows = await db_manager.execute(
+                "SELECT user_id, fish_id FROM fish_collection WHERE fish_id IN (?, ?, ?, ?, ?)",
+                ('thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz')
+            )
+            
+            for user_id, fish_key in rows:
+                if fish_key not in legendary_catches:
+                    legendary_catches[fish_key] = []
+                
+                try:
+                    user = await client.fetch_user(user_id)
+                    legendary_catches[fish_key].append({
+                        "user_id": user_id,
+                        "username": user.name,
+                        "avatar_url": user.avatar.url if user.avatar else None
+                    })
+                except:
+                    legendary_catches[fish_key].append({
+                        "user_id": user_id,
+                        "username": f"User {user_id}",
+                        "avatar_url": None
+                    })
         except Exception as e:
             print(f"[LEGENDARY] Error fetching hall of fame: {e}")
         
@@ -3426,27 +3371,24 @@ class FishingCog(commands.Cog):
     async def get_tree_boost_status(self, guild_id: int) -> bool:
         """Check if server has tree harvest boost active (from level 6 harvest or if tree at level 5+)."""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Check harvest buff timer first (primary source - set when harvest level 6)
-                async with db.execute(
-                    "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row and row[0]:
-                        from datetime import datetime
-                        buff_until = datetime.fromisoformat(row[0])
-                        if datetime.now() < buff_until:
-                            return True  # Harvest buff is active
-                
-                # Fallback: Check if tree is at level 5+ (persistent bonus)
-                async with db.execute(
-                    "SELECT current_level FROM server_tree WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    tree_row = await cursor.fetchone()
-                    if tree_row and tree_row[0] >= 5:
-                        return True
+            # Check harvest buff timer first (primary source - set when harvest level 6)
+            row = await db_manager.fetchone(
+                "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
+                (guild_id,)
+            )
+            if row and row[0]:
+                from datetime import datetime
+                buff_until = datetime.fromisoformat(row[0])
+                if datetime.now() < buff_until:
+                    return True  # Harvest buff is active
+            
+            # Fallback: Check if tree is at level 5+ (persistent bonus)
+            tree_row = await db_manager.fetchone(
+                "SELECT current_level FROM server_tree WHERE guild_id = ?",
+                (guild_id,)
+            )
+            if tree_row and tree_row[0] >= 5:
+                return True
         except Exception as e:
             print(f"[FISHING] Error checking tree boost: {e}")
         return False
@@ -3580,12 +3522,10 @@ class FishingCog(commands.Cog):
         """Add item to inventory."""
         await add_item(user_id, item_name, 1)
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute(
-                    "UPDATE inventory SET type = ? WHERE user_id = ? AND item_name = ?",
-                    (item_type, user_id, item_name)
-                )
-                await db.commit()
+            await db_manager.modify(
+                "UPDATE inventory SET item_type = ? WHERE user_id = ? AND item_id = ?",
+                (item_type, user_id, item_name)
+            )
         except:
             pass
     

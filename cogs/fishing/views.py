@@ -2,7 +2,6 @@
 
 import discord
 import random
-import aiosqlite
 from database_manager import remove_item, add_seeds, get_inventory
 from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
 from .glitch import apply_display_glitch

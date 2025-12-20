@@ -13,6 +13,7 @@ import discord
 from discord import abc as discord_abc
 
 from .role_config import RoleConfig
+from database_manager import db_manager
 from ..roles import get_role_class, load_all_roles
 from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
@@ -178,13 +179,10 @@ class WerewolfGame:
     async def _delete_game_state(self) -> None:
         """Delete saved game state from database when game finishes"""
         try:
-            import aiosqlite
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute(
-                    "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                    (self.guild.id, "werewolf")
-                )
-                await db.commit()
+            await db_manager.modify(
+                "DELETE FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                (self.guild.id, "werewolf")
+            )
         except Exception as e:
             logger.error("Error deleting game state: %s", str(e))
 

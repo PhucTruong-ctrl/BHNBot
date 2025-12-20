@@ -6,11 +6,11 @@ import asyncio
 import json
 from typing import Dict, Optional, Set
 
-import aiosqlite
 import discord
 
 from ..roles.base import Expansion
 from .game import WerewolfGame
+from database_manager import db_manager, get_server_config
 
 DB_PATH = "./data/database.db"
 
@@ -26,13 +26,7 @@ class WerewolfManager:
     async def _get_voice_channel_id(self, guild_id: int) -> Optional[int]:
         """Retrieve voice channel ID from database for guild."""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                cursor = await db.execute(
-                    "SELECT werewolf_voice_channel_id FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                )
-                row = await cursor.fetchone()
-                return row[0] if row else None
+            return await get_server_config(guild_id, "werewolf_voice_channel_id")
         except Exception as e:
             return None
 
@@ -135,27 +129,24 @@ class WerewolfManager:
             
             game_state_json = json.dumps(game_state)
             
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Check if session exists
-                async with db.execute(
-                    "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ? AND voice_channel_id IS ?",
-                    (guild_id, "werewolf", voice_channel_id)
-                ) as cursor:
-                    existing = await cursor.fetchone()
-                
-                if existing:
-                    # Update existing session
-                    await db.execute(
-                        "UPDATE game_sessions SET channel_id = ?, game_state = ?, last_saved = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ? AND voice_channel_id IS ?",
-                        (game.channel.id, game_state_json, guild_id, "werewolf", voice_channel_id)
-                    )
-                else:
-                    # Insert new session
-                    await db.execute(
-                        "INSERT INTO game_sessions (guild_id, game_type, voice_channel_id, channel_id, game_state) VALUES (?, ?, ?, ?, ?)",
-                        (guild_id, "werewolf", voice_channel_id, game.channel.id, game_state_json)
-                    )
-                await db.commit()
+            # Check if session exists
+            existing = await db_manager.fetchone(
+                "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ? AND voice_channel_id IS ?",
+                (guild_id, "werewolf", voice_channel_id)
+            )
+            
+            if existing:
+                # Update existing session
+                await db_manager.modify(
+                    "UPDATE game_sessions SET channel_id = ?, game_state = ?, last_saved = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ? AND voice_channel_id IS ?",
+                    (game.channel.id, game_state_json, guild_id, "werewolf", voice_channel_id)
+                )
+            else:
+                # Insert new session
+                await db_manager.modify(
+                    "INSERT INTO game_sessions (guild_id, game_type, voice_channel_id, channel_id, game_state) VALUES (?, ?, ?, ?, ?)",
+                    (guild_id, "werewolf", voice_channel_id, game.channel.id, game_state_json)
+                )
             
             print(f"[Werewolf] GAME_SAVED [Guild {guild_id}] Phase: {game.phase.name}, Night: {game.night_number}, Day: {game.day_number}, Players: {len(game.players)}")
         except Exception as e:
@@ -164,12 +155,10 @@ class WerewolfManager:
     async def restore_game_state(self, guild_id: int) -> List[dict]:
         """Retrieve saved Werewolf game states from database (returns list of state dicts)"""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT game_state, channel_id, voice_channel_id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                    (guild_id, "werewolf")
-                ) as cursor:
-                    rows = await cursor.fetchall()
+            rows = await db_manager.execute(
+                "SELECT game_state, channel_id, voice_channel_id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                (guild_id, "werewolf")
+            )
             
             states = []
             for row in rows:

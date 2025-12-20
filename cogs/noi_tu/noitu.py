@@ -7,7 +7,7 @@ import json
 import time
 import traceback
 from datetime import datetime
-from database_manager import db_manager
+from database_manager import db_manager, get_stat
 
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
@@ -63,9 +63,7 @@ class GameNoiTu(commands.Cog):
             # Initialize games
             log("Auto-initializing games for configured servers")
             try:
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL") as cursor:
-                        rows = await cursor.fetchall()
+                rows = await db_manager.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL")
                 
                 if not rows:
                     log("⚠️  No NoiTu channels configured in database")
@@ -134,10 +132,8 @@ class GameNoiTu(commands.Cog):
 
     # --- Helper Functions ---
     async def get_config_channel(self, guild_id):
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute("SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
-                row = await cursor.fetchone()
-                return row[0] if row else None
+        from database_manager import get_server_config
+        return await get_server_config(guild_id, "noitu_channel_id")
 
     async def get_random_word(self):
         """Get random 2-syllable word from memory dictionary"""
@@ -228,27 +224,24 @@ class GameNoiTu(commands.Cog):
                 "start_message_id": game.get("start_message").id if game.get("start_message") else None
             })
             
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Check if session exists
-                async with db.execute(
-                    "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                    (guild_id, "noitu")
-                ) as cursor:
-                    existing = await cursor.fetchone()
-                
-                if existing:
-                    # Update existing session
-                    await db.execute(
-                        "UPDATE game_sessions SET channel_id = ?, game_state = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ?",
-                        (channel_id, game_state_json, guild_id, "noitu")
-                    )
-                else:
-                    # Insert new session
-                    await db.execute(
-                        "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
-                        (guild_id, "noitu", channel_id, game_state_json)
-                    )
-                await db.commit()
+            # Check if session exists
+            existing = await db_manager.fetchone(
+                "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                (guild_id, "noitu")
+            )
+            
+            if existing:
+                # Update existing session
+                await db_manager.modify(
+                    "UPDATE game_sessions SET channel_id = ?, game_state = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ?",
+                    (channel_id, game_state_json, guild_id, "noitu")
+                )
+            else:
+                # Insert new session
+                await db_manager.modify(
+                    "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
+                    (guild_id, "noitu", channel_id, game_state_json)
+                )
             
             log(f"GAME_SAVED [Guild {guild_id}] Current word: {game.get('current_word')}, Used: {len(game.get('used_words', set()))}")
         except Exception as e:
@@ -257,12 +250,10 @@ class GameNoiTu(commands.Cog):
     async def restore_game_state(self, guild_id, channel):
         """Restore NoiTu game state from database after bot restart"""
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT game_state FROM game_sessions WHERE guild_id = ? AND game_type = ?",
-                    (guild_id, "noitu")
-                ) as cursor:
-                    row = await cursor.fetchone()
+            row = await db_manager.fetchone(
+                "SELECT game_state FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                (guild_id, "noitu")
+            )
             
             if not row:
                 log(f"NO_SAVE_FOUND [Guild {guild_id}] Starting fresh game")
@@ -505,11 +496,9 @@ class GameNoiTu(commands.Cog):
                 return
             
             # Get top 3 players based on correct words
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT user_id, value FROM user_stats WHERE game_id = 'noitu' AND stat_key = 'correct_words' ORDER BY value DESC LIMIT 3"
-                ) as cursor:
-                    rows = await cursor.fetchall()
+            rows = await db_manager.execute(
+                "SELECT user_id, value FROM user_stats WHERE game_id = 'noitu' AND stat_key = 'correct_words' ORDER BY value DESC LIMIT 3"
+            )
             
             top_players = [row[0] for row in rows]
             role_ids = [TOP_1_ROLE_ID, TOP_2_ROLE_ID, TOP_3_ROLE_ID]
@@ -832,7 +821,7 @@ class GameNoiTu(commands.Cog):
                 
                 # Check invalid words achievement
                 try:
-                    current_invalid = await self.get_stat_value(message.author.id, 'invalid_words')
+                    current_invalid = await get_stat(message.author.id, 'noitu', 'invalid_words')
                     await self.bot.achievement_manager.check_unlock(message.author.id, "noitu", "invalid_words", current_invalid, message.channel)
                 except Exception as e:
                     log(f"ERROR checking invalid_words achievement: {e}")
@@ -901,23 +890,23 @@ class GameNoiTu(commands.Cog):
             
             # Check achievements
             try:
-                current_words = await self.get_stat_value(user_id, 'words_correct')
+                current_words = await get_stat(user_id, 'noitu', 'words_correct')
                 await self.bot.achievement_manager.check_unlock(user_id, "noitu", "words_correct", current_words, message.channel)
                 
                 if game['player_count'] == 0:  # First player
-                    current_starters = await self.get_stat_value(user_id, 'game_starters')
+                    current_starters = await get_stat(user_id, 'noitu', 'game_starters')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "game_starters", current_starters, message.channel)
                 
                 if game.get('last_message_time') and (time.time() - game['last_message_time']) < 3.0:
-                    current_low_time = await self.get_stat_value(user_id, 'low_time_answers')
+                    current_low_time = await get_stat(user_id, 'noitu', 'low_time_answers')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "low_time_answers", current_low_time, message.channel)
                 
                 if current_hour >= 0 and current_hour <= 5:
-                    current_night = await self.get_stat_value(user_id, 'night_answers')
+                    current_night = await get_stat(user_id, 'noitu', 'night_answers')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "night_answers", current_night, message.channel)
                 
                 if await self.is_reduplicative_word(content):
-                    current_reduplicative = await self.get_stat_value(user_id, 'reduplicative_words')
+                    current_reduplicative = await get_stat(user_id, 'noitu', 'reduplicative_words')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "reduplicative_words", current_reduplicative, message.channel)
                     
             except Exception as e:
@@ -998,7 +987,7 @@ class GameNoiTu(commands.Cog):
                 
                 # Check game ending words achievement
                 try:
-                    current_ending = await self.get_stat_value(message.author.id, 'game_ending_words')
+                    current_ending = await get_stat(message.author.id, 'noitu', 'game_ending_words')
                     await self.bot.achievement_manager.check_unlock(message.author.id, "noitu", "game_ending_words", current_ending, message.channel)
                 except Exception as e:
                     log(f"ERROR checking game_ending_words achievement: {e}")

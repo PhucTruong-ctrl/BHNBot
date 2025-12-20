@@ -4,19 +4,17 @@ from discord.ext import commands
 import aiosqlite
 from datetime import datetime, timedelta
 import asyncio
-from configs.settings import DB_PATH
-from database_manager import db_manager
+import json
+from configs.settings import DB_PATH, DATA_DIR
+from database_manager import db_manager, get_tree_data, update_tree_progress, get_top_contributors
+
+# Load tree configuration from data file
+with open(f"{DATA_DIR}/tree_config.json", 'r', encoding='utf-8') as f:
+    TREE_CONFIG = json.load(f)
 
 # Tree Level Requirements (Hạt cần thêm)
 # Base requirements for season 1
-BASE_LEVEL_REQS = {
-    1: 0,      # 🌱 Hạt mầm
-    2: 1000,   # 🌿 Nảy mầm
-    3: 2000,   # 🎋 Cây non
-    4: 3000,   # 🌳 Trưởng thành
-    5: 4000,   # 🌸 Ra hoa
-    6: 5000    # 🍎 Kết trái (MAX)
-}
+BASE_LEVEL_REQS = TREE_CONFIG['base_level_reqs']
 
 # Scaling factor per season (25% increase each season)
 SEASON_SCALING = 1.25
@@ -177,31 +175,21 @@ class CommunityCog(commands.Cog):
 
     async def get_tree_data(self, guild_id: int):
         """Get current tree data for guild"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = ?",
+        row = await get_tree_data(guild_id)
+        
+        if not row:
+            # Insert default if not exists
+            await db_manager.modify(
+                "INSERT INTO server_tree (guild_id) VALUES (?)",
                 (guild_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-            
-            if not row:
-                await db.execute(
-                    "INSERT INTO server_tree (guild_id) VALUES (?)",
-                    (guild_id,)
-                )
-                await db.commit()
-                return 1, 0, 0, 1, None, None
-            
-            return row
+            )
+            return 1, 0, 0, 1, None, None
+        
+        return row
 
     async def update_tree_progress(self, guild_id: int, level: int, progress: int, total: int):
         """Update tree level and progress"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE server_tree SET current_level = ?, current_progress = ?, total_contributed = ? WHERE guild_id = ?",
-                (level, progress, total, guild_id)
-            )
-            await db.commit()
+        await update_tree_progress(guild_id, level, progress, total)
 
     async def add_contributor(self, user_id: int, guild_id: int, amount: int, contribution_type: str = "seeds"):
         """Add to contributor's total with experience points for CURRENT season.
@@ -219,55 +207,49 @@ class CommunityCog(commands.Cog):
         # Get current season
         _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
         
-        async with aiosqlite.connect(DB_PATH) as db:
-            try:
-                # Check if contributor exists for this season
-                result = await db.execute_fetchall(
-                    "SELECT amount, contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ? AND season = ?",
-                    (user_id, guild_id, current_season)
+        try:
+            # Check if contributor exists for this season
+            result = await db_manager.fetchone(
+                "SELECT amount, contribution_exp FROM tree_contributors WHERE user_id = ? AND guild_id = ? AND season = ?",
+                (user_id, guild_id, current_season)
+            )
+            if result:
+                # Update existing
+                current_amount, current_exp = result
+                new_amount = current_amount + amount
+                new_exp = current_exp + exp_amount
+                await db_manager.modify(
+                    "UPDATE tree_contributors SET amount = ?, contribution_exp = ? WHERE user_id = ? AND guild_id = ? AND season = ?",
+                    (new_amount, new_exp, user_id, guild_id, current_season)
                 )
-                if result:
-                    # Update existing
-                    current_amount, current_exp = result[0]
-                    new_amount = current_amount + amount
-                    new_exp = current_exp + exp_amount
-                    await db.execute(
-                        "UPDATE tree_contributors SET amount = ?, contribution_exp = ? WHERE user_id = ? AND guild_id = ? AND season = ?",
-                        (new_amount, new_exp, user_id, guild_id, current_season)
-                    )
-                else:
-                    # Insert new
-                    await db.execute(
-                        "INSERT INTO tree_contributors (user_id, guild_id, amount, contribution_exp, season) VALUES (?, ?, ?, ?, ?)",
-                        (user_id, guild_id, amount, exp_amount, current_season)
-                    )
-                
-                await db.commit()
-            except Exception as e:
-                print(f"[TREE] Error adding contributor: {e}")
-                await db.rollback()
-                raise
+            else:
+                # Insert new
+                await db_manager.modify(
+                    "INSERT INTO tree_contributors (user_id, guild_id, amount, contribution_exp, season) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, guild_id, amount, exp_amount, current_season)
+                )
+        except Exception as e:
+            print(f"[TREE] Error adding contributor: {e}")
+            raise
 
     async def get_top_contributors(self, guild_id: int, limit: int = 3):
         """Get top contributors by contribution experience for CURRENT season"""
         # Get current season
         _, _, _, current_season, _, _ = await self.get_tree_data(guild_id)
         
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT user_id, amount, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY amount DESC LIMIT ?",
-                (guild_id, current_season, limit)
-            ) as cursor:
-                return await cursor.fetchall()
+        result = await db_manager.execute(
+            "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC LIMIT ?",
+            (guild_id, current_season, limit)
+        )
+        return result
 
     async def get_top_contributors_all_time(self, guild_id: int, limit: int = 3):
         """Get top contributors by total contribution experience across ALL seasons"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT user_id, SUM(contribution_exp) as total_exp FROM tree_contributors WHERE guild_id = ? GROUP BY user_id ORDER BY total_exp DESC LIMIT ?",
-                (guild_id, limit)
-            ) as cursor:
-                return await cursor.fetchall()
+        result = await db_manager.execute(
+            "SELECT user_id, SUM(contribution_exp) as total_exp FROM tree_contributors WHERE guild_id = ? GROUP BY user_id ORDER BY total_exp DESC LIMIT ?",
+            (guild_id, limit)
+        )
+        return result
 
     async def create_tree_embed(self, guild_id: int):
         """Create tree display embed"""
@@ -368,13 +350,11 @@ class CommunityCog(commands.Cog):
                 
                 # Try to get existing tree message
                 tree_message_id = None
-                async with aiosqlite.connect(DB_PATH) as db:
-                    async with db.execute(
-                        "SELECT tree_message_id FROM server_tree WHERE guild_id = ?",
-                        (guild_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                        tree_message_id = row[0] if row else None
+                result = await db_manager.fetchone(
+                    "SELECT tree_message_id FROM server_tree WHERE guild_id = ?",
+                    (guild_id,)
+                )
+                tree_message_id = result[0] if result else None
                 
                 # Delete old message if exists
                 if tree_message_id:
@@ -389,12 +369,10 @@ class CommunityCog(commands.Cog):
                 new_message = await channel.send(embed=embed, view=view)
                 
                 # Store message ID in database
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute(
-                        "UPDATE server_tree SET tree_message_id = ? WHERE guild_id = ?",
-                        (new_message.id, guild_id)
-                    )
-                    await db.commit()
+                await db_manager.modify(
+                    "UPDATE server_tree SET tree_message_id = ? WHERE guild_id = ?",
+                    (new_message.id, guild_id)
+                )
                 
                 print(f"[TREE] Created new tree message {new_message.id} in {channel.name}")
             
@@ -418,31 +396,26 @@ class CommunityCog(commands.Cog):
             guild_id = interaction.guild.id
             
             # Check user balance
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT seeds FROM users WHERE user_id = ?",
-                    (user_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
+            from database_manager import get_user_balance
+            current_balance = await get_user_balance(user_id)
             
-            if not row or row[0] < amount:
-                current = row[0] if row else 0
+            if current_balance < amount:
                 await interaction.followup.send(
-                    f"Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current}",
+                    f"Bạn không đủ hạt!\nCần: {amount} | Hiện có: {current_balance}",
                     ephemeral=True
                 )
                 return
             
-            balance_before = row[0]
+            balance_before = current_balance
             new_balance = balance_before - amount
 
             # Deduct seeds
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute(
-                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                    (amount, user_id)
-                )
-                await db.commit()
+            from database_manager import add_seeds
+            await add_seeds(user_id, -amount)
+            print(
+                f"[TREE] [CONTRIBUTE_DEBIT] user_id={user_id} seed_change=-{amount} "
+                f"balance_before={balance_before} balance_after={new_balance}"
+            )
             print(
                 f"[TREE] [CONTRIBUTE_DEBIT] user_id={user_id} seed_change=-{amount} "
                 f"balance_before={balance_before} balance_after={new_balance}"
@@ -457,12 +430,7 @@ class CommunityCog(commands.Cog):
                     "🍎 Cây đã chín rồi! Hãy bảo Admin dùng lệnh `/thuhoach`!",
                     ephemeral=True
                 )
-                async with aiosqlite.connect(DB_PATH) as db:
-                    await db.execute(
-                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                        (amount, user_id)
-                    )
-                    await db.commit()
+                await add_seeds(user_id, amount)
                 print(
                     f"[TREE] [REFUND] user_id={user_id} seed_change=+{amount} reason=tree_maxed"
                 )
@@ -543,17 +511,11 @@ class CommunityCog(commands.Cog):
         
         try:
             # Get tree channel for this guild
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT tree_channel_id FROM server_tree WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
+            from database_manager import get_server_config
+            tree_channel_id = await get_server_config(guild_id, 'kenh_cay')
             
-            if not row or not row[0]:
+            if not tree_channel_id:
                 return
-            
-            tree_channel_id = row[0]
             
             # Check if this message is in the tree channel
             if message.channel.id != tree_channel_id:
@@ -662,12 +624,10 @@ class CommunityCog(commands.Cog):
         await interaction.followup.send("**ĐANG THU HOẠCH...** Xin chờ một chút! 🌟")
         
         # Get all contributors for current season
-        async with aiosqlite.connect(DB_PATH) as db:
-            async with db.execute(
-                "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC",
-                (guild_id, season)
-            ) as cursor:
-                all_contributors = await cursor.fetchall()
+        all_contributors = await db_manager.execute(
+            "SELECT user_id, contribution_exp FROM tree_contributors WHERE guild_id = ? AND season = ? ORDER BY contribution_exp DESC",
+            (guild_id, season)
+        )
         
         if not all_contributors:
             await interaction.followup.send("❌ Không có ai đóng góp trong mùa này!", ephemeral=True)
@@ -682,68 +642,55 @@ class CommunityCog(commands.Cog):
             pass
         
         # === DATABASE TRANSACTIONS ===
-        async with aiosqlite.connect(DB_PATH) as db:
-            # 1. REWARD ALL CONTRIBUTORS: seeds + memorabilia item
-            memorabilia_key = f"qua_ngot_mua_{season}"
-            contributor_rewards = []
+        from database_manager import batch_update_seeds, add_item, set_server_config
+        
+        # 1. REWARD ALL CONTRIBUTORS: seeds + memorabilia item
+        memorabilia_key = f"qua_ngot_mua_{season}"
+        contributor_rewards = []
+        seed_updates = {}
+        
+        for idx, (cid, exp) in enumerate(all_contributors):
+            # Calculate reward based on rank
+            if idx == 0:  # Top 1
+                reward_seeds = 10000
+            elif idx == 1:  # Top 2
+                reward_seeds = 5000
+            elif idx == 2:  # Top 3
+                reward_seeds = 3000
+            else:  # Other contributors
+                reward_seeds = 1500
             
-            for idx, (cid, exp) in enumerate(all_contributors):
-                # Calculate reward based on rank
-                if idx == 0:  # Top 1
-                    reward_seeds = 10000
-                elif idx == 1:  # Top 2
-                    reward_seeds = 5000
-                elif idx == 2:  # Top 3
-                    reward_seeds = 3000
-                else:  # Other contributors
-                    reward_seeds = 1500
-                
-                # Add seeds
-                await db.execute(
-                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                    (reward_seeds, cid)
-                )
-                
-                # Add memorabilia item
-                async with db.execute(
-                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                    (cid, memorabilia_key)
-                ) as cursor:
-                    inv_row = await cursor.fetchone()
-                
-                if inv_row:
-                    await db.execute(
-                        "UPDATE inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?",
-                        (cid, memorabilia_key)
-                    )
-                else:
-                    await db.execute(
-                        "INSERT INTO inventory (user_id, item_id, quantity) VALUES (?, ?, 1)",
-                        (cid, memorabilia_key)
-                    )
-                
-                contributor_rewards.append((cid, exp, reward_seeds))
+            # Collect seed updates
+            if cid in seed_updates:
+                seed_updates[cid] += reward_seeds
+            else:
+                seed_updates[cid] = reward_seeds
             
-            # 2. BONUS FOR TOP CONTRIBUTOR: extra seeds (e.g., 3000 more)
-            top1_bonus = 3000
-            await db.execute(
-                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                (top1_bonus, top1_user_id)
-            )
+            # Add memorabilia item
+            await add_item(cid, memorabilia_key, 1)
             
-            # 3. ACTIVATE 24H BUFF
-            await db.execute(
-                "UPDATE server_config SET harvest_buff_until = datetime('now', '+24 hours') WHERE guild_id = ?",
-                (guild_id,)
-            )
-            
-            # 4. RESET TREE FOR NEXT SEASON
-            await db.execute(
-                "UPDATE server_tree SET current_level = 1, current_progress = 0, total_contributed = 0, season = season + 1, last_harvest = CURRENT_TIMESTAMP WHERE guild_id = ?",
-                (guild_id,)
-            )
-            
-            await db.commit()
+            contributor_rewards.append((cid, exp, reward_seeds))
+        
+        # 2. BONUS FOR TOP CONTRIBUTOR: extra seeds (e.g., 3000 more)
+        top1_bonus = 3000
+        if top1_user_id in seed_updates:
+            seed_updates[top1_user_id] += top1_bonus
+        else:
+            seed_updates[top1_user_id] = top1_bonus
+        
+        # Apply all seed updates
+        await batch_update_seeds(seed_updates)
+        
+        # 3. ACTIVATE 24H BUFF
+        from datetime import datetime, timedelta
+        buff_until = datetime.now() + timedelta(hours=24)
+        await set_server_config(guild_id, 'harvest_buff_until', buff_until.isoformat())
+        
+        # 4. RESET TREE FOR NEXT SEASON
+        await db_manager.modify(
+            "UPDATE server_tree SET current_level = 1, current_progress = 0, total_contributed = 0, season = season + 1, last_harvest = CURRENT_TIMESTAMP WHERE guild_id = ?",
+            (guild_id,)
+        )
         
         # === CREATE ROLE FOR TOP 1 ===
         role_mention = ""
