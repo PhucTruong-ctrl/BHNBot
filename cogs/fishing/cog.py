@@ -648,6 +648,11 @@ class FishingCog(commands.Cog):
                 # Process gain_items (pearls, worms, chests, etc.)
                 if event_result.get("gain_items", {}):
                     for item_key, item_count in event_result["gain_items"].items():
+                        # Special check for ca_isekai: don't gain if already have
+                        if item_key == "ca_isekai":
+                            inventory = await get_inventory(user_id)
+                            if inventory.get("ca_isekai", 0) > 0:
+                                continue  # Skip adding ca_isekai if already have
                         await add_item(user_id, item_key, item_count)
                         item_name = ALL_FISH.get(item_key, {}).get("name", item_key)
                         event_message += f" (+{item_count} {item_name})"
@@ -761,24 +766,34 @@ class FishingCog(commands.Cog):
                 )
                 await casting_msg.edit(content=f"<@{user_id}>", embed=embed)
             
-                # Special embed for Isekai event - show legendary fish info
+                # Special embed for Isekai event - show legendary fish info or rejection
                 if event_type == "isekai_truck":
-                    # Find the legendary fish data
-                    legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == "ca_isekai"), None)
-                    if legendary_fish:
-                        fish_embed = discord.Embed(
-                            title=f"🌌 {username} - CÁ HUYỀN THOẠI MỚI! 🌌",
-                            description=f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n\n"
-                                       f"{legendary_fish['description']}\n\n"
-                                       f"**Giá bán:** {legendary_fish['sell_price']} Hạt (Không thể bán)\n"
-                                       f"**Cấp độ:** {legendary_fish['level']}\n"
-                                       f"**Thành tựu:** {legendary_fish['achievement']}",
+                    inventory = await get_inventory(user_id)
+                    has_isekai = inventory.get("ca_isekai", 0) > 0
+                    if has_isekai:
+                        embed = discord.Embed(
+                            title="🚚 CÚ HÚC... VÔ NGHĨA!",
+                            description="Rầm! Truck-kun húc bạn bay sang dị giới. Bạn hào hứng mở mắt ra, chuẩn bị đón nhận dàn Harem và sức mạnh bá đạo...\n\nNhưng chớp mắt một cái, bạn thấy mình vẫn đang ngồi đần mặt cầm cần câu ở cái hồ này. Hóa ra Nữ Thần Dị Giới đã **từ chối cấp Visa** cho bạn. \n\n*'Về đi, cứu thế giới một lần là đủ rồi!'* - Chẳng có gì xảy ra cả, quê thật sự.",
                             color=discord.Color.purple()
                         )
-                        if legendary_fish.get("image_url"):
-                            fish_embed.set_image(url=legendary_fish["image_url"])
-                        await channel.send(embed=fish_embed)
-                        await asyncio.sleep(1)  # Brief pause before continuing
+                        await channel.send(embed=embed)
+                    else:
+                        # Find the legendary fish data
+                        legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == "ca_isekai"), None)
+                        if legendary_fish:
+                            fish_embed = discord.Embed(
+                                title=f"🌌 {username} - CÁ HUYỀN THOẠI MỚI! 🌌",
+                                description=f"**{legendary_fish['emoji']} {legendary_fish['name']}**\n\n"
+                                           f"{legendary_fish['description']}\n\n"
+                                           f"**Giá bán:** {legendary_fish['sell_price']} Hạt (Không thể bán)\n"
+                                           f"**Cấp độ:** {legendary_fish['level']}\n"
+                                           f"**Thành tựu:** {legendary_fish['achievement']}",
+                                color=discord.Color.purple()
+                            )
+                            if legendary_fish.get("image_url"):
+                                fish_embed.set_image(url=legendary_fish["image_url"])
+                            await channel.send(embed=fish_embed)
+                            await asyncio.sleep(1)  # Brief pause before continuing
             
                 # Handle global reset events
                 if event_result.get("custom_effect") == "global_reset":
@@ -1035,10 +1050,11 @@ class FishingCog(commands.Cog):
             
                 for key, qty in trash_items_caught.items():
                     if only_trash:
-                        trash_info = ALL_FISH.get(key, {"description": "Unknown trash", "emoji": "🥾"})
+                        trash_info = ALL_FISH.get(key, {"description": "Unknown trash", "emoji": "🥾", "name": "Unknown trash"})
                         trash_desc = trash_info.get('description', 'Unknown trash')
                         trash_emoji = trash_info.get('emoji', '🥾')
-                        fish_display.append(f"{trash_emoji} {self.apply_display_glitch(trash_desc)}")
+                        trash_name = trash_info.get('name', 'Unknown trash')
+                        fish_display.append(f"{trash_emoji} {self.apply_display_glitch(trash_name)} - {self.apply_display_glitch(trash_desc)}")
                     else:
                         trash_name = key.replace("trash_", "").replace("_", " ").title()
                         fish_display.append(f"🥾 {self.apply_display_glitch(trash_name)} x{qty}")
@@ -1134,6 +1150,35 @@ class FishingCog(commands.Cog):
             current_hour = datetime.now().hour
             legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=self)
             legendary_failed = False  # Track if legendary boss fight failed
+
+            if isinstance(legendary_fish, dict) and "already_caught" in legendary_fish:
+                legendary_key = legendary_fish["already_caught"]
+                if legendary_key == "ca_ngan_ha":
+                    embed = discord.Embed(
+                        title="🌌 VŨ TRỤ LẮC ĐẦU!",
+                        description="Bầu trời đêm bỗng trở nên tĩnh mịch lạ thường. Các vì sao thì thầm rằng bạn đã nắm giữ cả dải ngân hà trong tay rồi. Đừng quấy rầy giấc ngủ của vũ trụ thêm nữa.",
+                        color=discord.Color.dark_magenta()
+                    )
+                elif legendary_key == "cthulhu_con":
+                    embed = discord.Embed(
+                        title="🐙 VỰC THẲM KHƯỚC TỪ!",
+                        description="Tiếng thì thầm điên dại trong đầu bạn bỗng im bặt. Cổ Thần đang say ngủ và ánh mắt của nó đã khắc ghi hình bóng bạn. Đừng đánh thức nỗi kinh hoàng nguyên thủy thêm một lần nào nữa!",
+                        color=discord.Color.dark_teal()
+                    )
+                elif legendary_key == "ca_phuong_hoang":
+                    embed = discord.Embed(
+                        title="🔥 NGỌN LỬA NGỦ YÊN!",
+                        description="Mặt nước không còn sôi sục, hơi nóng đã dịu lại. Ngọn lửa tái sinh đã chọn bạn làm chủ nhân vĩnh hằng. Không cần thêm tro tàn để thắp lại sự sống, hãy để hào quang ấy rực cháy trong tim bạn.",
+                        color=discord.Color.orange()
+                    )
+                elif legendary_key == "ca_voi_52hz":
+                    embed = discord.Embed(
+                        title="🐋 TẦN SỐ ĐÃ ĐƯỢC HỒI ĐÁP!",
+                        description="Tiếng hát cô đơn nhất thế giới đã tìm được tri kỷ. Tần số 52Hz không còn lạc lõng giữa đại dương bao la nữa. Nó đã ngừng cất tiếng gọi, vì giờ đây nó đã có bạn bên cạnh.",
+                        color=discord.Color.dark_blue()
+                    )
+                await channel.send(embed=embed)
+                legendary_fish = None
 
             if legendary_fish == "thuong_luong_expired":
                 user_mention = f"<@{user_id}>"
@@ -1977,15 +2022,22 @@ class FishingCog(commands.Cog):
                 await add_seeds(user_id, coins)
                 loot_display.append(f"💰 Túi Hạt - **{coins} Hạt**")
             
+            elif loot_type in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
+                await self.add_inventory_item(user_id, loot_type, "legendary_component")
+                item_data = ALL_ITEMS_DATA.get(loot_type, {})
+                item_name = item_data.get("name", loot_type)
+                item_emoji = item_data.get("emoji", "❓")
+                loot_display.append(f"{item_emoji} {item_name}")
+            
             # Check if it's a trash item
             elif loot_type in [t.get("key") for t in TRASH_ITEMS]:
                 trash_item = next((t for t in TRASH_ITEMS if t.get("key") == loot_type), None)
                 if trash_item:
                     await self.add_inventory_item(user_id, loot_type, "trash")
                     if trash_only:
-                        # Display description for single trash
+                        # Display name and description for single trash
                         trash_desc = trash_item.get('description', 'Unknown trash')
-                        loot_display.append(f"{trash_item['emoji']} {self.apply_display_glitch(trash_desc)}")
+                        loot_display.append(f"{trash_item['emoji']} {self.apply_display_glitch(trash_item['name'])} - {self.apply_display_glitch(trash_desc)}")
                     else:
                         loot_display.append(f"🗑️ {trash_item['name']}")
             
@@ -2502,6 +2554,30 @@ class FishingCog(commands.Cog):
         # Get inventory
         inventory = await get_inventory(user_id)
         
+        # Check if user has cthulhu_con - if so, auto-recycle map pieces
+        auto_recycled_pieces = 0
+        try:
+            cthulhu_count = await get_fish_count(user_id, 'cthulhu_con')
+            if cthulhu_count > 0:
+                map_pieces = ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]
+                for piece in map_pieces:
+                    piece_count = inventory.get(piece, 0)
+                    if piece_count > 0:
+                        await remove_item(user_id, piece, piece_count)
+                        auto_recycled_pieces += piece_count
+                        print(f"[RECYCLE] Auto-recycled {piece_count}x {piece} for user {user_id} (has cthulhu_con)")
+                
+                if auto_recycled_pieces > 0:
+                    # Convert to fertilizer (each piece = 1 fertilizer)
+                    fertilizer_from_pieces = auto_recycled_pieces
+                    for _ in range(fertilizer_from_pieces):
+                        await self.add_inventory_item(user_id, "fertilizer", "tool")
+                    
+                    # Re-fetch inventory after auto-recycle
+                    inventory = await get_inventory(user_id)
+        except Exception as e:
+            print(f"[RECYCLE] Error checking cthulhu_con for auto-recycle: {e}")
+        
         # Count all trash items
         trash_count = sum(qty for key, qty in inventory.items() if key.startswith("trash_"))
         
@@ -2552,6 +2628,17 @@ class FishingCog(commands.Cog):
             description=f"🗑️ {trash_used} Rác → 🌱 {fertilizer_count} Phân Bón",
             color=discord.Color.green()
         )
+        
+        # Add auto-recycle info if applicable
+        if auto_recycled_pieces > 0:
+            fertilizer_from_pieces = auto_recycled_pieces
+            embed.description += f"\n🗺️ {auto_recycled_pieces} Mảnh Bản Đồ → 🌱 {fertilizer_from_pieces} Phân Bón"
+            embed.add_field(
+                name="🎯 Tự Động Tái Chế",
+                value=f"Bạn đã sở hữu **Cthulhu Non** nên các mảnh bản đồ đã được tự động tái chế thành phân bón!",
+                inline=False
+            )
+        
         if trash_remaining > 0:
             embed.add_field(name="Rác còn lại", value=f"{trash_remaining} (cần 10 để tạo 1 phân)", inline=False)
         
@@ -2952,8 +3039,18 @@ class FishingCog(commands.Cog):
             elif fish_key in COMMON_FISH_KEYS:
                 common_caught.add(fish_key)
         
-        # Check if user has Isekai fish (hidden legendary)
+        # Check if user has Isekai fish (hidden legendary) - check both collection and inventory
         has_isekai = "ca_isekai" in legendary_caught
+        
+        # Also check inventory for ca_isekai (from events)
+        if not has_isekai:
+            try:
+                inventory = await get_inventory(user_id)
+                has_isekai = inventory.get("ca_isekai", 0) > 0
+                if has_isekai:
+                    legendary_caught.append("ca_isekai")
+            except:
+                pass
         
         # Display total: 5 normally, 6 if has Isekai
         total_display = 6 if has_isekai else 5

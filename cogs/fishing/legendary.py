@@ -261,11 +261,43 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     
     # Check each legendary fish for summoning conditions
     for legendary in LEGENDARY_FISH:
+        legendary_key = legendary['key']
+        
+        # Check if already caught
+        already_caught = legendary_key in legendary_list
+        
+        # If already caught, check if summoning condition is met anyway (for lore embed)
+        if already_caught:
+            # Special handling for each legendary
+            if legendary_key == "thuong_luong":
+                # Thuong Luong has its own check in _hiente_action
+                continue
+            elif legendary_key == "ca_ngan_ha":
+                if user_id in cog.guaranteed_catch_users:
+                    return {"already_caught": legendary_key}
+                continue
+            elif legendary_key == "ca_phuong_hoang":
+                if not (12 <= current_hour < 14):
+                    continue
+                has_buff = cog.phoenix_buff_active.get(user_id, False)
+                if has_buff or inventory.get("long_vu_lua", 0) > 0:
+                    return {"already_caught": legendary_key}
+                continue
+            elif legendary_key == "cthulhu_con":
+                if cog.dark_map_active.get(user_id, False) and cog.dark_map_casts.get(user_id, 0) > 0:
+                    return {"already_caught": legendary_key}
+                continue
+            elif legendary_key == "ca_voi_52hz":
+                consumable_cog = cog.bot.get_cog("ConsumableCog") if hasattr(cog, 'bot') else None
+                if consumable_cog and consumable_cog.has_detected_52hz(user_id):
+                    return {"already_caught": legendary_key}
+                continue
+            else:
+                continue
+        
         # Skip if player already caught this legendary fish
         if legendary['key'] in legendary_list:
             continue
-        
-        legendary_key = legendary['key']
         
         # 1. THUỒNG LUỒNG - Progressive sacrifice chance
         if legendary_key == "thuong_luong":

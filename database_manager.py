@@ -493,15 +493,15 @@ async def remove_fish(user_id: int, fish_id: str, quantity: int = 1) -> bool:
 
 
 async def get_fish_count(user_id: int, fish_id: str) -> int:
-    """Get count of specific fish"""
+    """Get count of specific fish (1 if caught, 0 if not)"""
     result = await db_manager.fetchone(
-        "SELECT quantity FROM fish_collection WHERE user_id = ? AND fish_id = ?",
+        "SELECT 1 FROM fish_collection WHERE user_id = ? AND fish_key = ?",
         (user_id, fish_id),
         use_cache=True,
         cache_key=f"fish_{user_id}_{fish_id}",
         cache_ttl=600
     )
-    return result[0] if result else 0
+    return 1 if result else 0
 
 
 # ----- OPTIMIZED INVENTORY OPERATIONS -----
