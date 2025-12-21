@@ -5,9 +5,15 @@ import random
 from database_manager import remove_item, add_seeds, get_inventory
 from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
 from .glitch import apply_display_glitch
+from core.logger import setup_logger
+
+logger = setup_logger("FishingViews", "cogs/fishing/fishing.log")
 
 class FishSellView(discord.ui.View):
-    """View for selling caught fish."""
+    """A view for handling fish selling interactions.
+
+    Allows users to sell caught fish, access the black market, or haggle for better prices.
+    """
     def __init__(self, cog, user_id, caught_items, guild_id):
         super().__init__(timeout=300)
         self.cog = cog
@@ -44,7 +50,10 @@ class FishSellView(discord.ui.View):
             self.add_item(haggle_btn)
     
     async def on_timeout(self):
-        """Cleanup when view times out (after 5 minutes)"""
+        """Cleans up the view when it times out (5 minutes).
+
+        Removes the user's caught items from the temporary cache to release memory.
+        """
         # Remove caught_items cache since user didn't sell
         if self.user_id in self.cog.caught_items:
             try:
@@ -54,6 +63,12 @@ class FishSellView(discord.ui.View):
     
     @discord.ui.button(label="💰 Bán Cá Vừa Câu", style=discord.ButtonStyle.green)
     async def sell_caught_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Handles the standard sell action.
+
+        Calculates the total value of caught fish and updates the user's balance.
+        Applies buffs like 'Keo Ly' (x2) or 'Harvest Boost' if active.
+        Uses an atomic transaction to prevent duplication.
+        """
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu cá mới được bán!", ephemeral=True)
             return
@@ -90,7 +105,7 @@ class FishSellView(discord.ui.View):
             if hasattr(self.cog, 'check_emotional_state') and self.cog.check_emotional_state(self.user_id, "keo_ly"):
                 total_money = total_money * 2
                 keo_ly_message = " (💅 **Keo Lỳ Buff x2**)"
-                print(f"[FISHING] [SELL] {interaction.user.name} applied keo_ly buff x2 multiplier")
+                logger.info(f"[SELL] {interaction.user.name} applied keo_ly buff x2 multiplier")
             
             # Apply harvest boost (x2) if active in the server
             from database_manager import db_manager
@@ -108,70 +123,23 @@ class FishSellView(discord.ui.View):
                             # Only apply buff to positive earnings, not penalties
                             if total_money > 0:
                                 total_money = total_money * 2  # Double the reward
-                            print(f"[FISHING] [SELL] Applied harvest boost x2 for guild {guild_id}")
+                            logger.info(f"[SELL] Applied harvest boost x2 for guild {guild_id}")
             except:
                 pass
             
-            # Use ATOMIC TRANSACTION via database_manager to prevent exploits
-            from database_manager import db_manager
+            from database_manager import sell_items_atomic
             
-            try:
-                # Prepare batch operations
-                operations = []
-                
-                # 1. VERIFY inventory quantities (we'll do this separately first)
-                for fish_key, quantity in self.caught_items.items():
-                    row = await db_manager.fetchone(
-                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
-                        (self.user_id, fish_key)
-                    )
-                    actual_qty = row[0] if row else 0
-                    
-                    if actual_qty < quantity:
-                        self.sold = False  # Reset flag on insufficient inventory
-                        await interaction.followup.send(
-                            f"❌ **Khôn vậy má!** Không đủ `{apply_display_glitch(ALL_FISH[fish_key]['name'])}` để bán.\n"
-                            f"Cần: {quantity}, Có: {actual_qty}\n"
-                            f"(Đã bán qua `/banca` rồi?)",
-                            ephemeral=True
-                        )
-                        return
-                
-                # 2. Remove all fish items
-                for fish_key, quantity in self.caught_items.items():
-                    operations.append((
-                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
-                        (quantity, self.user_id, fish_key)
-                    ))
-                
-                # 3. Delete items with quantity <= 0
-                operations.append((
-                    "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                    (self.user_id,)
-                ))
-                
-                # 4. Add seeds to user
-                operations.append((
-                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                    (total_money, self.user_id)
-                ))
-                
-                # Execute all operations in a single transaction
-                await db_manager.batch_modify(operations)
-                
-                # Log the transaction
-                print(f"[FISHING] [SELL_TRANSACTION] COMMITTED - user_id={self.user_id} amount=+{total_money}")
-                
-                # CRITICAL: Invalidate caches after successful transaction
-                db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-                db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
-                db_manager.clear_cache_by_prefix("leaderboard")
-                
-            except Exception as e:
-                await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
-                self.sold = False  # Reset flag on error
-                print(f"[FISHING] [SELL_ERROR] Transaction failed: {e}")
+            # Use ATOMIC TRANSACTION via sell_items_atomic
+            success, message = await sell_items_atomic(self.user_id, self.caught_items, total_money)
+            
+            if not success:
+                await interaction.followup.send(f"❌ {message}", ephemeral=True)
+                self.sold = False
                 return
+            
+            # Log success
+            logger.info(f"[SELL_TRANSACTION] COMMITTED - user_id={self.user_id} amount=+{total_money}")
+
             
             if self.user_id in self.cog.caught_items:
                 del self.cog.caught_items[self.user_id]
@@ -191,15 +159,19 @@ class FishSellView(discord.ui.View):
             await interaction.followup.send(embed=embed, ephemeral=False, view=self)
             
             fish_count = sum(self.caught_items.values())
-            print(f"[FISHING] [SELL] {interaction.user.name} (user_id={self.user_id}) seed_change=+{total_money} fish_count={fish_count} fish_types={len(self.caught_items)}")
+            logger.info(f"[SELL] {interaction.user.name} (user_id={self.user_id}) seed_change=+{total_money} fish_count={fish_count} fish_types={len(self.caught_items)}")
         
+    
         except Exception as e:
             await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
-    
+
     # ==================== BLACK MARKET MECHANIC ====================
     
     async def sell_black_market(self, interaction: discord.Interaction):
-        """Black Market: 50/50 risk/reward - x3 money or lose everything + 500 seed fine"""
+        """Executes the Black Market sell action.
+
+        Mechanic: 50% chance to triple the earnings (x3). 50% chance to lose all fish AND pay a fine.
+        """
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu cá mới được bán!", ephemeral=True)
             return
@@ -229,7 +201,7 @@ class FishSellView(discord.ui.View):
                 # Remove fish items
                 for fish_key, quantity in self.caught_items.items():
                     operations.append((
-                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
                         (quantity, self.user_id, fish_key)
                     ))
                 
@@ -263,12 +235,12 @@ class FishSellView(discord.ui.View):
                     color=discord.Color.gold()
                 )
                 await interaction.followup.send(embed=embed, ephemeral=False)
-                print(f"[FISHING] [BLACK_MARKET_SUCCESS] {interaction.user.name} (user_id={self.user_id}) earned {total_money} seeds (x3)")
+                logger.info(f"[BLACK_MARKET_SUCCESS] {interaction.user.name} (user_id={self.user_id}) earned {total_money} seeds (x3)")
                 
             except Exception as e:
                 await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
                 self.sold = False
-                print(f"[FISHING] [BLACK_MARKET_ERROR] Transaction failed: {e}")
+                logger.error(f"[BLACK_MARKET_ERROR] Transaction failed: {e}")
         
         else:
             # Failure: Lose all fish + 500 seed fine
@@ -281,7 +253,7 @@ class FishSellView(discord.ui.View):
                 # Remove fish items without giving money
                 for fish_key, quantity in self.caught_items.items():
                     operations.append((
-                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
                         (quantity, self.user_id, fish_key)
                     ))
                 
@@ -318,17 +290,20 @@ class FishSellView(discord.ui.View):
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=embed, ephemeral=False)
-                print(f"[FISHING] [BLACK_MARKET_FAILURE] {interaction.user.name} (user_id={self.user_id}) lost all fish + {fine} seeds fine")
+                logger.info(f"[BLACK_MARKET_FAILURE] {interaction.user.name} (user_id={self.user_id}) lost all fish + {fine} seeds fine")
                 
             except Exception as e:
                 await interaction.followup.send(f"❌ Lỗi transaction: {e}", ephemeral=True)
                 self.sold = False
-                print(f"[FISHING] [BLACK_MARKET_ERROR] Transaction failed: {e}")
+                logger.error(f"[BLACK_MARKET_ERROR] Transaction failed: {e}")
     
     # ==================== HAGGLE MECHANIC ====================
     
     async def start_haggle(self, interaction: discord.Interaction):
-        """Haggle minigame: Negotiate price with merchant"""
+        """Initiates the Haggling minigame.
+
+        Transitions the UI to the `HagglingView`.
+        """
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Chỉ có người câu cá mới được bán!", ephemeral=True)
             return
@@ -356,7 +331,10 @@ class FishSellView(discord.ui.View):
 
 
 class HagglingView(discord.ui.View):
-    """Haggle minigame view"""
+    """A view for the Haggling minigame.
+
+    Allows the user to negotiate the sell price with a risk/reward mechanic.
+    """
     def __init__(self, cog, user_id, caught_items, base_total, username):
         super().__init__(timeout=60)
         self.cog = cog
@@ -368,7 +346,10 @@ class HagglingView(discord.ui.View):
     
     @discord.ui.button(label="🤝 Chốt Luôn", style=discord.ButtonStyle.green)
     async def accept_price(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Accept current price"""
+        """Accepts the current offer without further negotiation.
+
+        Safely processes the transaction at the `base_total` price.
+        """
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Không phải chuyện của bạn!", ephemeral=True)
             return
@@ -387,7 +368,7 @@ class HagglingView(discord.ui.View):
             # Remove fish items
             for fish_key, quantity in self.caught_items.items():
                 operations.append((
-                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
                     (quantity, self.user_id, fish_key)
                 ))
             
@@ -420,14 +401,19 @@ class HagglingView(discord.ui.View):
                 if isinstance(item, discord.ui.Button):
                     item.disabled = True
             await interaction.response.edit_message(embed=embed, view=self)
-            print(f"[FISHING] [HAGGLE_ACCEPT] {self.username} (user_id={self.user_id}) earned {self.base_total} seeds")
+            logger.info(f"[HAGGLE_ACCEPT] {self.username} (user_id={self.user_id}) earned {self.base_total} seeds")
             
         except Exception as e:
             await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
     
     @discord.ui.button(label="😏 Đòi Thêm", style=discord.ButtonStyle.primary)
     async def demand_more(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Demand more money - 40% success rate"""
+        """Attempts to negotiate a higher price.
+
+        Mechanic:
+        - 40% chance of success: Price increases by 30%.
+        - 60% chance of failure: Price decreases by 20% (Merchant annoyed).
+        """
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Không phải chuyện của bạn!", ephemeral=True)
             return
@@ -460,7 +446,7 @@ class HagglingView(discord.ui.View):
             # Remove fish items
             for fish_key, quantity in self.caught_items.items():
                 operations.append((
-                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_name = ?",
+                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
                     (quantity, self.user_id, fish_key)
                 ))
             
@@ -493,7 +479,7 @@ class HagglingView(discord.ui.View):
                 if isinstance(item, discord.ui.Button):
                     item.disabled = True
             await interaction.response.edit_message(embed=embed, view=self)
-            print(f"[FISHING] [HAGGLE_{action}] {self.username} (user_id={self.user_id}) earned {final_total} seeds")
+            logger.info(f"[HAGGLE_{action}] {self.username} (user_id={self.user_id}) earned {final_total} seeds")
             
         except Exception as e:
             await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)

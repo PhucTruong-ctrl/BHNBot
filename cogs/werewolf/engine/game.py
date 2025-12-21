@@ -18,6 +18,7 @@ from ..roles import get_role_class, load_all_roles
 from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
 from .voting import VoteSession
+from core.logger import setup_logger
 
 DB_PATH = "./data/database.db"
 CARD_BACK_URL = "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/banner.png"
@@ -26,7 +27,7 @@ MIN_PLAYERS = 4
 
 load_all_roles()
 
-logger = logging.getLogger("werewolf")
+logger = setup_logger("WerewolfGame", "cogs/werewolf/werewolf.log")
 
 
 class WerewolfGame:
@@ -174,7 +175,7 @@ class WerewolfGame:
             
             await cog.manager.save_game_state(self.guild.id)
         except Exception as e:
-            logger.error("Error saving game state: %s", str(e))
+            logger.error("Error saving game state: %s", str(e), exc_info=True)
     
     async def _delete_game_state(self) -> None:
         """Delete saved game state from database when game finishes"""
@@ -184,7 +185,7 @@ class WerewolfGame:
                 (self.guild.id, "werewolf")
             )
         except Exception as e:
-            logger.error("Error deleting game state: %s", str(e))
+            logger.error("Error deleting game state: %s", str(e), exc_info=True)
 
     def list_players(self) -> Sequence[PlayerState]:
         return list(self.players.values())

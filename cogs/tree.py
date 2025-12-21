@@ -7,6 +7,9 @@ import asyncio
 import json
 from configs.settings import DB_PATH, DATA_DIR
 from database_manager import db_manager, get_tree_data, update_tree_progress, get_top_contributors
+from core.logger import setup_logger
+
+logger = setup_logger("TreeCog", "cogs/tree.log")
 
 # Load tree configuration from data file
 with open(f"{DATA_DIR}/tree_config.json", 'r', encoding='utf-8') as f:
@@ -98,7 +101,7 @@ class TreeContributeView(discord.ui.View):
         try:
             await interaction.response.defer(ephemeral=False)
         except Exception as e:
-            print(f"[TREE] Error deferring response: {e}")
+            logger.error(f"[TREE] Error deferring response: {e}", exc_info=True)
             return
         
         await self.tree_cog.process_contribution(interaction, 10)
@@ -109,7 +112,7 @@ class TreeContributeView(discord.ui.View):
         try:
             await interaction.response.defer(ephemeral=False)
         except Exception as e:
-            print(f"[TREE] Error deferring response: {e}")
+            logger.error(f"[TREE] Error deferring response: {e}", exc_info=True)
             return
         
         await self.tree_cog.process_contribution(interaction, 100)
@@ -129,14 +132,14 @@ class CommunityCog(commands.Cog):
 
     async def cog_load(self):
         await super().cog_load()
-        print("[TREE] Cog loaded, updating tree messages for all guilds...")
+        logger.info("[TREE] Cog loaded, updating tree messages for all guilds...")
         for guild in self.bot.guilds:
             try:
                 tree_data = await self.get_tree_data(guild.id)
                 if tree_data and tree_data[4]:  # tree_channel_id
                     await self.update_or_create_pin_message(guild.id, tree_data[4])
             except Exception as e:
-                print(f"[TREE] Error updating tree on load for guild {guild.id}: {e}")
+                logger.error(f"[TREE] Error updating tree on load for guild {guild.id}: {e}", exc_info=True)
 
     # ==================== HELPER FUNCTIONS ====================
 
@@ -229,7 +232,7 @@ class CommunityCog(commands.Cog):
                     (user_id, guild_id, amount, exp_amount, current_season)
                 )
         except Exception as e:
-            print(f"[TREE] Error adding contributor: {e}")
+            logger.error(f"[TREE] Error adding contributor: {e}", exc_info=True)
             raise
 
     async def get_top_contributors(self, guild_id: int, limit: int = 3):
@@ -290,7 +293,7 @@ class CommunityCog(commands.Cog):
 
     async def update_or_create_pin_message(self, guild_id: int, tree_channel_id: int):
         """Delete old tree message and create new one (no pinning)"""
-        print(f"[TREE] Updating tree message for guild {guild_id} in channel {tree_channel_id}")
+        logger.info(f"[TREE] Updating tree message for guild {guild_id} in channel {tree_channel_id}")
         # Get or create lock for this guild
         if guild_id not in self.tree_update_locks:
             self.tree_update_locks[guild_id] = asyncio.Lock()
@@ -304,7 +307,7 @@ class CommunityCog(commands.Cog):
                     try:
                         channel = await self.bot.fetch_channel(tree_channel_id)
                     except Exception as e:
-                        print(f"[TREE] Channel {tree_channel_id} not found: {e}")
+                        logger.warning(f"[TREE] Channel ... not found: {e}")
                         return
                 
                 embed = await self.create_tree_embed(guild_id)
@@ -361,9 +364,9 @@ class CommunityCog(commands.Cog):
                     try:
                         old_message = await channel.fetch_message(tree_message_id)
                         await old_message.delete()
-                        print(f"[TREE] Deleted old tree message {tree_message_id} in {channel.name}")
+                        logger.info(f"[TREE] Deleted old tree message {tree_message_id} in {channel.name}")
                     except Exception as e:
-                        print(f"[TREE] Could not delete old message: {e}")
+                        logger.warning(f"[TREE] Could not delete old message: {e}")
                 
                 # Create new message (without pinning)
                 new_message = await channel.send(embed=embed, view=view)
@@ -374,12 +377,10 @@ class CommunityCog(commands.Cog):
                     (new_message.id, guild_id)
                 )
                 
-                print(f"[TREE] Created new tree message {new_message.id} in {channel.name}")
+                logger.info(f"[TREE] Created new tree message {new_message.id} in {channel.name}")
             
             except Exception as e:
-                print(f"[TREE] Error updating tree message: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error(f"[TREE] Error updating tree message: {e}", exc_info=True)
 
     async def process_contribution(self, interaction: discord.Interaction, amount: int):
         """Process seed contribution"""
@@ -388,7 +389,7 @@ class CommunityCog(commands.Cog):
             try:
                 await interaction.response.defer(ephemeral=False)
             except Exception as e:
-                print(f"[TREE] Error deferring response: {e}")
+                logger.error(f"[TREE] Error deferring response: {e}", exc_info=True)
                 return
         
         try:
@@ -412,11 +413,11 @@ class CommunityCog(commands.Cog):
             # Deduct seeds
             from database_manager import add_seeds
             await add_seeds(user_id, -amount)
-            print(
+            logger.info(
                 f"[TREE] [CONTRIBUTE_DEBIT] user_id={user_id} seed_change=-{amount} "
                 f"balance_before={balance_before} balance_after={new_balance}"
             )
-            print(
+            logger.info(
                 f"[TREE] [CONTRIBUTE_DEBIT] user_id={user_id} seed_change=-{amount} "
                 f"balance_before={balance_before} balance_after={new_balance}"
             )
@@ -431,7 +432,7 @@ class CommunityCog(commands.Cog):
                     ephemeral=True
                 )
                 await add_seeds(user_id, amount)
-                print(
+                logger.info(
                     f"[TREE] [REFUND] user_id={user_id} seed_change=+{amount} reason=tree_maxed"
                 )
                 return
@@ -478,15 +479,13 @@ class CommunityCog(commands.Cog):
             if tree_channel_id:
                 await self.update_or_create_pin_message(guild_id, tree_channel_id)
             
-            print(
+            logger.info(
                 f"[TREE] [CONTRIBUTE] user_id={user_id} username={interaction.user.name} "
                 f"seed_change=-{amount} balance_after={new_balance} tree_level={new_level} total_contrib={new_total}"
             )
         
         except Exception as e:
-            print(f"[TREE] Error in process_contribution: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[TREE] Error in process_contribution: {e}", exc_info=True)
             try:
                 await interaction.followup.send(
                     f"Có lỗi xảy ra: {str(e)}",
@@ -535,7 +534,7 @@ class CommunityCog(commands.Cog):
             await self.update_or_create_pin_message(guild_id, tree_channel_id)
         
         except Exception as e:
-            print(f"[TREE] Error in on_message: {e}")
+            logger.error(f"[TREE] Error in on_message: {e}", exc_info=True)
 
     @app_commands.command(name="gophat", description="Góp Hạt nuôi cây server")
     @app_commands.describe(amount="Số hạt muốn góp (tuỳ chọn)")
@@ -714,7 +713,7 @@ class CommunityCog(commands.Cog):
                     await member.add_roles(role)
                     role_mention = f"Đã cấp role **{role_name}** cho **{top1_user_obj.name}** và thưởng tổng cộng 13000 hạt (10000 + 3000 bonus)!"
             except Exception as e:
-                print(f"[TREE] Error creating role: {e}")
+                logger.error(f"[TREE] Error creating role: {e}", exc_info=True)
                 role_mention = f"Không thể cấp role cho {top1_user_obj.name if top1_user_obj else f'User {top1_user_id}'}"
         
         # Create top contributors text
@@ -785,7 +784,7 @@ class CommunityCog(commands.Cog):
         except:
             pass
         
-        print(f"[TREE] HARVEST EVENT - Season {season} completed! Top1: {top1_user_id} ({top1_exp} exp), Contributors: {len(all_contributors)}")
+        logger.info(f"[TREE] HARVEST EVENT - Season {season} completed! Top1: {top1_user_id} ({top1_exp} exp), Contributors: {len(all_contributors)}")
 
 async def setup(bot):
     await bot.add_cog(CommunityCog(bot))

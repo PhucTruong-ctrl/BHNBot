@@ -51,7 +51,7 @@ def init_database():
                 )''')
 
     # 3. CORE: INVENTORY
-    # Using item_id to match database_manager.py (NOT item_name)
+    # Using item_id to match database_manager.py (NOT item_id)
     c.execute('''CREATE TABLE IF NOT EXISTS inventory (
                     user_id INTEGER,
                     item_id TEXT, -- Khớp với key trong constants.py

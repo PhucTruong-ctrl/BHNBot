@@ -13,6 +13,9 @@ from .engine.game import WerewolfGame
 from .engine.manager import WerewolfManager
 from .roles.base import Expansion
 from database_manager import get_server_config
+from core.logger import setup_logger
+
+logger = setup_logger("WerewolfCog", "cogs/werewolf/werewolf.log")
 
 EXPANSION_ALIASES = {
     "newmoon": Expansion.NEW_MOON,
@@ -72,7 +75,7 @@ class WerewolfCog(commands.Cog):
                 await ctx.send("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", delete_after=8)
                 return
         except Exception as e:
-            print(f"Error checking NoiTu channel: {e}")
+            logger.error(f"Error checking NoiTu channel: {e}", exc_info=True)
         
         existing = self.manager.get_game(ctx.guild.id, voice_channel_id) if ctx.guild else None
         if existing and not existing.is_finished:
@@ -149,7 +152,7 @@ class WerewolfCog(commands.Cog):
                 await interaction.response.send_message("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", ephemeral=True)
                 return
         except Exception as e:
-            print(f"Error checking NoiTu channel: {e}")
+            logger.error(f"Error checking NoiTu channel: {e}", exc_info=True)
         
         await interaction.response.defer()
         

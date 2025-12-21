@@ -9,90 +9,90 @@ from database_manager import increment_stat
 # This replaces the long if/elif chain
 
 async def handle_lose_worm(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Người chơi mất mồi và mẻ câu."""
+    """Handler: User loses bait and catch."""
     result["lose_worm"] = True
     result["lose_catch"] = True
     return result
 
 async def handle_lose_catch(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Mất mẻ câu."""
+    """Handler: Lose catch."""
     result["lose_worm"] = True
     result["lose_catch"] = True
     return result
 
 async def handle_thief(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Mèo/rái cá - cướp con cá to nhất."""
+    """Handler: Thief (Cat/Otter) - steals the biggest fish."""
     result["custom_effect"] = "cat_steal"
     result["lose_worm"] = True
     return result
 
 def handle_lose_money(amount: int):
-    """Factory: Tạo handler để trừ tiền."""
+    """Factory: Creates a handler to deduct money."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["lose_money"] = amount
         return result
     return handler
 
 def handle_cooldown(seconds: int):
-    """Factory: Tạo handler để thêm cooldown."""
+    """Factory: Creates a handler to add cooldown."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["cooldown_increase"] = seconds
         return result
     return handler
 
 async def handle_durability_hit(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Mất độ bền."""
+    """Handler: Durability loss."""
     result["custom_effect"] = "durability_hit"
     result["durability_loss"] = -5
     return result
 
 async def handle_lose_all_bait(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Mất hết mồi (say tàu)."""
+    """Handler: Lose all bait (Sea Sickness)."""
     result["custom_effect"] = "lose_all_bait"
     return result
 
 def handle_gain_money(amount_min: int, amount_max: int):
-    """Factory: Tạo handler để thêm tiền ngẫu nhiên."""
+    """Factory: Creates a handler to add random money."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["gain_money"] = random.randint(amount_min, amount_max)
         return result
     return handler
 
 def handle_gain_money_fixed(amount: int):
-    """Factory: Tạo handler để thêm tiền cố định."""
+    """Factory: Creates a handler to add fixed money."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["gain_money"] = amount
         return result
     return handler
 
 async def handle_lose_money_percent(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Phạt % tài sản (rắn cắn)."""
+    """Handler: Deduct % of assets (Snake Bite)."""
     result["custom_effect"] = "snake_bite"
     return result
 
 def handle_gain_items(items: dict):
-    """Factory: Tạo handler để thêm vật phẩm."""
+    """Factory: Creates a handler to add items."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["gain_items"] = items
         return result
     return handler
 
 async def handle_gain_random_map_piece(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Nhận mảnh bản đồ ngẫu nhiên."""
+    """Handler: Receive a random map piece."""
     map_pieces = ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]
     piece = random.choice(map_pieces)
     result["gain_items"] = {piece: 1}
     return result
 
 def handle_bonus_catch(count: int):
-    """Factory: Tạo handler để thêm cá bonus."""
+    """Factory: Creates a handler for bonus fish catch."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["bonus_catch"] = count
         return result
     return handler
 
 def handle_duplicate_catch(multiplier: int):
-    """Factory: Tạo handler để nhân đôi cá."""
+    """Factory: Creates a handler to multiply caught fish."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
         result["duplicate_multiplier"] = multiplier
         return result
@@ -104,27 +104,27 @@ async def handle_reset_cooldown(result: dict, event_data: dict, **kwargs) -> dic
     return result
 
 async def handle_restore_durability(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Phục hồi độ bền."""
+    """Handler: Restore durability."""
     result["custom_effect"] = "restore_durability"
     return result
 
 async def handle_lucky_buff(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Buff may mắn."""
+    """Handler: Lucky buff."""
     result["custom_effect"] = "lucky_buff"
     return result
 
 async def handle_avoid_bad_event(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Sixth sense - tránh sự kiện xấu."""
+    """Handler: Sixth sense - avoid bad events."""
     result["custom_effect"] = "sixth_sense"
     return result
 
 async def handle_global_reset(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Global reset (cấp 3+)."""
+    """Handler: Global reset (Level 3+)."""
     result["custom_effect"] = "global_reset"
     return result
 
 async def handle_bet_win(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Cược thắng."""
+    """Handler: Bet win."""
     amount = random.randint(200, 400)
     result["gain_money"] = amount
     if "user_id" in kwargs:
@@ -132,7 +132,7 @@ async def handle_bet_win(result: dict, event_data: dict, **kwargs) -> dict:
     return result
 
 async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Cược thua."""
+    """Handler: Bet loss."""
     amount = random.randint(50, 150)
     result["lose_money"] = amount
     if "user_id" in kwargs:
@@ -177,7 +177,7 @@ async def handle_lag_debuff(result: dict, event_data: dict, **kwargs) -> dict:
 # --- CÁC HANDLER MỚI ---
 
 async def handle_audit_check(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Sao Kê - Trừ % nếu giàu, tặng tiền nếu nghèo."""
+    """Handler: Audit Check - Tax the rich, support the poor."""
     if "user_id" in kwargs:
         from database_manager import get_user_balance
         balance = await get_user_balance(kwargs["user_id"])
@@ -195,11 +195,11 @@ async def handle_audit_check(result: dict, event_data: dict, **kwargs) -> dict:
     return result
 
 async def handle_blind_box(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Hộp Mù - Random kết quả."""
+    """Handler: Blind Box - Random outcome."""
     outcome = random.choices(["trash", "money", "fee"], weights=[40, 30, 30])[0]
     
     if outcome == "trash":
-        result["convert_to_trash"] = True  # Giả định code chính có xử lý cờ này để biến cá thành rác
+        result["convert_to_trash"] = True  # Assumes main logic handles this flag to convert fish to trash
         result["message"] += "\n📦 Mở ra toàn giấy lộn! (Nhận được Rác)"
     elif outcome == "money":
         result["gain_money"] = 500
@@ -210,35 +210,35 @@ async def handle_blind_box(result: dict, event_data: dict, **kwargs) -> dict:
     return result
 
 async def handle_flexing(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Flexing - Tăng tiền nhưng hỏng cần."""
+    """Handler: Flexing - Gain money but lose durability."""
     result["gain_money"] = 150
-    result["durability_loss"] = -20  # Trừ nhiều độ bền
+    result["durability_loss"] = -20  # Heavy durability loss
     return result
 
 async def handle_free_cast(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Quên lắp mồi - Không tốn mồi."""
-    result["gain_items"] = {"worm": 1}  # Trả lại 1 mồi (coi như không mất)
+    """Handler: Forgot Bait - No bait cost."""
+    result["gain_items"] = {"worm": 1}  # Refund 1 bait (treated as no cost)
     return result
 
 async def handle_isekai(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Isekai - Nhận Cá Isekai + Cooldown 10 phút."""
-    # Nhận cá legendary từ thế giới khác
+    """Handler: Isekai - Receive Isekai Fish + 10 minute cooldown."""
+    # Receive legendary fish from another world
     result["gain_items"] = {"ca_isekai": 1}
-    result["cooldown_increase"] = 600  # 10 phút choáng
+    result["cooldown_increase"] = 600  # 10 minute stun
     return result
 
 async def handle_inflation(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Bão giá - Debuff giảm giá bán."""
+    """Handler: Inflation - Price drop debuff."""
     result["custom_effect"] = "market_crash"
     result["debuff_type"] = "price_drop"
     result["debuff_duration"] = 600
     return result
 
 async def handle_hack_map(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Hack Map - Nhận nhiều cá + Ban."""
-    # Logic cộng item cần xử lý ở main cog, ở đây trả về dict
+    """Handler: Hack Map - Bonus catch + Ban penalty."""
+    # Item addition logic handled in main cog, this returns dict
     result["bonus_catch"] = 3 
-    result["cooldown_increase"] = 300  # Phạt 5 phút
+    result["cooldown_increase"] = 300  # 5 minute penalty
     return result
 
 # ==================== EFFECT HANDLERS MAPPING ====================

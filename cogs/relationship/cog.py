@@ -10,8 +10,9 @@ from database_manager import db_manager, remove_item, add_item, get_top_affinity
 from cogs.shop import SHOP_ITEMS, VIETNAMESE_TO_ITEM_KEY
 from .constants import *
 from .helpers import get_affinity_title, get_pet_state, calculate_next_level_xp
+from core.logger import setup_logger
 
-logger = logging.getLogger("relationship")
+logger = setup_logger("RelationshipCog", "cogs/relationship.log")
 
 class ConfirmView(discord.ui.View):
     def __init__(self, inviter, invitee):
@@ -398,11 +399,16 @@ class RelationshipCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Auto add affinity when users interact (reply/mention)"""
+        """Auto add affinity when users interact (reply/mention) - excludes bot commands"""
         if message.author.bot:
             return
         
         if not message.guild:
+            return
+        
+        # CRITICAL FIX: Skip affinity updates when user invokes a command
+        # Check message prefix to avoid concurrent DB writes
+        if message.content.startswith('!') or message.content.startswith('/'):
             return
         
         # Check if message is a reply

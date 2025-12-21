@@ -11,6 +11,9 @@ import discord
 from ..roles.base import Expansion
 from .game import WerewolfGame
 from database_manager import db_manager, get_server_config
+from core.logger import setup_logger
+
+logger = setup_logger("WerewolfManager", "cogs/werewolf/werewolf.log")
 
 DB_PATH = "./data/database.db"
 
@@ -148,9 +151,9 @@ class WerewolfManager:
                     (guild_id, "werewolf", voice_channel_id, game.channel.id, game_state_json)
                 )
             
-            print(f"[Werewolf] GAME_SAVED [Guild {guild_id}] Phase: {game.phase.name}, Night: {game.night_number}, Day: {game.day_number}, Players: {len(game.players)}")
+            logger.info(f"[Werewolf] GAME_SAVED [Guild {guild_id}] Phase: {game.phase.name}, Night: {game.night_number}, Day: {game.day_number}, Players: {len(game.players)}")
         except Exception as e:
-            print(f"[Werewolf] ERROR saving game state: {e}")
+            logger.error(f"[Werewolf] ERROR saving game state: {e}", exc_info=True)
 
     async def restore_game_state(self, guild_id: int) -> List[dict]:
         """Retrieve saved Werewolf game states from database (returns list of state dicts)"""
@@ -170,8 +173,8 @@ class WerewolfManager:
                 states.append(game_state)
             
             if states:
-                print(f"[Werewolf] GAME_STATES_LOADED [Guild {guild_id}] {len(states)} game(s)")
+                logger.info(f"[Werewolf] GAME_STATES_LOADED [Guild {guild_id}] {len(states)} game(s)")
             return states
         except Exception as e:
-            print(f"[Werewolf] ERROR loading game states: {e}")
+            logger.error(f"[Werewolf] ERROR loading game states: {e}", exc_info=True)
             return []

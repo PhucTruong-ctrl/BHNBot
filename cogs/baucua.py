@@ -11,8 +11,12 @@ from database_manager import (
     add_seeds,
     get_or_create_user,
     batch_update_seeds,
+    batch_update_seeds,
     get_stat
 )
+from core.logger import setup_logger
+
+logger = setup_logger("BauCuaCog", "cogs/baucua.log")
 
 DB_PATH = "./data/database.db"
 
@@ -123,7 +127,7 @@ class BauCuaCog(commands.Cog):
         await add_seeds(user_id, amount)
         balance_after = balance_before + amount
 
-        print(
+        logger.info(
             f"[BAUCUA] [SEED_UPDATE] user_id={user_id} seed_change={amount} "
             f"balance_before={balance_before} balance_after={balance_after}"
         )
@@ -216,7 +220,7 @@ class BauCuaCog(commands.Cog):
         except Exception as e:
             # If bets dict update fails, refund the user
             await self.update_seeds(user_id, bet_amount)
-            print(f"[BAUCUA] Error adding bet: {e}")
+            logger.error(f"[BAUCUA] Error adding bet: {e}", exc_info=True)
             await interaction.followup.send("❌ Lỗi khi xử lý cược! Tiền đã hoàn lại.", ephemeral=True)
             return
         
@@ -224,7 +228,7 @@ class BauCuaCog(commands.Cog):
             f"Bạn đã cược **{bet_amount} hạt** vào **{ANIMALS[animal_key]['name']}** {ANIMALS[animal_key]['emoji']}",
             ephemeral=True
         )
-        print(f"[BAUCUA] [BET] {interaction.user.name} (user_id={user_id}) seed_change=-{bet_amount} animal={animal_key} action=placed_bet")
+        logger.info(f"[BAUCUA] [BET] {interaction.user.name} (user_id={user_id}) seed_change=-{bet_amount} animal={animal_key} action=placed_bet")
     
     async def animate_roll(self, message: discord.Message, duration: float = 3.0):
         """Animate the roll for duration seconds"""
@@ -286,7 +290,7 @@ class BauCuaCog(commands.Cog):
                 sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
                 await db_manager.execute(sql_insert, (user_id, game_id, stat_key, value))
         except Exception as e:
-            print(f"[BAUCUA] Error updating stat {stat_key} for {user_id}: {e}")
+            logger.error(f"[BAUCUA] Error updating stat {stat_key} for {user_id}: {e}", exc_info=True)
     
     async def update_game_results_batch(self, channel_id: int, result1: str, result2: str, result3: str, bets_data: dict = None):
         """OPTIMIZED: Update seed balances AND statistics for achievements"""
@@ -350,7 +354,7 @@ class BauCuaCog(commands.Cog):
         # 1. Cập nhật tiền (Batch update seeds)
         if updates:
             await batch_update_seeds(updates)
-            print(f"[BAUCUA] [RESULTS] Batch updated seeds for {len(updates)} users")
+            logger.info(f"[BAUCUA] [RESULTS] Batch updated seeds for {len(updates)} users")
 
         # 2. Cập nhật Stats (Cần viết loop hoặc batch update tùy database manager của bạn)
         # Đây là đoạn logic quan trọng để kích hoạt thành tựu
@@ -389,7 +393,7 @@ class BauCuaCog(commands.Cog):
                         await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_triple_wins", current_triple, channel)
                         
             except Exception as e:
-                print(f"[BAUCUA] Error updating stats for {user_id}: {e}")
+                logger.error(f"[BAUCUA] Error updating stats for {user_id}: {e}", exc_info=True)
     
     async def get_stat_value(self, user_id, stat_key):
         """Get current stat value"""
@@ -398,7 +402,7 @@ class BauCuaCog(commands.Cog):
             row = await db_manager.fetchone("SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?", (user_id, game_id, stat_key))
             return row[0] if row else 0
         except Exception as e:
-            print(f"[BAUCUA] Error getting stat {stat_key} for {user_id}: {e}")
+            logger.error(f"[BAUCUA] Error getting stat {stat_key} for {user_id}: {e}", exc_info=True)
             return 0
     
     async def create_summary_text(self, result1: str, result2: str, result3: str, bets_data: dict = None):
@@ -505,7 +509,7 @@ class BauCuaCog(commands.Cog):
             else:
                 game_message = await ctx.send(embed=embed, view=view)
             
-            print(f"[BAUCUA] Game {game_id} started in channel {channel.name}")
+            logger.info(f"[BAUCUA] Game {game_id} started in channel {channel.name}")
             
             # Countdown betting phase (45 seconds)
             betting_duration = 45
@@ -540,12 +544,12 @@ class BauCuaCog(commands.Cog):
             # Check if anyone bet
             if not self.active_games[channel_id]['bets']:
                 await channel.send("⚠️ Không ai cược! Game bị hủy.")
-                print(f"[BAUCUA] [CANCELLED] Game {game_id} no_bets")
+                logger.info(f"[BAUCUA] [CANCELLED] Game {game_id} no_bets")
                 del self.active_games[channel_id]
                 return
             
             bets_count = sum(len(bets) for bets in self.active_games[channel_id]['bets'].values())
-            print(f"[BAUCUA] [START] Game {game_id} players={len(self.active_games[channel_id]['bets'])} total_bets={bets_count}")
+            logger.info(f"[BAUCUA] [START] Game {game_id} players={len(self.active_games[channel_id]['bets'])} total_bets={bets_count}")
             
             # Start rolling animation
             await asyncio.sleep(1)  # Small delay before rolling
@@ -574,7 +578,7 @@ class BauCuaCog(commands.Cog):
             )
             summary_send_time = time.time()
             delay_ms = (summary_send_time - result_stop_time) * 1000
-            print(f"[BAUCUA] [SUMMARY] Displayed results for game {game_id} delay_ms={delay_ms:.1f}")
+            logger.info(f"[BAUCUA] [SUMMARY] Displayed results for game {game_id} delay_ms={delay_ms:.1f}")
             
             # Clean up game state immediately
             if channel_id in self.active_games:
@@ -583,12 +587,10 @@ class BauCuaCog(commands.Cog):
             # Update game results in background with bets data (OPTIMIZED: batch update)
             asyncio.create_task(self.update_game_results_batch(channel_id, result1, result2, result3, bets_data))
             
-            print(f"[BAUCUA] [COMPLETE] game_id={game_id} channel={channel.name}")
+            logger.info(f"[BAUCUA] [COMPLETE] game_id={game_id} channel={channel.name}")
         
         except Exception as e:
-            print(f"[BAUCUA] Error: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[BAUCUA] Error: {e}", exc_info=True)
             
             # Clean up on error
             if is_slash:

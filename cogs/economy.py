@@ -13,20 +13,27 @@ from database_manager import (
     get_leaderboard,
     batch_update_seeds
 )
+from core.logger import setup_logger
+
+logger = setup_logger("EconomyCog", "cogs/economy.log")
 
 DB_PATH = "./data/database.db"
 
 # Constants
-DAILY_BONUS = 10  # Hạt nhận từ /chao
+DAILY_BONUS = 10  # Seeds received from /chao
 DAILY_WINDOW_START = 5  # 5 AM
 DAILY_WINDOW_END = 12  # 12 AM
 CHAT_REWARD_MIN = 1
 CHAT_REWARD_MAX = 3
 CHAT_REWARD_COOLDOWN = 60  # seconds
 VOICE_REWARD_INTERVAL = 10  # minutes
-VOICE_REWARD = 2  # Hạt mỗi 10 phút trong voice
+VOICE_REWARD = 2  # Seeds per 10 minutes in voice
 
 class EconomyCog(commands.Cog):
+    """Cog handling the economy system.
+
+    Manages daily rewards, chat/voice activity rewards, and leaderboards.
+    """
     def __init__(self, bot):
         self.bot = bot
         self.chat_cooldowns = {}  # {user_id: last_reward_time}
@@ -40,11 +47,26 @@ class EconomyCog(commands.Cog):
 
     # ==================== HELPER FUNCTIONS ====================
     async def get_or_create_user_local(self, user_id: int, username: str):
-        """Get or create user in users table"""
+        """Retrieves or creates a user in the local database wrapper.
+
+        Args:
+            user_id (int): The Discord user ID.
+            username (str): The username.
+
+        Returns:
+            tuple: User data.
+        """
         return await get_or_create_user(user_id, username)
 
     async def is_harvest_buff_active(self, guild_id: int) -> bool:
-        """Check if 24h harvest buff is active"""
+        """Checks if the 24h harvest buff is active for the guild.
+
+        Args:
+            guild_id (int): The Guild ID.
+
+        Returns:
+            bool: True if buff is active and not expired.
+        """
         try:
             result = await db_manager.fetchone(
                 "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
@@ -67,7 +89,7 @@ class EconomyCog(commands.Cog):
         balance_before = await get_user_balance(user_id)
         await add_seeds(user_id, amount)
         balance_after = balance_before + amount
-        print(
+        logger.info(
             f"[ECONOMY] [SEED_UPDATE] user_id={user_id} seed_change={amount} "
             f"balance_before={balance_before} balance_after={balance_after}"
         )
@@ -81,7 +103,11 @@ class EconomyCog(commands.Cog):
         return await get_leaderboard(limit)
 
     async def update_last_daily(self, user_id: int):
-        """Update last daily reward time"""
+        """Updates the timestamp of the last daily reward claim.
+
+        Args:
+            user_id (int): The Discord user ID.
+        """
         await db_manager.modify(
             "UPDATE users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
             (user_id,)
@@ -611,7 +637,7 @@ class EconomyCog(commands.Cog):
         embed.set_footer(text=f"Thực hiện bởi {ctx.author.name}")
         
         await ctx.send(embed=embed)
-        print(
+        logger.info(
             f"[ADMIN] [SEED_GRANT] actor={ctx.author.name} actor_id={ctx.author.id} "
             f"target={user.name} target_id={user.id} amount={amount}"
         )
@@ -650,7 +676,7 @@ class EconomyCog(commands.Cog):
         embed.set_footer(text=f"Thực hiện bởi {interaction.user.name}")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
-        print(
+        logger.info(
             f"[ADMIN] [SEED_GRANT] actor={interaction.user.name} actor_id={interaction.user.id} "
             f"target={user.name} target_id={user.id} amount={amount}"
         )
@@ -659,11 +685,16 @@ class EconomyCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Reward seeds for chat activity"""
+        """Reward seeds for chat activity (excludes bot commands)"""
         if message.author.bot:
             return
         
         if not message.guild:
+            return
+        
+        # CRITICAL FIX: Skip chat rewards when user invokes a command
+        # Check if message starts with command prefix to avoid concurrent DB writes
+        if message.content.startswith('!') or message.content.startswith('/'):
             return
         
         # Get excluded channels
@@ -693,7 +724,7 @@ class EconomyCog(commands.Cog):
         if is_buff_active:
             reward = reward * 2
         
-        print(
+        logger.info(
             f"[ECONOMY] [CHAT_REWARD] user_id={user_id} username={message.author.name} "
             f"reward={reward} buff_active={is_buff_active}"
         )
@@ -759,7 +790,7 @@ class EconomyCog(commands.Cog):
         
         # Log with context
         location = "forum_post" if is_forum_post else "message"
-        print(
+        logger.info(
             f"[ECONOMY] [REACTION_REWARD] user_id={author_id} username={message.author.name} "
             f"reward={reward} buff_active={is_buff_active} location={location}"
         )
@@ -789,14 +820,14 @@ class EconomyCog(commands.Cog):
                         if is_buff_active:
                             reward = reward * 2
                         
-                        print(
+                        logger.info(
                             f"[ECONOMY] [VOICE_REWARD] user_id={member.id} username={member.name} "
                             f"reward={reward} buff_active={is_buff_active}"
                         )
                         await self.add_seeds_local(member.id, reward)
         
         except Exception as e:
-            print(f"[ECONOMY] Voice reward error: {e}")
+            logger.error(f"[ECONOMY] Voice reward error: {e}", exc_info=True)
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
     async def voice_affinity_task(self):
@@ -820,15 +851,13 @@ class EconomyCog(commands.Cog):
                         for member2 in speaking_members[i+1:]:
                             # Add 1 affinity point per person pair in voice
                             await relationship_cog.add_affinity(member1.id, member2.id, 1)
-                            print(
+                            logger.info(
                                 f"[AFFINITY] [VOICE] user1_id={member1.id} user1={member1.name} "
                                 f"user2_id={member2.id} user2={member2.name} affinity_change=+1"
                             )
         
         except Exception as e:
-            print(f"[ECONOMY] Voice affinity task error: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[ECONOMY] Voice affinity task error: {e}", exc_info=True)
 
     @voice_reward_task.before_loop
     async def before_voice_reward_task(self):

@@ -11,10 +11,14 @@ from database_manager import (
 )
 from .fishing.legendary_quest_helper import is_legendary_caught
 from .fishing.consumables import CONSUMABLE_ITEMS
+from core.logger import setup_logger
+
+logger = setup_logger("ShopCog", "cogs/shop.log")
 
 DB_PATH = "./data/database.db"
 
 # Shop Items Definition
+# Maps item keys to their metadata (name, cost, emoji, description)
 SHOP_ITEMS = {
     "cafe": {"name": "Cà phê", "cost": 50, "emoji": "☕", "description": "Đồ uống yêu thích của mọi người"},
     "flower": {"name": "Hoa", "cost": 75, "emoji": "🌹", "description": "Bông hoa đẹp xinh để tặng"},
@@ -46,35 +50,70 @@ SHOP_ITEMS = {
 VIETNAMESE_TO_ITEM_KEY = {item_info['name']: key for key, item_info in SHOP_ITEMS.items()}
 
 class ShopCog(commands.Cog):
+    """Cog for managing the shop system, purchases, and currency transactions.
+
+    Handles both slash commands and prefix commands for buying items.
+    """
     def __init__(self, bot):
         self.bot = bot
 
     # ==================== HELPER FUNCTIONS ====================
 
     async def get_seeds(self, user_id: int) -> int:
-        """Get user's current seeds"""
+        """Retrieves user's current seed balance (currency).
+
+        Args:
+            user_id (int): The Discord user ID.
+
+        Returns:
+            int: The current balance.
+        """
         return await get_user_balance(user_id)
 
     async def reduce_seeds(self, user_id: int, amount: int):
-        """Reduce user's seeds"""
+        """Deducts seeds from user's balance.
+
+        Args:
+            user_id (int): The Discord user ID.
+            amount (int): The amount to deduct.
+        """
         balance_before = await get_user_balance(user_id)
         await add_seeds(user_id, -amount)
         balance_after = balance_before - amount
-        print(
+        logger.info(
             f"[SHOP] [SEED_UPDATE] user_id={user_id} seed_change=-{amount} "
             f"balance_before={balance_before} balance_after={balance_after}"
         )
 
-    async def add_item_local(self, user_id: int, item_name: str, quantity: int = 1):
-        """Add item to user's inventory"""
-        await add_item(user_id, item_name, quantity)
+    async def add_item_local(self, user_id: int, item_id: str, quantity: int = 1):
+        """Adds an item to the user's inventory.
 
-    async def remove_item(self, user_id: int, item_name: str, quantity: int = 1) -> bool:
-        """Remove item from user's inventory. Return True if successful"""
-        return await remove_item(user_id, item_name, quantity)
+        Args:
+            user_id (int): The Discord user ID.
+            item_id (str): The unique key of the item.
+            quantity (int, optional): The amount to add. Defaults to 1.
+        """
+        await add_item(user_id, item_id, quantity)
+
+    async def remove_item(self, user_id: int, item_id: str, quantity: int = 1) -> bool:
+        """Removes an item from the user's inventory.
+
+        Args:
+            user_id (int): The Discord user ID.
+            item_id (str): The item key.
+            quantity (int): The amount to remove.
+
+        Returns:
+            bool: True if successful.
+        """
+        return await remove_item(user_id, item_id, quantity)
 
     async def get_inventory(self, user_id: int) -> dict:
-        """Get user's inventory"""
+        """Retrieves user's inventory data.
+
+        Returns:
+            dict: The inventory dictionary {item_id: quantity}.
+        """
         return await get_inventory(user_id)
 
     # ==================== COMMANDS ====================
@@ -85,7 +124,13 @@ class ShopCog(commands.Cog):
         soluong="Số lượng muốn mua (mặc định: 1)"
     )
     async def buy_slash(self, interaction: discord.Interaction, item: str = None, soluong: int = 1):
-        """Buy item from shop"""
+        """Slash command: Buy items from the shop.
+
+        Args:
+            interaction (discord.Interaction): The interaction object.
+            item (str, optional): The name of the item to buy.
+            soluong (int, optional): The quantity. Defaults to 1.
+        """
         await interaction.response.defer(ephemeral=True)
         
         # If no item specified, show menu
@@ -146,19 +191,22 @@ class ShopCog(commands.Cog):
         embed.add_field(name="💰 Trừ", value=f"{total_cost} hạt", inline=True)
         embed.add_field(name="💾 Còn lại", value=f"{seeds - total_cost} hạt", inline=True)
         
-        print(f"[SHOP] [BUY] user_id={user_id} item={item_key} quantity={soluong} total_cost={total_cost} balance_before={seeds} balance_after={seeds - total_cost}")
+        logger.info(f"[SHOP] [BUY] user_id={user_id} item={item_key} quantity={soluong} total_cost={total_cost} balance_before={seeds} balance_after={seeds - total_cost}")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
         
         new_balance = seeds - total_cost
-        print(
+        logger.info(
             f"[SHOP] [PURCHASE] user_id={user_id} username={interaction.user.name} "
             f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
         )
 
     @commands.command(name="mua", description="Mua quà & vật phẩm - Dùng !mua [item_key] [số_lượng]")
     async def buy_prefix(self, ctx, item: str = None, *, soluong_or_item: str = None):
-        """Buy item from shop via prefix - Usage: !mua [item_name] [quantity]"""
+        """Prefix command: Buy items from the shop.
+        
+        Usage: !mua [item_id] [quantity]
+        """
         # If no item specified, show menu
         if item is None:
             await self._show_shop_menu(ctx, is_slash=False)
@@ -220,7 +268,7 @@ class ShopCog(commands.Cog):
         
         await ctx.send(embed=embed)
         new_balance = seeds - total_cost
-        print(
+        logger.info(
             f"[SHOP] [PURCHASE] user_id={user_id} username={ctx.author.name} "
             f"item_key={item_key} quantity={soluong} seed_change=-{total_cost} balance_after={new_balance}"
         )
@@ -233,7 +281,7 @@ class ShopCog(commands.Cog):
         count="Số lượng muốn thêm (mặc định: 1)"
     )
     async def themitem_slash(self, interaction: discord.Interaction, user: discord.User, item_key: str, count: int = 1):
-        """Add item to user's inventory (Admin Only)"""
+        """Slash command: Admin tool to add items to a user (Admin Only)."""
         # await interaction.response.defer(ephemeral=True)
         
         # Validate count
@@ -254,11 +302,11 @@ class ShopCog(commands.Cog):
                 color=discord.Color.green()
             )
             
-            print(f"[ADMIN] [ADD_ITEM] admin_id={interaction.user.id} target_user_id={user.id} item_key={item_key} count={count}")
+            logger.info(f"[ADMIN] [ADD_ITEM] admin_id={interaction.user.id} target_user_id={user.id} item_key={item_key} count={count}")
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
-            print(f"[SHOP] Error adding item {item_key} to {user.id}: {e}")
+            logger.error(f"[SHOP] Error adding item {item_key} to {user.id}: {e}")
             await interaction.response.send_message(
                 "❌ Có lỗi xảy ra khi thêm item!",
                 ephemeral=True
@@ -267,7 +315,10 @@ class ShopCog(commands.Cog):
     @commands.command(name="themitem", description="Thêm item cho user (Admin Only) - Dùng !themitem @user item_key [count]")
     @commands.has_permissions(administrator=True)
     async def themitem_prefix(self, ctx, user: discord.User, item_key: str, count: int = 1):
-        """Add item to user's inventory via prefix command (Admin Only)"""
+        """Prefix command: Admin tool to add items to a user.
+        
+        Usage: !themitem @user item_key [count]
+        """
         
         # Validate count
         if count <= 0:
@@ -287,10 +338,10 @@ class ShopCog(commands.Cog):
         )
         
         await ctx.send(embed=embed)
-        print(f"[ADMIN] [ADD_ITEM] admin_id={ctx.author.id} target_user_id={user.id} item_key={item_key} count={count}")
+        logger.info(f"[ADMIN] [ADD_ITEM] admin_id={ctx.author.id} target_user_id={user.id} item_key={item_key} count={count}")
 
     async def _show_shop_menu(self, ctx_or_interaction, is_slash: bool):
-        """Show shop menu with all items"""
+        """Displays the shop menu with categorized items."""
         embed = discord.Embed(
             title="🏪 MENU MUA ĐỒ",
             color=discord.Color.gold()

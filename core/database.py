@@ -5,10 +5,58 @@ import aiosqlite
 import asyncio
 import json
 import os
+import sqlite3
+import functools
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 
-from configs.settings import DB_PATH, DB_TIMEOUT
+from configs.settings import DB_PATH, DB_TIMEOUT, DB_MAX_RETRIES, DB_RETRY_DELAY
+from core.logger import setup_logger
+
+# Initialize Logger
+logger = setup_logger("CoreDB", "core/database.log")
+
+
+def retry_on_db_lock(max_retries: int = DB_MAX_RETRIES, initial_delay: float = DB_RETRY_DELAY):
+    """Decorator to retry database operations on 'database is locked' errors.
+    
+    Uses exponential backoff to handle concurrent write conflicts gracefully.
+    
+    Args:
+        max_retries (int): Maximum number of retry attempts.
+        initial_delay (float): Initial delay in seconds, doubles after each retry.
+    
+    Returns:
+        Decorated function with retry logic.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            delay = initial_delay
+            last_exception = None
+            
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    if "database is locked" in str(e).lower():
+                        last_exception = e
+                        if attempt < max_retries - 1:
+                            logger.warning(f"[RETRY] Database locked, attempt {attempt + 1}/{max_retries}, retrying in {delay:.2f}s...")
+                            await asyncio.sleep(delay)
+                            delay *= 2  # Exponential backoff
+                        else:
+                            logger.error(f"[RETRY] Database locked after {max_retries} attempts, giving up")
+                    else:
+                        raise  # Re-raise non-lock errors immediately
+                except Exception as e:
+                    raise  # Re-raise other exceptions immediately
+            
+            # If we exhausted all retries, raise the last exception
+            raise last_exception
+        
+        return wrapper
+    return decorator
 
 
 async def get_db_connection(db_path: str = DB_PATH):
@@ -43,6 +91,19 @@ class DatabaseManager:
         self.cache: Dict[str, CacheEntry] = {}
         self.batch_operations: Dict[str, List[Tuple]] = {}
         self.lock = asyncio.Lock()
+        self.db = None  # Persistent connection
+
+    async def connect(self):
+        """Initialize database connection"""
+        if not self.db:
+            self.db = await get_db_connection(self.db_path)
+            logger.info("Persistent connection established.")
+
+    async def _get_db(self):
+        """Get current connection or create new if missing"""
+        if not self.db:
+            await self.connect()
+        return self.db
 
     # ==================== CONNECTION MANAGEMENT ====================
 
@@ -54,12 +115,9 @@ class DatabaseManager:
             if not entry.is_expired():
                 return entry.data
 
-        db = await get_db_connection(self.db_path)
-        try:
-            async with db.execute(query, params) as cursor:
-                result = await cursor.fetchall()
-        finally:
-            await db.close()
+        db = await self._get_db()
+        async with db.execute(query, params) as cursor:
+            result = await cursor.fetchall()
 
         # Cache if requested
         if use_cache and cache_key:
@@ -75,12 +133,9 @@ class DatabaseManager:
             if not entry.is_expired():
                 return entry.data
 
-        db = await get_db_connection(self.db_path)
-        try:
-            async with db.execute(query, params) as cursor:
-                result = await cursor.fetchone()
-        finally:
-            await db.close()
+        db = await self._get_db()
+        async with db.execute(query, params) as cursor:
+            result = await cursor.fetchone()
 
         # Cache if requested
         if use_cache and cache_key:
@@ -88,14 +143,12 @@ class DatabaseManager:
 
         return result
 
+    @retry_on_db_lock()
     async def modify(self, query: str, params: tuple = ()):
-        """Execute INSERT/UPDATE/DELETE query"""
-        db = await get_db_connection(self.db_path)
-        try:
-            await db.execute(query, params)
-            await db.commit()
-        finally:
-            await db.close()
+        """Execute INSERT/UPDATE/DELETE query with automatic retry on lock"""
+        db = await self._get_db()
+        await db.execute(query, params)
+        await db.commit()
 
         # Invalidate relevant caches
         self._invalidate_cache_pattern(query)
@@ -108,21 +161,32 @@ class DatabaseManager:
         if "UPDATE" in query_upper or "INSERT" in query_upper or "DELETE" in query_upper:
             # Invalidate all caches for affected tables
             for key in self.cache:
-                if any(table in key.upper() for table in ["ECONOMY", "TREE", "RELATIONSHIP", "INVENTORY"]):
+                if any(table in key.upper() for table in ["ECONOMY", "TREE", "RELATIONSHIP", "INVENTORY", "USERS", "FISHING"]):
                     keys_to_delete.append(key)
+        
+        # Also clean up very old cache keys to prevent memory leak
+        for k in list(self.cache.keys()):
+            if self.cache[k].is_expired():
+                keys_to_delete.append(k)
 
-        for key in keys_to_delete:
-            del self.cache[key]
+        for key in list(set(keys_to_delete)):
+            if key in self.cache:
+                del self.cache[key]
 
+    @retry_on_db_lock()
     async def batch_modify(self, operations: List[Tuple[str, tuple]]):
-        """Execute multiple INSERT/UPDATE/DELETE in a single transaction"""
-        db = await get_db_connection(self.db_path)
-        try:
-            for query, params in operations:
-                await db.execute(query, params)
-            await db.commit()
-        finally:
-            await db.close()
+        """Execute multiple INSERT/UPDATE/DELETE in a single transaction with automatic retry on lock"""
+        db = await self._get_db()
+        # Use transaction
+        async with db.cursor() as cursor:
+            await db.execute("BEGIN")
+            try:
+                for query, params in operations:
+                    await db.execute(query, params)
+                await db.commit()
+            except Exception as e:
+                await db.rollback()
+                raise e
 
         # Invalidate caches
         for query, _ in operations:
@@ -137,6 +201,12 @@ class DatabaseManager:
         keys_to_delete = [k for k in self.cache if k.startswith(prefix)]
         for key in keys_to_delete:
             del self.cache[key]
+            
+    async def close(self):
+        """Close database connection"""
+        if self.db:
+            await self.db.close()
+            self.db = None
 
 
 # Global instance
@@ -155,10 +225,10 @@ def load_server_config(server_id: str = "default_server") -> Dict[str, Any]:
                 config = json.load(f)
                 return config.get(server_id, {})
         except Exception as e:
-            print(f"[WARNING] Failed to load server config: {e}")
+            logger.warning(f"Failed to load server config: {e}")
             return {}
     else:
-        print(f"[WARNING] Server config not found: {config_path}")
+        logger.warning(f"Server config not found: {config_path}")
         return {}
 
 
@@ -207,7 +277,7 @@ async def add_seeds(user_id: int, amount: int):
 
     # Log the change
     balance_after = balance_before + amount
-    print(f"[DB] [ADD_SEEDS] user_id={user_id} amount={amount:+d} balance_before={balance_before} balance_after={balance_after}")
+    logger.info(f"[ADD_SEEDS] user_id={user_id} amount={amount:+d} balance_before={balance_before} balance_after={balance_after}")
 
     # Clear cache
     db_manager.clear_cache_by_prefix(f"balance_{user_id}")

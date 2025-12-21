@@ -4,8 +4,16 @@ from .constants import DB_PATH, ROD_LEVELS
 from database_manager import db_manager
 
 async def get_rod_data(user_id: int) -> tuple:
-    """Get rod level and durability (rod_level, rod_durability).
-    Creates fishing_profile automatically if user doesn't have one."""
+    """Retrieves the user's rod level and durability.
+
+    Automatically creates a fishing profile if one does not exist.
+
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        tuple: A tuple containing (rod_level, rod_durability).
+    """
     try:
         # Use database_manager for proper connection pooling
         row = await db_manager.execute(
@@ -36,7 +44,13 @@ async def get_rod_data(user_id: int) -> tuple:
         return 1, ROD_LEVELS[1]["durability"]
 
 async def update_rod_data(user_id: int, durability: int, level: int = None):
-    """Update rod durability (and level if provided)."""
+    """Updates the user's rod durability and optionally upgrade level.
+
+    Args:
+        user_id (int): The Discord user ID.
+        durability (int): The new durability value.
+        level (int, optional): The new rod level. Defaults to None (no change).
+    """
     try:
         # Use database_manager for proper connection pooling
         if level is not None:

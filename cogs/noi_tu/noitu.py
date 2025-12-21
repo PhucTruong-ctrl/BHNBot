@@ -8,14 +8,12 @@ import time
 import traceback
 from datetime import datetime
 from database_manager import db_manager, get_stat, get_or_create_user
+from core.logger import setup_logger
+
+logger = setup_logger("NoiTu", "cogs/noitu.log")
 
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
-
-def log(message):
-    """Log with timestamp"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] [NoiTu] {message}")
 
 class GameNoiTu(commands.Cog):
     def __init__(self, bot):
@@ -41,7 +39,7 @@ class GameNoiTu(commands.Cog):
 
     async def cog_load(self):
         """Called when the cog is loaded - initialize games here"""
-        log("Cog loaded, scheduling game initialization")
+        logger.info("Cog loaded, scheduling game initialization")
         # Schedule initialization as a background task
         asyncio.create_task(self._initialize_games_on_load())
 
@@ -50,34 +48,34 @@ class GameNoiTu(commands.Cog):
         try:
             # Wait for bot to be ready
             await self.bot.wait_until_ready()
-            log("Bot is ready - initializing NoiTu games")
+            logger.info("Bot is ready - initializing NoiTu games")
             
             # Load dictionary
             async with self.dict_load_lock:
                 await self._load_dictionary()
             
             if not self.dict_loaded:
-                log("⚠️  Dictionary not loaded, skipping game initialization")
+                logger.info("⚠️  Dictionary not loaded, skipping game initialization")
                 return
             
             # Initialize games
-            log("Auto-initializing games for configured servers")
+            logger.info("Auto-initializing games for configured servers")
             try:
                 rows = await db_manager.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL")
                 
                 if not rows:
-                    log("⚠️  No NoiTu channels configured in database")
+                    logger.info("⚠️  No NoiTu channels configured in database")
                     return
                 
                 initialized_count = 0
                 for guild_id, channel_id in rows:
                     channel = self.bot.get_channel(channel_id)
                     if not channel:
-                        log(f"⚠️  Channel {channel_id} not found for guild {guild_id}")
+                        logger.info(f"⚠️  Channel {channel_id} not found for guild {guild_id}")
                         continue
                     
                     if guild_id in self.games:
-                        log(f"⏭️  Game already initialized for guild {guild_id}, skipping")
+                        logger.info(f"⏭️  Game already initialized for guild {guild_id}, skipping")
                         continue
                     
                     try:
@@ -86,19 +84,17 @@ class GameNoiTu(commands.Cog):
                         if not is_restored:
                             # If no saved state, start fresh
                             await self.start_new_round(guild_id, channel)
-                        log(f"✅ Game initialized for guild {guild_id} (restored={is_restored})")
+                        logger.info(f"✅ Game initialized for guild {guild_id} (restored={is_restored})")
                         initialized_count += 1
                     except Exception as e:
-                        log(f"❌ Failed to initialize game for guild {guild_id}: {e}")
+                        logger.info(f"❌ Failed to initialize game for guild {guild_id}: {e}")
                 
-                log(f"Auto-initialization complete: {initialized_count}/{len(rows)} games initialized")
+                logger.info(f"Auto-initialization complete: {initialized_count}/{len(rows)} games initialized")
                 self._initialized = True
             except Exception as e:
-                log(f"ERROR in initialization loop: {e}")
+                logger.error(f"ERROR in initialization loop: {e}")
         except Exception as e:
-            log(f"FATAL ERROR in _initialize_games_on_load: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"FATAL ERROR in _initialize_games_on_load: {e}", exc_info=True)
 
     async def _load_dictionary(self):
         """Load words dictionary from file"""
@@ -118,14 +114,14 @@ class GameNoiTu(commands.Cog):
                     self.all_words_list.append(word)
             
             self.dict_loaded = True
-            log(f"✅ Loaded words dict: {len(self.words_dict)} starting syllables, {len(self.all_words)} total words")
+            logger.info(f"✅ Loaded words dict: {len(self.words_dict)} starting syllables, {len(self.all_words)} total words")
             return True
         except FileNotFoundError:
-            log(f"❌ ERROR: {WORDS_DICT_PATH} not found. Run: python build_words_dict.py")
+            logger.error(f"❌ ERROR: {WORDS_DICT_PATH} not found. Run: python build_words_dict.py")
             self.dict_loaded = False
             return False
         except Exception as e:
-            log(f"❌ ERROR loading words dict: {e}")
+            logger.error(f"❌ ERROR loading words dict: {e}")
             self.dict_loaded = False
             return False
 
@@ -200,9 +196,9 @@ class GameNoiTu(commands.Cog):
                     self.all_words.add(word)
                     self.all_words_list.append(word)
             
-            log(f"Reloaded words dict: {len(self.all_words)} total words")
+            logger.info(f"Reloaded words dict: {len(self.all_words)} total words")
         except Exception as e:
-            log(f"ERROR reloading words dict: {e}")
+            logger.error(f"ERROR reloading words dict: {e}")
     
     def cleanup_game_lock(self, guild_id):
         """Clean up lock after game ends (prevent memory leak)"""
@@ -243,9 +239,9 @@ class GameNoiTu(commands.Cog):
                     (guild_id, "noitu", channel_id, game_state_json)
                 )
             
-            log(f"GAME_SAVED [Guild {guild_id}] Current word: {game.get('current_word')}, Used: {len(game.get('used_words', set()))}")
+            logger.info(f"GAME_SAVED [Guild {guild_id}] Current word: {game.get('current_word')}, Used: {len(game.get('used_words', set()))}")
         except Exception as e:
-            log(f"ERROR saving game state: {e}")
+            logger.error(f"ERROR saving game state: {e}")
     
     async def restore_game_state(self, guild_id, channel):
         """Restore NoiTu game state from database after bot restart"""
@@ -256,7 +252,7 @@ class GameNoiTu(commands.Cog):
             )
             
             if not row:
-                log(f"NO_SAVE_FOUND [Guild {guild_id}] Starting fresh game")
+                logger.info(f"NO_SAVE_FOUND [Guild {guild_id}] Starting fresh game")
                 return False
             
             game_state = json.loads(row[0])
@@ -267,12 +263,12 @@ class GameNoiTu(commands.Cog):
                 try:
                     old_msg = await channel.fetch_message(old_message_id)
                     await old_msg.delete()
-                    log(f"DELETED_OLD_RESUME_MSG [Guild {guild_id}] Message ID: {old_message_id}")
+                    logger.info(f"DELETED_OLD_RESUME_MSG [Guild {guild_id}] Message ID: {old_message_id}")
                 except discord.NotFound:
                     # Message already deleted or doesn't exist
-                    log(f"OLD_RESUME_MSG_ALREADY_DELETED [Guild {guild_id}] Message ID: {old_message_id}")
+                    logger.info(f"OLD_RESUME_MSG_ALREADY_DELETED [Guild {guild_id}] Message ID: {old_message_id}")
                 except Exception as e:
-                    log(f"COULD_NOT_DELETE_OLD_MSG [Guild {guild_id}] Message ID: {old_message_id}, Error: {e}")
+                    logger.info(f"COULD_NOT_DELETE_OLD_MSG [Guild {guild_id}] Message ID: {old_message_id}, Error: {e}")
             
             # Restore game state
             # Convert old players format (just usernames) to new format (with word counts)
@@ -305,10 +301,10 @@ class GameNoiTu(commands.Cog):
             # Save updated game state with new message ID
             await self.save_game_state(guild_id, channel.id)
             
-            log(f"GAME_RESUMED [Guild {guild_id}] Current word: {game_state.get('current_word')}, Used: {len(game_state.get('used_words', []))}")
+            logger.info(f"GAME_RESUMED [Guild {guild_id}] Current word: {game_state.get('current_word')}, Used: {len(game_state.get('used_words', []))}")
             return True
         except Exception as e:
-            log(f"ERROR restoring game state: {e}")
+            logger.error(f"ERROR restoring game state: {e}")
             return False
     
     async def update_player_stats(self, user_id, username, is_winner=False):
@@ -317,15 +313,15 @@ class GameNoiTu(commands.Cog):
             # Ensure user exists in database
             user = await get_or_create_user(user_id, username)
             if not user:
-                log(f"ERROR: Failed to create/get user {username} ({user_id})")
+                logger.error(f"ERROR: Failed to create/get user {username} ({user_id})")
                 return
             
             # Update correct_words
             await self.increment_stat(user_id, 'correct_words', 1)
             
-            log(f"STATS_UPDATE [User {username}] WordsCorrect: +1")
+            logger.info(f"STATS_UPDATE [User {username}] WordsCorrect: +1")
         except Exception as e:
-            log(f"ERROR updating player stats: {e}")
+            logger.error(f"ERROR updating player stats: {e}")
     
     
     async def distribute_streak_rewards(self, guild_id, all_players, final_streak, channel):
@@ -337,7 +333,7 @@ class GameNoiTu(commands.Cog):
         try:
             economy_cog = self.bot.get_cog("EconomyCog")
             if not economy_cog:
-                log(f"ERROR: EconomyCog not found")
+                logger.error(f"ERROR: EconomyCog not found")
                 return
             
             # Check if harvest buff is active
@@ -372,9 +368,9 @@ class GameNoiTu(commands.Cog):
                     except:
                         player_display_list.append(f"{username} - {correct_words} từ")
                     
-                    log(f"REWARD [Guild {guild_id}] {username}: {base_reward} base + {bonus_reward} bonus = {total_reward} total")
+                    logger.info(f"REWARD [Guild {guild_id}] {username}: {base_reward} base + {bonus_reward} bonus = {total_reward} total")
                 except Exception as e:
-                    log(f"ERROR distributing reward: {e}")
+                    logger.error(f"ERROR distributing reward: {e}")
             
             # Create reward notification embed
             embed = discord.Embed(
@@ -413,14 +409,14 @@ class GameNoiTu(commands.Cog):
             await channel.send(embed=embed)
         
         except Exception as e:
-            log(f"ERROR distributing streak rewards: {e}")
+            logger.error(f"ERROR distributing streak rewards: {e}")
     
     async def distribute_rewards(self, guild_id, winner_id, all_players, channel):
         """Distribute seeds rewards after game ends"""
         try:
             economy_cog = self.bot.get_cog("EconomyCog")
             if not economy_cog:
-                log(f"ERROR: EconomyCog not found")
+                logger.error(f"ERROR: EconomyCog not found")
                 return
             
             # Check if harvest buff is active
@@ -478,10 +474,10 @@ class GameNoiTu(commands.Cog):
             try:
                 await channel.send(embed=embed)
             except Exception as e:
-                log(f"ERROR sending reward embed: {e}")
+                logger.error(f"ERROR sending reward embed: {e}")
         
         except Exception as e:
-            log(f"ERROR distributing rewards: {e}")
+            logger.error(f"ERROR distributing rewards: {e}")
     
     async def update_ranking_roles(self, guild):
         """Update ranking roles based on current standings"""
@@ -494,11 +490,11 @@ class GameNoiTu(commands.Cog):
             # Get bot member and check permissions
             bot_member = guild.me
             if not bot_member:
-                log(f"ERROR: Bot not found in guild {guild.id}")
+                logger.error(f"ERROR: Bot not found in guild {guild.id}")
                 return
             
             if not bot_member.guild_permissions.manage_roles:
-                log(f"ERROR: Bot missing MANAGE_ROLES permission in guild {guild.id}")
+                logger.error(f"ERROR: Bot missing MANAGE_ROLES permission in guild {guild.id}")
                 return
             
             # Get top 3 players based on correct words
@@ -513,56 +509,56 @@ class GameNoiTu(commands.Cog):
             for role_id in role_ids:
                 role = guild.get_role(role_id)
                 if not role:
-                    log(f"WARNING: Role {role_id} not found in guild {guild.id}")
+                    logger.info(f"WARNING: Role {role_id} not found in guild {guild.id}")
                     continue
                 
                 # Check if role is above bot
                 if role.position >= bot_member.top_role.position:
-                    log(f"ERROR: Role {role.name} ({role_id}) is above or equal to bot's highest role in guild {guild.id}")
+                    logger.error(f"ERROR: Role {role.name} ({role_id}) is above or equal to bot's highest role in guild {guild.id}")
                     continue
                 
                 for member in role.members:
                     try:
                         await member.remove_roles(role)
-                        log(f"ROLE_REMOVE [Guild {guild.id}] Removed {role.name} from {member.name}")
+                        logger.info(f"ROLE_REMOVE [Guild {guild.id}] Removed {role.name} from {member.name}")
                     except discord.Forbidden:
-                        log(f"ERROR: No permission to remove {role.name} from {member.name}")
+                        logger.error(f"ERROR: No permission to remove {role.name} from {member.name}")
                     except Exception as e:
-                        log(f"ERROR removing role from {member.name}: {e}")
+                        logger.error(f"ERROR removing role from {member.name}: {e}")
             
             # Assign roles to top 3
             for idx, user_id in enumerate(top_players):
                 try:
                     member = guild.get_member(user_id)
                     if not member:
-                        log(f"WARNING: User {user_id} not found in guild {guild.id}")
+                        logger.info(f"WARNING: User {user_id} not found in guild {guild.id}")
                         continue
                     
                     role = guild.get_role(role_ids[idx])
                     if not role:
-                        log(f"WARNING: Role {role_ids[idx]} not found in guild {guild.id}")
+                        logger.info(f"WARNING: Role {role_ids[idx]} not found in guild {guild.id}")
                         continue
                     
                     # Check if role is above bot
                     if role.position >= bot_member.top_role.position:
-                        log(f"ERROR: Role {role.name} is above or equal to bot's highest role")
+                        logger.error(f"ERROR: Role {role.name} is above or equal to bot's highest role")
                         continue
                     
                     await member.add_roles(role)
-                    log(f"ROLE_ASSIGN [Guild {guild.id}] Top {idx+1}: {member.name} <- {role.name}")
+                    logger.info(f"ROLE_ASSIGN [Guild {guild.id}] Top {idx+1}: {member.name} <- {role.name}")
                 except discord.Forbidden as e:
-                    log(f"ERROR: No permission to assign role: {e}")
+                    logger.error(f"ERROR: No permission to assign role: {e}")
                 except Exception as e:
-                    log(f"ERROR assigning role: {e}")
+                    logger.error(f"ERROR assigning role: {e}")
             
         except Exception as e:
-            log(f"ERROR updating ranking roles: {e}")
+            logger.error(f"ERROR updating ranking roles: {e}")
 
     async def start_new_round(self, guild_id, channel):
         """Initialize new round"""
         # Ensure dictionary is loaded
         if not self.dict_loaded or not self.all_words_list:
-            log(f"❌ ERROR: Dictionary empty for guild {guild_id} (loaded={self.dict_loaded}, words={len(self.all_words_list)})")
+            logger.error(f"❌ ERROR: Dictionary empty for guild {guild_id} (loaded={self.dict_loaded}, words={len(self.all_words_list)})")
             # Try to reload dictionary
             async with self.dict_load_lock:
                 await self._load_dictionary()
@@ -574,7 +570,7 @@ class GameNoiTu(commands.Cog):
         
         word = await self.get_valid_start_word()
         if not word:
-            log(f"❌ ERROR: Could not get start word for guild {guild_id}")
+            logger.error(f"❌ ERROR: Could not get start word for guild {guild_id}")
             await channel.send("❌ Lỗi: Không tìm được từ bắt đầu. Vui lòng thử lại sau!")
             return
 
@@ -592,7 +588,7 @@ class GameNoiTu(commands.Cog):
             "players": {}  # Track players: {user_id: {'username': name, 'correct_words': count}}
         }
         
-        log(f"GAME_START [Guild {guild_id}] Starting word: '{word}'")
+        logger.info(f"GAME_START [Guild {guild_id}] Starting word: '{word}'")
         msg = await channel.send(self.games[guild_id]["start_message_content"])
         self.games[guild_id]["start_message"] = msg
         
@@ -604,7 +600,7 @@ class GameNoiTu(commands.Cog):
             guild = channel.guild
             await self.update_ranking_roles(guild)
         except Exception as e:
-            log(f"ERROR updating roles: {e}")
+            logger.error(f"ERROR updating roles: {e}")
 
     async def game_timer(self, guild_id, channel, start_time):
         """Timer 25s từ tin nhắn cuối cùng với visual countdown"""
@@ -636,7 +632,7 @@ class GameNoiTu(commands.Cog):
                         await timer_msg.delete()
                     except:
                         pass
-                    log(f"TIMER_SKIP [Guild {guild_id}] New message received, timer cancelled")
+                    logger.info(f"TIMER_SKIP [Guild {guild_id}] New message received, timer cancelled")
                     return
                 
                 # Edit message with countdown
@@ -654,7 +650,7 @@ class GameNoiTu(commands.Cog):
                 current_streak = self.streak.get(guild_id, 0)
                 word = game_data['current_word']
                 
-                log(f"TIMEOUT [Guild {guild_id}] Streak ended at {current_streak} words, last word: '{word}'")
+                logger.info(f"TIMEOUT [Guild {guild_id}] Streak ended at {current_streak} words, last word: '{word}'")
                 
                 # Delete old timer message
                 try:
@@ -690,7 +686,7 @@ class GameNoiTu(commands.Cog):
                 await self.save_game_state(guild_id, channel.id)
             
         except asyncio.CancelledError:
-            log(f"TIMER_CANCEL [Guild {guild_id}] Next player made move")
+            logger.info(f"TIMER_CANCEL [Guild {guild_id}] Next player made move")
             # Clean up timer message
             try:
                 game_data = self.games.get(guild_id)
@@ -699,7 +695,7 @@ class GameNoiTu(commands.Cog):
             except:
                 pass
         except Exception as e:
-            log(f"Timer error [Guild {guild_id}]: {e}")
+            logger.error(f"Timer error [Guild {guild_id}]: {e}")
 
     # --- Events (Core Logic) ---
     @commands.Cog.listener()
@@ -714,7 +710,7 @@ class GameNoiTu(commands.Cog):
             # Attempt to load from DB config (e.g. after restart)
             channel_id = await self.get_config_channel(guild_id)
             if channel_id and message.channel.id == channel_id:
-                log(f"GAME_RELOAD [Guild {guild_id}] Loading from DB after restart")
+                logger.info(f"GAME_RELOAD [Guild {guild_id}] Loading from DB after restart")
                 await self.start_new_round(guild_id, message.channel)
                 return 
             else:
@@ -737,7 +733,7 @@ class GameNoiTu(commands.Cog):
                 try:
                     await self.save_game_state(guild_id, message.channel.id)
                 except Exception as e:
-                    log(f"ERROR auto-saving game state: {e}")
+                    logger.error(f"ERROR auto-saving game state: {e}")
     
     async def _process_word(self, message, guild_id, game):
         """Process word validation and game logic. Returns 'valid_move' if word was accepted."""
@@ -754,7 +750,7 @@ class GameNoiTu(commands.Cog):
             
             # Validation: Only process 2-word inputs (ignore commands and other formats)
             if len(content.split()) != 2:
-                log(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (not 2 words)")
+                logger.info(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (not 2 words)")
                 # Refresh sticky start message if game is in round 1
                 if game['player_count'] == 0:
                     try:
@@ -768,7 +764,7 @@ class GameNoiTu(commands.Cog):
             
             # Skip if starts with command prefix
             if content.startswith(('!', '/')):
-                log(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (command prefix)")
+                logger.info(f"SKIP [Guild {guild_id}] {message.author.name}: '{content}' (command prefix)")
                 # Refresh sticky start message if game is in round 1
                 if game['player_count'] == 0:
                     try:
@@ -782,7 +778,7 @@ class GameNoiTu(commands.Cog):
 
             # Anti-Self-Play
             if message.author.id == game['last_author_id']:
-                log(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
+                logger.info(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
                 try:
                     await message.add_reaction("❌")
                 except:
@@ -796,7 +792,7 @@ class GameNoiTu(commands.Cog):
 
             # Check connection
             if first_syllable != last_syllable:
-                log(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
+                logger.info(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
                 try:
                     await message.add_reaction("❌")
                 except:
@@ -806,7 +802,7 @@ class GameNoiTu(commands.Cog):
 
             # Check used
             if content in game['used_words']:
-                log(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
+                logger.info(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
                 try:
                     await message.add_reaction("❌")
                 except:
@@ -816,7 +812,7 @@ class GameNoiTu(commands.Cog):
 
             # Check dictionary
             if not await self.check_word_in_db(content):
-                log(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
+                logger.info(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
                 try:
                     await message.add_reaction("❌")
                 except:
@@ -830,7 +826,7 @@ class GameNoiTu(commands.Cog):
                     current_invalid = await get_stat(message.author.id, 'noitu', 'invalid_words')
                     await self.bot.achievement_manager.check_unlock(message.author.id, "noitu", "invalid_words", current_invalid, message.channel)
                 except Exception as e:
-                    log(f"ERROR checking invalid_words achievement: {e}")
+                    logger.error(f"ERROR checking invalid_words achievement: {e}")
                 
                 # Import QuickAddWordView from add_word cog
                 try:
@@ -842,7 +838,7 @@ class GameNoiTu(commands.Cog):
                         delete_after=10
                     )
                 except Exception as e:
-                    log(f"ERROR showing add word view: {e}")
+                    logger.error(f"ERROR showing add word view: {e}")
                     await message.reply("Từ này ko có trong từ điển, bruh", delete_after=3)
                 return "not_in_dict"
 
@@ -860,7 +856,7 @@ class GameNoiTu(commands.Cog):
             self.streak[guild_id] += 1
             current_streak = self.streak[guild_id]
             
-            log(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (Streak: {current_streak}, Players: {game['player_count'] + 1})")
+            logger.info(f"VALID_MOVE [Guild {guild_id}] {message.author.name}: '{content}' (Streak: {current_streak}, Players: {game['player_count'] + 1})")
             
             # Track player with word count
             if message.author.id not in game['players']:
@@ -926,7 +922,7 @@ class GameNoiTu(commands.Cog):
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "reduplicative_words", current_reduplicative, message.channel)
                     
             except Exception as e:
-                log(f"ERROR checking achievements for {user_id}: {e}")
+                logger.error(f"ERROR checking achievements for {user_id}: {e}")
             
             # Cancel old timer
             if game['timer_task']:
@@ -937,7 +933,7 @@ class GameNoiTu(commands.Cog):
                         game['timer_message'] = None
                 except:
                     pass
-                log(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
+                logger.info(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
             
             # Update player count
             game['player_count'] += 1
@@ -967,7 +963,7 @@ class GameNoiTu(commands.Cog):
                     for player_id in game['players'].keys():
                         await economy_cog.add_seeds_local(player_id, milestone_reward)
                 except Exception as e:
-                    log(f"ERROR awarding milestone: {e}")
+                    logger.error(f"ERROR awarding milestone: {e}")
             
             # Save game state
             await self.save_game_state(guild_id, message.channel.id)
@@ -977,7 +973,7 @@ class GameNoiTu(commands.Cog):
             
             if not has_next:
                 last_syllable = content.split()[-1]
-                log(f"DEAD_END [Guild {guild_id}] No words starting with '{last_syllable}' - Streak ended at {current_streak}")
+                logger.info(f"DEAD_END [Guild {guild_id}] No words starting with '{last_syllable}' - Streak ended at {current_streak}")
                 
                 # Embed for end-of-streak
                 embed = discord.Embed(
@@ -1006,7 +1002,7 @@ class GameNoiTu(commands.Cog):
                     current_ending = await get_stat(message.author.id, 'noitu', 'game_ending_words')
                     await self.bot.achievement_manager.check_unlock(message.author.id, "noitu", "game_ending_words", current_ending, message.channel)
                 except Exception as e:
-                    log(f"ERROR checking game_ending_words achievement: {e}")
+                    logger.error(f"ERROR checking game_ending_words achievement: {e}")
                 
                 # Track long chain participation if streak >= 50
                 if current_streak >= 50:
@@ -1017,7 +1013,7 @@ class GameNoiTu(commands.Cog):
                             current_long_chain = await get_stat(player_id, 'noitu', 'long_chain_participation')
                             await self.bot.achievement_manager.check_unlock(player_id, "noitu", "long_chain_participation", current_long_chain, message.channel)
                         except Exception as e:
-                            log(f"ERROR checking long_chain_participation achievement for {player_id}: {e}")
+                            logger.error(f"ERROR checking long_chain_participation achievement for {player_id}: {e}")
                 
                 # Update max_streak for all players if current_streak is higher than their max
                 for player_id in game['players'].keys():
@@ -1028,7 +1024,7 @@ class GameNoiTu(commands.Cog):
                             new_max_streak = await get_stat(player_id, 'noitu', 'max_streak')
                             await self.bot.achievement_manager.check_unlock(player_id, "noitu", "max_streak", new_max_streak, message.channel)
                     except Exception as e:
-                        log(f"ERROR updating max_streak for {player_id}: {e}")
+                        logger.error(f"ERROR updating max_streak for {player_id}: {e}")
                 
                 # Distribute rewards to all participants
                 if game.get('players'):
@@ -1043,10 +1039,10 @@ class GameNoiTu(commands.Cog):
             
             # Start timer only after 2nd player joins
             if game['player_count'] >= 2:
-                log(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
+                logger.info(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
                 game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
             else:
-                log(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
+                logger.info(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
                 try:
                     await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
                 except:
@@ -1055,9 +1051,7 @@ class GameNoiTu(commands.Cog):
             return "valid_move"
         
         except Exception as e:
-            log(f"ERROR [Guild {guild_id}] Exception in _process_word: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"ERROR [Guild {guild_id}] Exception in _process_word: {str(e)}", exc_info=True)
             return "error"
 
     # Helper functions for achievement stats tracking
@@ -1065,7 +1059,7 @@ class GameNoiTu(commands.Cog):
         """Tăng giá trị stat cho user trong game noitu"""
         try:
             game_id = 'noitu'
-            log(f"[NoiTu] Incrementing stat {stat_key} for user {user_id} by {value}")
+            logger.info(f"[NoiTu] Incrementing stat {stat_key} for user {user_id} by {value}")
             
             # Đảm bảo record tồn tại
             sql_check = "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?"
@@ -1076,19 +1070,19 @@ class GameNoiTu(commands.Cog):
                 new_value = current_value + value
                 sql_update = "UPDATE user_stats SET value = value + ? WHERE user_id = ? AND game_id = ? AND stat_key = ?"
                 await db_manager.modify(sql_update, (value, user_id, game_id, stat_key))
-                log(f"[NoiTu] Updated stat {stat_key} from {current_value} to {new_value}")
+                logger.info(f"[NoiTu] Updated stat {stat_key} from {current_value} to {new_value}")
             else:
                 sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
                 await db_manager.modify(sql_insert, (user_id, game_id, stat_key, value))
-                log(f"[NoiTu] Inserted new stat {stat_key} with value {value}")
+                logger.info(f"[NoiTu] Inserted new stat {stat_key} with value {value}")
         except Exception as e:
-            log(f"[NoiTu] Error updating stat {stat_key} for {user_id}: {e}")
+            logger.error(f"[NoiTu] Error updating stat {stat_key} for {user_id}: {e}")
     
     async def update_max_stat(self, user_id, stat_key, new_value):
         """Update stat to max value (only if new_value > current_value)"""
         try:
             game_id = 'noitu'
-            log(f"[NoiTu] Updating max stat {stat_key} for user {user_id} to {new_value}")
+            logger.info(f"[NoiTu] Updating max stat {stat_key} for user {user_id} to {new_value}")
             
             # Check current value
             sql_check = "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?"
@@ -1099,18 +1093,18 @@ class GameNoiTu(commands.Cog):
                 if new_value > current_value:
                     sql_update = "UPDATE user_stats SET value = ? WHERE user_id = ? AND game_id = ? AND stat_key = ?"
                     await db_manager.modify(sql_update, (new_value, user_id, game_id, stat_key))
-                    log(f"[NoiTu] Updated max stat {stat_key} from {current_value} to {new_value}")
+                    logger.info(f"[NoiTu] Updated max stat {stat_key} from {current_value} to {new_value}")
                     return True
                 else:
-                    log(f"[NoiTu] Max stat {stat_key} not updated (current: {current_value}, new: {new_value})")
+                    logger.info(f"[NoiTu] Max stat {stat_key} not updated (current: {current_value}, new: {new_value})")
                     return False
             else:
                 sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
                 await db_manager.modify(sql_insert, (user_id, game_id, stat_key, new_value))
-                log(f"[NoiTu] Inserted new max stat {stat_key} with value {new_value}")
+                logger.info(f"[NoiTu] Inserted new max stat {stat_key} with value {new_value}")
                 return True
         except Exception as e:
-            log(f"[NoiTu] Error updating max stat {stat_key} for {user_id}: {e}")
+            logger.error(f"[NoiTu] Error updating max stat {stat_key} for {user_id}: {e}")
             return False
     
     async def is_reduplicative_word(self, word):

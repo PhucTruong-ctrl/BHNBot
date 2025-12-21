@@ -8,6 +8,9 @@ import asyncio
 import functools
 
 DB_PATH = "./data/database.db"
+from core.logger import setup_logger
+
+logger = setup_logger("GeneralCog", "cogs/general.log")
 
 class General(commands.Cog):
     def __init__(self, bot):
@@ -270,9 +273,7 @@ class General(commands.Cog):
         
         except Exception as e:
             await interaction.followup.send(f"Lỗi tạo profile: {e}")
-            print(f"[PROFILE] Error: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[PROFILE] Error: {e}", exc_info=True)
 
     @commands.command(name="hoso", description="Xem profile card")
     async def profile_prefix(self, ctx, user: discord.User = None):
@@ -301,9 +302,7 @@ class General(commands.Cog):
         
         except Exception as e:
             await ctx.send(f"Lỗi tạo profile: {e}")
-            print(f"[PROFILE] Error: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[PROFILE] Error: {e}", exc_info=True)
 
     def _generate_profile_image_sync(self, user_data, avatar_bytes, friend_data=None, friend_avatar_bytes=None):
         """Synchronous CPU-bound Pillow image generation (runs in executor)"""
@@ -457,7 +456,7 @@ class General(commands.Cog):
                     async with session.get(f_avatar_url) as resp:
                         friend_avatar_bytes = io.BytesIO(await resp.read())
             except Exception as e:
-                print(f"Error loading friend: {e}")
+                logger.warning(f"Error loading friend: {e}")
         
         # Run CPU-bound image generation in executor to avoid blocking
         loop = asyncio.get_running_loop()

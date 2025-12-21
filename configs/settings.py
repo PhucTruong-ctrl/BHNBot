@@ -8,7 +8,9 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 
 # Database configuration
 DB_PATH = os.path.join(DATA_DIR, "database.db")
-DB_TIMEOUT = 10.0  # 10 seconds timeout
+DB_TIMEOUT = 30.0  # 30 seconds timeout for high concurrency
+DB_MAX_RETRIES = 5  # Maximum retry attempts for locked database
+DB_RETRY_DELAY = 0.1  # Initial delay between retries (seconds)
 
 # Data file paths
 FISHING_DATA_PATH = os.path.join(DATA_DIR, "fishing_data.json")

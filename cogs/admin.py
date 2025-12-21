@@ -4,7 +4,10 @@ from discord.ext import commands
 import os
 import aiosqlite
 
+from core.logger import setup_logger
+
 DB_PATH = "./data/database.db"
+logger = setup_logger("AdminCog", "cogs/admin.log")
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
@@ -28,7 +31,7 @@ class AdminCog(commands.Cog):
             # List all commands in bot.tree
             all_commands = self.bot.tree.get_commands()
             cmd_list = "\n".join([f"  - {cmd.name}" for cmd in all_commands])
-            print(f"\n[SYNC DEBUG] Tất cả commands trong bot.tree ({len(all_commands)}):\n{cmd_list}\n")
+            logger.info(f"\n[SYNC DEBUG] Tất cả commands trong bot.tree ({len(all_commands)}):\n{cmd_list}\n")
             
             if scope == "guild":
                 # Sync to current guild only (for testing)
@@ -37,8 +40,8 @@ class AdminCog(commands.Cog):
                 msg = f"Synced {len(synced)} commands to **{interaction.guild.name}**\n\n"
                 msg += f"```\n{synced_list if synced_list else '(No commands)'}\n```\n\n"
                 msg += "**Restart Discord (Ctrl+R) to see changes!**"
-                print(f"[SYNC Guild] Guild {interaction.guild.id} ({interaction.guild.name}): {len(synced)} commands synced")
-                print(f"[SYNC Guild] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
+                logger.info(f"[SYNC Guild] Guild {interaction.guild.id} ({interaction.guild.name}): {len(synced)} commands synced")
+                logger.info(f"[SYNC Guild] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
                 
             elif scope == "global":
                 # Sync globally
@@ -47,8 +50,8 @@ class AdminCog(commands.Cog):
                 msg = f"Synced {len(synced)} commands **GLOBALLY** to all servers\n\n"
                 msg += f"```\n{synced_list if synced_list else '(No commands)'}\n```\n\n"
                 msg += "**Restart Discord (Ctrl+R) to see changes!**"
-                print(f"[SYNC Global] Synced {len(synced)} commands globally")
-                print(f"[SYNC Global] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
+                logger.info(f"[SYNC Global] Synced {len(synced)} commands globally")
+                logger.info(f"[SYNC Global] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
                 
             else:
                 msg = "Scope phải là 'guild' hoặc 'global'"
@@ -58,9 +61,7 @@ class AdminCog(commands.Cog):
         except Exception as e:
             error_msg = f"Lỗi sync: {str(e)}"
             await interaction.followup.send(error_msg)
-            print(f"[SYNC ERROR] {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[SYNC ERROR] {e}", exc_info=True)
 
     # --- Sync Prefix Command ---
     @commands.command(name="sync", description="Sync slash commands (Owner Only)")
@@ -73,7 +74,7 @@ class AdminCog(commands.Cog):
             # List all commands in bot.tree
             all_commands = self.bot.tree.get_commands()
             cmd_list = "\n".join([f"  - {cmd.name}" for cmd in all_commands])
-            print(f"\n[!SYNC DEBUG] Tất cả commands trong bot.tree ({len(all_commands)}):\n{cmd_list}\n")
+            logger.info(f"\n[!SYNC DEBUG] Tất cả commands trong bot.tree ({len(all_commands)}):\n{cmd_list}\n")
             
             if scope == "guild":
                 # Sync to current guild only (for testing)
@@ -82,8 +83,8 @@ class AdminCog(commands.Cog):
                 msg = f"Synced {len(synced)} commands to **{ctx.guild.name}**\n\n"
                 msg += f"```\n{synced_list if synced_list else '(No commands)'}\n```\n\n"
                 msg += "**Restart Discord (Ctrl+R) to see changes!**"
-                print(f"[!SYNC Guild] Guild {ctx.guild.id} ({ctx.guild.name}): {len(synced)} commands synced")
-                print(f"[!SYNC Guild] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
+                logger.info(f"[!SYNC Guild] Guild {ctx.guild.id} ({ctx.guild.name}): {len(synced)} commands synced")
+                logger.info(f"[!SYNC Guild] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
                 
             elif scope == "global":
                 # Sync globally
@@ -92,8 +93,8 @@ class AdminCog(commands.Cog):
                 msg = f"Synced {len(synced)} commands **GLOBALLY** to all servers\n\n"
                 msg += f"```\n{synced_list if synced_list else '(No commands)'}\n```\n\n"
                 msg += "**Restart Discord (Ctrl+R) to see changes!**"
-                print(f"[!SYNC Global] Synced {len(synced)} commands globally")
-                print(f"[!SYNC Global] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
+                logger.info(f"[!SYNC Global] Synced {len(synced)} commands globally")
+                logger.info(f"[!SYNC Global] Synced commands:\n{synced_list if synced_list else '(No commands)'}\n")
                 
             else:
                 msg = "Scope phải là 'guild' hoặc 'global'"
@@ -103,9 +104,7 @@ class AdminCog(commands.Cog):
         except Exception as e:
             error_msg = f"Lỗi sync: {str(e)}"
             await ctx.send(error_msg)
-            print(f"[!SYNC ERROR] {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"[!SYNC ERROR] {e}", exc_info=True)
 
     # --- Cogs Manager ---
     @commands.group(name="cog", description="Manage cogs", invoke_without_command=True)
@@ -128,19 +127,19 @@ class AdminCog(commands.Cog):
             if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, 'cog.py')):
                 await self.bot.load_extension(f"cogs.{cog_name}.cog")
                 await ctx.send(f"Loaded: cogs.{cog_name}.cog")
-                print(f"COG_LOAD: cogs.{cog_name}.cog")
+                logger.info(f"COG_LOAD: cogs.{cog_name}.cog")
             else:
                 # Load as top-level cog
                 await self.bot.load_extension(f"cogs.{cog_name}")
                 await ctx.send(f"Loaded: {cog_name}")
-                print(f"COG_LOAD: {cog_name}")
+                logger.info(f"COG_LOAD: {cog_name}")
         except commands.ExtensionAlreadyLoaded:
             await ctx.send(f"{cog_name} already loaded")
         except commands.ExtensionNotFound:
             await ctx.send(f"{cog_name} not found")
         except Exception as e:
             await ctx.send(f"Lỗi: {str(e)}")
-            print(f"COG_LOAD_ERROR [{cog_name}]: {e}")
+            logger.error(f"COG_ERROR [{cog_name}]: {e}")
 
     @manage_cog.command(name="unload", description="Unload a cog")
     async def unload_cog(self, ctx, cog_name: str):
@@ -155,17 +154,17 @@ class AdminCog(commands.Cog):
             if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, 'cog.py')):
                 await self.bot.unload_extension(f"cogs.{cog_name}.cog")
                 await ctx.send(f"Unloaded: cogs.{cog_name}.cog")
-                print(f"COG_UNLOAD: cogs.{cog_name}.cog")
+                logger.info(f"COG_UNLOAD: cogs.{cog_name}.cog")
             else:
                 # Unload as top-level cog
                 await self.bot.unload_extension(f"cogs.{cog_name}")
                 await ctx.send(f"Unloaded: {cog_name}")
-                print(f"COG_UNLOAD: {cog_name}")
+                logger.info(f"COG_UNLOAD: {cog_name}")
         except commands.ExtensionNotLoaded:
             await ctx.send(f"{cog_name} not loaded")
         except Exception as e:
             await ctx.send(f"Lỗi: {str(e)}")
-            print(f"COG_UNLOAD_ERROR [{cog_name}]: {e}")
+            logger.error(f"COG_ERROR [{cog_name}]: {e}")
 
     @manage_cog.command(name="reload", description="Reload a cog")
     async def reload_cog(self, ctx, cog_name: str):
@@ -180,19 +179,19 @@ class AdminCog(commands.Cog):
             if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, 'cog.py')):
                 await self.bot.reload_extension(f"cogs.{cog_name}.cog")
                 await ctx.send(f"Reloaded: cogs.{cog_name}.cog")
-                print(f"COG_RELOAD: cogs.{cog_name}.cog")
+                logger.info(f"COG_RELOAD: cogs.{cog_name}.cog")
             else:
                 # Reload as top-level cog
                 await self.bot.reload_extension(f"cogs.{cog_name}")
                 await ctx.send(f"Reloaded: {cog_name}")
-                print(f"COG_RELOAD: {cog_name}")
+                logger.info(f"COG_RELOAD: {cog_name}")
         except commands.ExtensionNotLoaded:
             await ctx.send(f"{cog_name} not loaded")
         except commands.ExtensionNotFound:
             await ctx.send(f"{cog_name} not found")
         except Exception as e:
             await ctx.send(f"Lỗi: {str(e)}")
-            print(f"COG_RELOAD_ERROR [{cog_name}]: {e}")
+            logger.error(f"COG_ERROR [{cog_name}]: {e}")
 
     @manage_cog.command(name="list", description="List all cogs")
     async def list_cogs(self, ctx):

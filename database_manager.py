@@ -3,11 +3,25 @@ Database Manager - Optimized database operations with caching and batch processi
 Handles connection pooling, query caching, and batch operations for better performance
 """
 from typing import Optional, Dict, List, Any, Tuple
-from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard
+from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard, get_db_connection
+from configs.settings import DB_PATH
+from core.logger import setup_logger
+
+logger = setup_logger("DBManager", "core/database.log")
 
 
 async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
-    """Get or create user (no cache as it modifies)"""
+    """Retrieves a user by ID or creates a new one if they don't exist.
+
+    This function does NOT use caching because it modifies the database directly for new users.
+
+    Args:
+        user_id (int): The Discord user ID.
+        username (str): The username display string.
+
+    Returns:
+        Optional[tuple]: A tuple containing (user_id, username, seeds) or None if an error occurs.
+    """
     try:
         user = await db_manager.fetchone(
             "SELECT user_id, username, seeds FROM users WHERE user_id = ?",
@@ -15,7 +29,7 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
         )
         
         if not user:
-            print(f"[DB] Creating new user: {username} ({user_id})")
+            logger.info(f"Creating new user: {username} ({user_id})")
             await db_manager.modify(
                 "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0)",
                 (user_id, username)
@@ -25,12 +39,19 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
         
         return user
     except Exception as e:
-        print(f"[DB] Error in get_or_create_user: {e}")
+        logger.error(f"Error in get_or_create_user: {e}")
         return None
 
 
 async def batch_update_seeds(updates: Dict[int, int]):
-    """Batch update multiple users' seeds at once"""
+    """Updates seed balances for multiple users in a single batch operation.
+
+    Args:
+        updates (Dict[int, int]): A dictionary mapping user_id to the amount of seeds to add (can be negative).
+
+    Example:
+        >>> await batch_update_seeds({12345: 100, 67890: -50})
+    """
     operations = [
         (
             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
@@ -47,7 +68,14 @@ async def batch_update_seeds(updates: Dict[int, int]):
 # ==================== TREE QUERIES ====================
 
 async def get_tree_data(guild_id: int) -> Optional[tuple]:
-    """Get tree data with caching"""
+    """Retrieves server tree data with caching.
+
+    Args:
+        guild_id (int): The Discord guild ID.
+
+    Returns:
+        Optional[tuple]: A tuple containing (current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id), or None if not found.
+    """
     result = await db_manager.fetchone(
         "SELECT current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = ?",
         (guild_id,),
@@ -144,9 +172,16 @@ async def get_top_affinity_friends(user_id: int, limit: int = 3) -> List[tuple]:
 # ==================== INVENTORY QUERIES ====================
 
 async def get_inventory(user_id: int) -> Dict[str, int]:
-    """Get user inventory with caching"""
+    """Retrieves the user's inventory from the database.
+
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        Dict[str, int]: A dictionary mapping item_id to quantity. Example: {'worm': 10, 'rod': 1}
+    """
     result = await db_manager.execute(
-        "SELECT item_name, quantity FROM inventory WHERE user_id = ? AND quantity > 0",
+        "SELECT item_id, quantity FROM inventory WHERE user_id = ? AND quantity > 0",
         (user_id,),
         use_cache=True,
         cache_key=f"inventory_{user_id}",
@@ -154,27 +189,36 @@ async def get_inventory(user_id: int) -> Dict[str, int]:
     )
     
     inventory = {}
-    for item_name, quantity in result:
-        inventory[item_name] = quantity
+    for item_id, quantity in result:
+        inventory[item_id] = quantity
     return inventory
 
 
 async def add_item(user_id: int, item_id: str, quantity: int = 1):
-    """Add item to inventory"""
+    """Adds an item to the user's inventory.
+
+    Args:
+        user_id (int): The Discord user ID.
+        item_id (str): The unique identifier of the item.
+        quantity (int): The amount to add. Defaults to 1.
+
+    Returns:
+        bool: True if the operation was successful.
+    """
     # Check if item exists
     existing = await db_manager.fetchone(
-        "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
+        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
         (user_id, item_id)
     )
     
     if existing:
         await db_manager.modify(
-            "UPDATE inventory SET quantity = quantity + ? WHERE user_id = ? AND item_name = ?",
+            "UPDATE inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?",
             (quantity, user_id, item_id)
         )
     else:
         await db_manager.modify(
-            "INSERT INTO inventory (user_id, item_name, quantity) VALUES (?, ?, ?)",
+            "INSERT INTO inventory (user_id, item_id, item_type, quantity) VALUES (?, ?, 'item', ?)",
             (user_id, item_id, quantity)
         )
     
@@ -183,9 +227,18 @@ async def add_item(user_id: int, item_id: str, quantity: int = 1):
 
 
 async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
-    """Remove item from inventory"""
+    """Removes an item from the user's inventory.
+
+    Args:
+        user_id (int): The Discord user ID.
+        item_id (str): The unique identifier of the item.
+        quantity (int): The amount to remove. Defaults to 1.
+
+    Returns:
+        bool: True if the item was successfully removed (user had enough quantity), False otherwise.
+    """
     existing = await db_manager.fetchone(
-        "SELECT quantity FROM inventory WHERE user_id = ? AND item_name = ?",
+        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
         (user_id, item_id)
     )
     
@@ -195,12 +248,12 @@ async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
     new_quantity = existing[0] - quantity
     if new_quantity <= 0:
         await db_manager.modify(
-            "DELETE FROM inventory WHERE user_id = ? AND item_name = ?",
+            "DELETE FROM inventory WHERE user_id = ? AND item_id = ?",
             (user_id, item_id)
         )
     else:
         await db_manager.modify(
-            "UPDATE inventory SET quantity = ? WHERE user_id = ? AND item_name = ?",
+            "UPDATE inventory SET quantity = ? WHERE user_id = ? AND item_id = ?",
             (new_quantity, user_id, item_id)
         )
     
@@ -211,7 +264,15 @@ async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
 # ==================== SERVER CONFIG QUERIES ====================
 
 async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
-    """Get server config field with caching"""
+    """Retrieves a specific configuration field for a server.
+
+    Args:
+        guild_id (int): The Discord guild ID.
+        field (str): The column name in the server_config table to retrieve.
+
+    Returns:
+        Optional[Any]: The value of the config field, or None if not found.
+    """
     result = await db_manager.fetchone(
         f"SELECT {field} FROM server_config WHERE guild_id = ?",
         (guild_id,),
@@ -223,7 +284,13 @@ async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
 
 
 async def set_server_config(guild_id: int, field: str, value: Any):
-    """Set server config field"""
+    """Sets a specific configuration field for a server.
+
+    Args:
+        guild_id (int): The Discord guild ID.
+        field (str): The column name in the server_config table to update.
+        value (Any): The value to set.
+    """
     await db_manager.modify(
         f"INSERT OR REPLACE INTO server_config (guild_id, {field}) VALUES (?, ?)",
         (guild_id, value)
@@ -232,7 +299,14 @@ async def set_server_config(guild_id: int, field: str, value: Any):
 
 
 async def get_rod_data(user_id: int) -> tuple[int, int]:
-    """Get user's rod level and durability"""
+    """Retrieves fishing rod data for a user.
+
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        tuple[int, int]: A tuple containing (rod_level, rod_durability). Defaults to (1, 30) if not found.
+    """
     result = await db_manager.fetchone(
         "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
         (user_id,),
@@ -250,7 +324,15 @@ async def get_rod_data(user_id: int) -> tuple[int, int]:
 # ----- CORE USER OPERATIONS (New Schema) -----
 
 async def get_or_create_user_new(user_id: int, username: str) -> Optional[tuple]:
-    """Get or create user in new 'users' table"""
+    """Retrieves or creates a user in the optimized 'users' table.
+
+    Args:
+        user_id (int): The Discord user ID.
+        username (str): The username display string.
+
+    Returns:
+        Optional[tuple]: User data record or None.
+    """
     user = await db_manager.fetchone(
         "SELECT * FROM users WHERE user_id = ?",
         (user_id,),
@@ -305,7 +387,14 @@ async def get_leaderboard_new(limit: int = 10) -> List[tuple]:
 # ----- USER STATS OPERATIONS (Generic Key-Value Stats) -----
 
 async def increment_stat(user_id: int, game_id: str, stat_key: str, amount: int = 1):
-    """Increment a user stat for a specific game (create if not exists)"""
+    """Increments a generic user statistic for a specific game module.
+
+    Args:
+        user_id (int): The Discord user ID.
+        game_id (str): The game identifier (e.g., 'fishing', 'werewolf').
+        stat_key (str): The specific statistic key (e.g., 'fish_caught').
+        amount (int): The amount to increment. Defaults to 1.
+    """
     existing = await db_manager.fetchone(
         "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?",
         (user_id, game_id, stat_key)
@@ -326,7 +415,17 @@ async def increment_stat(user_id: int, game_id: str, stat_key: str, amount: int 
 
 
 async def get_stat(user_id: int, game_id: str, stat_key: str, default: int = 0) -> int:
-    """Get a specific user stat for a game"""
+    """Retrieves a specific user statistic.
+
+    Args:
+        user_id (int): The Discord user ID.
+        game_id (str): The game identifier.
+        stat_key (str): The statistic key.
+        default (int): Default value if not found. Defaults to 0.
+
+    Returns:
+        int: The statistic value.
+    """
     result = await db_manager.fetchone(
         "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?",
         (user_id, game_id, stat_key),
@@ -338,7 +437,15 @@ async def get_stat(user_id: int, game_id: str, stat_key: str, default: int = 0) 
 
 
 async def get_all_stats(user_id: int, game_id: str = None) -> Dict[str, int]:
-    """Get all stats for a user (optionally filtered by game_id). For achievements."""
+    """Retrieves all statistics for a user, optionally filtered by game.
+
+    Args:
+        user_id (int): The Discord user ID.
+        game_id (str, optional): The game identifier filter. Defaults to None.
+
+    Returns:
+        Dict[str, int]: A dictionary mapping stat_key to value.
+    """
     if game_id:
         result = await db_manager.execute(
             "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = ?",
@@ -380,11 +487,16 @@ async def get_stat_leaderboard(game_id: str, stat_key: str, limit: int = 10) -> 
 # ----- FISHING PROFILE OPERATIONS -----
 
 async def get_fishing_profile(user_id: int) -> Optional[tuple]:
-    """
-    Get fishing profile (rod_level, rod_durability, exp).
-    Auto-creates profile if user is new (doesn't have fishing profile yet).
-    
-    Returns: (rod_level, rod_durability, exp) or None on error
+    """Retrieves the fishing profile for a user.
+
+    Unlike get_rod_data, this returns experience (exp) as well.
+    Auto-creates a profile with default values if one does not exist.
+
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        Optional[tuple]: A tuple containing (rod_level, rod_durability, exp).
     """
     result = await db_manager.fetchone(
         "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
@@ -440,7 +552,13 @@ async def update_fishing_profile(user_id: int, rod_level: int = None, rod_durabi
 # ----- FISH COLLECTION OPERATIONS -----
 
 async def add_fish(user_id: int, fish_id: str, quantity: int = 1):
-    """Add fish to collection (or increment if exists)"""
+    """Adds a fish to the user's collection.
+
+    Args:
+        user_id (int): The Discord user ID.
+        fish_id (str): The unique identifier of the fish.
+        quantity (int): The number of fish to add. Defaults to 1.
+    """
     existing = await db_manager.fetchone(
         "SELECT quantity FROM fish_collection WHERE user_id = ? AND fish_id = ?",
         (user_id, fish_id)
@@ -461,7 +579,14 @@ async def add_fish(user_id: int, fish_id: str, quantity: int = 1):
 
 
 async def get_fish_collection(user_id: int) -> Dict[str, int]:
-    """Get user's fish collection"""
+    """Retrieves the user's fish collection.
+    
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        Dict[str, int]: A dictionary mapping fish_id to quantity caught.
+    """
     result = await db_manager.execute(
         "SELECT fish_id, quantity FROM fish_collection WHERE user_id = ? AND quantity > 0",
         (user_id,),
@@ -473,7 +598,16 @@ async def get_fish_collection(user_id: int) -> Dict[str, int]:
 
 
 async def remove_fish(user_id: int, fish_id: str, quantity: int = 1) -> bool:
-    """Remove fish from collection"""
+    """Removes a fish from the user's collection.
+
+    Args:
+        user_id (int): The Discord user ID.
+        fish_id (str): The unique identifier of the fish.
+        quantity (int): The amount to remove.
+
+    Returns:
+        bool: True if the operation was successful, False if the user has insufficient quantity.
+    """
     existing = await db_manager.fetchone(
         "SELECT quantity FROM fish_collection WHERE user_id = ? AND fish_id = ?",
         (user_id, fish_id)
@@ -499,9 +633,17 @@ async def remove_fish(user_id: int, fish_id: str, quantity: int = 1) -> bool:
 
 
 async def get_fish_count(user_id: int, fish_id: str) -> int:
-    """Get count of specific fish (1 if caught, 0 if not)"""
+    """Checks if a user has caught a specific fish.
+
+    Args:
+        user_id (int): The Discord user ID.
+        fish_id (str): The fish identifier.
+
+    Returns:
+        int: 1 if the user has the fish, 0 otherwise.
+    """
     result = await db_manager.fetchone(
-        "SELECT 1 FROM fish_collection WHERE user_id = ? AND fish_key = ?",
+        "SELECT 1 FROM fish_collection WHERE user_id = ? AND fish_id = ?",
         (user_id, fish_id),
         use_cache=True,
         cache_key=f"fish_{user_id}_{fish_id}",
@@ -514,7 +656,7 @@ async def get_fish_count(user_id: int, fish_id: str) -> int:
 
 # ==================== DEPRECATED: inventory_v2 functions (table doesn't exist) ====================
 # These functions are deprecated - inventory_v2 table was never created
-# Use regular inventory (item_name) and the standard add_item/remove_item functions instead
+# Use regular inventory (item_id) and the standard add_item/remove_item functions instead
 
 async def add_item_v2(user_id: int, item_id: str, quantity: int = 1, item_category: str = None):
     """DEPRECATED: Use add_item() instead"""
@@ -531,11 +673,19 @@ async def remove_item_v2(user_id: int, item_id: str, quantity: int = 1) -> bool:
 # ==================== CRITICAL TRANSACTION OPERATIONS ====================
 
 async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1, item_category: str = "consumable") -> tuple[bool, str]:
-    """
-    Purchase item with transaction (ATOMIC operation).
-    Ensures both seed deduction AND item addition happen together or both fail.
-    
-    Returns: (success: bool, message: str)
+    """Purchases an item in a transaction (Atomic Operation).
+
+    Ensures both seed deduction and item addition happen together or both fail.
+
+    Args:
+        user_id (int): The Discord user ID.
+        item_id (str): The item identifier.
+        cost (int): The cost per unit (or total cost? Logic implies total cost deducted is `cost`? No, check logic. `UPDATE users SET seeds = seeds - ?` uses `cost`. So `cost` argument is TOTAL cost).
+        quantity (int): Quantity to buy. Defaults to 1.
+        item_category (str): Category (e.g., 'consumable'). Defaults to "consumable".
+
+    Returns:
+        tuple[bool, str]: Success status and message.
     """
     db = await get_db_connection(DB_PATH)
     try:
@@ -561,9 +711,9 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
         
         # Step 3: Add item (Upsert - insert or update if exists)
         await db.execute("""
-            INSERT INTO inventory (user_id, item_name, quantity)
-            VALUES (?, ?, ?)
-            ON CONFLICT(user_id, item_name) DO UPDATE SET quantity = quantity + ?
+            INSERT INTO inventory (user_id, item_id, item_type, quantity)
+            VALUES (?, ?, 'item', ?)
+            ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + ?
         """, (user_id, item_id, quantity, quantity))
         
         # Commit transaction
@@ -575,7 +725,7 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
         
     except Exception as e:
         await db.rollback()
-        print(f"❌ Transaction error (buy_shop_item): {e}")
+        logger.error(f"Transaction error (buy_shop_item): {e}")
         return False, f"Lỗi hệ thống: {str(e)}"
     
     finally:
@@ -596,13 +746,16 @@ async def use_consumable_item(user_id: int, item_id: str) -> tuple[bool, str]:
 
 
 async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, str]:
-    """
-    Upgrade fishing rod with transaction.
-    - Deduct seeds
-    - Increase rod_level
-    - Reset durability to max
+    """Upgrades the user's fishing rod using a transaction.
     
-    Returns: (success: bool, message: str)
+    Deducts seeds, increases rod_level, and resets durability to max.
+
+    Args:
+        user_id (int): The Discord user ID.
+        upgrade_cost (int): The cost of the upgrade.
+
+    Returns:
+        tuple[bool, str]: Success status and message.
     """
     db = await get_db_connection(DB_PATH)
     try:
@@ -637,7 +790,7 @@ async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, st
         
     except Exception as e:
         await db.rollback()
-        print(f"❌ Transaction error (upgrade_fishing_rod): {e}")
+        logger.error(f"Transaction error (upgrade_fishing_rod): {e}")
         return False, f"Lỗi nâng cấp: {str(e)}"
     
     finally:
@@ -647,11 +800,15 @@ async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, st
 # ==================== FISHING PROFILE AUTO-CREATION ====================
 
 async def create_fishing_profile(user_id: int) -> bool:
-    """
-    Auto-create fishing profile for new user (if doesn't exist).
-    Sets default: rod_level=1, rod_durability=30, exp=0
-    
-    Returns: True if created, False if already exists
+    """Creates a default fishing profile for a new user.
+
+    Default values: rod_level=1, rod_durability=30, exp=0.
+
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        bool: True if created successfully, False if already exists.
     """
     try:
         existing = await db_manager.fetchone(
@@ -672,14 +829,18 @@ async def create_fishing_profile(user_id: int) -> bool:
         return True
         
     except Exception as e:
-        print(f"❌ Error creating fishing profile: {e}")
+        logger.error(f"Error creating fishing profile: {e}")
         return False
 
 
 async def get_or_create_fishing_profile(user_id: int) -> Optional[tuple]:
-    """
-    Get fishing profile, auto-create if doesn't exist.
-    Returns: (rod_level, rod_durability, exp) or None on error
+    """Retrieves or creates a fishing profile.
+
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        Optional[tuple]: A tuple containing (rod_level, rod_durability, exp).
     """
     # Try to get existing profile
     result = await db_manager.fetchone(
@@ -703,12 +864,16 @@ async def get_or_create_fishing_profile(user_id: int) -> Optional[tuple]:
 
 
 async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]:
-    """
-    Repair fishing rod with transaction.
-    - Deduct seeds
-    - Reset rod_durability to 30
-    
-    Returns: (success: bool, message: str)
+    """Repairs the user's fishing rod using a transaction.
+
+    Deducts seeds and resets rod_durability to 30.
+
+    Args:
+        user_id (int): The Discord user ID.
+        repair_cost (int): The cost to repair.
+
+    Returns:
+        tuple[bool, str]: Success status and message.
     """
     db = await get_db_connection(DB_PATH)
     try:
@@ -759,8 +924,67 @@ async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]
         
     except Exception as e:
         await db.rollback()
-        print(f"❌ Transaction error (repair_fishing_rod): {e}")
+        logger.error(f"Transaction error (repair_fishing_rod): {e}")
         return False, f"Lỗi sửa cần: {str(e)}"
     
+    finally:
+        await db.close()
+async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: int) -> tuple[bool, str]:
+    """Atomically sells multiple items.
+
+    Verifies availability and quantity of all items before processing the transaction.
+
+    Args:
+        user_id (int): The Discord user ID.
+        items (Dict[str, int]): A dictionary mapping item_ids to quantities to sell.
+        total_money (int): Total seeds to add to user balance.
+
+    Returns:
+        tuple[bool, str]: Success status and message.
+    """
+    db = await get_db_connection(DB_PATH)
+    try:
+        await db.execute("BEGIN")
+        
+        # 1. Verify and deduct items
+        for item_id, quantity in items.items():
+            # Check if user has enough
+            cursor = await db.execute(
+                "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                (user_id, item_id)
+            )
+            row = await cursor.fetchone()
+            
+            if not row or row[0] < quantity:
+                await db.rollback()
+                return False, f"Không đủ số lượng cho {item_id}! Cần {quantity}, có {row[0] if row else 0}"
+            
+            # Deduct item
+            await db.execute(
+                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                (quantity, user_id, item_id)
+            )
+            
+        # 2. Cleanup zero quantity items
+        await db.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id,))
+        
+        # 3. Add money
+        await db.execute(
+            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+            (total_money, user_id)
+        )
+        
+        await db.commit()
+        
+        # Clear caches
+        db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
+        db_manager.clear_cache_by_prefix(f"balance_{user_id}")
+        
+        return True, "Giao dịch thành công!"
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Transaction error (sell_items_atomic): {e}")
+        return False, f"Lỗi giao dịch: {str(e)}"
     finally:
         await db.close()

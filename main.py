@@ -10,12 +10,10 @@ from core.achievement_system import AchievementManager
 # Load biến môi trường từ file .env
 load_dotenv()
 
-# Configure logging centrally (used by werewolf and other modules)
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
+from core.logger import setup_logger
+
+# Setup System Logger
+logger = setup_logger("System", "system.log")
 
 # Cấu hình Intent (Quyền hạn)
 intents = discord.Intents.default()
@@ -29,14 +27,14 @@ bot.cogs_loaded = False  # Flag to track if cogs are already loaded
 # Hàm chạy khi Bot khởi động
 @bot.event
 async def on_ready():
-    print(f'Login successfully as: {bot.user} (ID: {bot.user.id})')
-    print('------')
+    logger.info(f'Login successfully as: {bot.user} (ID: {bot.user.id})')
+    logger.info('------')
     # Set trạng thái cho bot
     await bot.change_presence(activity=discord.Game(name="Cuộn len bên hiên nhà 🧶"))
     
     # Initialize Achievement Manager
     bot.achievement_manager = AchievementManager(bot)
-    print("✓ Achievement Manager initialized")
+    logger.info("✓ Achievement Manager initialized")
     
     # Load cogs on first ready only
     if not bot.cogs_loaded:
@@ -51,7 +49,7 @@ async def on_ready():
 
 # Hàm load các Cogs (Module)
 async def load_cogs():
-    print("\n[LOADING COGS]")
+    logger.info("\n[LOADING COGS]")
     cogs_dir = './cogs'
     
     # Load top-level cogs (prioritize admin.py first for sync functionality)
@@ -62,9 +60,9 @@ async def load_cogs():
         if os.path.exists(os.path.join(cogs_dir, filename)):
             try:
                 await bot.load_extension(f'cogs.{filename[:-3]}')
-                print(f'Loaded: {filename}')
+                logger.info(f'Loaded: {filename}')
             except Exception as e:
-                print(f'Error: {filename} - {e}')
+                logger.error(f'Error: {filename} - {e}')
     
     # Load remaining top-level cogs
     for filename in os.listdir(cogs_dir):
@@ -72,9 +70,9 @@ async def load_cogs():
         if filename.endswith('.py') and filename != '__init__.py' and filename not in priority_cogs:
             try:
                 await bot.load_extension(f'cogs.{filename[:-3]}')
-                print(f'Loaded: {filename}')
+                logger.info(f'Loaded: {filename}')
             except Exception as e:
-                print(f'Error: {filename} - {e}')
+                logger.error(f'Error: {filename} - {e}')
     
     # Load sub-module cogs (e.g., werewolf, noi_tu)
     for subdir in os.listdir(cogs_dir):
@@ -85,9 +83,9 @@ async def load_cogs():
             if os.path.exists(cog_file):
                 try:
                     await bot.load_extension(f'cogs.{subdir}.cog')
-                    print(f'Loaded: cogs.{subdir}.cog')
+                    logger.info(f'Loaded: cogs.{subdir}.cog')
                 except Exception as e:
-                    print(f'Error loading cogs.{subdir}.cog: {e}')
+                    logger.error(f'Error loading cogs.{subdir}.cog: {e}')
             
             # Skip helper files that don't have setup functions
             skip_files = {'__init__.py', 'cog.py', 'constants.py', 'helpers.py', 'events.py', 
@@ -99,16 +97,16 @@ async def load_cogs():
                     module_name = filename[:-3]
                     try:
                         await bot.load_extension(f'cogs.{subdir}.{module_name}')
-                        print(f'Loaded: cogs.{subdir}.{module_name}')
+                        logger.info(f'Loaded: cogs.{subdir}.{module_name}')
                     except Exception as e:
-                        print(f'Error loading cogs.{subdir}.{module_name}: {e}')
+                        logger.error(f'Error loading cogs.{subdir}.{module_name}: {e}')
     
     # List all commands in bot.tree after loading cogs
-    print("\n[SLASH COMMANDS REGISTERED]")
+    logger.info("\n[SLASH COMMANDS REGISTERED]")
     all_commands = bot.tree.get_commands()
     
     # DEBUG: Also check cogs for app_commands
-    print(f"\nCogs loaded: {len(bot.cogs)}")
+    logger.info(f"\nCogs loaded: {len(bot.cogs)}")
     slash_command_count = 0
     for cog_name, cog in bot.cogs.items():
         cog_slash_commands = 0
@@ -118,15 +116,15 @@ async def load_cogs():
                 cog_slash_commands += 1
                 slash_command_count += 1
         if cog_slash_commands > 0:
-            print(f"  - {cog_name}: {cog_slash_commands} slash command(s)")
+            logger.info(f"  - {cog_name}: {cog_slash_commands} slash command(s)")
     
-    print(f"\nbot.tree.get_commands(): {len(all_commands)} commands")
+    logger.info(f"\nbot.tree.get_commands(): {len(all_commands)} commands")
     if all_commands:
         for cmd in all_commands:
-            print(f"  - /{cmd.name}")
+            logger.info(f"  - /{cmd.name}")
     else:
-        print("  (Ko có commands)")
-    print(f"  Total: {len(all_commands)}\n")
+        logger.info("  (Ko có commands)")
+    logger.info(f"  Total: {len(all_commands)}\n")
 
 # Chạy bot
 async def main():
@@ -136,16 +134,16 @@ async def main():
     
     async with bot:
         # Rebuild words dictionary before starting
-        print("\n[REBUILDING WORDS DICT]")
+        logger.info("\n[REBUILDING WORDS DICT]")
         try:
             # Get the absolute path to the script
             script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build_words_dict.py')
             result = subprocess.run([os.sys.executable, script_path], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
-            print(result.stdout)
+            logger.info(result.stdout)
             if result.returncode != 0:
-                print(f"Error: {result.stderr}")
+                logger.error(f"Error: {result.stderr}")
         except Exception as e:
-            print(f"Error building words dict: {e}")
+            logger.error(f"Error building words dict: {e}")
         
         # Start bot (cogs will be loaded in on_ready)
         await bot.start(os.getenv('DISCORD_TOKEN'))

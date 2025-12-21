@@ -10,6 +10,9 @@ from .views import GiveawayJoinView, GiveawayResultView
 from .models import Giveaway
 from .constants import *
 from .helpers import end_giveaway
+from core.logger import setup_logger
+
+logger = setup_logger("GiveawayCog", "cogs/giveaway.log")
 
 # Create giveaway command group
 giveaway_group = app_commands.Group(name="giveaway", description="Quản lý giveaway")
@@ -35,16 +38,16 @@ class GiveawayCog(commands.Cog):
                     if now >= ga.end_time:
                         await end_giveaway(ga.message_id, self.bot)
                 except Exception as e:
-                     print(f"[Giveaway] Error processing giveaway {row[0]}: {e}")
+                     logger.error(f"Error processing giveaway {row[0]}: {e}", exc_info=True)
         except Exception as e:
-            print(f"[Giveaway] Task error: {e}")
+            logger.error(f"Task error: {e}", exc_info=True)
 
     @check_giveaways_task.before_loop
     async def before_check_task(self):
         await self.bot.wait_until_ready()
 
     async def cog_load(self):
-        print("[Giveaway] Loading module...")
+        logger.info("Loading module...")
         
         # 1. Restore Active Giveaways Views
         active_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
@@ -61,12 +64,12 @@ class GiveawayCog(commands.Cog):
                         self.bot.add_view(view)
                         count += 1
                     else:
-                        print(f"[Giveaway] Channel {ga.channel_id} not found for giveaway {ga.message_id}, skipping view restore")
+                        logger.info(f"Channel {ga.channel_id} not found for giveaway {ga.message_id}, skipping view restore")
                 except:
-                    print(f"[Giveaway] Message {ga.message_id} not found, skipping view restore")
+                    logger.info(f"Message {ga.message_id} not found, skipping view restore")
             except Exception as e:
-                print(f"[Giveaway] Error restoring view for giveaway {row[0]}: {e}")
-        print(f"[Giveaway] Restored {count} active giveaway views.")
+                logger.error(f"Error restoring view for giveaway {row[0]}: {e}", exc_info=True)
+        logger.info(f"Restored {count} active giveaway views.")
 
         # 2. Restore Ended Giveaway Result Views (for reroll/end functionality)
         ended_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'ended'")
@@ -97,17 +100,17 @@ class GiveawayCog(commands.Cog):
                                     result_count += 1
                                     break
                 except Exception as e:
-                    print(f"[Giveaway] Could not restore result view for giveaway {ga.message_id}: {e}")
+                    logger.error(f"Could not restore result view for giveaway {ga.message_id}: {e}", exc_info=True)
             except Exception as e:
-                print(f"[Giveaway] Error restoring result view for giveaway {row[0]}: {e}")
-        print(f"[Giveaway] Restored {result_count} ended giveaway result views.")
+                logger.error(f"Error restoring result view for giveaway {row[0]}: {e}", exc_info=True)
+        logger.info(f"Restored {result_count} ended giveaway result views.")
         for guild in self.bot.guilds:
             await self.cache_invites(guild)
 
     async def update_giveaway_embed(self, giveaway_id: int):
         """Update giveaway embed with current participant count and any updated data"""
         try:
-            print(f"[Giveaway] Updating embed for giveaway {giveaway_id}")
+            logger.info(f"Updating embed for giveaway {giveaway_id}")
             
             # Get participant count
             participants = await db_manager.execute(
@@ -115,26 +118,26 @@ class GiveawayCog(commands.Cog):
                 (giveaway_id,)
             )
             count = participants[0][0] if participants else 0
-            print(f"[Giveaway] Participant count for {giveaway_id}: {count}")
+            logger.info(f"Participant count for {giveaway_id}: {count}")
             
             # Get full giveaway data
             row = await db_manager.fetchone("SELECT * FROM giveaways WHERE message_id = ?", (giveaway_id,))
             if not row:
-                print(f"[Giveaway] No giveaway data found for {giveaway_id}")
+                logger.info(f"No giveaway data found for {giveaway_id}")
                 return
             
             ga = Giveaway.from_db(row)
             channel = self.bot.get_channel(ga.channel_id)
             if not channel:
-                print(f"[Giveaway] Channel {ga.channel_id} not found")
+                logger.info(f"Channel {ga.channel_id} not found")
                 return
             
             # Get message
             try:
                 msg = await channel.fetch_message(giveaway_id)
-                print(f"[Giveaway] Fetched message {giveaway_id}")
+                logger.info(f"Fetched message {giveaway_id}")
             except Exception as e:
-                print(f"[Giveaway] Failed to fetch message {giveaway_id}: {e}")
+                logger.warning(f"Failed to fetch message {giveaway_id}: {e}")
                 return
             
             # Create Discord timestamp for relative time display
@@ -170,12 +173,10 @@ class GiveawayCog(commands.Cog):
                 embed.set_image(url=ga.image_url)
             
             await msg.edit(embed=embed)
-            print(f"[Giveaway] Successfully updated embed for giveaway {giveaway_id}")
+            logger.info(f"Successfully updated embed for giveaway {giveaway_id}")
             
         except Exception as e:
-            print(f"[Giveaway] Error updating embed for giveaway {giveaway_id}: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error updating embed for giveaway {giveaway_id}: {e}", exc_info=True)
         finally:
             # Remove from update tasks
             if giveaway_id in self.update_tasks:
@@ -202,7 +203,7 @@ class GiveawayCog(commands.Cog):
             invites = await guild.invites()
             self.invite_cache[guild.id] = {inv.code: inv.uses for inv in invites}
         except Exception as e:
-            print(f"[Giveaway] Could not cache invites for {guild.name}: {e}")
+            logger.info(f"Could not cache invites for {guild.name}: {e}")
 
     @commands.Cog.listener()
     async def on_invite_create(self, invite):
@@ -224,7 +225,7 @@ class GiveawayCog(commands.Cog):
         account_age = (discord.utils.utcnow() - member.created_at).days
         is_valid = account_age >= 7
         
-        print(f"[Giveaway] {member.name} joined. Inviter: {inviter.name}. Valid: {is_valid}")
+        logger.info(f"{member.name} joined. Inviter: {inviter.name}. Valid: {is_valid}")
 
         # Save to DB
         # user_invites: inviter_id, joined_user_id, is_valid, created_at
@@ -234,7 +235,7 @@ class GiveawayCog(commands.Cog):
                 (inviter.id, member.id, 1 if is_valid else 0)
             )
         except Exception as e:
-            print(f"[Giveaway] Error saving invite: {e}")
+            logger.error(f"Error saving invite: {e}", exc_info=True)
 
     async def find_inviter(self, member):
         guild = member.guild
@@ -327,7 +328,7 @@ class GiveawayCog(commands.Cog):
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
             
         except Exception as e:
-            print(f"[Giveaway] Error in gaend_now: {e}")
+            logger.error(f"Error in gaend_now: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Có lỗi xảy ra: {e}")
 
     @giveaway_group.command(name="create", description="Tạo Giveaway với các điều kiện")
@@ -407,7 +408,7 @@ class GiveawayCog(commands.Cog):
             (msg.id, msg.channel.id, interaction.guild.id, interaction.user.id, prize, winners, end_time, json.dumps(reqs), 'active', image_url)
         )
         
-        print(f"[Giveaway] Created giveaway ID {msg.id} by {interaction.user} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id}) - Prize: {prize}, Winners: {winners}, Duration: {duration}, Requirements: {reqs}")
+        logger.info(f"Created giveaway ID {msg.id} by {interaction.user} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id}) - Prize: {prize}, Winners: {winners}, Duration: {duration}, Requirements: {reqs}")
         
         await interaction.edit_original_response(content="✅ Đã tạo Giveaway thành công!")
 
