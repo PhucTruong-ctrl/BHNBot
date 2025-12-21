@@ -462,7 +462,8 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
         
         # Check if all legendary fish caught
         from .constants import LEGENDARY_FISH_KEYS
-        if len(legendary_list) >= len(LEGENDARY_FISH_KEYS):
+        caught_legendary = [fish for fish in legendary_list if fish in LEGENDARY_FISH_KEYS]
+        if len(caught_legendary) >= len(LEGENDARY_FISH_KEYS):
             try:
                 await increment_stat(user_id, "fishing", "all_legendary_caught", 1)
                 # Note: This stat should only be 1, but we use increment to ensure it's set

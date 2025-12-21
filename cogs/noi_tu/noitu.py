@@ -879,11 +879,17 @@ class GameNoiTu(commands.Cog):
             if game['player_count'] == 0:  # First player
                 await self.increment_stat(user_id, 'game_starters', 1)
             
-            # 2. Track low time answers (clutch moments)
+            # 2. Track low time answers (clutch moments) - under 3 seconds
             if game.get('last_message_time'):
                 time_since_last = time.time() - game['last_message_time']
                 if time_since_last < 3.0:  # Less than 3 seconds
                     await self.increment_stat(user_id, 'low_time_answers', 1)
+            
+            # 2.5. Track fast answers - under 5 seconds
+            if game.get('last_message_time'):
+                time_since_last = time.time() - game['last_message_time']
+                if time_since_last < 5.0:  # Less than 5 seconds
+                    await self.increment_stat(user_id, 'fast_answers', 1)
             
             # 3. Track night answers (0-5 AM)
             current_hour = datetime.now().hour
@@ -906,6 +912,10 @@ class GameNoiTu(commands.Cog):
                 if game.get('last_message_time') and (time.time() - game['last_message_time']) < 3.0:
                     current_low_time = await get_stat(user_id, 'noitu', 'low_time_answers')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "low_time_answers", current_low_time, message.channel)
+                
+                if game.get('last_message_time') and (time.time() - game['last_message_time']) < 5.0:
+                    current_fast = await get_stat(user_id, 'noitu', 'fast_answers')
+                    await self.bot.achievement_manager.check_unlock(user_id, "noitu", "fast_answers", current_fast, message.channel)
                 
                 if current_hour >= 0 and current_hour <= 5:
                     current_night = await get_stat(user_id, 'noitu', 'night_answers')
@@ -1002,6 +1012,23 @@ class GameNoiTu(commands.Cog):
                 if current_streak >= 50:
                     for player_id in game['players'].keys():
                         await self.increment_stat(player_id, 'long_chain_participation', 1)
+                        # Check long chain participation achievement
+                        try:
+                            current_long_chain = await get_stat(player_id, 'noitu', 'long_chain_participation')
+                            await self.bot.achievement_manager.check_unlock(player_id, "noitu", "long_chain_participation", current_long_chain, message.channel)
+                        except Exception as e:
+                            log(f"ERROR checking long_chain_participation achievement for {player_id}: {e}")
+                
+                # Update max_streak for all players if current_streak is higher than their max
+                for player_id in game['players'].keys():
+                    try:
+                        updated = await self.update_max_stat(player_id, 'max_streak', current_streak)
+                        if updated:
+                            # Check max_streak achievement
+                            new_max_streak = await get_stat(player_id, 'noitu', 'max_streak')
+                            await self.bot.achievement_manager.check_unlock(player_id, "noitu", "max_streak", new_max_streak, message.channel)
+                    except Exception as e:
+                        log(f"ERROR updating max_streak for {player_id}: {e}")
                 
                 # Distribute rewards to all participants
                 if game.get('players'):
@@ -1056,6 +1083,35 @@ class GameNoiTu(commands.Cog):
                 log(f"[NoiTu] Inserted new stat {stat_key} with value {value}")
         except Exception as e:
             log(f"[NoiTu] Error updating stat {stat_key} for {user_id}: {e}")
+    
+    async def update_max_stat(self, user_id, stat_key, new_value):
+        """Update stat to max value (only if new_value > current_value)"""
+        try:
+            game_id = 'noitu'
+            log(f"[NoiTu] Updating max stat {stat_key} for user {user_id} to {new_value}")
+            
+            # Check current value
+            sql_check = "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?"
+            row = await db_manager.fetchone(sql_check, (user_id, game_id, stat_key))
+            
+            if row:
+                current_value = row[0]
+                if new_value > current_value:
+                    sql_update = "UPDATE user_stats SET value = ? WHERE user_id = ? AND game_id = ? AND stat_key = ?"
+                    await db_manager.modify(sql_update, (new_value, user_id, game_id, stat_key))
+                    log(f"[NoiTu] Updated max stat {stat_key} from {current_value} to {new_value}")
+                    return True
+                else:
+                    log(f"[NoiTu] Max stat {stat_key} not updated (current: {current_value}, new: {new_value})")
+                    return False
+            else:
+                sql_insert = "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)"
+                await db_manager.modify(sql_insert, (user_id, game_id, stat_key, new_value))
+                log(f"[NoiTu] Inserted new max stat {stat_key} with value {new_value}")
+                return True
+        except Exception as e:
+            log(f"[NoiTu] Error updating max stat {stat_key} for {user_id}: {e}")
+            return False
     
     async def is_reduplicative_word(self, word):
         """Check if word is reduplicative (từ láy) like 'xinh xắn', 'lung linh'"""

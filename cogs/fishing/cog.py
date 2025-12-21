@@ -944,12 +944,13 @@ class FishingCog(commands.Cog):
                 
                     # Check boss_hunter achievement
                     if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
-                        current_legendary = await get_stat(user_id, "fishing", "legendary_caught") or 0
+                        await increment_stat(user_id, "fishing", "boss_caught", 1)
+                        current_boss = await get_stat(user_id, "fishing", "boss_caught")
                         await self.bot.achievement_manager.check_unlock(
                             user_id=user_id,
                             game_category="fishing",
-                            stat_key="legendary_caught",
-                            current_value=current_legendary + 1,
+                            stat_key="boss_caught",
+                            current_value=current_boss,
                             channel=channel
                         )
                 
@@ -1353,6 +1354,15 @@ class FishingCog(commands.Cog):
             else:
                 print(f"[FISHING] No fish to sell, button not shown")
         
+            # Track total fish caught for achievement
+            if num_fish > 0:
+                try:
+                    await increment_stat(user_id, "fishing", "total_fish_caught", num_fish)
+                    current_total = await get_stat(user_id, "fishing", "total_fish_caught")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "total_fish_caught", current_total, channel)
+                except Exception as e:
+                    print(f"[ACHIEVEMENT] Error updating total_fish_caught for {user_id}: {e}")
+            
             await casting_msg.edit(content="", embed=embed, view=view)
             print(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
         
@@ -1474,6 +1484,7 @@ class FishingCog(commands.Cog):
     
     async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None):
         """Sell all fish or specific types logic with RANDOM EVENTS"""
+        import random
         is_slash = isinstance(ctx_or_interaction, discord.Interaction)
         
         if is_slash:
@@ -1752,6 +1763,8 @@ class FishingCog(commands.Cog):
                 
                 # Track total money earned for achievements
                 await increment_stat(user_id, "fishing", "total_money_earned", final_total)
+                current_money_earned = await get_stat(user_id, "fishing", "total_money_earned")
+                await self.bot.achievement_manager.check_unlock(user_id, "fishing", "total_money_earned", current_money_earned, ctx.channel)
                 
                 # Log the balance change
                 print(f"[FISHING] [SEED_CHANGE] user_id={user_id} amount=+{final_total} fish_count={len(selected_fish)}")
@@ -1774,9 +1787,29 @@ class FishingCog(commands.Cog):
                 elif triggered_event == "god_of_wealth":
                     current_god_wealth = await get_stat(user_id, "fishing", "god_of_wealth_encountered")
                     await self.bot.achievement_manager.check_unlock(user_id, "fishing", "god_of_wealth_encountered", current_god_wealth, ctx.channel)
+                    # Also track black market success
+                    await increment_stat(user_id, "fishing", "black_market_successes", 1)
+                    current_successes = await get_stat(user_id, "fishing", "black_market_successes")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "black_market_successes", current_successes, ctx.channel)
                 elif triggered_event == "thief_run":
                     current_robbed = await get_stat(user_id, "fishing", "robbed_count")
                     await self.bot.achievement_manager.check_unlock(user_id, "fishing", "robbed_count", current_robbed, ctx.channel)
+                
+                # Additional achievement tracking based on event type
+                if ev_data["type"] == "good":
+                    await increment_stat(user_id, "fishing", "successful_haggles", 1)
+                    current_haggles = await get_stat(user_id, "fishing", "successful_haggles")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "successful_haggles", current_haggles, ctx.channel)
+                elif ev_data["type"] == "bad":
+                    await increment_stat(user_id, "fishing", "black_market_failures", 1)
+                    current_failures = await get_stat(user_id, "fishing", "black_market_failures")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "black_market_failures", current_failures, ctx.channel)
+                
+                # Random luxury car crash (5% chance on sell)
+                if random.random() < 0.05:
+                    await increment_stat(user_id, "fishing", "luxury_car_crashes", 1)
+                    current_crashes = await get_stat(user_id, "fishing", "luxury_car_crashes")
+                    await self.bot.achievement_manager.check_unlock(user_id, "fishing", "luxury_car_crashes", current_crashes, ctx.channel)
                 
                 # CRITICAL: Invalidate inventory cache after successful transaction
                 db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
@@ -1941,6 +1974,14 @@ class FishingCog(commands.Cog):
         
         # Remove chest from inventory
         await remove_item(user_id, "treasure_chest", 1)
+        
+        # Track chests opened for achievement
+        try:
+            await increment_stat(user_id, "fishing", "chests_opened", 1)
+            current_opened = await get_stat(user_id, "fishing", "chests_opened")
+            await self.bot.achievement_manager.check_unlock(user_id, "fishing", "chests_opened", current_opened, ctx.channel if not is_slash else ctx_or_interaction.channel)
+        except Exception as e:
+            print(f"[ACHIEVEMENT] Error updating chests_opened for {user_id}: {e}")
         
         # Get rod level for luck calculation
         rod_level, _ = await get_rod_data(user_id)

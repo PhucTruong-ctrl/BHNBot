@@ -10,7 +10,8 @@ from database_manager import (
     get_user_balance,
     add_seeds,
     get_or_create_user,
-    batch_update_seeds
+    batch_update_seeds,
+    get_stat
 )
 
 DB_PATH = "./data/database.db"
@@ -374,7 +375,8 @@ class BauCuaCog(commands.Cog):
                 channel = self.bot.get_channel(channel_id)
                 if channel:
                     # Check từng stat
-                    await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_played", stats_updates[user_id]['baucua_played'], channel)
+                    current_played = await self.get_stat_value(user_id, 'baucua_played')
+                    await self.bot.achievement_manager.check_unlock(user_id, "baucua", "baucua_played", current_played, channel)
                     if stats['baucua_total_won'] > 0:
                         # Get current total won
                         current_won = await self.get_stat_value(user_id, 'baucua_total_won')

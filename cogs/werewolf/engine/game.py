@@ -2651,7 +2651,7 @@ class WerewolfGame:
         """Check and unlock werewolf achievements based on game outcome."""
         try:
             # Import here to avoid circular imports
-            from database_manager import increment_stat
+            from database_manager import increment_stat, get_stat
             from core.achievement_system import AchievementManager
 
             # Get achievement manager
@@ -2670,20 +2670,20 @@ class WerewolfGame:
                         alive_wolves = [p for p in self.alive_players() if p.get_alignment_priority() == Alignment.WEREWOLF]
                         if len(alive_wolves) == 1 and alive_wolves[0].user_id == user_id:
                             await increment_stat(user_id, "werewolf", "white_wolf_win", 1)
-                            current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "white_wolf_win", 0)
+                            current = await get_stat(user_id, "werewolf", "white_wolf_win", 0)
                             await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "white_wolf_win", current, self.channel)
 
                 elif self._winner == Alignment.NEUTRAL:
                     # Check if player was Pied Piper and charmed everyone
                     if player.role.name == "Thổi Sáo":
                         await increment_stat(user_id, "werewolf", "pied_piper_win", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "pied_piper_win", 0)
+                        current = await get_stat(user_id, "werewolf", "pied_piper_win", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "pied_piper_win", current, self.channel)
 
                     # Check if player was part of winning couple
                     if user_id in getattr(self, '_lovers', set()):
                         await increment_stat(user_id, "werewolf", "couple_win", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "couple_win", 0)
+                        current = await get_stat(user_id, "werewolf", "couple_win", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "couple_win", current, self.channel)
 
                 # 2. Check role-specific achievements
@@ -2691,13 +2691,13 @@ class WerewolfGame:
                 if player.role.name == "Phù Thủy":
                     if player.witch_used_save and player.witch_used_kill:
                         await increment_stat(user_id, "werewolf", "witch_perfect_play", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "witch_perfect_play", 0)
+                        current = await get_stat(user_id, "werewolf", "witch_perfect_play", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "witch_perfect_play", current, self.channel)
 
                 # Hunter kill wolf
                 if player.role.name == "Hunter" and player.hunter_killed_wolf:
                     await increment_stat(user_id, "werewolf", "hunter_kill_wolf", 1)
-                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "hunter_kill_wolf", 0)
+                    current = await get_stat(user_id, "werewolf", "hunter_kill_wolf", 0)
                     await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "hunter_kill_wolf", current, self.channel)
 
                 # Bodyguard save
@@ -2706,7 +2706,7 @@ class WerewolfGame:
                     save_count = player.bodyguard_saves
                     if save_count > 0:
                         await increment_stat(user_id, "werewolf", "bodyguard_save", save_count)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "bodyguard_save", 0)
+                        current = await get_stat(user_id, "werewolf", "bodyguard_save", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "bodyguard_save", current, self.channel)
 
                 # Arsonist burn 3+ players
@@ -2714,7 +2714,7 @@ class WerewolfGame:
                     burn_count = player.arsonist_burns
                     if burn_count >= 3:
                         await increment_stat(user_id, "werewolf", "arsonist_burn", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "arsonist_burn", 0)
+                        current = await get_stat(user_id, "werewolf", "arsonist_burn", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "arsonist_burn", current, self.channel)
 
                 # Seer find wolf streak
@@ -2722,13 +2722,13 @@ class WerewolfGame:
                     streak = player.seer_wolf_streak
                     if streak >= 3:
                         await increment_stat(user_id, "werewolf", "seer_find_wolf_streak", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "seer_find_wolf_streak", 0)
+                        current = await get_stat(user_id, "werewolf", "seer_find_wolf_streak", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "seer_find_wolf_streak", current, self.channel)
 
                 # Fool hanged
                 if player.fool_hanged:
                     await increment_stat(user_id, "werewolf", "fool_hanged", 1)
-                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "fool_hanged", 0)
+                    current = await get_stat(user_id, "werewolf", "fool_hanged", 0)
                     await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "fool_hanged", current, self.channel)
 
                 # Die first night/day
@@ -2741,7 +2741,7 @@ class WerewolfGame:
                 if death_phase:
                     if "Night 1" in death_phase or "Day 1" in death_phase:
                         await increment_stat(user_id, "werewolf", "die_first_night", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "die_first_night", 0)
+                        current = await get_stat(user_id, "werewolf", "die_first_night", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "die_first_night", current, self.channel)
 
                 # Elder survive bite
@@ -2749,19 +2749,19 @@ class WerewolfGame:
                     # Check if elder was bitten but survived
                     if player.elder_bitten:
                         await increment_stat(user_id, "werewolf", "elder_survive_bite", 1)
-                        current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "elder_survive_bite", 0)
+                        current = await get_stat(user_id, "werewolf", "elder_survive_bite", 0)
                         await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "elder_survive_bite", current, self.channel)
 
                 # Fire Wolf win alive
                 if player.role.name == "Fire Wolf" and self._winner == Alignment.WEREWOLF and player in self.alive_players():
                     await increment_stat(user_id, "werewolf", "fire_wolf_win_alive", 1)
-                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "fire_wolf_win_alive", 0)
+                    current = await get_stat(user_id, "werewolf", "fire_wolf_win_alive", 0)
                     await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "fire_wolf_win_alive", current, self.channel)
 
                 # Assassin kill
                 if player.assassin_killed:
                     await increment_stat(user_id, "werewolf", "assassin_kill", 1)
-                    current = await self.bot.achievement_manager.get_stat(user_id, "werewolf", "assassin_kill", 0)
+                    current = await get_stat(user_id, "werewolf", "assassin_kill", 0)
                     await self.bot.achievement_manager.check_unlock(user_id, "werewolf", "assassin_kill", current, self.channel)
 
         except Exception as e:
