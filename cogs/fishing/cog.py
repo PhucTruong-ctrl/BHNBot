@@ -917,14 +917,32 @@ class FishingCog(commands.Cog):
             
                 # *** APPLY DISASTER CATCH RATE PENALTY ***
                 current_time = time.time()
+                trash_rate = 0.0
                 if self.disaster_catch_rate_penalty > 0 and current_time < self.disaster_effect_end_time:
-                    # Apply catch rate penalty (e.g., 0.5 = 50% reduction)
-                    rare_ratio = rare_ratio * (1.0 - self.disaster_catch_rate_penalty)
-                    print(f"[DISASTER] {username} catch rate reduced by {int(self.disaster_catch_rate_penalty*100)}% due to {self.current_disaster.get('name', 'disaster')}")
-            
-                common_ratio = 1.0 - rare_ratio  # Adjust common to maintain 100% total
-            
-                is_rare = random.choices([False, True], weights=[common_ratio, rare_ratio], k=1)[0]
+                    # Calculate trash rate from penalty
+                    trash_rate = self.disaster_catch_rate_penalty
+                    # Reduce fish rates proportionally
+                    total_fish_rate = rare_ratio + common_ratio
+                    if total_fish_rate > 0:
+                        fish_rate_after_penalty = total_fish_rate * (1.0 - self.disaster_catch_rate_penalty)
+                        rare_ratio = (rare_ratio / total_fish_rate) * fish_rate_after_penalty
+                        common_ratio = (common_ratio / total_fish_rate) * fish_rate_after_penalty
+                    else:
+                        trash_rate = 0  # No fish to replace
+                    print(f"[DISASTER] {username} fish rate reduced by {int(self.disaster_catch_rate_penalty*100)}%, trash rate: {int(trash_rate*100)}% due to {self.current_disaster.get('name', 'disaster')}")
+                
+                # Now roll: common, rare, or trash
+                total_weights = [common_ratio, rare_ratio, trash_rate]
+                choices = ["common", "rare", "trash"]
+                catch_type = random.choices(choices, weights=total_weights, k=1)[0]
+                
+                if catch_type == "trash":
+                    # Catch trash instead of fish
+                    trash = random.choice(TRASH_ITEMS)
+                    item_key = trash.get("key", f"trash_{hash(str(trash)) % 1000}")
+                    await self.add_inventory_item(user_id, item_key, "trash")
+                    print(f"[DISASTER_TRASH] {username} caught trash: {item_key} due to {self.current_disaster.get('name', 'disaster')}")
+                    continue  # Skip fish catching logic
             
                 # Check if convert_to_trash event is active (e.g., Pollution)
                 if event_result.get("convert_to_trash", False):
@@ -936,7 +954,7 @@ class FishingCog(commands.Cog):
                     continue
             
                 # FIX: Nếu đã bắt rare rồi hoặc roll ra rare lần này nhưng đã bắt rare trước -> bắt buộc common
-                if is_rare and not caught_rare_this_turn:
+                if catch_type == "rare" and not caught_rare_this_turn:
                     fish = random.choice(RARE_FISH)
                     caught_rare_this_turn = True  # Đánh dấu đã bắt rare
                     print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
@@ -977,7 +995,7 @@ class FishingCog(commands.Cog):
                     if fish['key'] not in fish_only_items:
                         fish_only_items[fish['key']] = 0
                     fish_only_items[fish['key']] += 1
-                else:
+                elif catch_type == "common":
                     # Bắt cá thường (hoặc roll rare lần 2+ thì buộc common)
                     fish = random.choice(COMMON_FISH)
                     print(f"[FISHING] {username} caught common fish: {fish['key']}")

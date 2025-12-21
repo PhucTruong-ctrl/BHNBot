@@ -100,17 +100,17 @@ ALL_FISH["rod_material"] = {"key": "rod_material", "name": "Vật Liệu Nâng C
 
 # Chest loot (will be populated after TRASH_ITEMS is defined)
 CHEST_LOOT = {
-    "nothing": 15,  # 15% chance to get nothing
-    "fertilizer": 20,
-    "puzzle_piece": 12,
-    "coin_pouch": 15,
-    "gift_random": 20,
-    "manh_sao_bang": 8,  # Mảnh Sao Băng
-    "manh_ban_do_a": 3,  # Mảnh Bản Đồ A
-    "manh_ban_do_b": 3,  # Mảnh Bản Đồ B
-    "manh_ban_do_c": 3,  # Mảnh Bản Đồ C
-    "manh_ban_do_d": 3,
-    # Trash items from fishing (2% each = 60 total, so ~1% each)
+    # "nothing": REMOVED - No more empty chests!
+    "fertilizer": 20,  # Increased from 15
+    "puzzle_piece": 18,  # Increased from 15
+    "coin_pouch": 28,  # Increased from 25
+    "gift_random": 33,  # Increased from 30
+    "manh_sao_bang": 12,  # Increased from 10
+    "manh_ban_do_a": 4,  # Stay the same
+    "manh_ban_do_b": 4,  # Stay the same
+    "manh_ban_do_c": 4,  # Stay the same
+    "manh_ban_do_d": 4,  # Stay the same
+    # Trash items from fishing (1% each = 20 total)
 }
 
 FISHING_EVENTS_PATH = "./data/fishing_events.json"
@@ -145,7 +145,7 @@ GIFT_ITEMS = [v.get("key") for v in ALL_ITEMS_DATA.values() if v.get("type") == 
 
 # NOW populate CHEST_LOOT with trash items (after TRASH_ITEMS is defined)
 for trash_item in TRASH_ITEMS:
-    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 2
+    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 1  # Reduced from 2 to 1
 
 
 # Achievements (fishing-specific)
