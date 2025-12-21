@@ -135,6 +135,9 @@ class FishingCog(commands.Cog):
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
         self.guaranteed_catch_users = {}  # {user_id: True} - Guaranteed legendary catch from tinh cau win
         
+        # User locks to prevent concurrent fishing operations
+        self.user_locks = {}  # {user_id: asyncio.Lock}
+        
         # Emotional state tracking
         self.emotional_states = {}  # {user_id: {type: "suy"|"keo_ly"|"lag", duration: int, start_time: float}}
         
@@ -154,6 +157,10 @@ class FishingCog(commands.Cog):
         self.current_disaster = None  # Store current disaster info
         self.disaster_culprit = None  # User who caused the disaster
         self.pending_disaster = {}  # {user_id: disaster_key} - Force trigger disaster on next fishing
+        self.pending_fishing_event = {}  # {user_id: event_key} - Force trigger fishing event on next cast
+        self.pending_sell_event = {}  # {user_id: event_key} - Force trigger sell event on next sell
+        self.pending_npc_event = {}  # {user_id: npc_key} - Force trigger NPC on next cast
+        self.pending_meteor_shower = set()  # set of user_ids - Force meteor shower tonight at 21:00
         
         self.meteor_wish_count = {}  # {user_id: {'date': date, 'count': int}}
         
@@ -172,14 +179,35 @@ class FishingCog(commands.Cog):
     async def meteor_shower_event(self):
         """Daily meteor shower event at 21:00"""
         try:
-            if random.random() < 0.4:  # 40% chance
-                # Get all guilds with fishing channels configured
-                from database_manager import db_manager
-                rows = await db_manager.execute("SELECT guild_id, fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
-                
-                for guild_id, channel_id in rows:
-                    channel = self.bot.get_channel(channel_id)
-                    if channel:
+            # Check for pending meteor showers first
+            pending_users = list(self.pending_meteor_shower) if hasattr(self, "pending_meteor_shower") else []
+            self.pending_meteor_shower.clear()
+            
+            # Get all guilds with fishing channels configured
+            from database_manager import db_manager
+            rows = await db_manager.execute("SELECT guild_id, fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
+            
+            for guild_id, channel_id in rows:
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    # Force meteor shower for pending users
+                    if pending_users:
+                        await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
+                        print(f"[METEOR] Force triggering meteor shower for pending users: {pending_users}")
+                        
+                        # Send meteor for each pending user
+                        for user_id in pending_users:
+                            embed = discord.Embed(
+                                title="💫 Một ngôi sao vừa vụt qua!",
+                                description="Ước mau!",
+                                color=discord.Color.blue()
+                            )
+                            view = MeteorWishView(self)
+                            await channel.send(embed=embed, view=view)
+                            await asyncio.sleep(1)  # Small delay between messages
+                    
+                    # Regular random meteor shower (skip if we already sent for pending users to avoid double)
+                    elif random.random() < 0.4:  # 40% chance
                         await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
                         
                         # Send 5-10 messages over 30 minutes
@@ -195,22 +223,37 @@ class FishingCog(commands.Cog):
         except Exception as e:
             print(f"[METEOR] Error in meteor shower event: {e}")
     
+    async def _force_meteor_shower(self, user_id: int, channel):
+        """Force trigger meteor shower for a specific user"""
+        try:
+            embed = discord.Embed(
+                title="💫 Một ngôi sao vừa vụt qua!",
+                description="Ước mau!",
+                color=discord.Color.blue()
+            )
+            view = MeteorWishView(self)
+            await channel.send(embed=embed, view=view)
+            print(f"[METEOR] Force triggered meteor shower for user {user_id}")
+        except Exception as e:
+            print(f"[METEOR] Error in force meteor shower: {e}")
+    
     # ==================== COMMANDS ====================
     
-    @app_commands.command(name="sukien", description="⚡ Force trigger disaster trên user tiếp theo (chỉ Admin)")
+    @app_commands.command(name="sukien", description="⚡ Force trigger event trên user (chỉ Admin)")
     @app_commands.describe(
-        user="Discord user sẽ bị trigger disaster",
-        disaster_key="Disaster key (xem danh sách trong disaster_events.json)"
+        user="Discord user sẽ bị trigger event",
+        event_type="Loại event: disaster, fishing_event, sell_event, npc_event, meteor_shower",
+        event_key="Event key (xem danh sách trong file tương ứng)"
     )
-    async def trigger_disaster_slash(self, interaction: discord.Interaction, user: discord.User, disaster_key: str):
-        await self._trigger_disaster_action(interaction, user.id, disaster_key, is_slash=True)
+    async def trigger_event_slash(self, interaction: discord.Interaction, user: discord.User, event_type: str, event_key: str):
+        await self._trigger_event_action(interaction, user.id, event_type, event_key, is_slash=True)
     
-    @commands.command(name="sukien", description="⚡ Force trigger disaster (chỉ Admin)")
-    async def trigger_disaster_prefix(self, ctx, user: discord.User, disaster_key: str):
-        await self._trigger_disaster_action(ctx, user.id, disaster_key, is_slash=False)
+    @commands.command(name="sukien", description="⚡ Force trigger event (chỉ Admin)")
+    async def trigger_event_prefix(self, ctx, user: discord.User, event_type: str, event_key: str):
+        await self._trigger_event_action(ctx, user.id, event_type, event_key, is_slash=False)
     
-    async def _trigger_disaster_action(self, ctx_or_interaction, target_user_id: int, disaster_key: str, is_slash: bool):
-        """Force trigger a disaster for next fishing action."""
+    async def _trigger_event_action(self, ctx_or_interaction, target_user_id: int, event_type: str, event_key: str, is_slash: bool):
+        """Force trigger an event for next appropriate action."""
         # Check if user is bot owner/admin
         if ctx_or_interaction.user.id != self.bot.owner_id:
             if is_slash:
@@ -219,38 +262,137 @@ class FishingCog(commands.Cog):
                 await ctx_or_interaction.send("❌ Chỉ Owner mới có quyền sử dụng lệnh này!")
             return
         
-        # Load disasters data
+        valid_event_types = ["disaster", "fishing_event", "sell_event", "npc_event", "meteor_shower"]
+        if event_type not in valid_event_types:
+            type_list = ", ".join(valid_event_types)
+            if is_slash:
+                await ctx_or_interaction.response.send_message(f"❌ Event type không hợp lệ!\n\nDanh sách: {type_list}", ephemeral=True)
+            else:
+                await ctx_or_interaction.send(f"❌ Event type không hợp lệ!\n\nDanh sách: {type_list}")
+            return
+        
+        # Load event data based on type
         import json
-        from .constants import DISASTER_EVENTS_PATH
+        from .constants import DISASTER_EVENTS_PATH, FISHING_EVENTS_PATH, SELL_EVENTS_PATH, NPC_EVENTS_PATH
+        
+        event_data = None
+        event_name = ""
+        event_emoji = ""
+        
         try:
-            with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                disasters = {d["key"]: d for d in data.get("disasters", [])}
-        except:
+            if event_type == "disaster":
+                with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    disasters = {d["key"]: d for d in data.get("disasters", [])}
+                    if event_key in disasters:
+                        event_data = disasters[event_key]
+                        event_name = event_data["name"]
+                        event_emoji = event_data["emoji"]
+                    else:
+                        disaster_list = ", ".join(disasters.keys())
+                        if is_slash:
+                            await ctx_or_interaction.response.send_message(f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}", ephemeral=True)
+                        else:
+                            await ctx_or_interaction.send(f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}")
+                        return
+                        
+            elif event_type == "fishing_event":
+                with open(FISHING_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    events = data.get("events", {})
+                    if event_key in events:
+                        event_data = events[event_key]
+                        event_name = event_data.get("name", event_key)
+                        event_emoji = "🎣"
+                    else:
+                        event_list = ", ".join(events.keys())
+                        if is_slash:
+                            await ctx_or_interaction.response.send_message(f"❌ Fishing event key không tồn tại!\n\nDanh sách: {event_list}", ephemeral=True)
+                        else:
+                            await ctx_or_interaction.send(f"❌ Fishing event key không tồn tại!\n\nDanh sách: {event_list}")
+                        return
+                        
+            elif event_type == "sell_event":
+                with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    events = data.get("events", {})
+                    if event_key in events:
+                        event_data = events[event_key]
+                        event_name = event_data.get("name", event_key)
+                        event_emoji = "💰"
+                    else:
+                        event_list = ", ".join(events.keys())
+                        if is_slash:
+                            await ctx_or_interaction.response.send_message(f"❌ Sell event key không tồn tại!\n\nDanh sách: {event_list}", ephemeral=True)
+                        else:
+                            await ctx_or_interaction.send(f"❌ Sell event key không tồn tại!\n\nDanh sách: {event_list}")
+                        return
+                        
+            elif event_type == "npc_event":
+                with open(NPC_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    npcs = data
+                    if event_key in npcs:
+                        event_data = npcs[event_key]
+                        event_name = event_data.get("name", event_key)
+                        event_emoji = event_name.split()[0]  # First emoji
+                    else:
+                        npc_list = ", ".join(npcs.keys())
+                        if is_slash:
+                            await ctx_or_interaction.response.send_message(f"❌ NPC event key không tồn tại!\n\nDanh sách: {npc_list}", ephemeral=True)
+                        else:
+                            await ctx_or_interaction.send(f"❌ NPC event key không tồn tại!\n\nDanh sách: {npc_list}")
+                        return
+                        
+            elif event_type == "meteor_shower":
+                # Special case: force meteor shower tonight
+                if event_key != "force":
+                    if is_slash:
+                        await ctx_or_interaction.response.send_message("❌ Cho meteor_shower, event_key phải là 'force'", ephemeral=True)
+                    else:
+                        await ctx_or_interaction.send("❌ Cho meteor_shower, event_key phải là 'force'")
+                    return
+                event_name = "Sao Băng Rơi"
+                event_emoji = "🌟"
+        
+        except Exception as e:
+            print(f"[TRIGGER_EVENT] Error loading {event_type} data: {e}")
             if is_slash:
-                await ctx_or_interaction.response.send_message("❌ Lỗi load disaster events!", ephemeral=True)
+                await ctx_or_interaction.response.send_message(f"❌ Lỗi load {event_type} events!", ephemeral=True)
             else:
-                await ctx_or_interaction.send("❌ Lỗi load disaster events!")
+                await ctx_or_interaction.send(f"❌ Lỗi load {event_type} events!")
             return
         
-        # Verify disaster key exists
-        if disaster_key not in disasters:
-            disaster_list = ", ".join(disasters.keys())
-            if is_slash:
-                await ctx_or_interaction.response.send_message(f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}", ephemeral=True)
-            else:
-                await ctx_or_interaction.send(f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}")
-            return
-        
-        # Store pending disaster
-        self.pending_disaster[target_user_id] = disaster_key
+        # Store pending event
+        if event_type == "disaster":
+            self.pending_disaster[target_user_id] = event_key
+        elif event_type == "fishing_event":
+            self.pending_fishing_event[target_user_id] = event_key
+        elif event_type == "sell_event":
+            self.pending_sell_event[target_user_id] = event_key
+        elif event_type == "npc_event":
+            self.pending_npc_event[target_user_id] = event_key
+        elif event_type == "meteor_shower":
+            self.pending_meteor_shower.add(target_user_id)
+            # Force trigger meteor shower immediately if it's between 21:00-21:05
+            now = datetime.now()
+            if now.hour == 21 and now.minute <= 5:
+                await self._force_meteor_shower(target_user_id, ctx_or_interaction.channel)
         
         target_user = self.bot.get_user(target_user_id)
         target_name = target_user.mention if target_user else f"<@{target_user_id}>"
         
+        action_desc = {
+            "disaster": "trong lần câu tiếp theo",
+            "fishing_event": "trong lần câu tiếp theo", 
+            "sell_event": "trong lần bán tiếp theo",
+            "npc_event": "trong lần câu tiếp theo",
+            "meteor_shower": "vào tối nay lúc 21:00"
+        }[event_type]
+        
         embed = discord.Embed(
             title="⚡ THẢM HỌA ĐƯỢC LÊNH CHỈ",
-            description=f"Người chơi {target_name} sẽ bị trigger disaster **{disasters[disaster_key]['name']}** ({disasters[disaster_key]['emoji']}) trong lần câu tiếp theo!",
+            description=f"Người chơi {target_name} sẽ bị trigger **{event_name}** {event_emoji} {action_desc}!",
             color=discord.Color.red()
         )
         
@@ -269,6 +411,7 @@ class FishingCog(commands.Cog):
     
     async def _fish_action(self, ctx_or_interaction):
         """Main fishing logic - rút gọn, gọi helpers từ modules khác"""
+        start_time = time.time()  # Performance monitoring
         try:
             is_slash = isinstance(ctx_or_interaction, discord.Interaction)
             
@@ -817,6 +960,9 @@ class FishingCog(commands.Cog):
                 casting_msg = await channel.send(f"🎣 **{username}** câu tiếp...")
         
             # ==================== NORMAL FISHING PROCESSING ====================
+            
+            # NOTE: Race condition protection - user locks enabled for critical database operations
+            # Due to code complexity, locks are applied per operation rather than entire block
         
             # Roll số lượng cá (1-5) với tỉ lệ giảm dần
             # NHƯNG: Nếu không có mồi HOẶC cần gãy -> chỉ được 1 cá hoặc 1 rác (không multiple)
@@ -912,7 +1058,7 @@ class FishingCog(commands.Cog):
             
                 # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
                 if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
-                    rare_ratio = min(0.95, rare_ratio + 0.75)  # +75% rare chance
+                    rare_ratio = min(0.75, rare_ratio + 0.75)  # Cap at 75% max, +75% rare chance
                     print(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
             
                 # *** APPLY DISASTER CATCH RATE PENALTY ***
@@ -940,8 +1086,16 @@ class FishingCog(commands.Cog):
                     # Catch trash instead of fish
                     trash = random.choice(TRASH_ITEMS)
                     item_key = trash.get("key", f"trash_{hash(str(trash)) % 1000}")
-                    await self.add_inventory_item(user_id, item_key, "trash")
-                    print(f"[DISASTER_TRASH] {username} caught trash: {item_key} due to {self.current_disaster.get('name', 'disaster')}")
+                    # Protect database operation with user lock
+                    if user_id not in self.user_locks:
+                        self.user_locks[user_id] = asyncio.Lock()
+                    async with self.user_locks[user_id]:
+                        try:
+                            await self.add_inventory_item(user_id, item_key, "trash")
+                            print(f"[DISASTER_TRASH] {username} caught trash: {item_key} due to {self.current_disaster.get('name', 'disaster')}")
+                        except Exception as e:
+                            print(f"[FISHING] [ERROR] [RACE_CONDITION_POTENTIAL] Failed to add trash item {item_key} for {username}: {e}")
+                            # Log potential race condition for monitoring
                     continue  # Skip fish catching logic
             
                 # Check if convert_to_trash event is active (e.g., Pollution)
@@ -953,12 +1107,19 @@ class FishingCog(commands.Cog):
                     print(f"[EVENT-POLLUTION] {username} fish converted to trash: {item_key}")
                     continue
             
-                # FIX: Nếu đã bắt rare rồi hoặc roll ra rare lần này nhưng đã bắt rare trước -> bắt buộc common
                 if catch_type == "rare" and not caught_rare_this_turn:
                     fish = random.choice(RARE_FISH)
                     caught_rare_this_turn = True  # Đánh dấu đã bắt rare
                     print(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
-                    await self.add_inventory_item(user_id, fish['key'], "fish")
+                    # Protect database operation with user lock
+                    if user_id not in self.user_locks:
+                        self.user_locks[user_id] = asyncio.Lock()
+                    async with self.user_locks[user_id]:
+                        try:
+                            await self.add_inventory_item(user_id, fish['key'], "fish")
+                        except Exception as e:
+                            print(f"[FISHING] [ERROR] Failed to add rare fish {fish['key']} for {username}: {e}")
+                            continue  # Skip achievement tracking if add failed
                 
                     # Check boss_hunter achievement
                     if fish['key'] in ['megalodon', 'thuy_quai_kraken', 'leviathan']:
@@ -977,9 +1138,10 @@ class FishingCog(commands.Cog):
                     if is_new_collection:
                         print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
                         # Check first_catch achievement (catch any fish for the first time)
-                        # Get current collection count to see if this is the first fish ever
+                        # Get current collection count BEFORE adding this fish
                         collection = await get_collection(user_id)
-                        if len(collection) == 1:  # This is the first fish ever caught
+                        was_empty = len(collection) == 0  # Check if collection was empty before this catch
+                        if was_empty:  # This is the first fish ever caught
                             await increment_stat(user_id, "fishing", "first_catch", 1)
                             await self.bot.achievement_manager.check_unlock(user_id, "fishing", "first_catch", 1, channel)
                         # Check if collection is complete
@@ -999,15 +1161,24 @@ class FishingCog(commands.Cog):
                     # Bắt cá thường (hoặc roll rare lần 2+ thì buộc common)
                     fish = random.choice(COMMON_FISH)
                     print(f"[FISHING] {username} caught common fish: {fish['key']}")
-                    await self.add_inventory_item(user_id, fish['key'], "fish")
+                    # Protect database operation with user lock
+                    if user_id not in self.user_locks:
+                        self.user_locks[user_id] = asyncio.Lock()
+                    async with self.user_locks[user_id]:
+                        try:
+                            await self.add_inventory_item(user_id, fish['key'], "fish")
+                        except Exception as e:
+                            print(f"[FISHING] [ERROR] Failed to add common fish {fish['key']} for {username}: {e}")
+                            continue  # Skip achievement tracking if add failed
                     # Track in collection
                     is_new_collection = await track_caught_fish(user_id, fish['key'])
                     if is_new_collection:
                         print(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
                         # Check first_catch achievement (catch any fish for the first time)
-                        # Get current collection count to see if this is the first fish ever
+                        # Get current collection count BEFORE adding this fish
                         collection = await get_collection(user_id)
-                        if len(collection) == 1:  # This is the first fish ever caught
+                        was_empty = len(collection) == 0  # Check if collection was empty before this catch
+                        if was_empty:  # This is the first fish ever caught
                             await increment_stat(user_id, "fishing", "first_catch", 1)
                             await self.bot.achievement_manager.check_unlock(user_id, "fishing", "first_catch", 1, channel)
                         # Check if collection is complete
@@ -1327,8 +1498,8 @@ class FishingCog(commands.Cog):
             # Build description with broken rod warning if needed
             display_content = "\n".join(fish_display) if fish_display else "Không có gì"
             
-            # *** APPLY DISPLAY GLITCH EFFECT ***
-            display_content = self.apply_display_glitch(display_content)
+            # *** APPLY DISPLAY GLITCH EFFECT *** (removed duplicate application)
+            # display_content = self.apply_display_glitch(display_content)  # Already applied to individual fish names
             
             desc_parts = [display_content]
             if is_broken_rod:
@@ -1351,9 +1522,20 @@ class FishingCog(commands.Cog):
         
             # *** UPDATE DURABILITY AFTER FISHING ***
             old_durability = rod_durability
-            rod_durability = max(0, rod_durability - durability_loss)
-            await self.update_rod_data(user_id, rod_durability)
-            print(f"[FISHING] [DURABILITY_UPDATE] {username} (user_id={user_id}) durability {old_durability} → {rod_durability} (loss: {durability_loss})")
+            new_durability = max(0, rod_durability - durability_loss)
+            # Protect durability update with user lock
+            if user_id not in self.user_locks:
+                self.user_locks[user_id] = asyncio.Lock()
+            async with self.user_locks[user_id]:
+                try:
+                    await self.update_rod_data(user_id, new_durability)
+                    rod_durability = new_durability  # Update local variable only if successful
+                    print(f"[FISHING] [DURABILITY_UPDATE] {username} (user_id={user_id}) durability {old_durability} → {rod_durability} (loss: {durability_loss})")
+                except Exception as e:
+                    print(f"[FISHING] [DURABILITY_ERROR] Failed to update durability for {username}: {e}")
+                    # Don't update local variable, keep old value for display
+            # End of user lock protection block
+            # End of user lock protection block
         
             durability_status = f"🛡️ Độ bền còn lại: {rod_durability}/{rod_config['durability']}"
             if rod_durability <= 0:
@@ -1385,15 +1567,25 @@ class FishingCog(commands.Cog):
             print(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
         
             # ==================== NPC ENCOUNTER ====================
-            if random.random() < NPC_ENCOUNTER_CHANCE and fish_only_items:
-                await asyncio.sleep(NPC_ENCOUNTER_DELAY)  # Small delay for dramatic effect
+            npc_triggered = False
+            if hasattr(self, "pending_npc_event") and user_id in self.pending_npc_event:
+                npc_type = self.pending_npc_event.pop(user_id)
+                npc_triggered = True
+                print(f"[NPC] Triggering pending NPC event: {npc_type} for user {user_id}")
+            elif random.random() < NPC_ENCOUNTER_CHANCE and (fish_only_items or trash_count > 0 or chest_count > 0):
+                npc_triggered = True
             
-                # Select random NPC based on weighted chances
-                npc_pool = []
-                for npc_key, npc_data in NPC_ENCOUNTERS.items():
-                    npc_pool.extend([npc_key] * int(npc_data["chance"] * 100))
-            
-                npc_type = random.choice(npc_pool)
+            if npc_triggered:
+                if not hasattr(self, "pending_npc_event") or user_id not in self.pending_npc_event:
+                    await asyncio.sleep(NPC_ENCOUNTER_DELAY)  # Small delay for dramatic effect
+                
+                    # Select random NPC based on weighted chances
+                    npc_pool = []
+                    for npc_key, npc_data in NPC_ENCOUNTERS.items():
+                        npc_pool.extend([npc_key] * int(npc_data["chance"] * 100))
+                
+                    npc_type = random.choice(npc_pool)
+                
                 npc_data = NPC_ENCOUNTERS[npc_type]
             
                 # Get the first fish caught
@@ -1469,10 +1661,15 @@ class FishingCog(commands.Cog):
                 if user_id in self.fishing_cooldown:
                     del self.fishing_cooldown[user_id]
                 print(f"[FISHING] [GLOBAL_RESET] {username} cooldown cleared due to global reset event")
+            
+            # Performance monitoring
+            duration = time.time() - start_time
+            print(f"[FISHING] [PERF] Cast completed in {duration:.2f}s for {username}")
         
         except Exception as e:
             # Catch-all error handler for _fish_action
-            print(f"[FISHING] [ERROR] Unexpected error in _fish_action: {e}")
+            duration = time.time() - start_time
+            print(f"[FISHING] [ERROR] [PERF] Unexpected error in _fish_action after {duration:.2f}s: {e}")
             import traceback
             traceback.print_exc()
             try:
@@ -1626,23 +1823,28 @@ class FishingCog(commands.Cog):
             event_color = discord.Color.green()  # Mặc định màu xanh lá
             triggered_event = None
             
-            # Roll event
-            rand = random.random()
-            current_chance = 0
-            
-            # Debug log
-            print(f"[SELL EVENT DEBUG] User: {username}, base_total: {base_total}, random value: {rand:.4f}")
-            
-            for ev_key, ev_data in SELL_EVENTS.items():
-                current_chance += ev_data["chance"]
-                print(f"[FISHING] [SELL_EVENT_DEBUG] Checking event={ev_key} chance={ev_data['chance']:.4f} cumulative={current_chance:.4f}")
-                if rand < current_chance:
-                    triggered_event = ev_key
-                    print(f"[FISHING] [SELL_EVENT_DEBUG] TRIGGERED event={triggered_event}")
-                    break
-            
-            if not triggered_event:
-                print(f"[FISHING] [SELL_EVENT_DEBUG] NO_EVENT cumulative_chance={current_chance:.4f}")
+            # CHECK FOR PENDING SELL EVENT FIRST
+            if hasattr(self, "pending_sell_event") and user_id in self.pending_sell_event:
+                triggered_event = self.pending_sell_event.pop(user_id)
+                print(f"[SELL EVENT] Triggering pending sell event: {triggered_event} for user {user_id}")
+            else:
+                # Roll event
+                rand = random.random()
+                current_chance = 0
+                
+                # Debug log
+                print(f"[SELL EVENT DEBUG] User: {username}, base_total: {base_total}, random value: {rand:.4f}")
+                
+                for ev_key, ev_data in SELL_EVENTS.items():
+                    current_chance += ev_data["chance"]
+                    print(f"[FISHING] [SELL_EVENT_DEBUG] Checking event={ev_key} chance={ev_data['chance']:.4f} cumulative={current_chance:.4f}")
+                    if rand < current_chance:
+                        triggered_event = ev_key
+                        print(f"[FISHING] [SELL_EVENT_DEBUG] TRIGGERED event={triggered_event}")
+                        break
+                
+                if not triggered_event:
+                    print(f"[FISHING] [SELL_EVENT_DEBUG] NO_EVENT cumulative_chance={current_chance:.4f}")
             
             # Apply event logic
             special_rewards = []
@@ -2006,23 +2208,23 @@ class FishingCog(commands.Cog):
         
         # Calculate item count based on rod level (luck)
         # Higher rod level = better luck = more items
-        # Level 1: 0: 80%, 1: 15%, 2: 4%, 3: 1%
-        # Level 2: 0: 70%, 1: 20%, 2: 8%, 3: 2%
-        # Level 3: 0: 60%, 1: 25%, 2: 12%, 3: 3%
-        # Level 4: 0: 50%, 1: 30%, 2: 16%, 3: 4%
-        # Level 5: 0: 40%, 1: 35%, 2: 20%, 3: 5%
-        base_zero_chance = 80 - (rod_level - 1) * 10  # Decrease by 10% per level
-        zero_chance = max(40, base_zero_chance)  # Min 40%
-        one_chance = 15 + (rod_level - 1) * 5  # Increase by 5% per level
-        two_chance = 4 + (rod_level - 1) * 4  # Increase by 4% per level
-        three_chance = 1 + (rod_level - 1) * 1  # Increase by 1% per level
+        # Level 1: 0: 0%, 1: 60%, 2: 30%, 3: 10%
+        # Level 2: 0: 0%, 1: 55%, 2: 35%, 3: 10%
+        # Level 3: 0: 0%, 1: 50%, 2: 40%, 3: 10%
+        # Level 4: 0: 0%, 1: 45%, 2: 45%, 3: 10%
+        # Level 5: 0: 0%, 1: 40%, 2: 50%, 3: 10%
+        zero_chance = 0  # No more empty chests!
+        one_chance = 60 - (rod_level - 1) * 5  # Decrease by 5% per level
+        two_chance = 30 + (rod_level - 1) * 5  # Increase by 5% per level
+        three_chance = 10  # Fixed at 10%
         
         # Normalize to ensure sum = 100%
         total = zero_chance + one_chance + two_chance + three_chance
-        zero_chance = int(zero_chance / total * 100)
-        one_chance = int(one_chance / total * 100)
-        two_chance = int(two_chance / total * 100)
-        three_chance = 100 - zero_chance - one_chance - two_chance  # Ensure sum = 100
+        if total > 0:
+            zero_chance = int(zero_chance / total * 100)
+            one_chance = int(one_chance / total * 100)
+            two_chance = int(two_chance / total * 100)
+            three_chance = 100 - zero_chance - one_chance - two_chance  # Ensure sum = 100
         
         item_counts = [0, 1, 2, 3]
         weights = [zero_chance, one_chance, two_chance, three_chance]

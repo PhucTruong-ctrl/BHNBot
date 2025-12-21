@@ -101,22 +101,22 @@ ALL_FISH["rod_material"] = {"key": "rod_material", "name": "Vật Liệu Nâng C
 # Chest loot (will be populated after TRASH_ITEMS is defined)
 CHEST_LOOT = {
     # "nothing": REMOVED - No more empty chests!
-    "fertilizer": 20,  # Increased from 15
-    "puzzle_piece": 18,  # Increased from 15
-    "coin_pouch": 28,  # Increased from 25
-    "gift_random": 33,  # Increased from 30
-    "manh_sao_bang": 12,  # Increased from 10
-    "manh_ban_do_a": 4,  # Stay the same
-    "manh_ban_do_b": 4,  # Stay the same
-    "manh_ban_do_c": 4,  # Stay the same
-    "manh_ban_do_d": 4,  # Stay the same
-    # Trash items from fishing (1% each = 20 total)
+    "fertilizer": 25,  # Increased from 20 - common item
+    "puzzle_piece": 22,  # Increased from 18 - common item
+    "coin_pouch": 32,  # Increased from 28 - common item
+    "gift_random": 20,  # Decreased from 33 - rare item
+    "manh_sao_bang": 8,  # Decreased from 12 - rare item
+    "manh_ban_do_a": 2,  # Decreased from 4 - very rare
+    "manh_ban_do_b": 2,  # Decreased from 4 - very rare
+    "manh_ban_do_c": 2,  # Decreased from 4 - very rare
+    "manh_ban_do_d": 2,  # Decreased from 4 - very rare
+    # Trash items from fishing (increased from 1 to 2 = 40 total)
 }
 
 FISHING_EVENTS_PATH = "./data/fishing_events.json"
 SELL_EVENTS_PATH = "./data/sell_events.json"
 NPC_EVENTS_PATH = "./data/npc_events.json"
-FISHING_ACHIEVEMENTS_PATH = "./data/fishing_achievements.json"
+FISHING_ACHIEVEMENTS_PATH = "./data/achievements.json"
 FISHING_ITEMS_PATH = "./data/fishing_items.json"
 DISASTER_EVENTS_PATH = "./data/disaster_events.json"
 
@@ -145,7 +145,7 @@ GIFT_ITEMS = [v.get("key") for v in ALL_ITEMS_DATA.values() if v.get("type") == 
 
 # NOW populate CHEST_LOOT with trash items (after TRASH_ITEMS is defined)
 for trash_item in TRASH_ITEMS:
-    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 1  # Reduced from 2 to 1
+    CHEST_LOOT[trash_item.get("key", f"trash_{trash_item}")] = 2  # Increased from 1 to 2 for more trash
 
 
 # Achievements (fishing-specific)

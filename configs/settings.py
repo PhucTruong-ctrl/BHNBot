@@ -16,7 +16,7 @@ LEGENDARY_FISH_PATH = os.path.join(DATA_DIR, "legendaryFish_data.json")
 FISHING_EVENTS_PATH = os.path.join(DATA_DIR, "fishing_events.json")
 SELL_EVENTS_PATH = os.path.join(DATA_DIR, "sell_events.json")
 NPC_EVENTS_PATH = os.path.join(DATA_DIR, "npc_events.json")
-FISHING_ACHIEVEMENTS_PATH = os.path.join(DATA_DIR, "fishing_achievements.json")
+FISHING_ACHIEVEMENTS_PATH = os.path.join(DATA_DIR, "achievements.json")
 FISHING_ITEMS_PATH = os.path.join(DATA_DIR, "fishing_items.json")
 DISASTER_EVENTS_PATH = os.path.join(DATA_DIR, "disaster_events.json")
 
