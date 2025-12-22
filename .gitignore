@@ -54,3 +54,5 @@ logs/
 # Cache
 .cache/
 *.cache
+data/database.db-shm
+data/database.db-wal

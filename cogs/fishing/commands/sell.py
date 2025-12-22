@@ -8,7 +8,7 @@ import time
 import asyncio
 import discord
 
-from database_manager import get_inventory, add_seeds, db_manager, get_stat, increment_stat
+from database_manager import get_inventory, add_seeds, db_manager, get_stat, increment_stat, remove_item
 from ..constants import ALL_FISH, LEGENDARY_FISH_KEYS, COMMON_FISH_KEYS, RARE_FISH_KEYS
 from ..mechanics.glitch import apply_display_glitch as _glitch
 from ..mechanics.events import trigger_random_event
@@ -197,7 +197,6 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         
         # Actually remove fish from inventory and add money
         for fish_key in fish_items.keys():
-            from cogs.fishing.helpers import remove_item
             await remove_item(user_id, fish_key, fish_items[fish_key])
         
         await add_seeds(user_id, final_value)
