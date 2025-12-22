@@ -248,16 +248,24 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
             await ctx.reply(msg)
         return
     
-    # Calculate recycle value (5 seeds per trash)
+    # Calculate recycle value (1 fertilizer per 10 trash)
     total_trash = sum(user_trash.values())
-    recycle_value = total_trash * 5
+    fertilizer_amount = total_trash // 10
+    
+    if fertilizer_amount == 0:
+        msg = "🪣 Bạn cần ít nhất 10 rác để tái chế thành 1 phân bón!"
+        if is_slash:
+            await ctx.followup.send(msg, ephemeral=True)
+        else:
+            await ctx.reply(msg)
+        return
     
     # Remove all trash
     for trash_key, quantity in user_trash.items():
         await remove_item(user_id, trash_key, quantity)
     
-    # Add seeds
-    await add_seeds(user_id, recycle_value)
+    # Add fertilizer (not seeds!)
+    await cog.add_inventory_item(user_id, "fertilizer", fertilizer_amount)
     
     # Track recycling stats
     try:
@@ -271,7 +279,7 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     # Build embed
     embed = discord.Embed(
         title="♻️ Tái Chế Rác",
-        description=f"**Đã tái chế {total_trash} món rác!**\n\n💰 Nhận được: **{recycle_value} Hạt**",
+        description=f"**Đã tái chế {total_trash} món rác!**\n\n🌱 Nhận được: **{fertilizer_amount} Phân Bón**",
         color=discord.Color.green()
     )
     embed.set_footer(text=f"👤 {user_name}")
@@ -281,7 +289,7 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     else:
         await ctx.reply(embed=embed)
     
-    logger.info(f"[RECYCLE] {user_name} recycled {total_trash} trash for {recycle_value} seeds")
+    logger.info(f"[RECYCLE] {user_name} recycled {total_trash} trash for {fertilizer_amount} fertilizer")
 
 
 async def use_fertilizer_action(cog, ctx_or_interaction):
