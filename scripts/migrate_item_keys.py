@@ -59,8 +59,8 @@ async def migrate_item_keys():
         
         total_updated = 0
         
-        # TABLES TO MIGRATE: fishing_inventory AND inventory
-        tables = ["fishing_inventory", "inventory"]
+        # TABLES TO MIGRATE: Only inventory table exists (fishing_inventory doesn't exist)
+        tables = ["inventory"]
         
         for table in tables:
             print(f"\n📋 Migrating table: {table}")
@@ -68,25 +68,52 @@ async def migrate_item_keys():
             
             table_total = 0
             for old_key, new_key in ITEM_KEY_MIGRATION.items():
-                # Check if old key exists
+                # Get all user_ids with old key
                 cursor = await db.execute(
-                    f"SELECT COUNT(*) FROM {table} WHERE item_id = ?",
+                    f"SELECT user_id, SUM(quantity) as total_qty FROM {table} WHERE item_id = ? GROUP BY user_id",
                     (old_key,)
                 )
-                count = (await cursor.fetchone())[0]
+                old_entries = await cursor.fetchall()
                 
-                if count == 0:
+                if not old_entries:
                     continue
                 
-                # Update all occurrences
-                await db.execute(
-                    f"UPDATE {table} SET item_id = ? WHERE item_id = ?",
-                    (new_key, old_key)
-                )
+                migrated_count = 0
+                for user_id, old_qty in old_entries:
+                    # Check if user already has new key
+                    cursor = await db.execute(
+                        f"SELECT quantity FROM {table} WHERE user_id = ? AND item_id = ?",
+                        (user_id, new_key)
+                    )
+                    existing = await cursor.fetchone()
+                    
+                    if existing:
+                        # User has both old and new keys → MERGE (sum quantities)
+                        new_total = existing[0] + old_qty
+                        await db.execute(
+                            f"UPDATE {table} SET quantity = ? WHERE user_id = ? AND item_id = ?",
+                            (new_total, user_id, new_key)
+                        )
+                        # Delete old key entry
+                        await db.execute(
+                            f"DELETE FROM {table} WHERE user_id = ? AND item_id = ?",
+                            (user_id, old_key)
+                        )
+                        print(f"  🔀 MERGE: user {user_id} | {old_key} ({old_qty}) + {new_key} ({existing[0]}) → {new_total}")
+                    else:
+                        # User only has old key → Simple rename
+                        await db.execute(
+                            f"UPDATE {table} SET item_id = ? WHERE user_id = ? AND item_id = ?",
+                            (new_key, user_id, old_key)
+                        )
+                    
+                    migrated_count += 1
                 
-                table_total += count
-                total_updated += count
-                print(f"✅ {old_key:20} → {new_key:20} | Updated {count:4} entries")
+                table_total += migrated_count
+                total_updated += migrated_count
+                if migrated_count > 0:
+                    print(f"✅ {old_key:20} → {new_key:20} | Migrated {migrated_count:4} users")
+            
             
             if table_total == 0:
                 print("  ⏭️  No entries found in this table")
