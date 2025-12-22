@@ -235,9 +235,10 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     # Get inventory
     inventory = await get_inventory(user_id)
     
-    # Find all trash items
-    trash_keys = [t.get("key") for t in TRASH_ITEMS]
-    user_trash = {k: v for k, v in inventory.items() if k in trash_keys and v > 0}
+    # Find all trash items (stored as "trash_01", "trash_02", etc.)
+    # OLD BUG: trash_keys = [t.get("key") for t in TRASH_ITEMS]  # This was WRONG!
+    # FIXED: Use startswith pattern matching like tuido command does
+    user_trash = {k: v for k, v in inventory.items() if k.startswith("trash_") and v > 0}
     
     if not user_trash:
         msg = "🪣 Bạn không có rác nào để tái chế!"
