@@ -347,7 +347,7 @@ class FishingCog(commands.Cog):
     
     # ==================== COMMANDS ====================
     
-    @app_commands.command(name="sukien", description="⚡ Force trigger event trên user (chỉ Admin)")
+    @app_commands.command(name="sukiencauca", description="⚡ Force trigger event câu cá (chỉ Admin)")
     @app_commands.describe(
         user="Discord user sẽ bị trigger event",
         event_type="Loại event: disaster, fishing_event, sell_event, npc_event, meteor_shower",
@@ -356,7 +356,7 @@ class FishingCog(commands.Cog):
     async def trigger_event_slash(self, interaction: discord.Interaction, user: discord.User, event_type: str, event_key: str):
         await self._trigger_event_action(interaction, user.id, event_type, event_key, is_slash=True)
     
-    @commands.command(name="sukien", description="⚡ Force trigger event (chỉ Admin)")
+    @commands.command(name="sukiencauca", description="⚡ Force trigger event câu cá (chỉ Admin)")
     async def trigger_event_prefix(self, ctx, user: discord.User, event_type: str, event_key: str):
         await self._trigger_event_action(ctx, user.id, event_type, event_key, is_slash=False)
     
