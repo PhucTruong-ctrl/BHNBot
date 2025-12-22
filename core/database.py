@@ -63,6 +63,8 @@ async def get_db_connection(db_path: str = DB_PATH):
     """Get database connection with proper timeout and WAL mode"""
     db = await aiosqlite.connect(db_path, timeout=DB_TIMEOUT)
     await db.execute("PRAGMA journal_mode=WAL")
+    await db.execute("PRAGMA synchronous=NORMAL")
+    await db.execute("PRAGMA foreign_keys=ON")
     return db
 
 
