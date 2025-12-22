@@ -26,30 +26,7 @@ async def check_requirements(user: discord.Member, requirements: dict) -> tuple[
         if valid_count < required:
             return False, f"Yêu cầu: **{required} Invites** (Acc > 7 ngày).\nBạn có: **{valid_count}**."
 
-    # 2. Check Rod Level
-    if "min_rod_level" in requirements:
-        required_rod = requirements["min_rod_level"]
-        # get_rod_data returns (level, durability) or similar. 
-        # Checking database_manager.py or fishing cog would confirm, but assuming per user prompt
-        # User prompt said: lvl, _ = await get_rod_data(user.id)
-        try:
-            # Need to ensure get_rod_data is imported or available. 
-            # I will assume it is available from database_manager as suggested in prompt
-            rod_data = await get_rod_data(user.id)
-            if rod_data:
-                lvl = rod_data[0]
-            else:
-                lvl = 0
-                
-            if lvl < required_rod:
-                return False, f"Yêu cầu **Cần Câu Cấp {required_rod}** mới được tham gia!"
-        except Exception as e:
-            print(f"Error checking rod level: {e}")
-            # If function not found or error, maybe skip or fail? 
-            # For safety, fail.
-            return False, "Lỗi kiểm tra cấp cần câu."
-
-    # 3. Check Cost (User prompt handled this in view, but we can check balance here)
+    # 2. Check Cost (removed rod level requirement)
     if "cost" in requirements and requirements["cost"] > 0:
         cost = requirements["cost"]
         bal = await get_user_balance(user.id)
@@ -70,42 +47,72 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
     
     if ga.status != 'active': return
 
-    # 2. Get Participants
-    # Entries > 1 support (weighted choice)
+    # 2. Get Participants (each user has 1 entry)
     participants = await db_manager.execute(
-        "SELECT user_id, entries FROM giveaway_participants WHERE giveaway_id = ?", 
+        "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ?", 
         (giveaway_id,)
     )
     
-    pool = []
-    for user_id, entries in participants:
-        pool.extend([user_id] * entries)
+    # Extract user IDs
+    user_ids = [row[0] for row in participants]
     
-    # 3. Pick Winners
+    # 3. Pick Winners (simple random selection)
     winners_ids = []
-    if pool:
-        count = min(len(set(pool)), ga.winners_count) # Unique winners
-        # Use simple random.sample if entries=1, but with weights we use pool
-        # To ensure unique winners with weights is tricky.
-        # Simplest: shuffle pool, pick unique.
-        random.shuffle(pool)
-        seen = set()
-        for uid in pool:
-            if uid not in seen:
-                winners_ids.append(uid)
-                seen.add(uid)
-            if len(winners_ids) >= count:
-                break
+    if user_ids:
+        count = min(len(user_ids), ga.winners_count)
+        winners_ids = random.sample(user_ids, count)
+        print(f"[Giveaway] Winner Selection - ID: {giveaway_id}, Participants: {len(user_ids)}, Winners: {count}, Selected: {winners_ids}")
+    else:
+        print(f"[Giveaway] No participants for giveaway {giveaway_id}")
     
-    print(f"[Giveaway] Giveaway ID {giveaway_id} ended - Prize: {ga.prize}, Winners: {winners_ids}, Participants: {len(set(pool))}")
+    print(f"[Giveaway] Giveaway ID {giveaway_id} ended - Prize: {ga.prize}, Winners: {winners_ids}, Participants: {len(user_ids)}")
     
-    # 4. Update Status
+    # 4. Send DMs to Winners
+    dm_success = []
+    dm_failed = []
+    
+    if winners_ids:
+        import asyncio
+        for winner_id in winners_ids:
+            try:
+                user = await bot.fetch_user(winner_id)
+                
+                # Create DM embed
+                dm_embed = discord.Embed(
+                    title="🎉 Chúc Mừng - Bạn Đã Thắng Giveaway!",
+                    description=f"Bạn đã thắng **{ga.prize}**!",
+                    color=COLOR_GIVEAWAY
+                )
+                dm_embed.add_field(
+                    name="🔗 Link Giveaway",
+                    value=f"[Nhấn để xem kết quả](https://discord.com/channels/{ga.guild_id}/{ga.channel_id}/{ga.message_id})",
+                    inline=False
+                )
+                dm_embed.set_footer(text=f"Giveaway ID: {giveaway_id}")
+                
+                await user.send(embed=dm_embed)
+                dm_success.append(winner_id)
+                print(f"[Giveaway] ✅ DM sent to winner {user.name} ({winner_id})")
+                
+                # Small delay to avoid rate limits
+                await asyncio.sleep(0.3)
+                
+            except discord.Forbidden:
+                dm_failed.append(winner_id)
+                print(f"[Giveaway] ❌ Failed to DM winner {winner_id} (DMs closed)")
+            except Exception as e:
+                dm_failed.append(winner_id)
+                print(f"[Giveaway] ❌ Error DMing winner {winner_id}: {e}")
+        
+        print(f"[Giveaway] DM Results - Success: {len(dm_success)}/{len(winners_ids)}, Failed: {len(dm_failed)}")
+    
+    # 5. Update Status
     await db_manager.modify(
         "UPDATE giveaways SET status = 'ended' WHERE message_id = ?", 
         (giveaway_id,)
     )
 
-    # 5. Announce
+    # 6. Announce
     try:
         channel = bot.get_channel(ga.channel_id)
         if not channel:

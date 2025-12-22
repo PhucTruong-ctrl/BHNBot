@@ -103,8 +103,8 @@ class GiveawayJoinView(discord.ui.View):
         # 3. Add to Database (Handle Race Condition via Unique Constraint)
         try:
             await db_manager.modify(
-                "INSERT INTO giveaway_participants (giveaway_id, user_id, entries) VALUES (?, ?, ?)",
-                (self.giveaway_id, user.id, 1)
+                "INSERT INTO giveaway_participants (giveaway_id, user_id) VALUES (?, ?)",
+                (self.giveaway_id, user.id)
             )
         except Exception as e:
             # Likely sqlite3.IntegrityError due to UNIQUE constraint
@@ -179,47 +179,43 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
                 await interaction.followup.send("❌ Giveaway chưa kết thúc!", ephemeral=True)
                 return
 
-            # Get all participants
+            # Get all participants (each has 1 entry)
             participants = await db_manager.execute(
-                "SELECT user_id, entries FROM giveaway_participants WHERE giveaway_id = ?",
+                "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ?",
                 (self.giveaway_id,)
             )
 
-            # Create pool excluding current winners
-            pool = []
-            for user_id, entries in participants:
-                if user_id not in self.current_winners:  # Exclude current winners
-                    pool.extend([user_id] * entries)
+            # Extract user IDs excluding current winners
+            available_users = [row[0] for row in participants if row[0] not in self.current_winners]
 
-            if not pool:
+            if not available_users:
                 await interaction.followup.send("❌ Không còn người tham gia nào để reroll!", ephemeral=True)
                 return
 
             # Pick new winners
-            new_winners_ids = []
-            available_count = min(len(set(pool)), count)
+            available_count = len(available_users)
             if available_count < count:
-                await interaction.followup.send(f"❌ Chỉ còn {available_count} người có thể reroll!", ephemeral=True)
+                await interaction.followup.send(f"⚠️ Chỉ còn {available_count} người có thể reroll! Sẽ chọn {available_count} người.", ephemeral=True)
                 count = available_count
 
-            random.shuffle(pool)
-            seen = set()
-            for uid in pool:
-                if uid not in seen and uid not in self.current_winners:
-                    new_winners_ids.append(uid)
-                    seen.add(uid)
-                if len(new_winners_ids) >= count:
-                    break
+            new_winners_ids = random.sample(available_users, count)
 
             if new_winners_ids:
-                # Add new winners to current winners
-                self.current_winners.extend(new_winners_ids)
+                # Add new winners to current winners (ensure no duplicates)
+                for winner in new_winners_ids:
+                    if winner not in self.current_winners:
+                        self.current_winners.append(winner)
                 
+                # Create mentions
                 new_winners_text = ", ".join([f"<@{uid}>" for uid in new_winners_ids])
-                all_winners_text = ", ".join([f"<@{uid}>" for uid in self.current_winners])
-                result_text = f"🎉 **REROLL KẾT QUẢ!**\nNgười thắng mới: {new_winners_text}\n\n**Tất cả người thắng:** {all_winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}"
                 
-                print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}, Total: {self.current_winners}")
+                # Get unique list of all winners for display
+                unique_winners = list(dict.fromkeys(self.current_winners))  # Preserve order, remove dupes
+                all_winners_text = ", ".join([f"<@{uid}>" for uid in unique_winners])
+                
+                result_text = f"🎉 **REROLL KẾT QUẢ!**\nNgười thắng mới: {new_winners_text}\n\n**Tất cả người thắng ({len(unique_winners)} người):** {all_winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}"
+                
+                print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}, Total unique: {len(unique_winners)}, All: {unique_winners}")
                 
                 # Edit the result message
                 embed = discord.Embed(
@@ -227,10 +223,10 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
                     description=result_text,
                     color=COLOR_GIVEAWAY
                 )
-                embed.set_footer(text=f"Giveaway ID: {self.giveaway_id}")
+                embed.set_footer(text=f"Giveaway ID: {self.giveaway_id} | Reroll count: {len(new_winners_ids)}")
                 
-                # Update the view's current_winners
-                # Since view is persistent, we need to update it, but since it's the same instance, it should be fine
+                # Update the view's current_winners to the unique list
+                self.current_winners = unique_winners
                 
                 await interaction.message.edit(embed=embed, view=interaction.message.view)
                 

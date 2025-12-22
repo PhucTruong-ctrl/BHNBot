@@ -14,15 +14,40 @@ from core.logger import setup_logger
 
 logger = setup_logger("GiveawayCog", "cogs/giveaway.log")
 
-# Create giveaway command group
-giveaway_group = app_commands.Group(name="giveaway", description="Quản lý giveaway")
-
-class GiveawayCog(commands.Cog):
+class GiveawayCog(commands.Cog, name="Giveaway"):
+    # Create giveaway command group as class attribute
+    giveaway = app_commands.Group(name="giveaway", description="Quản lý giveaway")
     def __init__(self, bot):
         self.bot = bot
         self.invite_cache = {} # {guild_id: {code: uses}}
         self.update_tasks = {}  # {giveaway_id: asyncio.Task} for delayed embed updates
         self.check_giveaways_task.start()
+
+    async def cog_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        """Handle errors from app commands"""
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message(
+                "❌ Bạn cần quyền **Administrator** để sử dụng lệnh này!",
+                ephemeral=True
+            )
+        elif isinstance(error, app_commands.CommandInvokeError):
+            logger.error(f"Command error: {error.original}", exc_info=error.original)
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"❌ Có lỗi xảy ra: {error.original}", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"❌ Có lỗi xảy ra: {error.original}", ephemeral=True)
+            except:
+                pass
+        else:
+            logger.error(f"Unhandled command error: {error}", exc_info=error)
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send("❌ Có lỗi xảy ra!", ephemeral=True)
+                else:
+                    await interaction.response.send_message("❌ Có lỗi xảy ra!", ephemeral=True)
+            except:
+                pass
 
     def cog_unload(self):
         self.check_giveaways_task.cancel()
@@ -49,27 +74,51 @@ class GiveawayCog(commands.Cog):
     async def cog_load(self):
         logger.info("Loading module...")
         
-        # 1. Restore Active Giveaways Views
+        # 1. Restore Active Giveaways Views & Cleanup Orphaned
         active_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
         count = 0
+        orphaned_count = 0
+        
         for row in active_giveaways:
             try:
                 ga = Giveaway.from_db(row)
                 # Check if message still exists before restoring view
+                message_exists = False
                 try:
                     channel = self.bot.get_channel(ga.channel_id)
                     if channel:
                         await channel.fetch_message(ga.message_id)
+                        message_exists = True
                         view = GiveawayJoinView(ga.message_id, ga.requirements, self)
                         self.bot.add_view(view)
                         count += 1
                     else:
-                        logger.info(f"Channel {ga.channel_id} not found for giveaway {ga.message_id}, skipping view restore")
+                        logger.warning(f"Channel {ga.channel_id} not found for giveaway {ga.message_id}")
+                except discord.NotFound:
+                    logger.warning(f"Message {ga.message_id} not found - marking as orphaned")
                 except Exception as e:
-                    logger.info(f"Message {ga.message_id} not found, skipping view restore")
+                    logger.error(f"Error fetching message {ga.message_id}: {e}")
+                
+                # Cleanup orphaned giveaway (message deleted)
+                if not message_exists:
+                    await db_manager.modify(
+                        "UPDATE giveaways SET status = 'cancelled' WHERE message_id = ?",
+                        (ga.message_id,)
+                    )
+                    orphaned_count += 1
+                    logger.info(f"Marked orphaned giveaway {ga.message_id} as cancelled")
+                    
+            except ValueError as e:
+                # Date parsing error - mark as invalid
+                logger.error(f"Invalid giveaway data for {row[0]}: {e}")
+                await db_manager.modify(
+                    "UPDATE giveaways SET status = 'error' WHERE message_id = ?",
+                    (row[0],)
+                )
             except Exception as e:
                 logger.error(f"Error restoring view for giveaway {row[0]}: {e}", exc_info=True)
-        logger.info(f"Restored {count} active giveaway views.")
+                
+        logger.info(f"Restored {count} active giveaway views. Cleaned up {orphaned_count} orphaned giveaways.")
 
         # 2. Restore Ended Giveaway Result Views (for reroll/end functionality)
         ended_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'ended'")
@@ -159,8 +208,6 @@ class GiveawayCog(commands.Cog):
                 req_text = ""
                 if ga.requirements.get("min_invites", 0) > 0:
                     req_text += f"• {ga.requirements['min_invites']} Invites (Acc > 7 ngày)\n"
-                if ga.requirements.get("min_rod_level", 0) > 0:
-                    req_text += f"• Cần Câu Cấp {ga.requirements['min_rod_level']}\n"
                 if ga.requirements.get("cost", 0) > 0:
                     req_text += f"• {ga.requirements['cost']} Hạt\n"
                 if req_text:
@@ -261,7 +308,7 @@ class GiveawayCog(commands.Cog):
                         return inv.inviter
         return None
 
-    @giveaway_group.command(name="test_inv", description="[Admin/Test] Thêm invite ảo để test")
+    @giveaway.command(name="test_inv", description="[Admin/Test] Thêm invite ảo để test")
     @app_commands.checks.has_permissions(administrator=True)
     async def gatest_invite(self, interaction: discord.Interaction, target: discord.User, amount: int = 1):
         """Add fake invites for testing"""
@@ -284,7 +331,7 @@ class GiveawayCog(commands.Cog):
         except Exception as e:
              await interaction.followup.send(f"❌ Lỗi: {e}")
 
-    @giveaway_group.command(name="end", description="[Admin] Kết thúc Giveaway ngay lập tức")
+    @giveaway.command(name="end", description="[Admin] Kết thúc Giveaway ngay lập tức")
     @app_commands.checks.has_permissions(administrator=True)
     async def gaend_now(self, interaction: discord.Interaction):
         """End a giveaway immediately by selecting from active giveaways."""
@@ -331,20 +378,22 @@ class GiveawayCog(commands.Cog):
             logger.error(f"Error in gaend_now: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Có lỗi xảy ra: {e}")
 
-    @giveaway_group.command(name="create", description="Tạo Giveaway với các điều kiện")
+    @giveaway.command(name="create", description="Tạo Giveaway với các điều kiện")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         prize="Phần thưởng",
         duration="Thời gian (vd: 1h, 30m, 1d)",
         winners="Số người thắng (mặc định 1)",
         req_invite="Số invite yêu cầu (Acc > 7 ngày)",
-        req_rod="Cấp cần câu yêu cầu (1-5)",
         cost="Giá vé tham gia (Hạt)",
         image_url="Link ảnh/gif để hiển thị (tùy chọn)"
     )
     async def create_giveaway(self, interaction: discord.Interaction, 
                               prize: str, duration: str, winners: int = 1,
-                              req_invite: int = 0, req_rod: int = 0, cost: int = 0, image_url: str = None):
+                              req_invite: int = 0, cost: int = 0, image_url: str = None):
+        
+        # CRITICAL: Defer immediately to prevent timeout
+        await interaction.response.defer(ephemeral=True)
         
         # 1. Parse Duration
         seconds = 0
@@ -360,14 +409,13 @@ class GiveawayCog(commands.Cog):
             else:
                 raise ValueError("Invalid unit")
         except ValueError:
-            return await interaction.response.send_message("❌ Định dạng thời gian không hợp lệ! (vd: 1h, 30m, 10s)", ephemeral=True)
+            return await interaction.followup.send("❌ Định dạng thời gian không hợp lệ! (vd: 1h, 30m, 10s)", ephemeral=True)
             
         end_time = discord.utils.utcnow() + datetime.timedelta(seconds=seconds)
         
         # 2. Build Requirements
         reqs = {}
         if req_invite > 0: reqs["min_invites"] = req_invite
-        if req_rod > 0: reqs["min_rod_level"] = req_rod
         if cost > 0: reqs["cost"] = cost
         
         # 3. Create Embed
@@ -377,7 +425,6 @@ class GiveawayCog(commands.Cog):
         embed.set_footer(text=f"Hosted by {interaction.user.display_name}")
         
         if req_invite > 0: embed.add_field(name="Điều kiện", value=f"✉️ **{req_invite} Lời mời hợp lệ (Mời người vào server)**", inline=True)
-        if req_rod > 0: embed.add_field(name="Điều kiện", value=f"🎣 **Cần Câu Lv{req_rod}**", inline=True)
         if cost > 0: embed.add_field(name="Vé tham gia", value=f"💰 **{cost} Hạt**", inline=True)
 
         if image_url:
@@ -392,7 +439,7 @@ class GiveawayCog(commands.Cog):
         # Or we can generate a unique ID for the giveaway internally, but message_id is convenient.
         
         # Solution: Send message without View first (or disabled view), get ID, then Edit message with View.
-        await interaction.response.send_message("⏳ Đang tạo...", ephemeral=True)
+        await interaction.followup.send("⏳ Đang tạo...", ephemeral=True)
         
         msg = await interaction.channel.send(embed=embed)
         
@@ -423,6 +470,5 @@ class GiveawayCog(commands.Cog):
 
 
 async def setup(bot):
-    bot.tree.add_command(giveaway_group)
     await bot.add_cog(GiveawayCog(bot))
 

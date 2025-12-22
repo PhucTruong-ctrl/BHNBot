@@ -33,13 +33,14 @@ class Giveaway:
                     try:
                         end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S.%f")
                     except ValueError:
-                        print(f"Error parsing date: {end_time}")
-                        end_time = datetime.now() # Fallback
+                        # Critical error: cannot parse timestamp
+                        import logging
+                        logger = logging.getLogger("GiveawayCog")
+                        logger.error(f"Failed to parse end_time: {end_time} for giveaway {row[0]}")
+                        raise ValueError(f"Cannot parse end_time: {end_time}")
 
         if end_time.tzinfo is None:
-             end_time = end_time.replace(tzinfo=None).astimezone() # Local to Aware? Or just assume UTC?
-             # Standard in this bot seems to be discord.utils.utcnow() which is UTC.
-             # So if naive, assume it was stored as UTC (if we used utcnow() to store).
+             # Assume UTC if no timezone info
              from datetime import timezone
              end_time = end_time.replace(tzinfo=timezone.utc)
 
