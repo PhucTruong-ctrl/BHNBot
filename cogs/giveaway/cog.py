@@ -65,7 +65,7 @@ class GiveawayCog(commands.Cog):
                         count += 1
                     else:
                         logger.info(f"Channel {ga.channel_id} not found for giveaway {ga.message_id}, skipping view restore")
-                except:
+                except Exception as e:
                     logger.info(f"Message {ga.message_id} not found, skipping view restore")
             except Exception as e:
                 logger.error(f"Error restoring view for giveaway {row[0]}: {e}", exc_info=True)
@@ -245,7 +245,7 @@ class GiveawayCog(commands.Cog):
         old_invites = self.invite_cache[guild.id]
         try:
             new_invites_list = await guild.invites()
-        except:
+        except Exception as e:
             return None
             
         new_invites = {inv.code: inv.uses for inv in new_invites_list}

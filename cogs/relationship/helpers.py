@@ -30,7 +30,7 @@ def get_pet_state(pet_level, last_fed_time):
                 # Handle different formats if necessary, e.g., with or without milliseconds
                 try:
                      last_fed = datetime.datetime.strptime(last_fed_time, "%Y-%m-%d %H:%M:%S.%f")
-                except:
+                except Exception as e:
                      last_fed = datetime.datetime.strptime(last_fed_time, "%Y-%m-%d %H:%M:%S")
         else:
             last_fed = last_fed_time

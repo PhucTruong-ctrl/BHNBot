@@ -38,8 +38,8 @@ class General(commands.Cog):
         try:
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute("SELECT 1")
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
         db_latency = (time.time() - db_start) * 1000
         
         # Create detailed embed
@@ -329,10 +329,10 @@ class General(commands.Cog):
             font_path = f"./assets/{name}"
             try:
                 return ImageFont.truetype(font_path, size)
-            except:
+            except Exception as e:
                 try:
                     return ImageFont.truetype(fallback_font, size)
-                except:
+                except Exception as e:
                     return ImageFont.load_default()
 
         font_main = load_font("PatrickHand-Regular.ttf", 45)
@@ -345,7 +345,7 @@ class General(commands.Cog):
         if os.path.exists(bg_path):
             try:
                 img = Image.open(bg_path).resize((WIDTH, HEIGHT))
-            except:
+            except Exception as e:
                 img = Image.new('RGB', (WIDTH, HEIGHT), color=COLOR_BG)
         else:
             img = Image.new('RGB', (WIDTH, HEIGHT), color=COLOR_BG)
@@ -542,15 +542,15 @@ class General(commands.Cog):
             
             # Add avatar (rounded)
             img.paste(avatar_img, (30, 30), avatar_img)
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
         
         # Get fonts (use default if unavailable)
         try:
             title_font = ImageFont.truetype("arial.ttf", 40)
             stat_font = ImageFont.truetype("arial.ttf", 24)
             label_font = ImageFont.truetype("arial.ttf", 16)
-        except:
+        except Exception as e:
             title_font = ImageFont.load_default()
             stat_font = ImageFont.load_default()
             label_font = ImageFont.load_default()

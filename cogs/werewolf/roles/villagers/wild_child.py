@@ -96,7 +96,7 @@ class WildChild(Role):
                     if wolf_mention:
                         await game._wolf_thread.send(f"{wolf_mention} - {player.display_name()} đã trở thành Ma Sói! Bố/mẹ của bạn đã chết.")
                 except Exception as e:
-                    pass
+                    logger.error(f"Unexpected error: {e}")
 
             try:
                 await player.member.send(f"Bố/mẹ của bạn đã chết. Bạn đã hoá thành Ma Sói!")

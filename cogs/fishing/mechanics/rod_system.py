@@ -1,6 +1,6 @@
 """Rod upgrade and durability system."""
 
-from .constants import DB_PATH, ROD_LEVELS
+from ..constants import DB_PATH, ROD_LEVELS
 from database_manager import db_manager
 
 async def get_rod_data(user_id: int) -> tuple:

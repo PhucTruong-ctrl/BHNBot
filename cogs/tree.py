@@ -86,8 +86,8 @@ class ContributeModal(discord.ui.Modal):
         except ValueError:
             try:
                 await interaction.followup.send("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
 class TreeContributeView(discord.ui.View):
     """View with quick contribute buttons"""
@@ -173,7 +173,7 @@ class CommunityCog(commands.Cog):
             
             buff_until = datetime.fromisoformat(result[0])
             return datetime.now() < buff_until
-        except:
+        except Exception as e:
             return False
 
     async def get_tree_data(self, guild_id: int):
@@ -333,7 +333,7 @@ class CommunityCog(commands.Cog):
                         try:
                             user = await self.bot.fetch_user(uid)
                             season_text += f"{idx}. **{user.name}** - {amount_val} Hạt\n"
-                        except:
+                        except Exception as e:
                             season_text += f"{idx}. **User #{uid}** - {amount_val} Hạt\n"
                     
                     embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
@@ -344,7 +344,7 @@ class CommunityCog(commands.Cog):
                         try:
                             user = await self.bot.fetch_user(uid)
                             all_time_text += f"{idx}. **{user.name}** - {total_exp} Kinh Nghiệm\n"
-                        except:
+                        except Exception as e:
                             all_time_text += f"{idx}. **User #{uid}** - {total_exp} Kinh Nghiệm\n"
                     
                     embed.add_field(name="🏆 Top 3 Người Góp toàn thời gian", value=all_time_text, inline=False)
@@ -491,8 +491,8 @@ class CommunityCog(commands.Cog):
                     f"Có lỗi xảy ra: {str(e)}",
                     ephemeral=True
                 )
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
     # ==================== COMMANDS ====================
 
@@ -580,7 +580,7 @@ class CommunityCog(commands.Cog):
                 try:
                     user = await self.bot.fetch_user(uid)
                     season_text += f"{idx}. **{user.name}** - {amount_val} Hạt\n"
-                except:
+                except Exception as e:
                     season_text += f"{idx}. **User #{uid}** - {amount_val} Hạt\n"
             
             embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
@@ -591,7 +591,7 @@ class CommunityCog(commands.Cog):
                 try:
                     user = await self.bot.fetch_user(uid)
                     all_time_text += f"{idx}. **{user.name}** - {total_exp} Kinh Nghiệm\n"
-                except:
+                except Exception as e:
                     all_time_text += f"{idx}. **User #{uid}** - {total_exp} Kinh Nghiệm\n"
             
             embed.add_field(name="🏆 Top 3 Người Góp toàn thời gian", value=all_time_text, inline=False)
@@ -637,8 +637,8 @@ class CommunityCog(commands.Cog):
         top1_user_obj = None
         try:
             top1_user_obj = await self.bot.fetch_user(top1_user_id)
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
         
         # === DATABASE TRANSACTIONS ===
         from database_manager import batch_update_seeds, add_item, set_server_config
@@ -781,8 +781,8 @@ class CommunityCog(commands.Cog):
                 f"Chúc mừng những người đã đóng góp!"
             )
             await interaction.followup.send(announce_msg)
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
         
         logger.info(f"[TREE] HARVEST EVENT - Season {season} completed! Top1: {top1_user_id} ({top1_exp} exp), Contributors: {len(all_contributors)}")
 

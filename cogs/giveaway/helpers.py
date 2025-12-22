@@ -112,12 +112,12 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
             # Try fetching if not in cache
             try:
                 channel = await bot.fetch_channel(ga.channel_id)
-            except:
+            except Exception as e:
                 return
         
         try:
             msg = await channel.fetch_message(ga.message_id)
-        except:
+        except Exception as e:
             msg = None
 
         if winners_ids:

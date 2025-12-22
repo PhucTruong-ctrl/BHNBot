@@ -6,8 +6,8 @@ import discord
 import random
 import random
 from database_manager import get_inventory, remove_item, add_item
-from .fishing.consumables import CONSUMABLE_ITEMS, get_consumable_info, is_consumable
-from .fishing.legendary_quest_helper import is_legendary_caught
+from .fishing.utils.consumables import CONSUMABLE_ITEMS, get_consumable_info, is_consumable
+from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
 
 # Symbols for memory game
 MEMORY_SYMBOLS = ["🌕", "🌟", "☄️", "🌍", "⭐", "🌌", "🌙", "💫"]
@@ -42,7 +42,7 @@ class MemoryGameView(discord.ui.View):
                 # Check result
                 if self.clicked == self.sequence:
                     # Win
-                    from .fishing.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
+                    from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
                     await set_has_tinh_cau(self.user_id, False)  # Mất tinh cầu
                     # Set buff for guaranteed catch
                     self.bot.get_cog("FishingCog").guaranteed_catch_users[self.user_id] = True
@@ -55,7 +55,7 @@ class MemoryGameView(discord.ui.View):
                     )
                 else:
                     # Lose
-                    from .fishing.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
+                    from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
                     await set_has_tinh_cau(self.user_id, False)  # Mất tinh cầu
                     await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
                     print(f"[CONSUMABLE] Tinh cau failure for {self.user_id}")
@@ -77,7 +77,7 @@ class MemoryGameView(discord.ui.View):
     
     async def on_timeout(self):
         if len(self.clicked) < len(self.sequence):
-            from .fishing.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
+            from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
             await set_has_tinh_cau(self.user_id, False)  # Mất tinh cầu
             await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
             print(f"[CONSUMABLE] Tinh cau timeout failure for {self.user_id}")
@@ -89,8 +89,8 @@ class MemoryGameView(discord.ui.View):
             )
             try:
                 await self.channel.send(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
 class KeepFireView(discord.ui.View):
     """Mini-game for Cá Phượng Hoàng - Giữ Lửa"""
@@ -170,12 +170,12 @@ class KeepFireView(discord.ui.View):
                 msg = await self.channel.send(embed=embed, view=KeepFireView(self.user_id, self.bot, self.channel))
                 # Reset timeout cho round mới
                 self.stop()
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
         elif success and self.round == self.max_rounds:
             # Thắng
             from database_manager import remove_item
-            from .fishing.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
+            from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
             await remove_item(self.user_id, "long_vu_lua", 1)  # Trừ 1 lông vũ từ inventory
             await set_phoenix_buff(self.user_id, True)  # Kích hoạt buff
             await set_phoenix_last_play(self.user_id)  # Set thời gian chơi
@@ -188,12 +188,12 @@ class KeepFireView(discord.ui.View):
             )
             try:
                 await self.channel.send(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
         else:
             # Thất bại
             from database_manager import remove_item
-            from .fishing.legendary_quest_helper import set_phoenix_last_play
+            from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
             await remove_item(self.user_id, "long_vu_lua", 1)  # Trừ 1 lông vũ từ inventory
             await set_phoenix_last_play(self.user_id)  # Set thời gian chơi
             print(f"[CONSUMABLE] Long vu lua failure for {self.user_id}")
@@ -205,8 +205,8 @@ class KeepFireView(discord.ui.View):
             )
             try:
                 await self.channel.send(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
 class ConsumableCog(commands.Cog):
     def __init__(self, bot):
@@ -313,7 +313,7 @@ class ConsumableCog(commands.Cog):
         
         # Special handling for tinh_cau
         if item_key == "tinh_cau":
-            from .fishing.legendary_quest_helper import has_tinh_cau, get_tinh_cau_cooldown
+            from .fishing.mechanics.legendary_quest_helper import has_tinh_cau, get_tinh_cau_cooldown
             import datetime
             
             # Check if user has tinh cau
