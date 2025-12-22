@@ -56,11 +56,37 @@ TREE_NAMES = {
 }
 
 # Rod levels (static game data)
-# Rod levels (static game data)
 ROD_LEVELS = {
     1: {"name": "Cần Tre", "cost": 0, "material": 0, "durability": 30, "repair": 50, "cd": 30, "luck": 0.0, "emoji": "🎋"},
     2: {"name": "Cần Thủy Tinh", "cost": 3000, "material": 5, "durability": 50, "repair": 100, "cd": 25, "luck": 0.0, "emoji": "🎣"},
     3: {"name": "Cần Carbon", "cost": 12000, "material": 10, "durability": 80, "repair": 200, "cd": 20, "luck": 0.02, "emoji": "✨🎣"},
     4: {"name": "Cần Hợp Kim", "cost": 30000, "material": 15, "durability": 120, "repair": 500, "cd": 15, "luck": 0.05, "emoji": "🔱"},
     5: {"name": "Cần Poseidon", "cost": 80000, "material": 20, "durability": 200, "repair": 1000, "cd": 10, "luck": 0.10, "emoji": "🔱✨"},
+    6: {
+        "name": "Cần Hư Không", 
+        "cost": 200000, 
+        "material": 25, 
+        "special_materials": {"manh_sao_bang": 2},
+        "durability": 300, 
+        "repair": 2000, 
+        "cd": 8, 
+        "luck": 0.15, 
+        "emoji": "🌌",
+        "passive": "double_catch",
+        "passive_chance": 0.05
+    },
+    7: {
+        "name": "Cần Thời Gian", 
+        "cost": 500000, 
+        "material": 35,
+        "special_requirement": "ca_ngan_ha",
+        "durability": 500, 
+        "repair": 5000, 
+        "cd": 8, 
+        "luck": 0.20, 
+        "emoji": "⏳",
+        "passive": "no_bait_loss",
+        "passive_chance": 0.10,
+        "lore": "Cá Ngân Hà ban phép thuật thời gian vào cần câu, cho phép bạn câu cá vượt thời gian..."
+    }
 }
