@@ -21,6 +21,7 @@ parts/
 sdist/
 var/
 wheels/
+logs/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
@@ -34,25 +35,26 @@ ENV/
 env/
 .venv
 
+# Database - User Data (Dynamic)
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+# Database Backups & Corruption/Debug Files
+*.corrupted
+*.corrupted*
+*.backup
+*.fresh_backup
+*.restored
+*_git.db
+*_restored.db
+*.dump
+*.sql
+!data/init.sql
+!data/schema.sql
 
-# Logs
-*.log
-logs/
-
-# Cache
-.cache/
-*.cache
-data/database.db-shm
-data/database.db-wal
+# Game Data Configs (Keep these in Git)
+# !data/*.json
