@@ -74,32 +74,55 @@ async def open_chest_action(cog, ctx_or_interaction):
     # Get rod level for luck calculation
     rod_level, _ = await get_rod_data(user_id)
     
-    # Calculate item count based on rod level
-    zero_chance = 0  # No more empty chests!
-    one_chance = 60 - (rod_level - 1) * 5
-    two_chance = 30 + (rod_level - 1) * 5
-    three_chance = 10
+    # Calculate Luck
+    user_luck = await cog.get_user_total_luck(user_id)
     
-    # Normalize to ensure sum = 100%
-    total = zero_chance + one_chance + two_chance + three_chance
-    if total > 0:
-        zero_chance = int(zero_chance / total * 100)
-        one_chance = int(one_chance / total * 100)
-        two_chance = int(two_chance / total * 100)
-        three_chance = 100 - zero_chance - one_chance - two_chance
+    # Calculate item count based on rod level AND total luck
+    # Base weights: 0, 1, 2, 3 items
+    base_weights = [30, 45, 20, 5] 
     
-    item_counts = [0, 1, 2, 3]
-    weights = [zero_chance, one_chance, two_chance, three_chance]
-    num_items = random.choices(item_counts, weights=weights, k=1)[0]
+    # Apply Rod Level bonus
+    # Level 5 (+4 levels) -> Shift 20 weight from 0/1 to 2/3
+    rod_bonus = (rod_level - 1) * 5
+    base_weights[0] = max(5, base_weights[0] - rod_bonus)
+    base_weights[2] += rod_bonus 
+    
+    # Apply User Luck
+    luck_factor = max(0, user_luck)
+    base_weights[2] = int(base_weights[2] * (1 + luck_factor))
+    base_weights[3] = int(base_weights[3] * (1 + luck_factor * 2))
+    
+    num_items = random.choices([0, 1, 2, 3], weights=base_weights, k=1)[0]
     
     logger.info(f"[CHEST] {user_name} (rod_level={rod_level}) rolled {num_items} items")
     
     # Roll items
     loot_items = []
+    
+    # Prepare Weighted Loot Table with Luck
+    loot_keys = list(CHEST_LOOT.keys())
+    loot_weights = []
+    
+    trash_key_list = [t.get("key") for t in TRASH_ITEMS]
+    
+    for item in loot_keys:
+        base_weight = CHEST_LOOT[item]
+        
+        # Modify weight based on Item Type and Luck
+        if "manh_" in item or "gift" in item or "coin_pouch" in item:
+             # Good items: Increase weight with luck
+             multiplier = 1.0 + max(0, user_luck * 1.5)
+             loot_weights.append(base_weight * multiplier)
+        elif "trash" in item or item in trash_key_list:
+             # Bad items: Decrease weight with luck
+             multiplier = max(0.1, 1.0 - max(0, user_luck)) 
+             loot_weights.append(base_weight * multiplier)
+        else:
+             # Neutral items (fertilizer?)
+             loot_weights.append(base_weight)
+
     for _ in range(num_items):
-        items = list(CHEST_LOOT.keys())
-        loot_weights = list(CHEST_LOOT.values())
-        loot_type = random.choices(items, weights=loot_weights, k=1)[0]
+        loot_type = random.choices(loot_keys, weights=loot_weights, k=1)[0]
         loot_items.append(loot_type)
     
     # Process loot and build display

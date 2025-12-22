@@ -43,7 +43,8 @@ from .commands.admin import trigger_event_action as _trigger_event_impl
 
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
-    get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats, get_fish_count, get_fish_collection
+    get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats, get_fish_count, get_fish_collection,
+    save_user_buff, get_user_buffs, remove_user_buff
 )
 from .mechanics.legendary_quest_helper import (
     increment_sacrifice_count, get_sacrifice_count, reset_sacrifice_count,
@@ -77,18 +78,19 @@ class FishingCog(commands.Cog):
         self.caught_items = {}
         self.user_titles = {}
         self.user_stats = {}
-        self.lucky_buff_users = {}
-        self.avoid_event_users = {}
-        self.legendary_buff_users = {}  # For ghost NPC buff
+        # self.lucky_buff_users = {} -> Migrated to DB
+        self.avoid_event_users = {} # Keep as RAM (session based?) or migrate? For now keep.
+        # self.legendary_buff_users = {}  -> Migrated to DB
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
-        self.guaranteed_catch_users = {}  # {user_id: True} - Guaranteed legendary catch from tinh cau win
+        self.guaranteed_catch_users = {}  # {user_id: True} - Keep RAM for now (tinh cau win)
         
         # User locks to prevent concurrent fishing operations
         self.user_locks = {}  # {user_id: asyncio.Lock}
         
         # Emotional state tracking (delegated to EmotionalStateManager)
+        # Manager is now stateless/DB-backed
         self.emotional_state_manager = EmotionalStateManager()
-        self.emotional_states = self.emotional_state_manager.emotional_states  # Compat
+        # self.emotional_states = ... REMOVED
         
         # Legendary summoning tracking (sacrifice count now persisted in database)
         self.dark_map_active = {}  # {user_id: True/False} - For Cthulhu Non
@@ -118,6 +120,38 @@ class FishingCog(commands.Cog):
         
         # Start state cleanup task (prevents memory leaks)
         self.cleanup_stale_state.start()
+        
+    async def get_user_total_luck(self, user_id: int) -> float:
+        """Calculate total user luck from all sources (Rod, Buffs, etc).
+        
+        Returns:
+            float: Total luck value (e.g. 0.05 for 5%)
+        """
+        luck = 0.0
+        
+        # 1. Rod Luck
+        rod_lvl, _ = await get_rod_data(user_id)
+        rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
+        luck += rod_config.get("luck", 0.0)
+        
+        # 2. Emotional States / Buffs (From DB)
+        buffs = await get_user_buffs(user_id)
+        
+        if "lucky_buff" in buffs:
+            # "lucky_buff" from events (Double Rainbow, etc)
+            luck += 0.5  # Huge +50% luck (Guarantees rare if base is decent)
+            
+        if "suy" in buffs:
+            # "suy" state reduces luck (check handled by get_user_buffs cleanup)
+            luck -= 0.2  # -20% luck
+            
+        if "legendary_buff" in buffs:
+            # Ghost NPC buff
+            luck += 0.3 # +30% luck
+            
+        # Ensure luck doesn't go below -1.0 (though logic handles negatives)
+        return max(-0.9, luck)
+
         
         # Disaster effects tracking (expire when disaster ends)
         self.disaster_catch_rate_penalty = 0.0  # Percentage to reduce catch rate (0.2 = -20%)
@@ -213,11 +247,8 @@ class FishingCog(commands.Cog):
                 self.pending_meteor_shower.clear()
                 logger.info("[CLEANUP] Cleared oversized pending_meteor_shower set")
             
-            # Clean lucky_buff_users that are False
-            stale_lucky = [uid for uid, v in list(self.lucky_buff_users.items()) if not v]
-            for uid in stale_lucky:
-                del self.lucky_buff_users[uid]
-                cleaned_count += 1
+            # Clean lucky_buff_users - Migrated to DB, no cleanup needed here
+            pass
             
             # Clean avoid_event_users that are False
             stale_avoid = [uid for uid, v in list(self.avoid_event_users.items()) if not v]
@@ -231,12 +262,8 @@ class FishingCog(commands.Cog):
                 del self.guaranteed_catch_users[uid]
                 cleaned_count += 1
             
-            # Clean expired legendary buff
-            expired_legendary = [uid for uid, remaining in list(self.legendary_buff_users.items()) 
-                                if remaining <= 0]
-            for uid in expired_legendary:
-                del self.legendary_buff_users[uid]
-                cleaned_count += 1
+            # Clean expired legendary buff - Migrated to DB, no cleanup needed here
+            pass
             
             # Clean old sell_processing entries (older than 5 minutes)
             old_sell = [uid for uid, t in list(self.sell_processing.items()) 
@@ -364,7 +391,7 @@ class FishingCog(commands.Cog):
                 user_id = ctx_or_interaction.author.id
             
             # *** CHECK AND APPLY LAG DEBUFF DELAY (applies to EVERY cast) ***
-            if self.check_emotional_state(user_id, "lag"):
+            if await self.check_emotional_state(user_id, "lag"):
                 await asyncio.sleep(3)
                 username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
                 logger.info(f"[EVENT] {username} experienced lag delay (3s) - start of cast")
@@ -565,8 +592,12 @@ class FishingCog(commands.Cog):
                 await asyncio.sleep(wait_time)
         
                 # ==================== TRIGGER RANDOM EVENTS ====================
+                
+                # Calculate Luck just before event trigger to get latest state
+                user_luck = await self.get_user_total_luck(user_id)
+                logger.info(f"[FISHING] {username} Luck: {user_luck*100:.1f}%")
         
-                event_result = await trigger_random_event(self, user_id, channel.guild.id, rod_lvl, channel)
+                event_result = await trigger_random_event(self, user_id, channel.guild.id, rod_lvl, channel, luck=user_luck)
         
                 # If user avoided a bad event, show what they avoided
                 if event_result.get("avoided", False):
@@ -702,19 +733,19 @@ class FishingCog(commands.Cog):
             
                     elif event_result.get("custom_effect") == "suy_debuff":
                         # Depression debuff: 50% rare catch reduction for 5 casts
-                        self.apply_emotional_state(user_id, "suy", 5)
+                        await self.apply_emotional_state(user_id, "suy", 5)
                         event_message += " (Bạn bị 'suy' 😭 - Giảm 50% tỉ lệ cá hiếm trong 5 lần câu)"
                         logger.info(f"[EVENT] {username} afflicted with suy debuff for 5 casts")
             
                     elif event_result.get("custom_effect") == "keo_ly_buff":
                         # Slay buff: 2x sell price for 10 minutes (600 seconds)
-                        self.apply_emotional_state(user_id, "keo_ly", 600)
+                        await self.apply_emotional_state(user_id, "keo_ly", 600)
                         event_message += " (Keo Lỳ tái châu! 💅 - x2 tiền bán cá trong 10 phút)"
                         logger.info(f"[EVENT] {username} activated keo_ly buff for 600 seconds")
             
                     elif event_result.get("custom_effect") == "lag_debuff":
                         # Lag debuff: 3s delay per cast for 5 minutes (300 seconds)
-                        self.apply_emotional_state(user_id, "lag", 300)
+                        await self.apply_emotional_state(user_id, "lag", 300)
                         event_message += " (Mạng lag! 📶 - Bot sẽ phản hồi chậm 3s cho mỗi lần câu trong 5 phút)"
                         logger.info(f"[EVENT] {username} afflicted with lag debuff for 300 seconds")
             
@@ -851,7 +882,7 @@ class FishingCog(commands.Cog):
                 # BUT: If no bait OR broken rod -> never roll chest
                 # Check for both tree boost AND lucky buff from NPC
                 is_boosted = await self.get_tree_boost_status(channel.guild.id)
-                has_lucky_buff = self.lucky_buff_users.get(user_id, False)
+                has_lucky_buff = await self.check_emotional_state(user_id, "lucky_buff")
                 is_boosted = is_boosted or has_lucky_buff
         
                 if has_worm and not is_broken_rod:
@@ -870,7 +901,7 @@ class FishingCog(commands.Cog):
         
                 # Clear lucky buff after this cast
                 if has_lucky_buff:
-                    self.lucky_buff_users[user_id] = False
+                    await self.emotional_state_manager.decrement_counter(user_id, "lucky_buff")
         
                 boost_text = " ✨**(BUFF MAY MẮN!)**✨" if has_lucky_buff else ("✨" if is_boosted else "")
         
@@ -909,18 +940,18 @@ class FishingCog(commands.Cog):
                         common_ratio = loot_table["common_fish"] / fish_weights_sum
                         rare_ratio = loot_table["rare_fish"] / fish_weights_sum
             
-                    # *** APPLY ROD LUCK BONUS ***
-                    rare_ratio = min(0.9, rare_ratio + rod_config["luck"])  # Cap at 90% max
-            
-                    # *** APPLY EMOTIONAL STATE: SUY DEBUFF (50% rare catch reduction) ***
-                    if self.check_emotional_state(user_id, "suy"):
-                        rare_ratio = rare_ratio * 0.5  # Reduce by 50%
-                        self.decrement_suy_cast(user_id)
-            
-                    # *** APPLY LEGENDARY BUFF FROM GHOST NPC ***
-                    if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
-                        rare_ratio = min(0.75, rare_ratio + 0.75)  # Cap at 75% max, +75% rare chance
-                        logger.info(f"[NPC_BUFF] {username} has legendary buff active! Rare chance boosted to {int(rare_ratio*100)}%")
+                    # *** APPLY TOTAL USER LUCK (Centralized) ***
+                    rare_ratio = min(0.9, rare_ratio + user_luck)  # Cap at 90% max
+                    
+                    # Handle "suy" decrement (luck penalty is -0.2 in total luck)
+                    # Handle "suy" decrement (luck penalty is -0.2 in total luck)
+                    if await self.check_emotional_state(user_id, "suy"):
+                        await self.decrement_suy_cast(user_id)
+                        
+                    # Log Ghost NPC usage (luck bonus is +0.3 in total luck)
+                    # Log Ghost NPC usage (luck bonus is +0.3 in total luck)
+                    if await self.check_emotional_state(user_id, "legendary_buff"):
+                        logger.info(f"[NPC_BUFF] {username} used legendary buff charge (Luck included in total)")
             
                     # *** APPLY DISASTER CATCH RATE PENALTY ***
                     current_time = time.time()
@@ -1044,13 +1075,12 @@ class FishingCog(commands.Cog):
                         fish_only_items[fish['key']] += 1
         
                 # Decrease legendary buff counter
-                if hasattr(self, "legendary_buff_users") and user_id in self.legendary_buff_users:
-                    self.legendary_buff_users[user_id] -= 1
-                    if self.legendary_buff_users[user_id] <= 0:
-                        del self.legendary_buff_users[user_id]
+                if await self.check_emotional_state(user_id, "legendary_buff"):
+                    remaining = await self.emotional_state_manager.decrement_counter(user_id, "legendary_buff")
+                    if remaining <= 0:
                         logger.info(f"[NPC_BUFF] {username} legendary buff expired")
                     else:
-                        logger.info(f"[NPC_BUFF] {username} has {self.legendary_buff_users[user_id]} legendary buff uses left")
+                        logger.info(f"[NPC_BUFF] {username} has {remaining} legendary buff uses left")
         
                 # Apply duplicate multiplier from events (e.g., Twin Fish - double similar fish)
                 duplicate_multiplier = event_result.get("duplicate_multiplier", 1)
@@ -2105,9 +2135,7 @@ class FishingCog(commands.Cog):
             logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
         
         elif reward_type == "lucky_buff":
-            if not hasattr(self, "lucky_buff_users"):
-                self.lucky_buff_users = {}
-            self.lucky_buff_users[user_id] = True
+            await self.emotional_state_manager.apply_emotional_state(user_id, "lucky_buff", 1)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received lucky buff from {npc_type}")
         
@@ -2183,9 +2211,7 @@ class FishingCog(commands.Cog):
         elif reward_type == "legendary_buff":
             # Grant legendary buff
             duration = selected_reward.get("duration", 10)
-            if not hasattr(self, "legendary_buff_users"):
-                self.legendary_buff_users = {}
-            self.legendary_buff_users[user_id] = duration
+            await self.emotional_state_manager.apply_emotional_state(user_id, "legendary_buff", duration)
             result_text = selected_reward["message"]
             result_color = discord.Color.gold()
             logger.info(f"[NPC] User {user_id} received legendary buff ({duration} uses) from {npc_type}")
@@ -2225,21 +2251,21 @@ class FishingCog(commands.Cog):
 
     # ==================== EMOTIONAL STATE SYSTEM ====================
     
-    def apply_emotional_state(self, user_id: int, state_type: str, duration: int) -> None:
+    async def apply_emotional_state(self, user_id: int, state_type: str, duration: int) -> None:
         """Apply emotional state (debuff/buff) to user. Delegate to manager."""
-        return self.emotional_state_manager.apply_emotional_state(user_id, state_type, duration)
+        await self.emotional_state_manager.apply_emotional_state(user_id, state_type, duration)
     
-    def check_emotional_state(self, user_id: int, state_type: str) -> bool:
+    async def check_emotional_state(self, user_id: int, state_type: str) -> bool:
         """Check if user has active emotional state of type. Delegate to manager."""
-        return self.emotional_state_manager.check_emotional_state(user_id, state_type)
+        return await self.emotional_state_manager.check_emotional_state(user_id, state_type)
     
-    def get_emotional_state(self, user_id: int) -> dict | None:
+    async def get_emotional_state(self, user_id: int) -> dict | None:
         """Get current emotional state or None if expired. Delegate to manager."""
-        return self.emotional_state_manager.get_emotional_state(user_id)
+        return await self.emotional_state_manager.get_emotional_state(user_id)
     
-    def decrement_suy_cast(self, user_id: int) -> int:
+    async def decrement_suy_cast(self, user_id: int) -> int:
         """Decrement suy debuff cast count. Delegate to manager."""
-        return self.emotional_state_manager.decrement_suy_cast(user_id)
+        return await self.emotional_state_manager.decrement_suy_cast(user_id)
 
 
 async def setup(bot):

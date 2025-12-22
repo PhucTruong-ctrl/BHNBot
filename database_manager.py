@@ -2,6 +2,8 @@
 Database Manager - Optimized database operations with caching and batch processing
 Handles connection pooling, query caching, and batch operations for better performance
 """
+import time
+import asyncio
 from typing import Optional, Dict, List, Any, Tuple
 from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard, get_db_connection
 from configs.settings import DB_PATH
@@ -988,3 +990,59 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
         return False, f"Lỗi giao dịch: {str(e)}"
     finally:
         await db.close()
+
+
+# ==================== BUFF OPERATIONS ====================
+
+async def save_user_buff(user_id: int, buff_type: str, duration_type: str, end_time: float = 0, remaining_count: int = 0):
+    """Save or update a user buff."""
+    await db_manager.modify(
+        """INSERT OR REPLACE INTO user_buffs 
+           (user_id, buff_type, duration_type, end_time, remaining_count) 
+           VALUES (?, ?, ?, ?, ?)""",
+        (user_id, buff_type, duration_type, end_time, remaining_count)
+    )
+    db_manager.clear_cache_by_prefix(f"buffs_{user_id}")
+
+async def get_user_buffs(user_id: int) -> Dict[str, dict]:
+    """Get all active buffs for a user.
+    
+    Returns:
+        Dict: {buff_type: {data}}
+    """
+    results = await db_manager.execute(
+        "SELECT buff_type, duration_type, end_time, remaining_count FROM user_buffs WHERE user_id = ?",
+        (user_id,),
+        use_cache=True,
+        cache_key=f"buffs_{user_id}",
+        cache_ttl=60
+    )
+    
+    buffs = {}
+    current_time = time.time()
+    
+    for row in results:
+        buff_type, duration_type, end_time, remaining_count = row
+        
+        # Filter expired time-based buffs
+        if duration_type == 'time' and end_time < current_time:
+            # Cleanup expired (using create_task to not block)
+            asyncio.create_task(remove_user_buff(user_id, buff_type))
+            continue
+            
+        buffs[buff_type] = {
+            "type": buff_type,
+            "duration_type": duration_type,
+            "end_time": end_time,
+            "remaining": remaining_count if duration_type == 'counter' else 0,
+            "data": row # Raw data just in case
+        }
+    return buffs
+
+async def remove_user_buff(user_id: int, buff_type: str):
+    """Remove a specific buff."""
+    await db_manager.modify(
+        "DELETE FROM user_buffs WHERE user_id = ? AND buff_type = ?",
+        (user_id, buff_type)
+    )
+    db_manager.clear_cache_by_prefix(f"buffs_{user_id}")

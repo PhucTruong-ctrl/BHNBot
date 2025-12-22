@@ -239,6 +239,19 @@ def init_database():
                     PRIMARY KEY (guild_id, game_type, voice_channel_id)
                 )''')
 
+    # 10. MODULE: USER BUFFS (Persistence cho buff/emotional state)
+    # Lưu trạng thái buff/debuff để không mất khi restart
+    c.execute('''CREATE TABLE IF NOT EXISTS user_buffs (
+                    user_id INTEGER,
+                    buff_type TEXT, -- 'suy', 'keo_ly', 'lag', 'lucky_buff', 'legendary_buff'
+                    duration_type TEXT, -- 'time' hoặc 'counter'
+                    end_time REAL DEFAULT 0, -- Timestamp khi hết hạn (cho time-based)
+                    remaining_count INTEGER DEFAULT 0, -- Số lượt còn lại (cho counter-based)
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, buff_type),
+                    FOREIGN KEY(user_id) REFERENCES users(user_id)
+                )''')
+
     conn.commit()
     
     # ==================== INDEXES (Tối Ưu Hóa) ====================

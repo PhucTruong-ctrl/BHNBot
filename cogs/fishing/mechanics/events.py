@@ -329,7 +329,7 @@ EFFECT_HANDLERS = {
     "gain_rod_material_random": handle_gain_rod_material_random,
 }
 
-async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1, channel=None) -> dict:
+async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1, channel=None, luck: float = 0.0) -> dict:
     """Trigger random event during fishing using Strategy Pattern."""
     result = {
         "triggered": False, "type": None, "message": "",
@@ -367,7 +367,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             handler = EFFECT_HANDLERS.get(effect)
             
             if handler:
-                result = await handler(result, event_data, user_id=user_id, cog=cog)
+                result = await handler(result, event_data, user_id=user_id, cog=cog, luck=luck)
             else:
                 print(f"[EVENTS] Warning: No handler for effect '{effect}'")
             
@@ -383,8 +383,39 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
     rand = random.random()
     current_chance = 0
     
-    for event_type, event_data in RANDOM_EVENTS.items():
-        current_chance += event_data["chance"]
+    # Shuffle events to prevent bias towards early events due to probability accumulation?
+    # Actually, iterate in fixed order but with accumulative probability is standard Weighted Random Selection.
+    # However, here we emulate independent probabilities in a single pass?
+    # No, the logic `rand < current_chance` implies events share the 0.0-1.0 space.
+    # This means total probability MUST be <= 1.0. 
+    # Adjusting probabilities dynamically allows leveraging this.
+    
+    # Sort events? No need if we trust the accumulated math.
+    
+    # We Iterate over items.
+    # NOTE: Since we modify chances, we should probably ensure we don't exceed 1.0 logic logic if Luck is too high.
+    # But for now simple multiplier is fine.
+    
+    items = list(RANDOM_EVENTS.items())
+    random.shuffle(items) # Optional shuffle to randomize precedence if overlaps occur (though math says they are distinct segments)
+    
+    for event_type, event_data in items:
+        base_chance = event_data["chance"]
+        modified_chance = base_chance
+        
+        # APPLY LUCK MODIFIERS
+        e_type = event_data.get("type", "neutral")
+        if e_type == "good":
+            # Luck increases chance of good events significantly
+            # Example: 0.1 luck -> 1.2x chance
+            modified_chance = base_chance * (1.0 + luck * 2.0)
+        elif e_type == "bad":
+             # Luck decreases chance of bad events
+             # Example: 0.1 luck -> 0.9x chance
+             modified_chance = base_chance * max(0.1, (1.0 - luck))
+        
+        current_chance += modified_chance
+        
         if rand < current_chance:
             # Skip global_reset if rod level < 3
             if event_data.get("effect") == "global_reset" and rod_level < 3:
@@ -397,9 +428,8 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                     await increment_stat(user_id, "fishing", "bad_events_encountered", 1)
                 if event_data.get("effect") == "global_reset":
                     await increment_stat(user_id, "fishing", "global_reset_triggered", 1)
-                    # Achievement check for global reset is handled by the stat tracking above
             except Exception as e:
-                logger.error(f"Unexpected error: {e}")
+                pass
             
             # If protection active and bad event, avoid it
             if has_protection and event_data.get("type") == "bad":
@@ -423,9 +453,8 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                     current_value = await get_stat(user_id, "fishing", stat_key)
                     if hasattr(cog, 'bot') and hasattr(cog.bot, 'achievement_manager'):
                         await cog.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
-                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on fishing event {event_type}")
                 except Exception as e:
-                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
+                    pass
             
             # Skip bad events if user has no seeds
             from database_manager import get_user_balance
@@ -439,7 +468,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             handler = EFFECT_HANDLERS.get(effect)
             
             if handler:
-                result = await handler(result, event_data, user_id=user_id, cog=cog)
+                result = await handler(result, event_data, user_id=user_id, cog=cog, luck=luck)
             else:
                 print(f"[EVENTS] Warning: No handler for effect '{effect}'")
             

@@ -171,7 +171,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         # Apply Keo Ly buff (2x sell price for 10 minutes)
         # Note: Keo Ly is essentially a personal event buff
         price_multiplier = 1.0
-        if cog.check_emotional_state(user_id, "keo_ly"):
+        if await cog.check_emotional_state(user_id, "keo_ly"):
             price_multiplier = 2.0
             logger.info(f"[SELL] {username} has keo_ly buff active! 2x sell price")
         

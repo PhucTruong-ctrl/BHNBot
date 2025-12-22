@@ -428,9 +428,8 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
         logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
     
     elif reward_type == "lucky_buff":
-        if not hasattr(self, "lucky_buff_users"):
-            self.lucky_buff_users = {}
-        self.lucky_buff_users[user_id] = True
+        # Use centralized persistent manager
+        await self.emotional_state_manager.apply_emotional_state(user_id, "lucky_buff", 1)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received lucky buff from {npc_type}")
     
@@ -506,9 +505,9 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     elif reward_type == "legendary_buff":
         # Grant legendary buff
         duration = selected_reward.get("duration", 10)
-        if not hasattr(self, "legendary_buff_users"):
-            self.legendary_buff_users = {}
-        self.legendary_buff_users[user_id] = duration
+        # Use centralized persistent manager
+        await self.emotional_state_manager.apply_emotional_state(user_id, "legendary_buff", duration)
+        
         result_text = selected_reward["message"]
         result_color = discord.Color.gold()
         logger.info(f"[NPC] User {user_id} received legendary buff ({duration} uses) from {npc_type}")
@@ -546,69 +545,6 @@ async def reset_sacrifice_count(self, user_id: int) -> None:
     """Reset sacrifice count to 0 in database (after completing quest)."""
     await reset_sacrifice_count(user_id, "thuong_luong")
 
-# ==================== EMOTIONAL STATE SYSTEM ====================
 
-def apply_emotional_state(self, user_id: int, state_type: str, duration: int) -> None:
-    """Apply emotional state (debuff/buff) to user.
-    
-    state_type: "suy" (50% rare reduction for 5 casts), "keo_ly" (2x sell for 10 min), "lag" (3s delay for 5 min)
-    duration: In casts for "suy", in seconds for "keo_ly" and "lag"
-    """
-    import time
-    self.emotional_states[user_id] = {
-        "type": state_type,
-        "duration": duration,
-        "start_time": time.time(),
-        "remaining": duration  # For suy, this is remaining casts
-    }
-
-def check_emotional_state(self, user_id: int, state_type: str) -> bool:
-    """Check if user has active emotional state of type."""
-    if user_id not in self.emotional_states:
-        return False
-    
-    state = self.emotional_states[user_id]
-    if state["type"] != state_type:
-        return False
-    
-    import time
-    elapsed = time.time() - state["start_time"]
-    
-    if state_type == "suy":
-        # For suy, check remaining casts
-        return state["remaining"] > 0
-    else:
-        # For keo_ly and lag, check time duration
-        return elapsed < state["duration"]
-
-def get_emotional_state(self, user_id: int) -> dict | None:
-    """Get current emotional state or None if expired."""
-    if user_id not in self.emotional_states:
-        return None
-    
-    state = self.emotional_states[user_id]
-    import time
-    elapsed = time.time() - state["start_time"]
-    
-    if state["type"] == "suy":
-        if state["remaining"] <= 0:
-            del self.emotional_states[user_id]
-            return None
-    else:
-        if elapsed >= state["duration"]:
-            del self.emotional_states[user_id]
-            return None
-    
-    return state
-
-def decrement_suy_cast(self, user_id: int) -> int:
-    """Decrement suy debuff cast count. Returns remaining casts."""
-    if user_id in self.emotional_states and self.emotional_states[user_id]["type"] == "suy":
-        self.emotional_states[user_id]["remaining"] -= 1
-        remaining = self.emotional_states[user_id]["remaining"]
-        if remaining <= 0:
-            del self.emotional_states[user_id]
-        return remaining
-    return 0
 
 

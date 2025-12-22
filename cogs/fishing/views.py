@@ -102,7 +102,7 @@ class FishSellView(discord.ui.View):
             
             # *** APPLY KECO LỲ BUFF (2x sell price for 10 minutes) ***
             keo_ly_message = ""
-            if hasattr(self.cog, 'check_emotional_state') and self.cog.check_emotional_state(self.user_id, "keo_ly"):
+            if hasattr(self.cog, 'check_emotional_state') and await self.cog.check_emotional_state(self.user_id, "keo_ly"):
                 total_money = total_money * 2
                 keo_ly_message = " (💅 **Keo Lỳ Buff x2**)"
                 logger.info(f"[SELL] {interaction.user.name} applied keo_ly buff x2 multiplier")
