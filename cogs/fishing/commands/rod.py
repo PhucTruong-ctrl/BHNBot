@@ -81,7 +81,7 @@ async def nangcap_action(ctx_or_interaction):
         current_materials = 0
         if material_cost > 0:
             inventory = await get_inventory(user_id)
-            current_materials = inventory.get("rod_material", 0)
+            current_materials = inventory.get("vat_lieu_nang_cap", 0)
         
         # Check special materials (Level 6 - Void Rod)
         special_material_ok = True
@@ -134,7 +134,7 @@ async def nangcap_action(ctx_or_interaction):
         
         # 2. Deduct Materials (if required)
         if material_cost > 0:
-            await remove_item(user_id, "rod_material", material_cost)
+            await remove_item(user_id, "vat_lieu_nang_cap", material_cost)
         
         # 3. Deduct Special Materials (Level 6 - Void Rod)
         if special_materials:

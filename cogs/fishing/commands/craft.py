@@ -161,7 +161,7 @@ async def chetao_action(cog, ctx_or_interaction, item_key: str, is_slash: bool):
     craftable_items = {
         "tinh_cau": {
             "name": "Tinh Cầu",
-            "requires": {"manh_sao_bang": 5},
+            "requires": {"manh_sao_bang": 5, "ngoc_trai": 1},
             "description": "Thả xuống nước để triệu hồi Cá Ngân Hà"
         },
         "long_vu_lua": {

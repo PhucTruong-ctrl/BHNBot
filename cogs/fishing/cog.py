@@ -28,7 +28,7 @@ from .commands.sell import sell_fish_action as _sell_fish_impl
 from .commands.bucket import (
     open_chest_action as _open_chest_impl,
     recycle_trash_action as _recycle_trash_impl,
-    use_fertilizer_action as _use_fertilizer_impl,
+    use_phan_bon_action as _use_phan_bon_impl,
     view_collection_action as _view_collection_impl
 )
 from .commands.craft import (
@@ -487,7 +487,7 @@ class FishingCog(commands.Cog):
                     return
         
                 # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
-                has_worm = inventory.get("worm", 0) > 0
+                has_worm = inventory.get("moi", 0) > 0
                 auto_bought = False  # Biến check xem có tự mua không
 
                 # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
@@ -514,7 +514,7 @@ class FishingCog(commands.Cog):
                     
                     if not skip_worm_consumption:
                         # Có mồi trong túi -> Trừ mồi
-                        await remove_item(user_id, "worm", 1)
+                        await remove_item(user_id, "moi", 1)
                         # Track worms used for achievement
                         try:
                             await increment_stat(user_id, "fishing", "worms_used", 1)
@@ -667,7 +667,7 @@ class FishingCog(commands.Cog):
             
                     # Process event effects
                     if event_result.get("lose_worm", False) and has_worm:
-                        await remove_item(user_id, "worm", 1)
+                        await remove_item(user_id, "moi", 1)
                         event_message += " (Mất 1 Giun)"
             
                     if event_result.get("lose_money", 0) > 0:
@@ -689,7 +689,7 @@ class FishingCog(commands.Cog):
                         await add_seeds(user_id, event_result["gain_money"])
                         event_message += f" (+{event_result['gain_money']} Hạt)"
             
-                    # Process gain_items (pearls, worms, chests, etc.)
+                    # Process gain_items (ngoc_trais, worms, chests, etc.)
                     if event_result.get("gain_items", {}):
                         for item_key, item_count in event_result["gain_items"].items():
                             # Special check for ca_isekai: don't gain if already have
@@ -704,9 +704,9 @@ class FishingCog(commands.Cog):
                     # Handle special effects
                     if event_result.get("custom_effect") == "lose_all_bait":
                         # sea_sickness: Lose all bait (worm)
-                        worm_count = inventory.get("worm", 0)
+                        worm_count = inventory.get("moi", 0)
                         if worm_count > 0:
-                            await remove_item(user_id, "worm", worm_count)
+                            await remove_item(user_id, "moi", worm_count)
                             event_message += f" (Nôn hết {worm_count} Giun)"
                             logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=sea_sickness inventory_change=-{worm_count} item=worm")
             
@@ -1179,7 +1179,7 @@ class FishingCog(commands.Cog):
                 # Process chest (độc lập)
                 if chest_count > 0:
                     for _ in range(chest_count):
-                        await self.add_inventory_item(user_id, "treasure_chest", "tool")
+                        await self.add_inventory_item(user_id, "ruong_kho_bau", "tool")
                     fish_display.append(f"🎁 Rương Kho Báu x{chest_count}")
                     logger.info(f"[FISHING] {username} caught {chest_count}x TREASURE CHEST! 🎁")
                     # Track chests caught for achievement
@@ -1700,11 +1700,11 @@ class FishingCog(commands.Cog):
 
     @app_commands.command(name="bonphan", description="🌾 Bón phân cho cây server")
     async def bonphan_slash(self, interaction: discord.Interaction):
-        await self._use_fertilizer_action(interaction)
+        await self._use_phan_bon_action(interaction)
     
     @commands.command(name="bonphan", description="🌾 Bón phân cho cây server")
     async def bonphan_prefix(self, ctx):
-        await self._use_fertilizer_action(ctx)
+        await self._use_phan_bon_action(ctx)
     
     @app_commands.command(name="taiche", description="Tái chế rác - 10 rác → 1 phân bón")
     @app_commands.describe(
@@ -1723,9 +1723,9 @@ class FishingCog(commands.Cog):
         """Recycle trash logic. Delegate to bucket module."""
         return await _recycle_trash_impl(self, ctx_or_interaction, action)
 
-    async def _use_fertilizer_action(self, ctx_or_interaction):
-        """Use fertilizer logic. Delegate to bucket module."""
-        return await _use_fertilizer_impl(self, ctx_or_interaction)
+    async def _use_phan_bon_action(self, ctx_or_interaction):
+        """Use phan_bon logic. Delegate to bucket module."""
+        return await _use_phan_bon_impl(self, ctx_or_interaction)
 
     async def _view_collection_action(self, ctx_or_interaction, user_id: int, username: str):
         """View collection logic. Delegate to bucket module."""
@@ -2163,9 +2163,9 @@ class FishingCog(commands.Cog):
         # Process reward
         reward_type = selected_reward["type"]
         
-        if reward_type == "worm":
+        if reward_type == "moi":
             amount = selected_reward.get("amount", 5)
-            await add_item(user_id, "worm", amount)
+            await add_item(user_id, "moi", amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
         
@@ -2176,7 +2176,7 @@ class FishingCog(commands.Cog):
         
         elif reward_type == "chest":
             amount = selected_reward.get("amount", 1)
-            await add_item(user_id, "treasure_chest", amount)
+            await add_item(user_id, "ruong_kho_bau", amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
         
@@ -2206,15 +2206,15 @@ class FishingCog(commands.Cog):
                 result_text += f" (**+{amount} Hạt**)"
             logger.info(f"[NPC] User {user_id} received {amount} seeds from {npc_type}")
         
-        elif reward_type == "pearl":
+        elif reward_type == "ngoc_trai":
             amount = selected_reward.get("amount", 1)
-            await add_item(user_id, "pearl", amount)
+            await add_item(user_id, "ngoc_trai", amount)
             result_text = selected_reward["message"]
-            logger.info(f"[NPC] User {user_id} received {amount} pearl(s) from {npc_type}")
+            logger.info(f"[NPC] User {user_id} received {amount} ngoc_trai(s) from {npc_type}")
         
-        elif reward_type == "rod_material":
+        elif reward_type == "vat_lieu_nang_cap":
             amount = selected_reward.get("amount", 2)
-            await add_item(user_id, "rod_material", amount)
+            await add_item(user_id, "vat_lieu_nang_cap", amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} rod material(s) from {npc_type}")
         

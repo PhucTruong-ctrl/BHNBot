@@ -95,16 +95,16 @@ if not FISHING_DATA and not LEGENDARY_FISH_DATA:
 
 # ==================== SPECIAL ITEMS (Added to ALL_FISH after loading) ====================
 # Add special items that aren't in JSON
-ALL_FISH["pearl"] = {"key": "pearl", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
-ALL_FISH["rod_material"] = {"key": "rod_material", "name": "Vật Liệu Nâng Cấp Cần", "emoji": "⚙️", "sell_price": 0}
+ALL_FISH["ngoc_trai"] = {"key": "ngoc_trai", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
+ALL_FISH["vat_lieu_nang_cap"] = {"key": "vat_lieu_nang_cap", "name": "Vật Liệu Nâng Cấp Cần", "emoji": "⚙️", "sell_price": 0}
 
 # Chest loot (will be populated after TRASH_ITEMS is defined)
 CHEST_LOOT = {
     # "nothing": REMOVED - No more empty chests!
-    "fertilizer": 25,  # Increased from 20 - common item
-    "puzzle_piece": 22,  # Increased from 18 - common item
-    "coin_pouch": 32,  # Increased from 28 - common item
-    "gift_random": 20,  # Decreased from 33 - rare item
+    "phan_bon": 25,  # Increased from 20 - common item
+    "manh_ghep": 22,  # Increased from 18 - common item
+    "tui_tien": 32,  # Increased from 28 - common item
+    "qua_ngau_nhien": 20,  # Decreased from 33 - rare item
     "manh_sao_bang": 8,  # Decreased from 12 - rare item
     "manh_ban_do_a": 2,  # Decreased from 4 - very rare
     "manh_ban_do_b": 2,  # Decreased from 4 - very rare
@@ -230,15 +230,15 @@ DISASTER_STAT_MAPPING = {
     "alien_invasion": "disaster_triggered",
 }
 
-# Fertilizer effects for bucket.py
-FERTILIZER_EFFECTS = [
+# phan_bon effects for bucket.py
+phan_bon_EFFECTS = [
     {"type": "xp_boost", "value": 50, "message": "🌱 Cây được bón phân và nhận **+50 XP**!"},
     {"type": "xp_boost", "value": 100, "message": "🌿 Bón phân siêu hiệu quả! Cây nhận **+100 XP**!"},
     {"type": "xp_boost", "value": 25, "message": "🪴 Phân bón tạm được... Cây nhận **+25 XP**."},
     {"type": "seeds", "value": 50, "message": "💰 Phân bón lạ! Bạn tìm thấy **50 Hạt** trong đất."},
     {"type": "seeds", "value": 100, "message": "💰 WOW! Phân bón chứa **100 Hạt** bên trong!"},
-    {"type": "worm", "value": 5, "message": "🪱 Phân bón hấp dẫn giun! Bạn nhận được **5 Giun**."},
-    {"type": "worm", "value": 10, "message": "🪱 Cả bầy giun kéo đến! Bạn nhận được **10 Giun**."},
+    {"type": "moi", "value": 5, "message": "🪱 Phân bón hấp dẫn giun! Bạn nhận được **5 Giun**."},
+    {"type": "moi", "value": 10, "message": "🪱 Cả bầy giun kéo đến! Bạn nhận được **10 Giun**."},
     {"type": "xp_boost", "value": 200, "message": "🌳 SIÊU PHÂN BÓN! Cây bùng nổ với **+200 XP**!"},
 ]
 

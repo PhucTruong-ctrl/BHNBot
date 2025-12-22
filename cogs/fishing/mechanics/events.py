@@ -217,7 +217,7 @@ async def handle_flexing(result: dict, event_data: dict, **kwargs) -> dict:
 
 async def handle_free_cast(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Forgot Bait - No bait cost."""
-    result["gain_items"] = {"worm": 1}  # Refund 1 bait (treated as no cost)
+    result["gain_items"] = {"moi": 1}  # Refund 1 bait (treated as no cost)
     return result
 
 async def handle_isekai(result: dict, event_data: dict, **kwargs) -> dict:
@@ -241,31 +241,31 @@ async def handle_hack_map(result: dict, event_data: dict, **kwargs) -> dict:
     result["cooldown_increase"] = 300  # 5 minute penalty
     return result
 
-async def handle_gain_rod_material_small(result: dict, event_data: dict, **kwargs) -> dict:
+async def handle_gain_vat_lieu_nang_cap_small(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Gain 1-2 rod materials."""
     amount = random.randint(1, 2)
-    result["gain_items"] = {"rod_material": amount}
+    result["gain_items"] = {"vat_lieu_nang_cap": amount}
     result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
     return result
 
-async def handle_gain_rod_material_medium(result: dict, event_data: dict, **kwargs) -> dict:
+async def handle_gain_vat_lieu_nang_cap_medium(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Gain 3-5 rod materials."""
     amount = random.randint(3, 5)
-    result["gain_items"] = {"rod_material": amount}
+    result["gain_items"] = {"vat_lieu_nang_cap": amount}
     result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
     return result
 
-async def handle_gain_rod_material_large(result: dict, event_data: dict, **kwargs) -> dict:
+async def handle_gain_vat_lieu_nang_cap_large(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Gain 6-10 rod materials."""
     amount = random.randint(6, 10)
-    result["gain_items"] = {"rod_material": amount}
+    result["gain_items"] = {"vat_lieu_nang_cap": amount}
     result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
     return result
 
-async def handle_gain_rod_material_random(result: dict, event_data: dict, **kwargs) -> dict:
+async def handle_gain_vat_lieu_nang_cap_random(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Gain 1-10 rod materials."""
     amount = random.randint(1, 10)
-    result["gain_items"] = {"rod_material": amount}
+    result["gain_items"] = {"vat_lieu_nang_cap": amount}
     result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
     return result
 
@@ -290,12 +290,12 @@ EFFECT_HANDLERS = {
     "gain_money_large": handle_gain_money(300, 500),
     "gain_money_huge": handle_gain_money_fixed(1000),
     "lose_money_percent": handle_lose_money_percent,
-    "gain_worm_5": handle_gain_items({"worm": 5}),
-    "gain_worm_10": handle_gain_items({"worm": 10}),
+    "gain_worm_5": handle_gain_items({"moi": 5}),
+    "gain_worm_10": handle_gain_items({"moi": 10}),
     "bet_loss": handle_bet_loss,
-    "gain_chest_1": handle_gain_items({"treasure_chest": 1}),
-    "gain_chest_2": handle_gain_items({"treasure_chest": 2}),
-    "gain_pearl": handle_gain_items({"pearl": 1}),
+    "gain_chest_1": handle_gain_items({"ruong_kho_bau": 1}),
+    "gain_chest_2": handle_gain_items({"ruong_kho_bau": 2}),
+    "gain_ngoc_trai": handle_gain_items({"ngoc_trai": 1}),
     "gain_ring": handle_gain_items({"ring": 1}),
     "gain_map_piece": handle_gain_random_map_piece,
     "bonus_catch_2": handle_bonus_catch(2),
@@ -323,10 +323,10 @@ EFFECT_HANDLERS = {
     "mlm_scheme": handle_lose_money(200),
     "lucky_cat": handle_lucky_buff,
     "football_bet": handle_crypto_loss,
-    "gain_rod_material_small": handle_gain_rod_material_small,
-    "gain_rod_material_medium": handle_gain_rod_material_medium,
-    "gain_rod_material_large": handle_gain_rod_material_large,
-    "gain_rod_material_random": handle_gain_rod_material_random,
+    "gain_vat_lieu_nang_cap_small": handle_gain_vat_lieu_nang_cap_small,
+    "gain_vat_lieu_nang_cap_medium": handle_gain_vat_lieu_nang_cap_medium,
+    "gain_vat_lieu_nang_cap_large": handle_gain_vat_lieu_nang_cap_large,
+    "gain_vat_lieu_nang_cap_random": handle_gain_vat_lieu_nang_cap_random,
 }
 
 async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1, channel=None, luck: float = 0.0) -> dict:

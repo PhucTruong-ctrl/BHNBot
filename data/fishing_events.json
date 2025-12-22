@@ -256,7 +256,7 @@
       "chance": 0.002,
       "type": "good",
       "name": "Tiên Cá!",
-      "effect": "gain_pearl"
+      "effect": "gain_ngoc_trai"
     },
     "message_bottle": {
       "chance": 0.003,
@@ -580,25 +580,25 @@
       "chance": 0.003,
       "type": "good",
       "name": "📦 Hộp Pandora Pha Ke!",
-      "effect": "gain_rod_material_random"
+      "effect": "gain_vat_lieu_nang_cap_random"
     },
     "scrap_metal": {
       "chance": 0.004,
       "type": "good",
       "name": "♻️ Ve Chai Vũ Trụ!",
-      "effect": "gain_rod_material_small"
+      "effect": "gain_vat_lieu_nang_cap_small"
     },
     "diving_gear": {
       "chance": 0.002,
       "type": "good",
       "name": "🦈 Đồ Của Shark!",
-      "effect": "gain_rod_material_medium"
+      "effect": "gain_vat_lieu_nang_cap_medium"
     },
     "kraken_puke": {
       "chance": 0.001,
       "type": "good",
       "name": "🐙 Thủy Quái Ói!",
-      "effect": "gain_rod_material_large"
+      "effect": "gain_vat_lieu_nang_cap_large"
     },
     "keo_ly_npc": {
       "chance": 0.002,

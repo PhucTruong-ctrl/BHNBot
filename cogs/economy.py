@@ -256,7 +256,7 @@ class EconomyCog(commands.Cog):
             from cogs.fishing.constants import ALL_ITEMS_DATA
             
             # Fish items
-            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
+            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "vat_lieu_nang_cap"}
             if fish_items:
                 fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {apply_display_glitch(str(ALL_FISH[k]['sell_price'] * v))} Hạt" for k, v in sorted(fish_items.items())])
                 # Split into multiple fields if too long (max 1024 chars per field)
@@ -301,21 +301,20 @@ class EconomyCog(commands.Cog):
             
             # Tool items & Consumables
             tool_lookup = {
-                "treasure_chest": ("Rương Kho Báu", "🎁"),
-                "fertilizer": ("Phân Bón", "🌾"),
-                "pearl": ("Ngọc Trai", "🔮"),
-                "rod_material": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
-                "puzzle_a": ("Mảnh Ghép A", "🧩"),
-                "puzzle_b": ("Mảnh Ghép B", "🧩"),
-                "puzzle_c": ("Mảnh Ghép C", "🧩"),
-                "puzzle_d": ("Mảnh Ghép D", "🧩"),
+                "ruong_kho_bau": ("Rương Kho Báu", "🎁"),
+                "phan_bon": ("Phân Bón", "🌾"),
+                "ngoc_trai": ("Ngọc Trai", "🔮"),
+                "vat_lieu_nang_cap": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
+                "manh_ghep_a": ("Mảnh Ghép A", "🧩"),
+                "manh_ghep_b": ("Mảnh Ghép B", "🧩"),
+                "manh_ghep_c": ("Mảnh Ghép C", "🧩"),
+                "manh_ghep_d": ("Mảnh Ghép D", "🧩"),
                 "manh_ban_do_a": ("Mảnh Bản Đồ A", "🗺️"),
                 "manh_ban_do_b": ("Mảnh Bản Đồ B", "🗺️"),
                 "manh_ban_do_c": ("Mảnh Bản Đồ C", "🗺️"),
                 "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
                 "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
                 "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
-                "manh_sao_bang": ("Mảnh Sao Băng", "✨🎣"),
                 "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
                 "may_do_song": ("Máy Dò Sóng", "📡"),
                 # Commemorative items (season rewards)
@@ -407,7 +406,7 @@ class EconomyCog(commands.Cog):
             from cogs.fishing.mechanics.glitch import apply_display_glitch
             
             # Fish items
-            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
+            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "vat_lieu_nang_cap"}
             if fish_items:
                 fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
                 # Split into multiple fields if too long (max 1024 chars per field)
@@ -452,10 +451,10 @@ class EconomyCog(commands.Cog):
             
             # Tool items & Consumables
             tool_lookup = {
-                "treasure_chest": ("Rương Kho Báu", "🎁"),
-                "fertilizer": ("Phân Bón", "🌾"),
-                "pearl": ("Ngọc Trai", "🔮"),
-                "rod_material": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
+                "ruong_kho_bau": ("Rương Kho Báu", "🎁"),
+                "phan_bon": ("Phân Bón", "🌾"),
+                "ngoc_trai": ("Ngọc Trai", "🔮"),
+                "vat_lieu_nang_cap": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
                 "puzzle_a": ("Mảnh Ghép A", "🧩"),
                 "puzzle_b": ("Mảnh Ghép B", "🧩"),
                 "puzzle_c": ("Mảnh Ghép C", "🧩"),
