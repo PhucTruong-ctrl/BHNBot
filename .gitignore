@@ -58,3 +58,4 @@ env/
 
 # Game Data Configs (Keep these in Git)
 # !data/*.json
+data/words_dict.json
