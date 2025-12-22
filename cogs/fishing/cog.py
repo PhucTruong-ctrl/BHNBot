@@ -504,22 +504,31 @@ class FishingCog(commands.Cog):
                         has_worm = False
                         logger.info(f"[FISHING] [NO_WORM_NO_MONEY] {username} (user_id={user_id}) has_worm=False balance={balance} < {WORM_COST}")
                 else:
-                    # Có mồi trong túi -> Trừ mồi
-                    await remove_item(user_id, "worm", 1)
-                    # Track worms used for achievement
-                    try:
-                        await increment_stat(user_id, "fishing", "worms_used", 1)
-                        current_worms = await get_stat(user_id, "fishing", "worms_used")
-                        # Check achievement: worm_destroyer (100 worms)
-                        await self.bot.achievement_manager.check_unlock(
-                            user_id=user_id,
-                            game_category="fishing",
-                            stat_key="worms_used",
-                            current_value=current_worms,
-                            channel=channel
-                        )
-                    except Exception as e:
-                        logger.error(f"Unexpected error: {e}")
+                    # ==================== PASSIVE: NO BAIT LOSS (Level 7 - Chrono Rod) ====================
+                    skip_worm_consumption = False
+                    if rod_lvl ==7:
+                        passive_chance = rod_config.get("passive_chance", 0.10)
+                        if random.random() < passive_chance:
+                            skip_worm_consumption = True
+                            logger.info(f"[FISHING] [PASSIVE] ⏳ Chrono Rod preserved bait for {username}")
+                    
+                    if not skip_worm_consumption:
+                        # Có mồi trong túi -> Trừ mồi
+                        await remove_item(user_id, "worm", 1)
+                        # Track worms used for achievement
+                        try:
+                            await increment_stat(user_id, "fishing", "worms_used", 1)
+                            current_worms = await get_stat(user_id, "fishing", "worms_used")
+                            # Check achievement: worm_destroyer (100 worms)
+                            await self.bot.achievement_manager.check_unlock(
+                                user_id=user_id,
+                                game_category="fishing",
+                                stat_key="worms_used",
+                                current_value=current_worms,
+                                channel=channel
+                            )
+                        except Exception as e:
+                            logger.error(f"Unexpected error: {e}")
                     logger.info(f"[FISHING] [CONSUME_WORM] {username} (user_id={user_id}) inventory_change=-1 action=used_bait")
         
                 # --- KẾT THÚC LOGIC MỚI ---
@@ -1040,6 +1049,19 @@ class FishingCog(commands.Cog):
                         if fish['key'] not in fish_only_items:
                             fish_only_items[fish['key']] = 0
                         fish_only_items[fish['key']] += 1
+                        
+                        # ==================== PASSIVE: DOUBLE CATCH (Level 6 - Void Rod) ====================
+                        if rod_lvl == 6:
+                            passive_chance = rod_config.get("passive_chance", 0.05)
+                            if random.random() < passive_chance:
+                                # Duplicate the rare fish!
+                                await self.add_inventory_item(user_id, fish['key'], "fish")
+                                fish_only_items[fish['key']] += 1  # Add to display count
+                                logger.info(f"[FISHING] [PASSIVE] 🌌 Void Rod double catch triggered for {username} - RARE {fish['key']}")
+                                # Store for special message display later
+                                if not hasattr(self, '_void_rod_double_catch'):
+                                    self._void_rod_double_catch = {}
+                                self._void_rod_double_catch[user_id] = fish
                     elif catch_type == "common":
                         # Catch common fish (or fallback if rare limit reached)
                         fish = random.choice(COMMON_FISH)
@@ -1073,6 +1095,19 @@ class FishingCog(commands.Cog):
                         if fish['key'] not in fish_only_items:
                             fish_only_items[fish['key']] = 0
                         fish_only_items[fish['key']] += 1
+                        
+                        # ==================== PASSIVE: DOUBLE CATCH (Level 6 - Void Rod) ====================
+                        if rod_lvl == 6:
+                            passive_chance = rod_config.get("passive_chance", 0.05)
+                            if random.random() < passive_chance:
+                                # Duplicate the fish!
+                                await self.add_inventory_item(user_id, fish['key'], "fish")
+                                fish_only_items[fish['key']] += 1  # Add to display count
+                                logger.info(f"[FISHING] [PASSIVE] 🌌 Void Rod double catch triggered for {username} - {fish['key']}")
+                                # Store for special message display later
+                                if not hasattr(self, '_void_rod_double_catch'):
+                                    self._void_rod_double_catch = {}
+                                self._void_rod_double_catch[user_id] = fish
         
                 # Decrease legendary buff counter
                 if await self.check_emotional_state(user_id, "legendary_buff"):
