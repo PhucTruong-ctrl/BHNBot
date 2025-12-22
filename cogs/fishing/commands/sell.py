@@ -35,7 +35,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         user_id = ctx_or_interaction.author.id
     
     # *** CHECK AND APPLY LAG DEBUFF DELAY ***
-    if cog.check_emotional_state(user_id, "lag"):
+    if await cog.check_emotional_state(user_id, "lag"):
         await asyncio.sleep(3)
         username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
         logger.info(f"[EVENT] {username} experienced lag delay (3s) - sell fish")
@@ -227,7 +227,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         
         # 1. LIST OF FISH
         fish_list_str = ""
-        if len(fish_sold) <= 10:
+        if len(fish_sold) <= 20:
             for fish_key, details in fish_sold.items():
                 fish_name = _glitch(ALL_FISH[fish_key]["name"])
                 emoji = ALL_FISH[fish_key].get("emoji", "🐟")
@@ -238,7 +238,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
                 # Let's show: Emoji Name xQty (Base Total)
                 fish_list_str += f"{emoji} **{fish_name}** x{details['quantity']}\n"
         else:
-            fish_list_str = f"**Tổng {len(fish_sold)} loại cá** (quá nhiều để hiển thị)"
+            fish_list_str = f"**Tổng {len(fish_sold)} loại cá** (quá nhiều để hiển thị chi tiết)"
             
         fish_list_str += f"\n----------------\n**💵 Tổng gốc:** {total_value} Hạt"
         embed.description = fish_list_str

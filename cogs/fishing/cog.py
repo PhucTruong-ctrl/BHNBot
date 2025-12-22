@@ -115,6 +115,14 @@ class FishingCog(commands.Cog):
         
         self.meteor_wish_count = {}  # {user_id: {'date': date, 'count': int}}
         
+        # Disaster effects tracking (expire when disaster ends)
+        self.disaster_catch_rate_penalty = 0.0  # Percentage to reduce catch rate (0.2 = -20%)
+        self.disaster_cooldown_penalty = 0  # Extra seconds to add to cooldown
+        self.disaster_fine_amount = 0  # Amount to deduct from players
+        self.disaster_display_glitch = False  # Whether to show garbled fish names
+        self.disaster_effect_end_time = 0  # When current disaster effects expire
+        self.disaster_channel = None  # Channel to send disaster end notification
+        
         # Start meteor shower task
         self.meteor_shower_event.start()
         
@@ -151,15 +159,7 @@ class FishingCog(commands.Cog):
             
         # Ensure luck doesn't go below -1.0 (though logic handles negatives)
         return max(-0.9, luck)
-
-        
-        # Disaster effects tracking (expire when disaster ends)
-        self.disaster_catch_rate_penalty = 0.0  # Percentage to reduce catch rate (0.2 = -20%)
-        self.disaster_cooldown_penalty = 0  # Extra seconds to add to cooldown
-        self.disaster_fine_amount = 0  # Amount to deduct from players
-        self.disaster_display_glitch = False  # Whether to show garbled fish names
-        self.disaster_effect_end_time = 0  # When current disaster effects expire
-        self.disaster_channel = None  # Channel to send disaster end notification
+    
     
     def cog_unload(self):
         """Cleanup when cog is unloaded."""
