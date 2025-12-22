@@ -390,12 +390,6 @@ class FishingCog(commands.Cog):
             else:
                 user_id = ctx_or_interaction.author.id
             
-            # *** CHECK AND APPLY LAG DEBUFF DELAY (applies to EVERY cast) ***
-            if await self.check_emotional_state(user_id, "lag"):
-                await asyncio.sleep(3)
-                username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
-                logger.info(f"[EVENT] {username} experienced lag delay (3s) - start of cast")
-            
             if is_slash:
                 await ctx_or_interaction.response.defer(ephemeral=False)
                 channel = ctx_or_interaction.channel
@@ -405,6 +399,12 @@ class FishingCog(commands.Cog):
                 channel = ctx_or_interaction.channel
                 guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
                 ctx = ctx_or_interaction
+            
+            # *** CHECK AND APPLY LAG DEBUFF DELAY (applies to EVERY cast) ***
+            if await self.check_emotional_state(user_id, "lag"):
+                await asyncio.sleep(3)
+                username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                logger.info(f"[EVENT] {username} experienced lag delay (3s) - start of cast")
             
             # --- GET USER AND ROD DATA ---
             rod_lvl, rod_durability = await get_rod_data(user_id)
