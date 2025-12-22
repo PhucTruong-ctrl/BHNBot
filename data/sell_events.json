@@ -642,6 +642,38 @@
       "mul": 1.5,
       "flat": -50,
       "name": "Tạo Scandal!"
+    },
+    "startup_invest": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Start-up!",
+      "special": "rod_material"
+    },
+    "green_recycle": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Tái Chế Xanh!",
+      "special": "rod_material"
+    },
+    "trash_exchange": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Đổi Rác!",
+      "special": "rod_material"
+    },
+    "fan_donate": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "Fan Donate!",
+      "special": "rod_material"
     }
   },
   "messages": {
@@ -735,6 +767,10 @@
     "cat_repay": "🐈 Con mèo hoang hôm qua ăn vụng cá, hôm nay tha về cho bạn một chiếc nhẫn vàng ai đó đánh rơi. (Nhận 500 Hạt)",
     "land_fever": "🏗️ Tin đồn sạp cá của bạn nằm trong quy hoạch 'Thành phố Cá'. Cò đất tranh nhau mua lại sạp với giá trên trời! (X4 DOANH THU)",
     "black_market": "🕶️ Bạn lén bán lô cá hiếm cho chợ đen lúc nửa đêm. Giá cực cao nhưng tốn ít tiền 'bôi trơn'. (X2.5 Doanh thu, mất 100 Hạt phí)",
-    "scandal_pr": "📢 Bạn cố tình tạo phốt giả để nổi tiếng. Dù bị chửi nhưng khách tò mò đến mua đông nghịt. (Tăng 50%, mất 50 Hạt thuê seeding)"
+    "scandal_pr": "📢 Bạn cố tình tạo phốt giả để nổi tiếng. Dù bị chửi nhưng khách tò mò đến mua đông nghịt. (Tăng 50%, mất 50 Hạt thuê seeding)",
+    "startup_invest": "🦈 Shark Bình thấy sạp cá của bạn có tiềm năng Unicorn nên tặng gói hỗ trợ start-up. (Nhận Vật Liệu)",
+    "green_recycle": "♻️ Tổ chức GreenPeace tuyên dương bạn vì dùng lá chuối gói cá thay túi nilon. (Nhận Vật Liệu)",
+    "trash_exchange": "🗑️ Chương trình 'Đổi Vảy Cá Lấy Quà' của phường. Bạn gom hết vảy cá đi đổi. (Nhận Vật Liệu)",
+    "fan_donate": "🖥️ Một Fan cứng là chủ tiệm Net thanh lý dàn máy, gửi tặng bạn mớ linh kiện cũ để 'độ' cần câu. (Nhận Vật Liệu)"
   }
 }

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Role Manager v2</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🛠️ Quản Lý Role (Phân Mục)</h1>
+            <div class="controls">
+                <button id="add-category-btn" class="btn btn-secondary">➕ Thêm Phân Mục</button>
+                <button id="save-btn" class="btn btn-primary" disabled>💾 Lưu Cấu Trúc</button>
+                <button id="refresh-btn" class="btn btn-secondary">🔄 Làm Mới</button>
+            </div>
+            <p id="status-msg"></p>
+        </header>
+
+        <div id="loading" class="loading">Đang tải cấu trúc role...</div>
+
+        <!-- Main Container for Categories -->
+        <div id="category-container" class="category-list">
+            <!-- Categories will be injected here -->
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3>Chỉnh sửa Role</h3>
+            <label>Tên Role:</label>
+            <input type="text" id="edit-name" />
+            <label>Màu (Decimal):</label>
+            <div class="color-picker-wrapper">
+                <input type="color" id="edit-color-picker">
+                <input type="number" id="edit-color-decimal" placeholder="Decimal Color">
+            </div>
+            <div class="modal-actions">
+                <button id="modal-cancel">Hủy</button>
+                <button id="modal-save" class="btn-primary">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const categoryContainer = document.getElementById('category-container');
+        const saveBtn = document.getElementById('save-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const addCatBtn = document.getElementById('add-category-btn');
+        const statusMsg = document.getElementById('status-msg');
+        const loading = document.getElementById('loading');
+
+        // Modal Elements
+        const modal = document.getElementById('edit-modal');
+        const editName = document.getElementById('edit-name');
+        const editColorDecimal = document.getElementById('edit-color-decimal');
+        const editColorPicker = document.getElementById('edit-color-picker');
+        let currentEditingRoleId = null;
+
+        // Fetch Data
+        async function fetchRoles() {
+            loading.style.display = 'block';
+            categoryContainer.innerHTML = '';
+            statusMsg.textContent = '';
+
+            try {
+                const res = await fetch('/api/roles');
+                const categories = await res.json();
+
+                if (categories.error) {
+                    showStatus(categories.error, true);
+                    return;
+                }
+
+                renderCategories(categories);
+                loading.style.display = 'none';
+            } catch (err) {
+                showStatus('Lỗi kết nối: ' + err, true);
+                loading.style.display = 'none';
+            }
+        }
+
+        function renderCategories(categories) {
+            categoryContainer.innerHTML = '';
+
+            categories.forEach(cat => {
+                const catDiv = document.createElement('div');
+                catDiv.className = 'category-card';
+                catDiv.dataset.id = cat.id;
+                catDiv.dataset.isReal = cat.is_real_category;
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'category-header';
+
+                // Content of Header
+                let headerContent = `
+                    <div class="cat-title">
+                        <span class="drag-handle">☰</span>
+                        <button class="toggle-btn" data-cat-id="${cat.id}">▼</button>
+                        <span class="cat-name" style="color:${intToHex(cat.color)}">${cat.name}</span>
+                    </div>
+                    <div class="cat-actions">
+                        ${cat.is_real_category ? `<button class="btn-icon edit-role-btn" data-id="${cat.id}" data-name="${cat.name}" data-color="${cat.color}">✏️</button>` : ''}
+                        <button class="btn-small add-role-btn" data-cat-id="${cat.id}">➕ Role</button>
+                    </div>
+                `;
+                header.innerHTML = headerContent;
+                catDiv.appendChild(header);
+
+                // Role List (Sortable Area)
+                const roleList = document.createElement('ul');
+                roleList.className = 'role-list';
+                roleList.dataset.catId = cat.id;
+
+                cat.roles.forEach(role => {
+                    const li = createRoleElement(role);
+                    roleList.appendChild(li);
+                });
+
+                catDiv.appendChild(roleList);
+                categoryContainer.appendChild(catDiv);
+
+                // Make Roles Sortable
+                new Sortable(roleList, {
+                    group: 'roles', // Allow dragging between categories
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: onDragEnd
+                });
+            });
+
+            // Make Categories Sortable
+            new Sortable(categoryContainer, {
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                onEnd: onDragEnd
+            });
+
+            // Attach Event Listeners for dynamic buttons
+            attachDynamicEvents();
+        }
+
+        function createRoleElement(role) {
+            const li = document.createElement('li');
+            li.className = 'role-item';
+            li.dataset.id = role.id;
+
+            li.innerHTML = `
+                <span class="role-color" style="background-color:${intToHex(role.color)}"></span>
+                <span class="role-name">${role.name}</span>
+                <button class="btn-icon edit-role-btn" data-id="${role.id}" data-name="${role.name}" data-color="${role.color}">✏️</button>
+            `;
+
+            if (role.managed) {
+                li.classList.add('managed');
+                li.title = "Managed Role (Bot/Integration)";
+            }
+            return li;
+        }
+
+        function onDragEnd() {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Lưu Cấu Trúc (Chưa lưu)';
+            saveBtn.classList.add('btn-warning');
+        }
+
+        // --- EDIT LOGIC ---
+        function attachDynamicEvents() {
+            document.querySelectorAll('.edit-role-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    const { id, name, color } = e.target.dataset;
+                    openEditModal(id, name, color);
+                };
+            });
+
+            document.querySelectorAll('.add-role-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    // Quick add role logic
+                    const name = prompt("Nhập tên Role mới:");
+                    if (name) createRole(name, false, e.target);
+                };
+            });
+
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    const catId = e.target.dataset.catId;
+                    const roleList = document.querySelector(`.role-list[data-cat-id="${catId}"]`);
+                    if (roleList) {
+                        const isCollapsed = roleList.classList.toggle('collapsed');
+                        e.target.textContent = isCollapsed ? '▶' : '▼';
+                    }
+                };
+            });
+        }
+
+        addCatBtn.onclick = () => {
+            const name = prompt("Nhập tên Phân Mục mới:");
+            if (name) createRole(name, true, null);
+        };
+
+        async function createRole(name, isCategory, targetBtn) {
+            try {
+                const res = await fetch('/api/roles/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, is_category: isCategory })
+                });
+                if (res.ok) {
+                    showStatus('✅ Đã tạo role mới. Đang tải lại...', false);
+                    fetchRoles();
+                } else {
+                    showStatus('❌ Lỗi tạo role', true);
+                }
+            } catch (e) {
+                showStatus('Lỗi: ' + e, true);
+            }
+        }
+
+        // Helper: Int to Hex
+        function intToHex(intColor) {
+            if (!intColor) return '#99aab5';
+            return '#' + intColor.toString(16).padStart(6, '0');
+        }
+
+        function hexToInt(hex) {
+            return parseInt(hex.replace('#', ''), 16);
+        }
+
+        // --- SAVE LOGIC ---
+        saveBtn.onclick = async () => {
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Đang lưu (Batch Update)...';
+            showStatus('Đang gửi lệnh cập nhật lên Discord... vui lòng đợi.', false);
+
+            // Build structure
+            const categories = [];
+
+            // Iterate over Category Cards
+            document.querySelectorAll('.category-card').forEach(card => {
+                const catId = card.dataset.id;
+                const isReal = card.dataset.isReal === 'true';
+                const roleList = card.querySelector('.role-list');
+
+                const roleIds = [];
+                roleList.querySelectorAll('.role-item').forEach(li => {
+                    roleIds.push(li.dataset.id);
+                });
+
+                categories.push({
+                    id: catId,
+                    is_real_category: isReal,
+                    role_ids: roleIds
+                });
+            });
+
+            try {
+                const res = await fetch('/api/roles/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categories })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showStatus('✅ Cập nhật thành công!', false);
+                    saveBtn.textContent = '💾 Lưu Cấu Trúc';
+                    saveBtn.classList.remove('btn-warning');
+                } else {
+                    showStatus('❌ Lỗi: ' + data.error, true);
+                    saveBtn.disabled = false;
+                }
+            } catch (err) {
+                showStatus('❌ Lỗi mạng: ' + err, true);
+                saveBtn.disabled = false;
+            }
+        };
+
+        // --- MODAL LOGIC ---
+        function openEditModal(id, name, color) {
+            currentEditingRoleId = id;
+            editName.value = name;
+            editColorDecimal.value = color;
+            editColorPicker.value = intToHex(Number(color));
+            modal.style.display = 'block';
+        }
+
+        editColorPicker.oninput = (e) => {
+            editColorDecimal.value = hexToInt(e.target.value);
+        }
+
+        editColorDecimal.oninput = (e) => {
+            editColorPicker.value = intToHex(Number(e.target.value));
+        }
+
+        document.getElementById('modal-cancel').onclick = () => {
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('modal-save').onclick = async () => {
+            if (!currentEditingRoleId) return;
+
+            const newName = editName.value;
+            const newColor = editColorDecimal.value;
+
+            try {
+                const res = await fetch(`/api/roles/update/${currentEditingRoleId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, color: newColor })
+                });
+
+                if (res.ok) {
+                    modal.style.display = 'none';
+                    showStatus('✅ Đã cập nhật thông tin role.', false);
+                    fetchRoles(); // Refresh UI
+                } else {
+                    alert("Lỗi cập nhật role");
+                }
+            } catch (e) {
+                alert("Lỗi kết nối");
+            }
+        }
+
+        refreshBtn.onclick = fetchRoles;
+
+        function showStatus(msg, isError) {
+            statusMsg.textContent = msg;
+            statusMsg.style.color = isError ? '#ff4444' : '#44ff44';
+        }
+
+        // Init
+        fetchRoles();
+    </script>
+</body>
+
+</html>

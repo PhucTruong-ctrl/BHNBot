@@ -241,6 +241,34 @@ async def handle_hack_map(result: dict, event_data: dict, **kwargs) -> dict:
     result["cooldown_increase"] = 300  # 5 minute penalty
     return result
 
+async def handle_gain_rod_material_small(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Gain 1-2 rod materials."""
+    amount = random.randint(1, 2)
+    result["gain_items"] = {"rod_material": amount}
+    result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
+    return result
+
+async def handle_gain_rod_material_medium(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Gain 3-5 rod materials."""
+    amount = random.randint(3, 5)
+    result["gain_items"] = {"rod_material": amount}
+    result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
+    return result
+
+async def handle_gain_rod_material_large(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Gain 6-10 rod materials."""
+    amount = random.randint(6, 10)
+    result["gain_items"] = {"rod_material": amount}
+    result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
+    return result
+
+async def handle_gain_rod_material_random(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Gain 1-10 rod materials."""
+    amount = random.randint(1, 10)
+    result["gain_items"] = {"rod_material": amount}
+    result["message"] += f"\n🛠️ Nhặt được **{amount} Vật Liệu**!"
+    return result
+
 # ==================== EFFECT HANDLERS MAPPING ====================
 # Dictionary mapping effect names to their handlers
 # EASY TO EXTEND: Just add a new handler + add entry to this dict
@@ -295,6 +323,10 @@ EFFECT_HANDLERS = {
     "mlm_scheme": handle_lose_money(200),
     "lucky_cat": handle_lucky_buff,
     "football_bet": handle_crypto_loss,
+    "gain_rod_material_small": handle_gain_rod_material_small,
+    "gain_rod_material_medium": handle_gain_rod_material_medium,
+    "gain_rod_material_large": handle_gain_rod_material_large,
+    "gain_rod_material_random": handle_gain_rod_material_random,
 }
 
 async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int = 1, channel=None) -> dict:

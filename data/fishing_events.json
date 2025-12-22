@@ -569,6 +569,36 @@
       "type": "bad",
       "name": "🤝 Khởi Nghiệp!",
       "effect": "mlm_scheme"
+    },
+    "tiktok_viral_2": {
+      "chance": 0.005,
+      "type": "good",
+      "name": "📱 Trend Tóp Tóp!",
+      "effect": "gain_money_large"
+    },
+    "pandora_box": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "📦 Hộp Pandora Pha Ke!",
+      "effect": "gain_rod_material_random"
+    },
+    "scrap_metal": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "♻️ Ve Chai Vũ Trụ!",
+      "effect": "gain_rod_material_small"
+    },
+    "diving_gear": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "🦈 Đồ Của Shark!",
+      "effect": "gain_rod_material_medium"
+    },
+    "kraken_puke": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "🐙 Thủy Quái Ói!",
+      "effect": "gain_rod_material_large"
     }
   },
   "messages": {
@@ -673,6 +703,10 @@
     "wifi_hack": "Bạn hack được wifi công cộng tốc độ cao! Câu cá nhanh như gió, x2 sản lượng. 💻⚡",
     "nyc_reunion": "Tình cũ quay lại! Họ muốn hàn gắn, tặng quà để xin lỗi. Nhưng... bạn có tin không? 💔➡️❤️",
     "diarrhea_2": "Ăn phải đồ lạ ở quán vỉa hè! Bụng dạ biểu tình dữ dội, phải chạy toilet gấp. 🚽🤢 (Chờ 5 phút)",
-    "tiktok_viral_2": "Quay video câu cá điệu nghệ, đăng Tiktok. Viral ngập màng! Tiền donate đủ mua cả làng. 📱🎉"
+    "tiktok_viral_2": "Quay video câu cá điệu nghệ, đăng Tiktok. Viral ngập màng! Tiền donate đủ mua cả làng. 📱🎉",
+    "pandora_box": "Vớt được cái hộp ghi 'Cấm Mở'. Tò mò mở ra thì thấy toàn ốc vít, lò xo... Hóa ra là đồ sửa cần câu! 📦🛠️",
+    "scrap_metal": "Vớt được đống sắt vụn từ vệ tinh Starlink rớt. Đem về 'độ' cần câu thì hết nước chấm! 📡✨",
+    "diving_gear": "Thấy cái bóng loáng thoáng, lặn xuống mò được túi đồ nghề kim cương của Shark Hưng bỏ quên! 💎🔧",
+    "kraken_puke": "Con Kraken bị say sóng ói ra nguyên đống hợp kim Vibranium. Nhặt lẹ về cường hóa cần câu! 🐙🤮"
   }
 }

@@ -142,7 +142,6 @@
     },
     "cost": "cooldown_5min"
   },
-
   "ninja_lead": {
     "name": "🥷 Ninja Lead Huyền Thoại",
     "description": "Một người phụ nữ bịt kín mít từ đầu đến chân, đi con xe tay ga Lead gương zin.\nChị ta phanh cháy lốp trước mặt bạn: 'Ê cu, lên xe chị chở ra bãi cá bí mật này ngon lắm!'",
@@ -173,7 +172,6 @@
     },
     "cost": "cooldown_3min"
   },
-
   "crypto_master": {
     "name": "📈 Chuyên Gia Thổi Nến",
     "description": "Một thanh niên mặc vest, tay cầm iPad hiển thị biểu đồ xanh đỏ.\n'Người anh em! Tư duy lên! Bỏ 200 Hạt vào con 'FishCoin' này, x10 tài khoản trong 5 phút!'",
@@ -204,7 +202,6 @@
     },
     "cost": 200
   },
-
   "gym_bro": {
     "name": "💪 Gym Bro Sáu Múi",
     "description": "Một gã khổng lồ cơ bắp cuồn cuộn, áo ba lỗ rách nách.\n'Bro! Cơ bắp đang teo tóp! Tao cần PROTEIN! Con cá kia nhìn nhiều đạm đấy!'",
@@ -235,7 +232,6 @@
     },
     "cost": "fish"
   },
-
   "tiktok_idol": {
     "name": "💃 Idol Tóp Tóp",
     "description": "Một cô bé đang cầm điện thoại nhảy nhót quay trend 'Vịt hóa thiên nga'.\n'Anh ơi, cho em mượn con cá làm đạo cụ quay clip đi! Em tag tên anh vào caption!'",
@@ -263,6 +259,121 @@
         }
       ],
       "decline": "'Hứ, đồ flop!' - Cô ấy block bạn ngoài đời thực."
+    },
+    "cost": "fish"
+  },
+  "shipper_pro": {
+    "name": "📦 Shipper Hỏa Tốc",
+    "description": "Một anh Shipper chạy Exciter phóng như bay, phanh cái KÉT trước mặt bạn.\n'Ê người anh em! Có đơn hàng bị bom gồm toàn ốc vít, lấy không? Đổi con cá đi!'",
+    "question": "**Đổi cá lấy gói hàng bí ẩn?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/shipper.png",
+    "chance": 0.2,
+    "rewards": {
+      "accept": [
+        {
+          "type": "rod_material",
+          "amount": 3,
+          "chance": 0.5,
+          "message": "📦 Anh ta ném cho bạn gói hàng rồi phóng đi.\nBên trong là **3 Vật Liệu** xịn sò! Hời to!"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.3,
+          "message": "📦 Mở ra toàn giấy lộn và đá cuội. Bị lừa rồi! 🗿"
+        },
+        {
+          "type": "money",
+          "amount": 200,
+          "chance": 0.2,
+          "message": "📦 Bên trong là gói hàng hoàn tiền COD.\n💰 **Nhận được 200 Hạt!**"
+        }
+      ],
+      "decline": "Anh ta tặc lưỡi: 'Không lấy thì thôi, đem về cho vợ dùng!' rồi bốc đầu xe bỏ đi."
+    },
+    "cost": "fish"
+  },
+  "neighbor_aunt": {
+    "name": "📢 Bà Hàng Xóm",
+    "description": "Camera chạy bằng cơm của xóm xuất hiện! Bà ta thì thầm:\n'Cô thấy thằng kia đánh rơi cái túi ở gốc cây... Đưa cô con cá, cô chỉ chỗ cho!'",
+    "question": "**Tin lời bà hàng xóm không?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/gossip.png",
+    "chance": 0.15,
+    "rewards": {
+      "accept": [
+        {
+          "type": "rod_material",
+          "amount": 5,
+          "chance": 0.4,
+          "message": "Bà ta chỉ đúng thật! Bạn tìm thấy cái túi chứa **5 Vật Liệu**! Uy tín luôn! 👌"
+        },
+        {
+          "type": "cursed",
+          "amount": 20,
+          "chance": 0.4,
+          "message": "Bà ta chỉ bậy vào tổ kiến lửa. Bạn bị cắn sưng tay!\n💀 **Trừ 20 Độ bền cần câu!**"
+        },
+        {
+          "type": "worm",
+          "amount": 5,
+          "chance": 0.2,
+          "message": "Chỗ đó chỉ có mấy con giun đất. Thôi cũng được.\n🪱 **Nhận 5 Mồi Câu.**"
+        }
+      ],
+      "decline": "'Hừ, thằng này không biết điều!' - Bà ta đi rêu rao khắp xóm là bạn kiệt sỉ."
+    },
+    "cost": "fish"
+  },
+  "rich_kid": {
+    "name": "💎 Rich Kid Phá Gia",
+    "description": "Một thiếu gia 2k5 cầm thẻ đen của bố đi dạo. Hắn nhìn cần câu của bạn bĩu môi:\n'Cái cần phèn thế? Cầm thẻ này đi mua vật liệu xịn mà độ lại đi! Đưa con cá đây tao nuôi.'",
+    "question": "**Đổi cá lấy lòng thương hại của Rich Kid?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/richkid.png",
+    "chance": 0.1,
+    "rewards": {
+      "accept": [
+        {
+          "type": "rod_material",
+          "amount": 10,
+          "chance": 0.3,
+          "message": "💳 Hắn quẹt thẻ mua cho bạn **10 Vật Liệu** cao cấp!\n'Dùng cho tốt vào, đừng làm mất mặt dân chơi!'"
+        },
+        {
+          "type": "money",
+          "amount": 1000,
+          "chance": 0.3,
+          "message": "💳 Hắn lười mua đồ, ném cho bạn xấp tiền.\n💰 **Nhận 1000 Hạt!**"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.4,
+          "message": "💳 Thẻ bị từ chối! Bố hắn đã khóa thẻ.\nHắn quê độ bỏ chạy, cầm theo luôn con cá của bạn. 🤡"
+        }
+      ],
+      "decline": "'Tự trọng cao thế? Tùy thôi!' - Hắn bỏ đi mua du thuyền."
+    },
+    "cost": "fish"
+  },
+  "gangster_boss": {
+    "name": "🕶️ Vua Lì Đòn",
+    "description": "Trùm bảo kê chợ cá chặn đường bạn:\n'Nộp phí bảo kê đây! Đưa con cá đó thì tao tha, không thì tao tịch thu cần câu!'",
+    "question": "**Nộp cá hay Bật lại?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/gangster.png",
+    "chance": 0.15,
+    "rewards": {
+      "accept": [
+        {
+          "type": "rod_material",
+          "amount": 2,
+          "chance": 0.5,
+          "message": "Hắn nhận cá xong ném lại cho bạn vài món đồ cũ.\n'Cầm lấy, coi như tao lì xì.' (**Nhận 2 Vật Liệu**) 🕶️"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "'Ngoan đấy!' - Hắn cầm cá đi nhậu. Bạn mất cá nhưng giữ được mạng. 😮‍💨"
+        }
+      ],
+      "decline": "Bạn bật lại hắn! Hắn sợ quá bỏ chạy và làm rơi lại đồ.\n**Nhận 5 Vật Liệu** (Nếu may mắn) hoặc **Gãy Cần** (Nếu xui)."
     },
     "cost": "fish"
   }

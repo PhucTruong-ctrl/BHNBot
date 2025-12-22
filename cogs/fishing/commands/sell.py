@@ -117,29 +117,41 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             from ..constants import SELL_EVENTS_PATH
             try:
                 with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
-                    sell_events = json.load(f).get("sell_events", [])
-                    event_data = next((e for e in sell_events if e["key"] == event_key), None)
+                    sell_events = json.load(f).get("events", {})
+                    event_data = sell_events.get(event_key)
                     if event_data:
-                        event_result = {"triggered": True, "type": event_key, "message": event_data["message"]}
-                        event_result.update(event_data.get("effects", {}))
+                        event_result = {"triggered": True, "type": event_key, "message": event_data["name"]} # Use name as title
+                        # Message is in "messages" dict usually, but let's assume we handle it later
+                        event_result.update(event_data) # Load mul, flat, special
                         logger.info(f"[SELL] Forced event {event_key} for {username}")
             except Exception as e:
                 logger.error(f"[SELL] Error loading forced sell event: {e}")
         
         # If no forced event, roll for random event
         if not event_result:
-            # Roll for sell event (5% chance)
-            if random.random() < 0.05:
+            # Roll for sell event (15% chance for more fun)
+            if random.random() < 0.15:
                 import json
                 from ..constants import SELL_EVENTS_PATH
                 try:
                     with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
-                        sell_events = json.load(f).get("sell_events", [])
+                        data = json.load(f)
+                        sell_events = data.get("events", {})
+                        sell_messages = data.get("messages", {})
+                        
                         if sell_events:
-                            event = random.choice(sell_events)
-                            event_result = {"triggered": True, "type": event["key"], "message": event["message"]}
-                            event_result.update(event.get("effects", {}))
-                            logger.info(f"[SELL] Random event {event['key']} triggered for {username}")
+                            # Weighted random choice? 
+                            # Currently just random.choice of keys based on chance
+                            keys = list(sell_events.keys())
+                            weights = [val["chance"] for val in sell_events.values()]
+                            
+                            event_key = random.choices(keys, weights=weights, k=1)[0]
+                            event_data = sell_events[event_key]
+                            
+                            event_result = {"triggered": True, "type": event_key}
+                            event_result["message"] = sell_messages.get(event_key, event_data["name"])
+                            event_result.update(event_data)
+                            logger.info(f"[SELL] Random event {event_key} triggered for {username}")
                 except Exception as e:
                     logger.error(f"[SELL] Error loading sell events: {e}")
         
@@ -154,47 +166,142 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
                 total_value += sell_price * quantity
                 fish_sold[fish_key] = {"quantity": quantity, "unit_price": sell_price, "total": sell_price * quantity}
         
+        # ... (Previous code remains up to fish_sold calculation)
+        
         # Apply Keo Ly buff (2x sell price for 10 minutes)
+        # Note: Keo Ly is essentially a personal event buff
         price_multiplier = 1.0
         if cog.check_emotional_state(user_id, "keo_ly"):
             price_multiplier = 2.0
             logger.info(f"[SELL] {username} has keo_ly buff active! 2x sell price")
         
         # Apply sell event modifiers
+        flat_bonus = 0
+        special_reward = None
+        event_info_text = ""
+        
         if event_result.get("triggered"):
-            if "price_bonus" in event_result:
-                price_multiplier *= event_result["price_bonus"]
-                logger.info(f"[SELL] Event {event_result['type']} bonus: {event_result['price_bonus']}x")
+            # Multiplier
+            if "mul" in event_result:
+                price_multiplier *= float(event_result["mul"])
+            
+            # Flat bonus/penalty (Applied AFTER multiplier to unit price or Total? User said: (Base * Event) * Boost)
+            # Usually flat is added to total.
+            if "flat" in event_result:
+                flat_bonus = int(event_result["flat"])
+                
+            # Special Items logic (already implemented previously, keeping passing pass or specific logic)
+            # We will handle item giving at the end
+            
+            # Log
+            logger.info(f"[SELL] Event {event_result['type']}: Mul={event_result.get('mul', 1)}, Flat={flat_bonus}")
         
-        final_value = int(total_value * price_multiplier)
+        # CALCULATE PRE-BOOST TOTAL
+        # Base Total is calculated earlier as `total_value`
         
-        # Build sell message
-        if len(fish_sold) <= 5:
-            # Show individual fish details
-            fish_details = []
-            for fish_key, details in fish_sold.items():
-                fish_name = _glitch(ALL_FISH[fish_key]["name"])
-                emoji = ALL_FISH[fish_key].get("emoji", "")
-                fish_details.append(f"{emoji} **{fish_name}** x{details['quantity']} = {details['total']} Hạt")
-            fish_list = "\n".join(fish_details)
-        else:
-            # Too many types, show summary
-            fish_list = f"**Tổng {len(fish_sold)} loại cá**"
+        # Adjusted Total (Before Boost) = (Base * Multiplier) + Flat
+        adjusted_total = int(total_value * price_multiplier) + flat_bonus
+        if adjusted_total < 0: adjusted_total = 0
         
-        # Apply event effects BEFORE selling
-        event_message = ""
-        if event_result.get("triggered"):
-            event_message = f"\n\n🎲 **SỰ KIỆN:** {event_result['message']}\n"
-            if price_multiplier != 1.0:
-                event_message += f"💰 Giá bán: {price_multiplier}x\n"
+        # CHECK SERVER BOOST
+        server_boost_mul = 1.0
+        is_boosted = False
+        if ctx.guild:
+            try:
+                from ..utils.helpers import get_tree_boost_status
+                is_boosted = await get_tree_boost_status(cog, ctx.guild.id)
+                if is_boosted:
+                    server_boost_mul = 2.0
+            except Exception as e:
+                logger.error(f"[SELL] Error checking boost: {e}")
         
-        # Build embed
+        # FINAL TOTAL
+        final_value = int(adjusted_total * server_boost_mul)
+        
+        # ==================== BUILD EMBED ====================
         embed = discord.Embed(
             title=f"💰 {username} Bán Cá",
-            description=f"{fish_list}\n\n**Tổng tiền:** {final_value} Hạt{event_message}",
+            description="",
             color=discord.Color.green()
         )
         
+        # 1. LIST OF FISH
+        fish_list_str = ""
+        if len(fish_sold) <= 10:
+            for fish_key, details in fish_sold.items():
+                fish_name = _glitch(ALL_FISH[fish_key]["name"])
+                emoji = ALL_FISH[fish_key].get("emoji", "🐟")
+                # Format: 🐟 Cá Chép x5 (100 Hạt)
+                # If multiplier is active, show original price ? User said "hiển thị rõ mỗi con cá bán dc bao tiền"
+                # Showing Base Unit Price * Quantity?
+                # Or Showing Final amount for that line?
+                # Let's show: Emoji Name xQty (Base Total)
+                fish_list_str += f"{emoji} **{fish_name}** x{details['quantity']}\n"
+        else:
+            fish_list_str = f"**Tổng {len(fish_sold)} loại cá** (quá nhiều để hiển thị)"
+            
+        fish_list_str += f"\n----------------\n**💵 Tổng gốc:** {total_value} Hạt"
+        embed.description = fish_list_str
+        
+        # 2. EVENT FIELD (If triggered)
+        if event_result.get("triggered"):
+            event_name = event_result.get("message", "Sự Kiện") # Use message/name as title
+            # Describe effect
+            effects = []
+            if price_multiplier != 1.0:
+                effects.append(f"Giá x{price_multiplier:.2f}")
+            if flat_bonus != 0:
+                sign = "+" if flat_bonus > 0 else ""
+                effects.append(f"{sign}{flat_bonus} Hạt")
+            if "special" in event_result:
+                effects.append("🎁 Quà Tặng")
+                
+            effect_str = " | ".join(effects) if effects else "Hiệu ứng ẩn"
+            embed.add_field(
+                name=f"🎲 Sự Kiện: {event_name}",
+                value=f"{effect_str}\n*(Sau sự kiện: {adjusted_total} Hạt)*",
+                inline=False
+            )
+            
+        # 3. SERVER BOOST FIELD
+        if is_boosted:
+             embed.add_field(
+                name="🌳 Cây Server",
+                value="🌟 **ĐANG BOOST (x2)**\n*(Buff từ Cây Hiên Nhà)*",
+                inline=False
+            )
+        
+        # 4. FINAL TOTAL (Footer or Field)
+        # Using a field is clearer
+        embed.add_field(
+            name="💰 TỔNG NHẬN",
+            value=f"# **{final_value} Hạt**",
+            inline=False
+        )
+        
+        # Handle Special Item rewards
+        reward_msg = ""
+        if "special" in event_result:
+            from database_manager import add_item # Import here to be safe
+            special_type = event_result["special"]
+            
+            if special_type == "chest":
+                await add_item(user_id, "treasure_chest", 1)
+                reward_msg = "🎁 **Nhận thêm:** 1 Rương Kho Báu"
+            elif special_type == "worm":
+                await add_item(user_id, "worm", 5)
+                reward_msg = "🪱 **Nhận thêm:** 5 Mồi Câu"
+            elif special_type == "pearl":
+                await add_item(user_id, "pearl", 1)
+                reward_msg = "🔮 **Nhận thêm:** 1 Ngọc Trai"
+            elif special_type == "rod_material":
+                amt = random.randint(2, 5)
+                await add_item(user_id, "rod_material", amt)
+                reward_msg = f"🛠️ **Nhận thêm:** {amt} Vật Liệu Cần Câu"
+            
+            if reward_msg:
+                embed.add_field(name="🎁 Quà Tặng Sự Kiện", value=reward_msg, inline=False)
+
         # Actually remove fish from inventory and add money
         for fish_key in fish_items.keys():
             await remove_item(user_id, fish_key, fish_items[fish_key])
@@ -225,7 +332,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         else:
             await ctx.reply(embed=embed)
         
-        logger.info(f"[SELL] {username} sold {len(fish_sold)} types, {sum(fish_items.values())} fish for {final_value} seeds")
+        logger.info(f"[SELL] {username} sold {len(fish_sold)} types, {sum(fish_items.values())} fish for {final_value} seeds (Boost: {server_boost_mul})")
     
     finally:
         # Always cleanup sell processing lock

@@ -37,6 +37,7 @@ from .commands.craft import (
     dosong_action as _dosong_impl,
     ghepbando_action as _ghepbando_impl
 )
+from .commands.rod import nangcap_action as _nangcap_impl
 from .commands.legendary import legendary_hall_of_fame_action as _legendary_hall_of_fame_impl
 from .commands.admin import trigger_event_action as _trigger_event_impl
 
@@ -1606,6 +1607,19 @@ class FishingCog(commands.Cog):
     async def _dosong_action(self, ctx_or_interaction, is_slash: bool):
         """Use frequency detector. Delegate to craft module."""
         return await _dosong_impl(self, ctx_or_interaction, is_slash)
+
+    # --- NANGCAP (Rod Upgrade) ---
+    @app_commands.command(name="nangcap", description="Nâng cấp cần câu của bạn")
+    async def nangcap_slash(self, interaction: discord.Interaction):
+        await self._nangcap_action(interaction)
+
+    @commands.command(name="nangcap", aliases=["upgrade", "nc"])
+    async def nangcap_prefix(self, ctx):
+        await self._nangcap_action(ctx)
+
+    async def _nangcap_action(self, ctx_or_interaction):
+        """Rod upgrade logic. Delegate to rod module."""
+        await _nangcap_impl(ctx_or_interaction)
 
     @app_commands.command(name="ghepbando", description="🗺️ Ghép Bản Đồ Hầm Ám triệu hồi Cthulhu Non")
     async def ghepbando_slash(self, interaction: discord.Interaction):
