@@ -599,6 +599,48 @@
       "type": "good",
       "name": "🐙 Thủy Quái Ói!",
       "effect": "gain_rod_material_large"
+    },
+    "keo_ly_npc": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "💅 Gặp Keo Lỳ!",
+      "effect": "keo_ly_buff"
+    },
+    "crypto_pump": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "🚀 Crypto Bơm!",
+      "effect": "gain_money_huge"
+    },
+    "tiktok_viral": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "📱 Viral Tiktok!",
+      "effect": "gain_money_large"
+    },
+    "sugar_daddy_2": {
+      "chance": 0.001,
+      "type": "good",
+      "name": "💋 Sugar Daddy!",
+      "effect": "gain_money_huge"
+    },
+    "wifi_hack": {
+      "chance": 0.003,
+      "type": "good",
+      "name": "💻 Hack Wifi!",
+      "effect": "bonus_catch_2"
+    },
+    "nyc_reunion": {
+      "chance": 0.002,
+      "type": "mixed",
+      "name": "💔 NYC Quay Lại!",
+      "effect": "nyc_comeback"
+    },
+    "diarrhea_2": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "🚽 Tào Tháo 2!",
+      "effect": "cooldown_medium"
     }
   },
   "messages": {
@@ -707,6 +749,7 @@
     "pandora_box": "Vớt được cái hộp ghi 'Cấm Mở'. Tò mò mở ra thì thấy toàn ốc vít, lò xo... Hóa ra là đồ sửa cần câu! 📦🛠️",
     "scrap_metal": "Vớt được đống sắt vụn từ vệ tinh Starlink rớt. Đem về 'độ' cần câu thì hết nước chấm! 📡✨",
     "diving_gear": "Thấy cái bóng loáng thoáng, lặn xuống mò được túi đồ nghề kim cương của Shark Hưng bỏ quên! 💎🔧",
-    "kraken_puke": "Con Kraken bị say sóng ói ra nguyên đống hợp kim Vibranium. Nhặt lẹ về cường hóa cần câu! 🐙🤮"
+    "kraken_puke": "Con Kraken bị say sóng ói ra nguyên đống hợp kim Vibranium. Nhặt lẹ về cường hóa cần câu! 🐙🤮",
+    "keo_ly_npc": "Gặp một cô gái/chàng trai vừa xinh/đẹp trai vừa 'keo lỳ'. Họ liên tục nhắn tin 'anh/em ơi', khiến bạn cảm thấy được yêu thương! Hiệu ứng: **BÁN CÁ X2 TIỀN TRONG 10 PHÚT!** 💅💕"
   }
 }
