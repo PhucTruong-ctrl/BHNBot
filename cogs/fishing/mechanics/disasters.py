@@ -8,7 +8,7 @@ import time
 import discord
 
 from database_manager import increment_stat, get_stat
-from ..glitch import set_glitch_state
+from .glitch import set_glitch_state
 from ..constants import DISASTER_EVENTS, DISASTER_STAT_MAPPING
 
 logger = logging.getLogger("fishing")

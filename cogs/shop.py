@@ -9,8 +9,8 @@ from database_manager import (
     add_item,
     remove_item
 )
-from .fishing.legendary_quest_helper import is_legendary_caught
-from .fishing.consumables import CONSUMABLE_ITEMS
+from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
+from .fishing.utils.consumables import CONSUMABLE_ITEMS
 from core.logger import setup_logger
 
 logger = setup_logger("ShopCog", "cogs/shop.log")

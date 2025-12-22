@@ -76,3 +76,46 @@ def apply_glitch_aggressive(text: str) -> str:
         # Fail-safe: never break rendering
         return text
 
+
+def apply_glitch_lite(text: str) -> str:
+    """Apply LITE glitch effect - garbles less aggressively (20% chance).
+    Used for minor visual effects during events."""
+    try:
+        if not is_glitch_active():
+            return text
+        
+        garble_chars = "▓░█▄▀"
+        result = []
+        for ch in text:
+            if ch.isalnum() or ord(ch) > 127:
+                if random.random() < 0.2:
+                    result.append(random.choice(garble_chars))
+                else:
+                    result.append(ch)
+            else:
+                result.append(ch)
+        return "".join(result)
+    except Exception:
+        return text
+
+
+def apply_glitch_moderate(text: str) -> str:
+    """Apply MODERATE glitch effect - garbles with 30% chance.
+    Used for moderate visual effects during events."""
+    try:
+        if not is_glitch_active():
+            return text
+        
+        garble_chars = "▓░█╬▄▀┃◄►"
+        result = []
+        for ch in text:
+            if ch.isalnum() or ord(ch) > 127:
+                if random.random() < 0.3:
+                    result.append(random.choice(garble_chars))
+                else:
+                    result.append(ch)
+            else:
+                result.append(ch)
+        return "".join(result)
+    except Exception:
+        return text

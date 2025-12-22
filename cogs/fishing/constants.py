@@ -229,3 +229,16 @@ DISASTER_STAT_MAPPING = {
     "meteor_shower": "disaster_triggered",
     "alien_invasion": "disaster_triggered",
 }
+
+# Fertilizer effects for bucket.py
+FERTILIZER_EFFECTS = [
+    {"type": "xp_boost", "value": 50, "message": "🌱 Cây được bón phân và nhận **+50 XP**!"},
+    {"type": "xp_boost", "value": 100, "message": "🌿 Bón phân siêu hiệu quả! Cây nhận **+100 XP**!"},
+    {"type": "xp_boost", "value": 25, "message": "🪴 Phân bón tạm được... Cây nhận **+25 XP**."},
+    {"type": "seeds", "value": 50, "message": "💰 Phân bón lạ! Bạn tìm thấy **50 Hạt** trong đất."},
+    {"type": "seeds", "value": 100, "message": "💰 WOW! Phân bón chứa **100 Hạt** bên trong!"},
+    {"type": "worm", "value": 5, "message": "🪱 Phân bón hấp dẫn giun! Bạn nhận được **5 Giun**."},
+    {"type": "worm", "value": 10, "message": "🪱 Cả bầy giun kéo đến! Bạn nhận được **10 Giun**."},
+    {"type": "xp_boost", "value": 200, "message": "🌳 SIÊU PHÂN BÓN! Cây bùng nổ với **+200 XP**!"},
+]
+

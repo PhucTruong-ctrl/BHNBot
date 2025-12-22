@@ -230,11 +230,11 @@ class EconomyCog(commands.Cog):
         inventory = await get_inventory(target_user.id)
         
         # Import glitch function to check if active
-        from cogs.fishing.glitch import is_glitch_active
+        from cogs.fishing.mechanics.glitch import is_glitch_active
         
         embed_title = f"💰 Thông tin của {target_user.name}"
         if is_glitch_active():
-            from cogs.fishing.glitch import apply_display_glitch
+            from cogs.fishing.mechanics.glitch import apply_display_glitch
             embed_title = apply_display_glitch(embed_title)
         
         embed = discord.Embed(
@@ -244,7 +244,7 @@ class EconomyCog(commands.Cog):
         
         seeds_display = f"**{seeds}**"
         if is_glitch_active():
-            from cogs.fishing.glitch import apply_display_glitch
+            from cogs.fishing.mechanics.glitch import apply_display_glitch
             seeds_display = apply_display_glitch(seeds_display)
         embed.add_field(name="🌱 Hạt", value=seeds_display, inline=False)
         
@@ -252,7 +252,7 @@ class EconomyCog(commands.Cog):
         if inventory:
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
-            from cogs.fishing.glitch import apply_display_glitch
+            from cogs.fishing.mechanics.glitch import apply_display_glitch
             from cogs.fishing.constants import ALL_ITEMS_DATA
             
             # Fish items
@@ -391,7 +391,7 @@ class EconomyCog(commands.Cog):
         inventory = await get_inventory(target_user.id)
         
         # Import glitch functions at the start
-        from cogs.fishing.glitch import is_glitch_active, apply_display_glitch
+        from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
         from cogs.fishing.constants import ALL_ITEMS_DATA
         
         embed = discord.Embed(
@@ -404,7 +404,7 @@ class EconomyCog(commands.Cog):
         if inventory:
             # Import fish names for display
             from cogs.fishing import ALL_FISH, GIFT_ITEMS
-            from cogs.fishing.glitch import apply_display_glitch
+            from cogs.fishing.mechanics.glitch import apply_display_glitch
             
             # Fish items
             fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}

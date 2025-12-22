@@ -335,6 +335,8 @@ class FishingCog(commands.Cog):
     async def _trigger_event_action(self, ctx_or_interaction, target_user_id: int, event_type: str, event_key: str, is_slash: bool):
         """Force trigger an event. Delegate to admin module."""
         return await _trigger_event_impl(self, ctx_or_interaction, target_user_id, event_type, event_key, is_slash)
+
+    @app_commands.command(name="cauca", description="🎣 Câu cá - Dùng /cauca để bắt đầu")
     async def fish_slash(self, interaction: discord.Interaction):
         await self._fish_action(interaction)
     
@@ -1555,7 +1557,8 @@ class FishingCog(commands.Cog):
         return await _open_chest_impl(self, ctx_or_interaction)
     
     # ==================== LEGENDARY SUMMONING ====================
-        
+    
+    @app_commands.command(name="hiente", description="🌊 Hiến tế cá cho Thuồng Luồng")
     @app_commands.describe(fish_key="Fish key - chỉ cá có giá > 150 hạt (vd: ca_chep_vang, ca_chim)")
     async def hiente_slash(self, interaction: discord.Interaction, fish_key: str):
         await self._hiente_action(interaction, fish_key, is_slash=True)
@@ -1575,12 +1578,54 @@ class FishingCog(commands.Cog):
     async def _hiente_action(self, ctx_or_interaction, fish_key: str, is_slash: bool):
         """Sacrifice fish to Thuồng Luồng. Delegate to craft module."""
         return await _hiente_impl(self, ctx_or_interaction, fish_key, is_slash)
+
+    @app_commands.command(name="chetao", description="🔧 Chế tạo Tinh Cầu Không Gian")
+    @app_commands.describe(item_key="Item key: tinh_cau")
+    async def chetao_slash(self, interaction: discord.Interaction, item_key: str):
+        await self._chetao_action(interaction, item_key, is_slash=True)
+    
+    @commands.command(name="chetao", description="🔧 Chế tạo Tinh Cầu Không Gian")
+    async def chetao_prefix(self, ctx, item_key: str = None):
+        if not item_key:
+            await ctx.reply("**Cú pháp:** `!chetao tinh_cau`")
+            return
+        await self._chetao_action(ctx, item_key, is_slash=False)
+    
+    async def _chetao_action(self, ctx_or_interaction, item_key: str, is_slash: bool):
+        """Craft legendary items. Delegate to craft module."""
+        return await _chetao_impl(self, ctx_or_interaction, item_key, is_slash)
+
+    @app_commands.command(name="dosong", description="📡 Sử dụng Máy Dò Sóng tìm Cá Voi 52Hz")
+    async def dosong_slash(self, interaction: discord.Interaction):
+        await self._dosong_action(interaction, is_slash=True)
+    
+    @commands.command(name="dosong", description="📡 Sử dụng Máy Dò Sóng")
+    async def dosong_prefix(self, ctx):
+        await self._dosong_action(ctx, is_slash=False)
+    
     async def _dosong_action(self, ctx_or_interaction, is_slash: bool):
         """Use frequency detector. Delegate to craft module."""
         return await _dosong_impl(self, ctx_or_interaction, is_slash)
+
+    @app_commands.command(name="ghepbando", description="🗺️ Ghép Bản Đồ Hầm Ám triệu hồi Cthulhu Non")
+    async def ghepbando_slash(self, interaction: discord.Interaction):
+        await self._ghepbando_action(interaction, is_slash=True)
+    
+    @commands.command(name="ghepbando", description="🗺️ Ghép Bản Đồ Hầm Ám")
+    async def ghepbando_prefix(self, ctx):
+        await self._ghepbando_action(ctx, is_slash=False)
+    
     async def _ghepbando_action(self, ctx_or_interaction, is_slash: bool):
         """Combine map pieces. Delegate to craft module."""
         return await _ghepbando_impl(self, ctx_or_interaction, is_slash)
+
+    @app_commands.command(name="bonphan", description="🌾 Bón phân cho cây server")
+    async def bonphan_slash(self, interaction: discord.Interaction):
+        await self._use_fertilizer_action(interaction)
+    
+    @commands.command(name="bonphan", description="🌾 Bón phân cho cây server")
+    async def bonphan_prefix(self, ctx):
+        await self._use_fertilizer_action(ctx)
     
     @app_commands.command(name="taiche", description="Tái chế rác - 10 rác → 1 phân bón")
     @app_commands.describe(
@@ -1598,12 +1643,24 @@ class FishingCog(commands.Cog):
     async def _recycle_trash_action(self, ctx_or_interaction, action: str = None):
         """Recycle trash logic. Delegate to bucket module."""
         return await _recycle_trash_impl(self, ctx_or_interaction, action)
+
     async def _use_fertilizer_action(self, ctx_or_interaction):
         """Use fertilizer logic. Delegate to bucket module."""
         return await _use_fertilizer_impl(self, ctx_or_interaction)
+
     async def _view_collection_action(self, ctx_or_interaction, user_id: int, username: str):
         """View collection logic. Delegate to bucket module."""
         return await _view_collection_impl(self, ctx_or_interaction, user_id, username)
+    
+    @app_commands.command(name="bosuutap", description="📚 Xem bộ sưu tập cá của bạn")
+    async def collection_slash(self, interaction: discord.Interaction, user: discord.User = None):
+        target = user or interaction.user
+        await self._view_collection_action(interaction, target.id, target.name)
+    
+    @commands.command(name="bosuutap", description="Xem bộ sưu tập cá")
+    async def collection_prefix(self, ctx, user: discord.User = None):
+        target = user or ctx.author
+        await self._view_collection_action(ctx, target.id, target.name)
     
     # ==================== LEGENDARY FISH HALL OF FAME ====================
     
