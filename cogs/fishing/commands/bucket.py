@@ -1,6 +1,6 @@
 """Bucket-related commands for fishing system.
 
-Handles chest opening, trash recycling, fertilizer usage, and collection viewing.
+Handles chest opening, trash recycling, phan_bon usage, and collection viewing.
 """
 import logging
 import random
@@ -14,7 +14,7 @@ from database_manager import (
 from ..constants import (
     ALL_FISH, TRASH_ITEMS, CHEST_LOOT, GIFT_ITEMS,
     ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS, COMMON_FISH_KEYS, RARE_FISH_KEYS,
-    COMMON_FISH, RARE_FISH, FERTILIZER_EFFECTS
+    COMMON_FISH, RARE_FISH, phan_bon_EFFECTS
 )
 from ..mechanics.rod_system import get_rod_data
 from ..mechanics.glitch import apply_display_glitch
@@ -51,7 +51,7 @@ async def open_chest_action(cog, ctx_or_interaction):
     
     # Check if user has chest
     inventory = await get_inventory(user_id)
-    if inventory.get("treasure_chest", 0) <= 0:
+    if inventory.get("ruong_kho_bau", 0) <= 0:
         msg = "❌ Bạn không có Rương Kho Báu!"
         if is_slash:
             await ctx.followup.send(msg, ephemeral=True)
@@ -60,7 +60,7 @@ async def open_chest_action(cog, ctx_or_interaction):
         return
     
     # Remove chest from inventory
-    await remove_item(user_id, "treasure_chest", 1)
+    await remove_item(user_id, "ruong_kho_bau", 1)
     
     # Track chests opened for achievement
     try:
@@ -109,7 +109,7 @@ async def open_chest_action(cog, ctx_or_interaction):
         base_weight = CHEST_LOOT[item]
         
         # Modify weight based on Item Type and Luck
-        if "manh_" in item or "gift" in item or "coin_pouch" in item:
+        if "manh_" in item or "gift" in item or "tui_tien" in item:
              # Good items: Increase weight with luck
              multiplier = 1.0 + max(0, user_luck * 1.5)
              loot_weights.append(base_weight * multiplier)
@@ -118,7 +118,7 @@ async def open_chest_action(cog, ctx_or_interaction):
              multiplier = max(0.1, 1.0 - max(0, user_luck)) 
              loot_weights.append(base_weight * multiplier)
         else:
-             # Neutral items (fertilizer?)
+             # Neutral items (phan_bon?)
              loot_weights.append(base_weight)
 
     for _ in range(num_items):
@@ -133,11 +133,11 @@ async def open_chest_action(cog, ctx_or_interaction):
         if loot_type == "nothing":
             continue
         
-        elif loot_type == "fertilizer":
-            await cog.add_inventory_item(user_id, "fertilizer", "tool")
+        elif loot_type == "phan_bon":
+            await cog.add_inventory_item(user_id, "phan_bon", "tool")
             loot_display.append("🌾 Phân Bón (Dùng `/bonphan` để nuôi cây)")
         
-        elif loot_type == "puzzle_piece":
+        elif loot_type == "manh_ghep":
             pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
             piece = random.choice(pieces)
             await cog.add_inventory_item(user_id, piece, "tool")
@@ -160,7 +160,7 @@ async def open_chest_action(cog, ctx_or_interaction):
             else:
                 loot_display.append(f"🧩 Mảnh Ghép {piece_display} (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)")
         
-        elif loot_type == "coin_pouch":
+        elif loot_type == "tui_tien":
             coins = random.randint(100, 200)
             await add_seeds(user_id, coins)
             loot_display.append(f"💰 Túi Hạt - **{coins} Hạt**")
@@ -248,11 +248,11 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
             await ctx.reply(msg)
         return
     
-    # Calculate recycle value (1 fertilizer per 10 trash)
+    # Calculate recycle value (1 phan_bon per 10 trash)
     total_trash = sum(user_trash.values())
-    fertilizer_amount = total_trash // 10
+    phan_bon_amount = total_trash // 10
     
-    if fertilizer_amount == 0:
+    if phan_bon_amount == 0:
         msg = "🪣 Bạn cần ít nhất 10 rác để tái chế thành 1 phân bón!"
         if is_slash:
             await ctx.followup.send(msg, ephemeral=True)
@@ -264,8 +264,8 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     for trash_key, quantity in user_trash.items():
         await remove_item(user_id, trash_key, quantity)
     
-    # Add fertilizer (not seeds!)
-    await cog.add_inventory_item(user_id, "fertilizer", fertilizer_amount)
+    # Add phan_bon (not seeds!)
+    await cog.add_inventory_item(user_id, "phan_bon", phan_bon_amount)
     
     # Track recycling stats
     try:
@@ -279,7 +279,7 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     # Build embed
     embed = discord.Embed(
         title="♻️ Tái Chế Rác",
-        description=f"**Đã tái chế {total_trash} món rác!**\n\n🌱 Nhận được: **{fertilizer_amount} Phân Bón**",
+        description=f"**Đã tái chế {total_trash} món rác!**\n\n🌱 Nhận được: **{phan_bon_amount} Phân Bón**",
         color=discord.Color.green()
     )
     embed.set_footer(text=f"👤 {user_name}")
@@ -289,11 +289,11 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     else:
         await ctx.reply(embed=embed)
     
-    logger.info(f"[RECYCLE] {user_name} recycled {total_trash} trash for {fertilizer_amount} fertilizer")
+    logger.info(f"[RECYCLE] {user_name} recycled {total_trash} trash for {phan_bon_amount} phan_bon")
 
 
-async def use_fertilizer_action(cog, ctx_or_interaction):
-    """Use fertilizer on server tree.
+async def use_phan_bon_action(cog, ctx_or_interaction):
+    """Use phan_bon on server tree.
     
     Args:
         cog: The FishingCog instance
@@ -313,9 +313,9 @@ async def use_fertilizer_action(cog, ctx_or_interaction):
         guild_id = ctx_or_interaction.guild.id
         ctx = ctx_or_interaction
     
-    # Check if user has fertilizer
+    # Check if user has phan_bon
     inventory = await get_inventory(user_id)
-    if inventory.get("fertilizer", 0) <= 0:
+    if inventory.get("phan_bon", 0) <= 0:
         msg = "❌ Bạn không có Phân Bón! Mở rương để có cơ hội nhận được."
         if is_slash:
             await ctx.followup.send(msg, ephemeral=True)
@@ -323,11 +323,11 @@ async def use_fertilizer_action(cog, ctx_or_interaction):
             await ctx.reply(msg)
         return
     
-    # Remove fertilizer
-    await remove_item(user_id, "fertilizer", 1)
+    # Remove phan_bon
+    await remove_item(user_id, "phan_bon", 1)
     
     # Apply random effect
-    effect = random.choice(FERTILIZER_EFFECTS)
+    effect = random.choice(phan_bon_EFFECTS)
     effect_type = effect["type"]
     effect_value = effect.get("value", 0)
     effect_message = effect["message"]
@@ -339,17 +339,17 @@ async def use_fertilizer_action(cog, ctx_or_interaction):
         if tree_cog:
             try:
                 await tree_cog.add_tree_xp(guild_id, effect_value)
-                logger.info(f"[FERTILIZER] {user_name} gave {effect_value} XP to server tree")
+                logger.info(f"[phan_bon] {user_name} gave {effect_value} XP to server tree")
             except Exception as e:
-                logger.error(f"[FERTILIZER] Error adding tree XP: {e}")
+                logger.error(f"[phan_bon] Error adding tree XP: {e}")
     
     elif effect_type == "seeds":
         await add_seeds(user_id, effect_value)
-        logger.info(f"[FERTILIZER] {user_name} received {effect_value} seeds")
+        logger.info(f"[phan_bon] {user_name} received {effect_value} seeds")
     
-    elif effect_type == "worm":
-        await add_item(user_id, "worm", effect_value)
-        logger.info(f"[FERTILIZER] {user_name} received {effect_value} worms")
+    elif effect_type == "moi":
+        await add_item(user_id, "moi", effect_value)
+        logger.info(f"[phan_bon] {user_name} received {effect_value} worms")
     
     # Build embed
     embed = discord.Embed(

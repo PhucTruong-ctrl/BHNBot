@@ -70,7 +70,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         inventory = await get_inventory(user_id)
         
         # Filter fish items by type (exclude rod materials from selling)
-        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "rod_material"}
+        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "vat_lieu_nang_cap"}
         
         # ==================== CHECK FOR LEGENDARY FISH ====================
         # Remove legendary fish from sellable items (exclude ca_isekai as it's from consumables)
@@ -84,6 +84,12 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             # Remove legendary fish from sellable items
             for legend_key in legendary_fish_in_inventory.keys():
                 del fish_items[legend_key]
+        
+        # ==================== EXCLUDE CRAFTING MATERIALS ====================
+        # Remove ngoc_trai from auto-sell (can only be sold explicitly via /banca ngoc_trai)
+        # ngoc_trai is used for crafting Tinh Cau (Galaxy Fish summoning)
+        if "ngoc_trai" in fish_items and not fish_types:
+            del fish_items["ngoc_trai"]
         
         # If fish_types specified, filter to only those types
         if fish_types:
@@ -286,17 +292,17 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             special_type = event_result["special"]
             
             if special_type == "chest":
-                await add_item(user_id, "treasure_chest", 1)
+                await add_item(user_id, "ruong_kho_bau", 1)
                 reward_msg = "🎁 **Nhận thêm:** 1 Rương Kho Báu"
-            elif special_type == "worm":
-                await add_item(user_id, "worm", 5)
+            elif special_type == "moi":
+                await add_item(user_id, "moi", 5)
                 reward_msg = "🪱 **Nhận thêm:** 5 Mồi Câu"
-            elif special_type == "pearl":
-                await add_item(user_id, "pearl", 1)
+            elif special_type == "ngoc_trai":
+                await add_item(user_id, "ngoc_trai", 1)
                 reward_msg = "🔮 **Nhận thêm:** 1 Ngọc Trai"
-            elif special_type == "rod_material":
+            elif special_type == "vat_lieu_nang_cap":
                 amt = random.randint(2, 5)
-                await add_item(user_id, "rod_material", amt)
+                await add_item(user_id, "vat_lieu_nang_cap", amt)
                 reward_msg = f"🛠️ **Nhận thêm:** {amt} Vật Liệu Cần Câu"
             
             if reward_msg:

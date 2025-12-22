@@ -197,12 +197,12 @@ class CommunityCog(commands.Cog):
     async def add_contributor(self, user_id: int, guild_id: int, amount: int, contribution_type: str = "seeds"):
         """Add to contributor's total with experience points for CURRENT season.
         
-        contribution_type: 'seeds' (hạt góp) or 'fertilizer' (bón phân)
+        contribution_type: 'seeds' (hạt góp) or 'phan_bon' (bón phân)
         Seeds: 1 hạt = 1 exp
-        Fertilizer: 1 bón phân = 50-100 exp (tính từ boost_amount)
+        phan_bon: 1 bón phân = 50-100 exp (tính từ boost_amount)
         """
         # Calculate experience based on contribution type
-        if contribution_type == "fertilizer":
+        if contribution_type == "phan_bon":
             exp_amount = amount  # amount is boost_amount (50-100)
         else:  # seeds
             exp_amount = amount  # 1 seed = 1 exp

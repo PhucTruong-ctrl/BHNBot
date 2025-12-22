@@ -68,13 +68,13 @@
     "rewards": {
       "accept": [
         {
-          "type": "pearl",
+          "type": "ngoc_trai",
           "amount": 1,
           "chance": 0.25,
           "message": "Rái cá trao cho bạn **1 Ngọc Trai** lấp lánh! 🔮"
         },
         {
-          "type": "rod_material",
+          "type": "vat_lieu_nang_cap",
           "amount": 2,
           "chance": 0.3,
           "message": "Rái cá tặng bạn **2 Vật Liệu Cần Câu**! 🛠️"
@@ -271,7 +271,7 @@
     "rewards": {
       "accept": [
         {
-          "type": "rod_material",
+          "type": "vat_lieu_nang_cap",
           "amount": 3,
           "chance": 0.5,
           "message": "📦 Anh ta ném cho bạn gói hàng rồi phóng đi.\nBên trong là **3 Vật Liệu** xịn sò! Hời to!"
@@ -301,7 +301,7 @@
     "rewards": {
       "accept": [
         {
-          "type": "rod_material",
+          "type": "vat_lieu_nang_cap",
           "amount": 5,
           "chance": 0.4,
           "message": "Bà ta chỉ đúng thật! Bạn tìm thấy cái túi chứa **5 Vật Liệu**! Uy tín luôn! 👌"
@@ -332,7 +332,7 @@
     "rewards": {
       "accept": [
         {
-          "type": "rod_material",
+          "type": "vat_lieu_nang_cap",
           "amount": 10,
           "chance": 0.3,
           "message": "💳 Hắn quẹt thẻ mua cho bạn **10 Vật Liệu** cao cấp!\n'Dùng cho tốt vào, đừng làm mất mặt dân chơi!'"
@@ -362,7 +362,7 @@
     "rewards": {
       "accept": [
         {
-          "type": "rod_material",
+          "type": "vat_lieu_nang_cap",
           "amount": 2,
           "chance": 0.5,
           "message": "Hắn nhận cá xong ném lại cho bạn vài món đồ cũ.\n'Cầm lấy, coi như tao lì xì.' (**Nhận 2 Vật Liệu**) 🕶️"

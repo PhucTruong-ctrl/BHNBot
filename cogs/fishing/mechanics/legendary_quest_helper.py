@@ -300,12 +300,12 @@ async def craft_tinh_cau(user_id: int) -> bool:
         # Check có Ngọc Trai không
         from database_manager import get_inventory
         inventory = await get_inventory(user_id)
-        if inventory.get('pearl', 0) < 1:
+        if inventory.get('ngoc_trai', 0) < 1:
             return False
         
         # Trừ vật phẩm
         from database_manager import remove_item
-        await remove_item(user_id, 'pearl', 1)
+        await remove_item(user_id, 'ngoc_trai', 1)
         await set_manh_sao_bang_count(user_id, manh_count - 5)
         await set_has_tinh_cau(user_id, True)
         

@@ -528,13 +528,13 @@
       "name": "Vé Số!",
       "special": "lottery"
     },
-    "pearl_in_fish": {
+    "ngoc_trai_in_fish": {
       "chance": 0.001,
       "type": "good",
       "mul": 1.0,
       "flat": 0,
       "name": "Ngọc Trai!",
-      "special": "pearl"
+      "special": "ngoc_trai"
     },
     "free_breakfast": {
       "chance": 0.005,
@@ -649,7 +649,7 @@
       "mul": 1.0,
       "flat": 0,
       "name": "Start-up!",
-      "special": "rod_material"
+      "special": "vat_lieu_nang_cap"
     },
     "green_recycle": {
       "chance": 0.005,
@@ -657,7 +657,7 @@
       "mul": 1.0,
       "flat": 0,
       "name": "Tái Chế Xanh!",
-      "special": "rod_material"
+      "special": "vat_lieu_nang_cap"
     },
     "trash_exchange": {
       "chance": 0.005,
@@ -665,7 +665,7 @@
       "mul": 1.0,
       "flat": 0,
       "name": "Đổi Rác!",
-      "special": "rod_material"
+      "special": "vat_lieu_nang_cap"
     },
     "fan_donate": {
       "chance": 0.005,
@@ -673,7 +673,7 @@
       "mul": 1.0,
       "flat": 0,
       "name": "Fan Donate!",
-      "special": "rod_material"
+      "special": "vat_lieu_nang_cap"
     }
   },
   "messages": {
@@ -742,7 +742,7 @@
     "gift_received": "Khách hàng tặng bạn một rương báu nhỏ. 📦 (+1 Rương)",
     "found_bait": "Bạn tìm thấy mồi câu bị bỏ quên! 🪱 (+5 Mồi)",
     "lottery_ticket": "Ai đó tặng bạn vé số! 🎫 (Cơ hội trúng thưởng)",
-    "pearl_in_fish": "Phát hiện ngọc trai trong bụng cá! 🔮 (+1 Ngọc Trai)",
+    "ngoc_trai_in_fish": "Phát hiện ngọc trai trong bụng cá! 🔮 (+1 Ngọc Trai)",
     "free_breakfast": "Bà chủ mời bạn ăn sáng miễn phí! 🍜 (+Độ bền)",
     "old_rod_gift": "Ngư dân già tặng cần câu cũ của ông! 🎣 (+Vật liệu)",
     "god_of_wealth": "🧧 **THẦN TÀI GÕ CỬA!** Hôm nay may mắn nhất! (X2 DOANH THU)",

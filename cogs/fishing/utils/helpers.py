@@ -421,9 +421,9 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     # Process reward
     reward_type = selected_reward["type"]
     
-    if reward_type == "worm":
+    if reward_type == "moi":
         amount = selected_reward.get("amount", 5)
-        await add_item(user_id, "worm", amount)
+        await add_item(user_id, "moi", amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
     
@@ -435,7 +435,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     elif reward_type == "chest":
         amount = selected_reward.get("amount", 1)
-        await add_item(user_id, "treasure_chest", amount)
+        await add_item(user_id, "ruong_kho_bau", amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
     
@@ -465,15 +465,15 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
             result_text += f" (**+{amount} Hạt**)"
         logger.info(f"[NPC] User {user_id} received {amount} seeds from {npc_type}")
     
-    elif reward_type == "pearl":
+    elif reward_type == "ngoc_trai":
         amount = selected_reward.get("amount", 1)
-        await add_item(user_id, "pearl", amount)
+        await add_item(user_id, "ngoc_trai", amount)
         result_text = selected_reward["message"]
-        logger.info(f"[NPC] User {user_id} received {amount} pearl(s) from {npc_type}")
+        logger.info(f"[NPC] User {user_id} received {amount} ngoc_trai(s) from {npc_type}")
     
-    elif reward_type == "rod_material":
+    elif reward_type == "vat_lieu_nang_cap":
         amount = selected_reward.get("amount", 2)
-        await add_item(user_id, "rod_material", amount)
+        await add_item(user_id, "vat_lieu_nang_cap", amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} rod material(s) from {npc_type}")
     

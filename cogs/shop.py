@@ -26,7 +26,7 @@ SHOP_ITEMS = {
     "gift": {"name": "Quà", "cost": 100, "emoji": "🎁", "description": "Một món quà bất ngờ"},
     "chocolate": {"name": "Sô cô la", "cost": 60, "emoji": "🍫", "description": "Sô cô la ngon ngon, ngọt ngào"},
     "card": {"name": "Thiệp", "cost": 40, "emoji": "💌", "description": "Thiệp chúc mừng lời chúc tốt"},
-    "worm": {"name": "Giun (Mồi Câu)", "cost": 10, "emoji": "🪱", "description": "Mồi để câu cá"},
+    "moi": {"name": "Giun (Mồi Câu)", "cost": 10, "emoji": "🪱", "description": "Mồi để câu cá"},
     # Pet Items
     "nuoc": {"name": "Nước Tinh Khiết", "cost": 20, "emoji": "💧", "description": "Nước sạch cho thú cưng"},
     "vitamin": {"name": "Vitamin Tổng Hợp", "cost": 50, "emoji": "💊", "description": "Giúp thú cưng mau lớn"},
@@ -361,7 +361,7 @@ class ShopCog(commands.Cog):
                 regular_gifts.append(line)
             elif item_key in ["nuoc", "vitamin", "thuc_an_cao_cap"]:
                 pet_items.append(line)
-            elif item_key == "worm":
+            elif item_key == "moi":
                 fishing_items.append(line)
             elif item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
                 buff_items.append(line)
