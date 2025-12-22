@@ -346,8 +346,8 @@ class RelationshipCog(commands.Cog):
                         medals = ["🥇", "🥈", "🥉"]
                         medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
                         friends_text += f"{medal} **{friend.name}** - {affinity} điểm\n"
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
                 
                 embed.description = friends_text if friends_text else "Bạn chưa có ai thân cả 😢"
             
@@ -390,8 +390,8 @@ class RelationshipCog(commands.Cog):
                         medals = ["🥇", "🥈", "🥉"]
                         medal = medals[idx - 1] if idx <= 3 else f"**#{idx}**"
                         friends_text += f"{medal} **{friend.name}** - {affinity} điểm\n"
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
                 embed.description = friends_text if friends_text else "Bạn chưa có ai thân cả 😢"
             await ctx.send(embed=embed)
 

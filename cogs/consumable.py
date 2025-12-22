@@ -89,8 +89,8 @@ class MemoryGameView(discord.ui.View):
             )
             try:
                 await self.channel.send(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
 class KeepFireView(discord.ui.View):
     """Mini-game for Cá Phượng Hoàng - Giữ Lửa"""
@@ -170,8 +170,8 @@ class KeepFireView(discord.ui.View):
                 msg = await self.channel.send(embed=embed, view=KeepFireView(self.user_id, self.bot, self.channel))
                 # Reset timeout cho round mới
                 self.stop()
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
         elif success and self.round == self.max_rounds:
             # Thắng
             from database_manager import remove_item
@@ -188,8 +188,8 @@ class KeepFireView(discord.ui.View):
             )
             try:
                 await self.channel.send(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
         else:
             # Thất bại
             from database_manager import remove_item
@@ -205,8 +205,8 @@ class KeepFireView(discord.ui.View):
             )
             try:
                 await self.channel.send(embed=embed)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
 class ConsumableCog(commands.Cog):
     def __init__(self, bot):

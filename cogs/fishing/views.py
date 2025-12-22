@@ -4,7 +4,7 @@ import discord
 import random
 from database_manager import remove_item, add_seeds, get_inventory
 from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
-from .glitch import apply_display_glitch
+from .mechanics.glitch import apply_display_glitch
 from core.logger import setup_logger
 
 logger = setup_logger("FishingViews", "cogs/fishing/fishing.log")
@@ -58,8 +58,8 @@ class FishSellView(discord.ui.View):
         if self.user_id in self.cog.caught_items:
             try:
                 del self.cog.caught_items[self.user_id]
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
     
     @discord.ui.button(label="💰 Bán Cá Vừa Câu", style=discord.ButtonStyle.green)
     async def sell_caught_fish(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -124,8 +124,8 @@ class FishSellView(discord.ui.View):
                             if total_money > 0:
                                 total_money = total_money * 2  # Double the reward
                             logger.info(f"[SELL] Applied harvest boost x2 for guild {guild_id}")
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
             
             from database_manager import sell_items_atomic
             

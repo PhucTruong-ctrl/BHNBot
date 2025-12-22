@@ -62,8 +62,8 @@ class BauCuaBetModal(discord.ui.Modal):
         except ValueError:
             try:
                 await interaction.followup.send("Vui lòng nhập số nguyên hợp lệ!", ephemeral=True)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
 
 class BauCuaBetView(discord.ui.View):
     """View with 6 bet buttons in 3x2 grid"""
@@ -242,8 +242,8 @@ class BauCuaCog(commands.Cog):
             
             try:
                 await message.edit(content=rolling_text, embed=None)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
             
             await asyncio.sleep(0.3)  # Update every 0.3 seconds
         
@@ -525,8 +525,8 @@ class BauCuaCog(commands.Cog):
                     embed = self.create_betting_embed(time_remaining)
                     try:
                         await game_message.edit(embed=embed, view=view)
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
                     last_update = int(current_time)
                 
                 await asyncio.sleep(0.1)  # Check more frequently for cleaner cutoff
@@ -538,8 +538,8 @@ class BauCuaCog(commands.Cog):
                 
                 embed = self.create_betting_embed(0)
                 await game_message.edit(embed=embed, view=view)
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
             
             # Check if anyone bet
             if not self.active_games[channel_id]['bets']:
@@ -596,13 +596,13 @@ class BauCuaCog(commands.Cog):
             if is_slash:
                 try:
                     await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
             else:
                 try:
                     await ctx.send(f"❌ Lỗi: {str(e)}")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
             
             # Remove active game if exists
             if channel_id in self.active_games:

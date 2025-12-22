@@ -2979,8 +2979,8 @@ class WerewolfGame:
                 try:
                     await successor.member.send(f"Bạn đã được {player.display_name()} chỉ định làm Trưởng Làng kế nhiệm! Phiếu bạn tính x2 và bạn phá vỡ hòa phiếu.")
                     await self.channel.send(f"{successor.display_name()} đã trở thành Trưởng Làng mới!")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
 
     async def _handle_death(self, player: PlayerState, *, cause: str) -> None:
         """Handle player death: mark as dead, disable permissions, trigger role death effects."""

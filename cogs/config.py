@@ -118,8 +118,8 @@ class ConfigCog(commands.Cog):
                                 message = await channel.fetch_message(tree_row[1])
                                 if message:
                                     await message.delete()
-                        except:
-                            pass
+                        except Exception as e:
+                            logger.error(f"Unexpected error: {e}")
                     
                     # Create and pin new message with same data
                     await tree_cog.update_or_create_pin_message(guild_id, tree_row[0])
@@ -396,7 +396,7 @@ class ConfigCog(commands.Cog):
                 if row and row[0]:
                     try:
                         excluded = json.loads(row[0])
-                    except:
+                    except Exception as e:
                         excluded = []
                 
                 if action == "add":
@@ -458,7 +458,7 @@ class ConfigCog(commands.Cog):
             if row and row[0]:
                 try:
                     excluded = json.loads(row[0])
-                except:
+                except Exception as e:
                     excluded = []
             
             embed = discord.Embed(

@@ -64,5 +64,5 @@ class Mayor(Role):
                 try:
                     await successor.member.send(f"Bạn đã được {player.display_name()} chỉ định làm Trưởng Làng kế nhiệm! Phiếu bạn tính x2 và bạn phá vỡ hòa phiếu.")
                     await game.channel.send(f"{successor.display_name()} đã trở thành Trưởng Làng mới!")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")

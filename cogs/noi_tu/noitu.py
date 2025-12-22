@@ -365,7 +365,7 @@ class GameNoiTu(commands.Cog):
                     try:
                         user = await self.bot.fetch_user(user_id)
                         player_display_list.append(f"{user.mention} - {correct_words} từ")
-                    except:
+                    except Exception as e:
                         player_display_list.append(f"{username} - {correct_words} từ")
                     
                     logger.info(f"REWARD [Guild {guild_id}] {username}: {base_reward} base + {bonus_reward} bonus = {total_reward} total")
@@ -630,8 +630,8 @@ class GameNoiTu(commands.Cog):
                     # Có tin nhắn mới, hủy timer
                     try:
                         await timer_msg.delete()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
                     logger.info(f"TIMER_SKIP [Guild {guild_id}] New message received, timer cancelled")
                     return
                 
@@ -641,8 +641,8 @@ class GameNoiTu(commands.Cog):
                         await timer_msg.edit(content=f"{countdown} giây...")
                     else:
                         await timer_msg.edit(content="Hết giờ!")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
             
             # Timer ended - calculate winner
             game_data = self.games.get(guild_id)
@@ -655,8 +655,8 @@ class GameNoiTu(commands.Cog):
                 # Delete old timer message
                 try:
                     await timer_msg.delete()
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 
                 # Create timeout embed
                 embed = discord.Embed(
@@ -668,8 +668,8 @@ class GameNoiTu(commands.Cog):
                 try:
                     last_player = await self.bot.fetch_user(game_data['last_author_id'])
                     embed.add_field(name="👤 Người giữ lượt cuối", value=last_player.mention, inline=False)
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 
                 embed.add_field(name="🔥 Chuỗi Cộng Đồng", value=f"**{current_streak}** từ nối thành công", inline=False)
                 
@@ -692,8 +692,8 @@ class GameNoiTu(commands.Cog):
                 game_data = self.games.get(guild_id)
                 if game_data and game_data.get('timer_message'):
                     await game_data['timer_message'].delete()
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
         except Exception as e:
             logger.error(f"Timer error [Guild {guild_id}]: {e}")
 
@@ -756,8 +756,8 @@ class GameNoiTu(commands.Cog):
                     try:
                         if game.get('start_message'):
                             await game['start_message'].delete()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
                     msg = await message.channel.send(game["start_message_content"])
                     game['start_message'] = msg
                 return "invalid_format"
@@ -770,8 +770,8 @@ class GameNoiTu(commands.Cog):
                     try:
                         if game.get('start_message'):
                             await game['start_message'].delete()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
                     msg = await message.channel.send(game["start_message_content"])
                     game['start_message'] = msg
                 return "command_prefix"
@@ -781,8 +781,8 @@ class GameNoiTu(commands.Cog):
                 logger.info(f"SELF_PLAY [Guild {guild_id}] {message.author.name} tried self-play")
                 try:
                     await message.add_reaction("❌")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 await message.reply("Ko được tự reply, chờ người khác nhé", delete_after=5)
                 return "self_play"
 
@@ -795,8 +795,8 @@ class GameNoiTu(commands.Cog):
                 logger.info(f"WRONG_CONNECTION [Guild {guild_id}] {message.author.name}: '{content}' needs to start with '{last_syllable}'")
                 try:
                     await message.add_reaction("❌")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 await message.reply(f"Từ phải bắt đầu bằng **{last_syllable}**", delete_after=3)
                 return "wrong_connection"
 
@@ -805,8 +805,8 @@ class GameNoiTu(commands.Cog):
                 logger.info(f"ALREADY_USED [Guild {guild_id}] {message.author.name}: '{content}'")
                 try:
                     await message.add_reaction("❌")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 await message.reply("Từ này dùng rồi, tìm từ khác đi", delete_after=3)
                 return "already_used"
 
@@ -815,8 +815,8 @@ class GameNoiTu(commands.Cog):
                 logger.info(f"NOT_IN_DICT [Guild {guild_id}] {message.author.name}: '{content}'")
                 try:
                     await message.add_reaction("❌")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 
                 # Track invalid words for achievement
                 await self.increment_stat(message.author.id, 'invalid_words', 1)
@@ -845,8 +845,8 @@ class GameNoiTu(commands.Cog):
             # === VALID MOVE ===
             try:
                 await message.add_reaction("✅")
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
             
             # Initialize streak counter if not exists
             if guild_id not in self.streak:
@@ -931,8 +931,8 @@ class GameNoiTu(commands.Cog):
                     if game.get('timer_message'):
                         await game['timer_message'].delete()
                         game['timer_message'] = None
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
                 logger.info(f"TIMER_RESET [Guild {guild_id}] Old timer cancelled")
             
             # Update player count
@@ -942,8 +942,8 @@ class GameNoiTu(commands.Cog):
             if game['player_count'] == 2:
                 try:
                     await message.channel.send("🎮 Nối từ bắt đầu!")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
             
             # Update game state
             game['current_word'] = content
@@ -1045,8 +1045,8 @@ class GameNoiTu(commands.Cog):
                 logger.info(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
                 try:
                     await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Unexpected error: {e}")
             
             return "valid_move"
         
@@ -1120,7 +1120,7 @@ class GameNoiTu(commands.Cog):
             if len(first) == len(second) and first[0] == second[0]:  # Same starting consonant
                 return True
             return False
-        except:
+        except Exception as e:
             return False
 
 async def setup(bot):

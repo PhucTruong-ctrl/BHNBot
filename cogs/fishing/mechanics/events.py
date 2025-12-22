@@ -1,7 +1,7 @@
 """Random event system for fishing with Strategy Pattern."""
 
 import random
-from .constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
+from ..constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
 from database_manager import increment_stat
 
 # ==================== EFFECT HANDLERS ====================
@@ -318,7 +318,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             result["message"] = RANDOM_EVENT_MESSAGES.get(pending_event_key, f"Event: {pending_event_key}")
             
             # Track achievement stats for fishing events
-            from .constants import FISHING_EVENT_STAT_MAPPING
+            from ..constants import FISHING_EVENT_STAT_MAPPING
             if pending_event_key in FISHING_EVENT_STAT_MAPPING:
                 stat_key = FISHING_EVENT_STAT_MAPPING[pending_event_key]
                 try:
@@ -366,8 +366,8 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                 if event_data.get("effect") == "global_reset":
                     await increment_stat(user_id, "fishing", "global_reset_triggered", 1)
                     # Achievement check for global reset is handled by the stat tracking above
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
             
             # If protection active and bad event, avoid it
             if has_protection and event_data.get("type") == "bad":
@@ -383,7 +383,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             result["message"] = RANDOM_EVENT_MESSAGES[event_type]
             
             # Track achievement stats for fishing events
-            from .constants import FISHING_EVENT_STAT_MAPPING
+            from ..constants import FISHING_EVENT_STAT_MAPPING
             if event_type in FISHING_EVENT_STAT_MAPPING:
                 stat_key = FISHING_EVENT_STAT_MAPPING[event_type]
                 try:

@@ -4,7 +4,7 @@ import discord
 import random
 import json
 from datetime import datetime
-from .constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
+from ..constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
 from .glitch import apply_display_glitch
 from database_manager import get_fish_collection
 
@@ -71,7 +71,7 @@ class LegendaryBossFightView(discord.ui.View):
             await self.cog.add_legendary_fish_to_user(self.user_id, self.legendary_fish['key'])
             
             # Track in collection book
-            from .helpers import track_caught_fish
+            from ..helpers import track_caught_fish
             await track_caught_fish(self.user_id, self.legendary_fish['key'])
             
             # Check achievement
@@ -148,7 +148,7 @@ class LegendaryBossFightView(discord.ui.View):
             if active_boost and active_boost.get("effect_type") == "legendary_fish_boost":
                 base_chance = active_boost.get("effect_value", 0.65)
                 boost_item_key = active_boost.get("item_key", "")
-                from .consumables import get_consumable_info
+                from ..utils.consumables import get_consumable_info
                 boost_info = get_consumable_info(boost_item_key)
                 if boost_info:
                     boost_message = f"\n✨ **BUFF KÍCH HOẠT:** {boost_info['name']}\n🎯 Tỉ lệ thắng: 65% → {int(base_chance*100)}%"
@@ -166,7 +166,7 @@ class LegendaryBossFightView(discord.ui.View):
             await self.cog.add_legendary_fish_to_user(self.user_id, self.legendary_fish['key'])
             
             # Track in collection book
-            from .helpers import track_caught_fish
+            from ..helpers import track_caught_fish
             await track_caught_fish(self.user_id, self.legendary_fish['key'])
             
             # Track legendary achievement
@@ -239,7 +239,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     try:
         fish_collection = await get_fish_collection(user_id)
         legendary_list = list(fish_collection.keys())
-    except:
+    except Exception as e:
         legendary_list = []
     
     if not cog:
@@ -461,7 +461,7 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
         await increment_stat(user_id, "fishing", "legendary_caught", 1)
         
         # Check if all legendary fish caught
-        from .constants import LEGENDARY_FISH_KEYS
+        from ..constants import LEGENDARY_FISH_KEYS
         caught_legendary = [fish for fish in legendary_list if fish in LEGENDARY_FISH_KEYS]
         if len(caught_legendary) >= len(LEGENDARY_FISH_KEYS):
             try:
@@ -473,5 +473,5 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
             
             return legendary_list
     except Exception as e:
-        pass
+        logger.error(f"Unexpected error: {e}")
     return []

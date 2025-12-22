@@ -74,7 +74,7 @@ class WolfHybrid(Role):
                     if wolf_mention:
                         await game._wolf_thread.send(f"{wolf_mention} - {player.display_name()} đã gia nhập bầy sói!")
                 except Exception as e:
-                    pass
+                    logger.error(f"Unexpected error: {e}")
             
             try:
                 await player.member.send(f"Bạn đã chọn trở thành Ma Sói!")

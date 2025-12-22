@@ -81,7 +81,7 @@ class EconomyCog(commands.Cog):
             
             buff_until = datetime.fromisoformat(result[0])
             return datetime.now() < buff_until
-        except:
+        except Exception as e:
             return False
 
     async def add_seeds_local(self, user_id: int, amount: int):
@@ -159,11 +159,11 @@ class EconomyCog(commands.Cog):
                         import json
                         parsed = json.loads(result[1])
                         excluded.extend(parsed)
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Unexpected error: {e}")
             
             return excluded
-        except:
+        except Exception as e:
             return []
 
     # ==================== COMMANDS ====================
