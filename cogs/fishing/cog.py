@@ -18,6 +18,14 @@ from .helpers import track_caught_fish, get_collection, check_collection_complet
 from .mechanics.rod_system import get_rod_data, update_rod_data as update_rod_data_module
 from .mechanics.legendary import LegendaryBossFightView, check_legendary_spawn_conditions, add_legendary_fish_to_user as add_legendary_module
 from .mechanics.events import trigger_random_event
+
+# FORCE RELOAD collection module to pick up changes
+import importlib
+from .commands import collection as collection_module
+importlib.reload(collection_module)
+from .commands.collection import _view_collection_impl_v2
+
+
 from .views import FishSellView
 from .mechanics.glitch import apply_display_glitch as global_apply_display_glitch, set_glitch_state
 
@@ -939,6 +947,7 @@ class FishingCog(commands.Cog):
                 fish_display = []
                 fish_only_items = {}
                 trash_items = {}  # Track specific trash items
+                new_caught_fishes = set() # Track new catches for display
         
                 # FIX: Track if rare fish already caught this turn (Max 1 rare per cast)
                 caught_rare_this_turn = False
@@ -1065,6 +1074,7 @@ class FishingCog(commands.Cog):
                         # Track in collection
                         is_new_collection = await track_caught_fish(user_id, fish['key'])
                         if is_new_collection:
+                            new_caught_fishes.add(fish['key'])
                             logger.info(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
                             # Check first_catch achievement (catch any fish for the first time)
                             # Get current collection count BEFORE adding this fish
@@ -1115,6 +1125,7 @@ class FishingCog(commands.Cog):
                         # Track in collection
                         is_new_collection = await track_caught_fish(user_id, fish['key'])
                         if is_new_collection:
+                            new_caught_fishes.add(fish['key'])
                             logger.info(f"[COLLECTION] {username} unlocked new fish: {fish['key']}")
                             # Check first_catch achievement (catch any fish for the first time)
                             # Get current collection count BEFORE adding this fish
@@ -1465,7 +1476,9 @@ class FishingCog(commands.Cog):
                         fish = ALL_FISH[key]
                         fish_name = self.apply_display_glitch(fish['name'])
                         fish_emoji = fish.get('emoji', '🐟')
-                        items_value += f"{fish_emoji} **{fish_name}** x{qty}\n"
+                        
+                        new_tag = " ✨🆕" if key in new_caught_fishes else ""
+                        items_value += f"{fish_emoji} **{fish_name}** x{qty}{new_tag}\n"
                 
                 # Group chests
                 if chest_count > 0:
@@ -1821,15 +1834,20 @@ class FishingCog(commands.Cog):
         return await _use_phan_bon_impl(self, ctx_or_interaction)
 
     async def _view_collection_action(self, ctx_or_interaction, user_id: int, username: str):
-        """View collection logic. Delegate to bucket module."""
-        return await _view_collection_impl(self, ctx_or_interaction, user_id, username)
+        """View fishing collection (Delegate to implementation)"""
+        logger.info(f"[COLLECTION] User {username} ({user_id}) requested collection view")
+        try:
+             await _view_collection_impl_v2(self, ctx_or_interaction, user_id, username)
+        except Exception as e:
+            logger.error(f"[COLLECTION] Error in _view_collection_action for {username}: {e}")
+            # Could provide fallback embed here if needed
     
     @app_commands.command(name="bosuutap", description="📚 Xem bộ sưu tập cá của bạn")
     async def collection_slash(self, interaction: discord.Interaction, user: discord.User = None):
         target = user or interaction.user
         await self._view_collection_action(interaction, target.id, target.name)
     
-    @commands.command(name="bosuutap", description="Xem bộ sưu tập cá")
+    @commands.command(name="bosuutap", aliases=["suutapca"], description="Xem bộ sưu tập cá")
     async def collection_prefix(self, ctx, user: discord.User = None):
         target = user or ctx.author
         await self._view_collection_action(ctx, target.id, target.name)

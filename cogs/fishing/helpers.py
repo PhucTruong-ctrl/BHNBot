@@ -53,8 +53,8 @@ async def get_collection(user_id: int) -> dict:
             "SELECT fish_id FROM fish_collection WHERE user_id = ?",
             (user_id,)
         )
-        # Return dict with fish_id as key, None as value (no timestamp in current schema)
-        return {row[0]: None for row in rows}
+        # Return dict with fish_id as key, 1 as value (indicating owned)
+        return {row[0]: 1 for row in rows}
     except Exception as e:
         print(f"[COLLECTION] Error getting collection for user {user_id}: {e}")
         return {}
