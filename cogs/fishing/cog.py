@@ -1004,6 +1004,10 @@ class FishingCog(commands.Cog):
                 
                     if catch_type == "trash":
                         # Catch trash instead of fish
+                        if not TRASH_ITEMS:
+                            logger.error("[FISHING] TRASH_ITEMS is empty! Cannot catch trash.")
+                            continue
+
                         trash = random.choice(TRASH_ITEMS)
                         item_key = trash.get("key", f"trash_{hash(str(trash)) % 1000}")
                         try:
@@ -1018,16 +1022,26 @@ class FishingCog(commands.Cog):
                     # Check if convert_to_trash event is active (e.g., Pollution)
                     if event_result.get("convert_to_trash", False):
                         # Convert fish to trash
+                        if not TRASH_ITEMS:
+                            logger.error("[FISHING] TRASH_ITEMS is empty during pollution! Skipping.")
+                            continue # Skip bad event logic if no trash items
+
                         trash = random.choice(TRASH_ITEMS)
                         item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
                         await self.add_inventory_item(user_id, item_key, "trash")
+                        # Track for embed
                         if item_key not in trash_items: trash_items[item_key] = 0
                         trash_items[item_key] += 1
+                        
                         logger.info(f"[EVENT-POLLUTION] {username} fish converted to trash: {item_key}")
                         continue
             
                     if catch_type == "rare" and not caught_rare_this_turn:
-                        fish = random.choice(RARE_FISH)
+                        if not RARE_FISH:
+                             logger.warning("[FISHING] RARE_FISH is empty! Falling back to common.")
+                             catch_type = "common" # Fallback
+                        else:
+                            fish = random.choice(RARE_FISH)
                         caught_rare_this_turn = True  # Mark rare as caught to enforce limit
                         logger.info(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
                         try:
@@ -1087,6 +1101,10 @@ class FishingCog(commands.Cog):
                                 self._void_rod_double_catch[user_id] = fish
                     elif catch_type == "common":
                         # Catch common fish (or fallback if rare limit reached)
+                        if not COMMON_FISH:
+                            logger.error("[FISHING] COMMON_FISH is empty! Cannot catch fish.")
+                            continue
+
                         fish = random.choice(COMMON_FISH)
                         logger.info(f"[FISHING] {username} caught common fish: {fish['key']}")
                         try:
