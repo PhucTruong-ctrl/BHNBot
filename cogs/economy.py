@@ -344,6 +344,61 @@ class EconomyCog(commands.Cog):
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
+    async def _create_leaderboard_embed(self, top_users, requester: discord.User):
+        """Create a premium leaderboard embed"""
+        if not top_users:
+            return None
+
+        # Top 1 user details
+        top1_id, top1_name, top1_balance = top_users[0]
+        
+        embed = discord.Embed(
+            title="👑 **BẢNG VÀNG ĐẠI GIA (TOP RICH)** 👑",
+            description=f"Vin danh những đại gia giàu nhất **Bên Hiên Nhà**.",
+            color=0xFFD700, # Gold
+            timestamp=datetime.now()
+        )
+        
+        # Try to get top 1 user avatar
+        try:
+            top1_user = self.bot.get_user(top1_id)
+            if not top1_user:
+                top1_user = await self.bot.fetch_user(top1_id)
+            if top1_user and top1_user.avatar:
+                embed.set_thumbnail(url=top1_user.avatar.url)
+        except Exception:
+            pass
+
+        # === TOP 3 (VIP Section) ===
+        top3_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for idx in range(min(3, len(top_users))):
+            user_id, username, balance = top_users[idx]
+            medal = medals[idx]
+            # Bold name, nice formatting
+            top3_text += f"{medal} **{username}**\n╚═ **{balance:,}** 🌱\n\n"
+            
+        embed.add_field(name="🏆 **TAM ĐẠI PHÚ HỘ**", value=top3_text, inline=True)
+
+        # === RANKS 4-10 (List Section) ===
+        if len(top_users) > 3:
+            others_text = "```yaml\n" # Use yaml for semantic highlighting (keys are colored)
+            for idx in range(3, len(top_users)):
+                user_id, username, balance = top_users[idx]
+                # Format: 4. name ... balance
+                # Truncate long names
+                display_name = (username[:12] + '..') if len(username) > 12 else username
+                others_text += f"{idx+1}. {display_name:<14} {balance:,} 🌱\n"
+            others_text += "```"
+            embed.add_field(name="📜 **CHIẾN THẦN TÍCH LŨY**", value=others_text, inline=False)
+            
+        # Footer
+        embed.set_footer(text=f"Yêu cầu bởi {requester.name}", icon_url=requester.avatar.url if requester.avatar else None)
+        # Let's verify if I should add image. Maybe unnecessary. Removing set_image for now to keep it clean.
+        
+        return embed
+
     @app_commands.command(name="top", description="Xem bảng xếp hạng 10 người có nhiều hạt nhất")
     async def top_leaderboard_slash(self, interaction: discord.Interaction):
         """Show top 10 leaderboard (slash command)"""
@@ -354,23 +409,9 @@ class EconomyCog(commands.Cog):
         if not top_users:
             await interaction.followup.send("❌ Chưa có ai trong bảng xếp hạng!", ephemeral=True)
             return
-        
-        embed = discord.Embed(
-            title="🏆 Bảng Xếp Hạng Top 10 Hạt",
-            color=discord.Color.gold()
-        )
-        
-        ranking_text = ""
-        medals = ["🥇", "🥈", "🥉"]
-        
-        for idx, (user_id, username, seeds) in enumerate(top_users, 1):
-            medal = medals[idx - 1] if idx <= 3 else f"{idx}️⃣"
-            ranking_text += f"{medal} **{username}** - {seeds} 🌱\n"
-        
-        embed.description = ranking_text
-        embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")
-        
-        await interaction.followup.send(embed=embed, ephemeral=False)
+            
+        embed = await self._create_leaderboard_embed(top_users, interaction.user)
+        await interaction.followup.send(embed=embed)
 
     @commands.command(name="top", description="Xem bảng xếp hạng top 10")
     async def top_leaderboard_prefix(self, ctx):
@@ -381,21 +422,7 @@ class EconomyCog(commands.Cog):
             await ctx.send("❌ Chưa có ai trong bảng xếp hạng!")
             return
         
-        embed = discord.Embed(
-            title="🏆 Bảng Xếp Hạng Top 10 Hạt",
-            color=discord.Color.gold()
-        )
-        
-        ranking_text = ""
-        medals = ["🥇", "🥈", "🥉"]
-        
-        for idx, (user_id, username, seeds) in enumerate(top_users, 1):
-            medal = medals[idx - 1] if idx <= 3 else f"{idx}️⃣"
-            ranking_text += f"{medal} **{username}** - {seeds} 🌱\n"
-        
-        embed.description = ranking_text
-        embed.set_footer(text="Cập nhật hàng ngày • Xếp hạng dựa trên tổng hạt")
-        
+        embed = await self._create_leaderboard_embed(top_users, ctx.author)
         await ctx.send(embed=embed)
 
     @commands.command(name="themhat", description="Thêm hạt cho user (Admin Only)")
@@ -604,6 +631,18 @@ class EconomyCog(commands.Cog):
                     # Award seeds to each speaking member
                     for member in speaking_members:
                         await self.get_or_create_user_local(member.id, member.name)
+                        
+                        # Get user rod level (affects reward bonus)
+                        try:
+                            # get_rod_data returns (level, durability) tuple, NOT dict
+                            rod_data = await self.bot.get_cog("FishingCog").get_rod_data(member.id)
+                            if rod_data:
+                                rod_level, rod_durability = rod_data
+                            else:
+                                rod_level = 0
+                        except Exception as e:
+                            rod_level = 0
+                            # logger.error(f"[ECONOMY] Error fetching rod data for {member.name}: {e}")
                         
                         reward = VOICE_REWARD
                         if is_buff_active:

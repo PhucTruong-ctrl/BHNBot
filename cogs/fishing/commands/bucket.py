@@ -168,13 +168,19 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
         elif item_key == "manh_ghep":
             # Randomize puzzle pieces
             pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
+            puzzle_counts = {"puzzle_a": 0, "puzzle_b": 0, "puzzle_c": 0, "puzzle_d": 0}
+            
             for _ in range(count):
                 p = random.choice(pieces)
                 puzzle_pieces_got.append(p)
-                await cog.add_inventory_item(user_id, p, 1) # Add one by one to randomize types
+                puzzle_counts[p] += 1
+                await cog.add_inventory_item(user_id, p, 1) # Add one by one
             
-            # Since we added individually, we just summarize
-            loot_messages.append(f"🧩 **Mảnh Ghép** x{count} (Ngẫu nhiên)")
+            # Display detailed breakdown
+            for p_key, p_qty in puzzle_counts.items():
+                if p_qty > 0:
+                    p_name = p_key.replace("puzzle_", "Mảnh ").upper()
+                    loot_messages.append(f"🧩 **{p_name}** x{p_qty}")
             
         elif item_key in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
             await cog.add_inventory_item(user_id, item_key, count)
@@ -201,36 +207,25 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
 
     # 7. Post-Process Special Logics (Puzzle Check)
     if puzzle_pieces_got:
-        # Check full set logic again? 
-        # For bulk opening, maybe just warn them to check inventory or auto-claim?
-        # The original code auto-claimed. Let's do a quick check.
         inv_check = await get_inventory(user_id)
-        if all(inv_check.get(f"puzzle_{p}", 0) > 0 for p in ["a", "b", "c", "d"]):
-            # Auto claim ONE set if they have full set? 
-            # Or many sets?
-            # Complexity: Checking how many FULL SETS they have.
-            # set_count = min(inv_check["puzzle_a"], inv_check["puzzle_b"]...)
-            # For simplicity and UX, let's just trigger one claim notification if they have at least one set.
-            # Actual claiming usually happens in a separate event or re-check.
-            # Original code did: remove 1 set -> give 5000-10000 seeds.
-            # We will keep it simple: if valid set found, auto-exchange 1 set and notify.
+        # Check how many full sets user has
+        a, b, c, d = [inv_check.get(f"puzzle_{x}", 0) for x in "abcd"]
+        sets_can_make = min(a, b, c, d)
             
-            # Logic: greedy exchange all sets?
-            a, b, c, d = [inv_check.get(f"puzzle_{x}", 0) for x in "abcd"]
-            sets_can_make = min(a, b, c, d)
-            
-            if sets_can_make > 0:
-                reward_total = 0
-                for _ in range(sets_can_make):
-                    reward_total += random.randint(5000, 10000)
+        if sets_can_make > 0:
+            reward_total = 0
+            for _ in range(sets_can_make):
+                reward_total += random.randint(5000, 10000)
                 
-                await remove_item(user_id, "puzzle_a", sets_can_make)
-                await remove_item(user_id, "puzzle_b", sets_can_make)
-                await remove_item(user_id, "puzzle_c", sets_can_make)
-                await remove_item(user_id, "puzzle_d", sets_can_make)
-                await add_seeds(user_id, reward_total)
+            await remove_item(user_id, "puzzle_a", sets_can_make)
+            await remove_item(user_id, "puzzle_b", sets_can_make)
+            await remove_item(user_id, "puzzle_c", sets_can_make)
+            await remove_item(user_id, "puzzle_d", sets_can_make)
+            await add_seeds(user_id, reward_total)
                 
-                loot_messages.append(f"🎉 **ĐỦ {sets_can_make} BỘ MẢNH GHÉP!** Tự động đổi: +{reward_total:,} Hạt!")
+            loot_messages.append(f"\n🎉 **TỰ ĐỘNG GHÉP {sets_can_make} BỘ!**")
+            loot_messages.append(f"➖ Đã dùng: {sets_can_make}x (Mảnh A, B, C, D)")
+            loot_messages.append(f"💰 Nhận thưởng: **+{reward_total:,} Hạt!**")
 
     # 8. Build Premium Embed
     if not loot_messages:

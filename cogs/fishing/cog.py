@@ -1499,7 +1499,7 @@ class FishingCog(commands.Cog):
                 items_value += f"📊 **Tổng:** {total_catches} items"
                 
                 embed.add_field(
-                    name="🐟 Đã Bắt Được",
+                    name="🐟 Đã Câu Được",
                     value=items_value,
                     inline=False
                 )
