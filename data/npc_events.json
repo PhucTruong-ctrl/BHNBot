@@ -381,7 +381,7 @@
     "name": "🚽 Skibidi Toilet Boss",
     "description": "Một cái đầu khổng lồ từ toilet giữa hồ. Nó hát 'brr skibidi dop dop'.\n'Đưa cá ta mới cho ngươi đi!'",
     "question": "**Đưa cá để thoát khỏi ma ám Skibidi?**",
-    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/catbegging.png",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/toilet.png",
     "chance": 0.12,
     "rewards": {
       "accept": [
@@ -406,7 +406,7 @@
     "name": "😺 AI Cat Therapist",
     "description": "Một con mèo AI xuống nước: 'Tôi là bác sĩ tâm lý. Bạn có vấn đề gì không? Kể cho tôi nghe! Phí tư vấn: 100 Hạt.'",
     "question": "**Trả tiền để mèo AI giúp bạn giải tỏa stress?**",
-    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/catbegging.png",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/ai_cat_therapist.png",
     "chance": 0.15,
     "rewards": {
       "accept": [
@@ -430,7 +430,7 @@
     "name": "💕 Pookie Sugar Sponsor",
     "description": "Một người lạ ngọt ngào: 'Pookie ơi, anh/chị thấy em câu cá vất vả quá! Anh/chị cho em tiền mua cần mới đi Pookie!'",
     "question": "**Nhận tiền từ 'Pookie' stranger không?**",
-    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/richkid.png",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/pookie_sponsor.png",
     "chance": 0.1,
     "rewards": {
       "accept": [
@@ -461,7 +461,7 @@
     "name": "📸 Nano Banana Pro",
     "description": "Người nhiếp ảnh chuyên nghiệp: 'Tôi đang làm project Nano Banana! Cho tôi chụp con cá này, tôi sẽ trả công!'",
     "question": "**Cho họ chụp cá bằng app Nano Banana?**",
-    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/idol.png",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/nanophotographer.png",
     "chance": 0.15,
     "rewards": {
       "accept": [
@@ -491,7 +491,7 @@
     "name": "🦍 The Gorilla Judge",
     "description": "Một chú Gorilla khổng lồ ngồi trên ghế vua:\n'Con người! Trả lời ta: 100 người vs Ta, ai thắng? Trả lời đúng ta cho thưởng!'",
     "question": "**Chọn: '100 Men Win' hay 'Gorilla Wins'?**",
-    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/gymbro.png",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/gorillajudge.png",
     "chance": 0.08,
     "rewards": {
       "accept": [

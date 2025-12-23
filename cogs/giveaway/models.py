@@ -15,6 +15,11 @@ class Giveaway:
     requirements: Dict
     status: str = 'active'
     image_url: Optional[str] = None
+    winners: list = None  # List of winner user IDs
+
+    def __post_init__(self):
+        if self.winners is None:
+            self.winners = []
 
     @classmethod
     def from_db(cls, row):

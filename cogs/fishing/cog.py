@@ -1491,8 +1491,15 @@ class FishingCog(commands.Cog):
                 # Ungrouped trash display
                 if trash_items:
                     for trash_key, qty in trash_items.items():
-                        trash_info = ALL_ITEMS_DATA.get(trash_key, {})
-                        trash_name = trash_info.get("name", "Rác")
+                        # Try getting from ALL_ITEMS_DATA first
+                        trash_info = ALL_ITEMS_DATA.get(trash_key)
+                        
+                        # If not found, try searching TRASH_ITEMS list
+                        if not trash_info:
+                            trash_info = next((t for t in TRASH_ITEMS if t.get("key") == trash_key), {})
+                        
+                        # Fallback to key formatting if still no name
+                        trash_name = trash_info.get("name", trash_key.replace("trash_", "").replace("_", " ").title())
                         trash_name = self.apply_display_glitch(trash_name)
                         items_value += f"🗑️ **{trash_name}** x{qty}\n"
                 elif trash_count > 0: # Fallback
@@ -1710,18 +1717,19 @@ class FishingCog(commands.Cog):
         return await _sell_fish_impl(self, ctx_or_interaction, fish_types)
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")
-    async def open_chest_slash(self, interaction: discord.Interaction):
+    @app_commands.describe(amount="Số lượng rương muốn mở (mặc định 1)")
+    async def open_chest_slash(self, interaction: discord.Interaction, amount: int = 1):
         """Open chest via slash command"""
-        await self._open_chest_action(interaction)
+        await self._open_chest_action(interaction, amount)
     
     @commands.command(name="moruong", description="Mở Rương Kho Báu")
-    async def open_chest_prefix(self, ctx):
+    async def open_chest_prefix(self, ctx, amount: int = 1):
         """Open chest via prefix command"""
-        await self._open_chest_action(ctx)
+        await self._open_chest_action(ctx, amount)
     
-    async def _open_chest_action(self, ctx_or_interaction):
+    async def _open_chest_action(self, ctx_or_interaction, amount: int = 1):
         """Open treasure chest logic. Delegate to bucket module."""
-        return await _open_chest_impl(self, ctx_or_interaction)
+        return await _open_chest_impl(self, ctx_or_interaction, amount)
     
     # ==================== LEGENDARY SUMMONING ====================
     
