@@ -126,12 +126,16 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
         for row in ended_giveaways:
             try:
                 ga = Giveaway.from_db(row)
-                # Get current winners from participants (assuming winners are still in the pool)
-                participants = await db_manager.execute(
-                    "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ? ORDER BY id LIMIT ?",
-                    (ga.message_id, ga.winners_count)
-                )
-                current_winners = [row[0] for row in participants]
+                
+                # Get current winners (from persistence or fallback)
+                current_winners = ga.winners
+                if not current_winners:
+                    # Fallback: get from participants (LIMIT to winners_count)
+                    participants = await db_manager.execute(
+                        "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ? ORDER BY id LIMIT ?",
+                        (ga.message_id, ga.winners_count)
+                    )
+                    current_winners = [row[0] for row in participants]
                 
                 # Try to find the result message (it's a reply to the original giveaway message)
                 try:
@@ -146,6 +150,12 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                                     # This is likely the result message
                                     view = GiveawayResultView(ga.message_id, current_winners, self.bot)
                                     self.bot.add_view(view)
+                                    # Refresh the view on the message to update custom_ids for persistence
+                                    try:
+                                        await message.edit(view=view)
+                                    except Exception as e:
+                                        logger.warning(f"Could not refresh view on message {message.id}: {e}")
+                                    
                                     result_count += 1
                                     break
                 except Exception as e:
@@ -448,13 +458,18 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
         await msg.edit(view=view)
         
         # 6. Save to DB
-        await db_manager.modify(
-            """INSERT INTO giveaways 
-            (message_id, channel_id, guild_id, host_id, prize, winners_count, end_time, requirements, status, image_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (msg.id, msg.channel.id, interaction.guild.id, interaction.user.id, prize, winners, end_time, json.dumps(reqs), 'active', image_url)
-        )
-        
+        try:
+            await db_manager.modify(
+                """INSERT INTO giveaways 
+                (message_id, channel_id, guild_id, host_id, prize, winners_count, end_time, requirements, status, image_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (msg.id, msg.channel.id, interaction.guild.id, interaction.user.id, prize, winners, end_time, json.dumps(reqs), 'active', image_url)
+            )
+        except Exception as e:
+            await msg.delete()
+            logger.error(f"Failed to save giveaway {msg.id} to DB: {e}", exc_info=True)
+            return await interaction.edit_original_response(content="❌ Lỗi khi tạo Giveaway: Không thể lưu vào Database.")
+            
         logger.info(f"Created giveaway ID {msg.id} by {interaction.user} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id}) - Prize: {prize}, Winners: {winners}, Duration: {duration}, Requirements: {reqs}")
         
         await interaction.edit_original_response(content="✅ Đã tạo Giveaway thành công!")
@@ -468,6 +483,103 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
 
     # Task loop handles checking end times
 
+
+    # ==================== PREFIX COMMANDS ====================
+    @commands.group(name="giveaway", aliases=["ga"])
+    async def giveaway_group(self, ctx):
+        """Lệnh quản lý Giveaway"""
+        if ctx.invoked_subcommand is None:
+            await ctx.reply("❌ Sử dụng: `!giveaway reroll <message_id> <số_lượng>`")
+
+    @giveaway_group.command(name="reroll")
+    @commands.has_permissions(administrator=True)
+    async def reroll_cmd(self, ctx, message_id: int, count: int = 1):
+        """Reroll kết quả giveaway (Admin only)"""
+        try:
+            # 1. Check Giveaway
+            row = await db_manager.fetchone("SELECT * FROM giveaways WHERE message_id = ?", (message_id,))
+            if not row:
+                return await ctx.reply("❌ Giveaway không tồn tại!")
+            
+            ga = Giveaway.from_db(row)
+            if ga.status != 'ended':
+                return await ctx.reply("❌ Giveaway chưa kết thúc! Hãy dùng lệnh end hoặc đợi hết giờ.")
+
+            # 2. Get Participants
+            participants = await db_manager.execute(
+                "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ?",
+                (message_id,)
+            )
+            user_ids = [r[0] for r in participants]
+            
+            if not user_ids:
+                return await ctx.reply("❌ Không có ai tham gia để reroll.")
+
+            # 3. Filter Previous Winners (Smart Reroll)
+            current_winners = ga.winners or []
+            
+            # Fallback for old giveaways (if DB is empty but message exists)
+            if not current_winners:
+                channel = self.bot.get_channel(ga.channel_id)
+                if channel:
+                    try:
+                        msg = await channel.fetch_message(message_id)
+                        if msg.embeds:
+                            desc = msg.embeds[0].description or ""
+                            import re
+                            found_ids = re.findall(r"<@!?(\d+)>", desc)
+                            current_winners = [int(uid) for uid in found_ids]
+                    except:
+                        pass
+            
+            # Filter
+            eligible_users = [uid for uid in user_ids if uid not in current_winners]
+            
+            if not eligible_users:
+                 return await ctx.reply("⚠️ Tất cả người tham gia đều đã thắng! Không còn ai để reroll.")
+
+            # 4. Pick New Winners
+            if count > len(eligible_users):
+                count = len(eligible_users)
+                await ctx.send(f"⚠️ Chỉ còn {count} người chưa thắng. Chọn tất cả.")
+            
+            import random
+            new_winners_ids = random.sample(eligible_users, count)
+            winners_text = ", ".join([f"<@{uid}>" for uid in new_winners_ids])
+            
+            # Update Persistent Winners
+            updated_winners = current_winners + new_winners_ids
+            import json
+            await db_manager.modify(
+                "UPDATE giveaways SET winners = ? WHERE message_id = ?",
+                (json.dumps(updated_winners), message_id)
+            )
+
+            # 5. Send Result
+            channel = self.bot.get_channel(ga.channel_id)
+            if channel:
+                try:
+                    msg = await channel.fetch_message(message_id)
+                    
+                    # Construct result embed
+                    from .constants import EMOJI_WINNER, COLOR_GIVEAWAY
+                    embed = discord.Embed(
+                        title="🎉 KẾT QUẢ GIVAWAY (REROLL)",
+                        description=f"👑 **Người thắng mới:** {winners_text}",
+                        color=COLOR_GIVEAWAY
+                    )
+                    embed.set_footer(text=f"Giveaway ID: {message_id} | Rerolled by {ctx.author.name}")
+                    
+                    await msg.reply(embed=embed)
+                    await ctx.reply(f"✅ Đã reroll thành công! Người thắng mới (đã loại trừ {len(current_winners)} người cũ): {winners_text}")
+                except Exception as e:
+                     await ctx.reply(f"❌ Lỗi khi gửi kết quả: {e}")
+            else:
+                 await ctx.reply(f"✅ Đã reroll (không tìm thấy tin nhắn gốc): {winners_text}")
+
+        except Exception as e:
+            logger.error(f"Error in reroll command: {e}", exc_info=True)
+            await ctx.reply(f"❌ Có lỗi xảy ra: {e}")
 
 async def setup(bot):
     await bot.add_cog(GiveawayCog(bot))

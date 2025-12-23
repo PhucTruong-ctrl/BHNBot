@@ -93,30 +93,17 @@ class GiveawayJoinView(discord.ui.View):
         if not passed:
             return await interaction.response.send_message(f"❌ {reason}", ephemeral=True)
 
-        # 2. Check Cost (Balance Check)
+        # 2. Secure Transaction for Cost & Join
+        # This wrapper handles atomic balance check, deduction, and insertion
+        from .helpers import join_giveaway_transaction
+        
         cost = current_reqs.get("cost", 0)
-        if cost > 0:
-            bal = await get_user_balance(user.id)
-            if bal < cost:
-                 return await interaction.response.send_message("❌ Không đủ tiền mua vé!", ephemeral=True)
-
-        # 3. Add to Database (Handle Race Condition via Unique Constraint)
-        try:
-            await db_manager.modify(
-                "INSERT INTO giveaway_participants (giveaway_id, user_id) VALUES (?, ?)",
-                (self.giveaway_id, user.id)
-            )
-        except Exception as e:
-            # Likely sqlite3.IntegrityError due to UNIQUE constraint
-            # We can assume user already joined
-            return await interaction.response.send_message("❌ Bạn đã tham gia rồi!", ephemeral=True)
-
-        # 4. Deduct Cost
-        if cost > 0:
-            await add_seeds(user.id, -cost)
-            msg_suffix = f" (-{cost} Hạt)"
-        else:
-            msg_suffix = ""
+        success, message = await join_giveaway_transaction(self.giveaway_id, user.id, cost)
+        
+        if not success:
+            return await interaction.response.send_message(f"❌ {message}", ephemeral=True)
+            
+        msg_suffix = f" (-{cost} Hạt)" if cost > 0 else ""
 
         await interaction.response.send_message(f"✅ Đã tham gia thành công!{msg_suffix}", ephemeral=True)
         
@@ -131,6 +118,14 @@ class GiveawayResultView(discord.ui.View):
         self.giveaway_id = giveaway_id
         self.current_winners = current_winners
         self.bot = bot
+        
+        # Set custom_id for persistence
+        for item in self.children:
+            if isinstance(item, discord.ui.Button):
+                if item.label == "🔄 Reroll":
+                    item.custom_id = f"ga_reroll:{giveaway_id}"
+                elif item.label == "🏁 Kết Thúc":
+                    item.custom_id = f"ga_end:{giveaway_id}"
 
     @discord.ui.button(label="🔄 Reroll", style=discord.ButtonStyle.secondary, emoji="🔄")
     async def reroll_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -213,7 +208,7 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
                 unique_winners = list(dict.fromkeys(self.current_winners))  # Preserve order, remove dupes
                 all_winners_text = ", ".join([f"<@{uid}>" for uid in unique_winners])
                 
-                result_text = f"🎉 **REROLL KẾT QUẢ!**\nNgười thắng mới: {new_winners_text}\n\n**Tất cả người thắng ({len(unique_winners)} người):** {all_winners_text} đã thắng **{ga.prize}**! {EMOJI_WINNER}"
+                result_text = f"👑 **Người thắng mới:** {new_winners_text}"
                 
                 print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}, Total unique: {len(unique_winners)}, All: {unique_winners}")
                 
@@ -228,7 +223,16 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
                 # Update the view's current_winners to the unique list
                 self.current_winners = unique_winners
                 
-                await interaction.message.edit(embed=embed, view=interaction.message.view)
+                # Update Persistent Winners in DB
+                import json
+                await db_manager.modify(
+                    "UPDATE giveaways SET winners = ? WHERE message_id = ?",
+                    (json.dumps(self.current_winners), self.giveaway_id)
+                )
+
+                # Re-instantiate the view to update it
+                view = GiveawayResultView(self.giveaway_id, self.current_winners, self.bot)
+                await interaction.message.edit(embed=embed, view=view)
                 
                 await interaction.followup.send(f"✅ Đã reroll {len(new_winners_ids)} người thắng mới: {new_winners_text}", ephemeral=True)
             else:
