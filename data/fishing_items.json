@@ -570,6 +570,14 @@
       "effect_type": "legendary_summon",
       "effect_value": "ca_ngan_ha",
       "one_time_use": true
+    },
+    "qua_ngau_nhien": {
+      "type": "gift",
+      "key": "qua_ngau_nhien",
+      "name": "🎁 Quà Ngẫu Nhiên",
+      "emoji": "🎁",
+      "sell_price": 100,
+      "description": "Một hộp quà bí ẩn được gói ghém cẩn thận. Bạn có thể tặng nó cho NPC hoặc người chơi khác để tăng độ thân thiết."
     }
   }
 }
