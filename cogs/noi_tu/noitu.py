@@ -1015,16 +1015,18 @@ class GameNoiTu(commands.Cog):
                         except Exception as e:
                             logger.error(f"ERROR checking long_chain_participation achievement for {player_id}: {e}")
                 
-                # Update max_streak for all players if current_streak is higher than their max
-                for player_id in game['players'].keys():
-                    try:
-                        updated = await self.update_max_stat(player_id, 'max_streak', current_streak)
-                        if updated:
-                            # Check max_streak achievement
-                            new_max_streak = await get_stat(player_id, 'noitu', 'max_streak')
-                            await self.bot.achievement_manager.check_unlock(player_id, "noitu", "max_streak", new_max_streak, message.channel)
-                    except Exception as e:
-                        logger.error(f"ERROR updating max_streak for {player_id}: {e}")
+                
+                # Update max_streak ONLY for the winner (last player standing)
+                try:
+                    winner_id = message.author.id
+                    updated = await self.update_max_stat(winner_id, 'max_streak', current_streak)
+                    if updated:
+                        # Check max_streak achievement for winner only
+                        new_max_streak = await get_stat(winner_id, 'noitu', 'max_streak')
+                        await self.bot.achievement_manager.check_unlock(winner_id, "noitu", "max_streak", new_max_streak, message.channel)
+                except Exception as e:
+                    logger.error(f"ERROR updating max_streak for winner {winner_id}: {e}")
+
                 
                 # Distribute rewards to all participants
                 if game.get('players'):

@@ -1,8 +1,7 @@
 
 import logging
-import logging
 import discord
-from database_manager import db_manager, get_user_balance, add_seeds, get_inventory, remove_item
+from database_manager import db_manager, get_user_balance, add_seeds, get_inventory, remove_item, increment_stat, get_stat
 from ..constants import ROD_LEVELS
 from ..mechanics.rod_system import get_rod_data, update_rod_data
 from core.utils import format_currency
@@ -135,6 +134,17 @@ async def nangcap_action(ctx_or_interaction):
         # 2. Deduct Materials (if required)
         if material_cost > 0:
             await remove_item(user_id, "vat_lieu_nang_cap", material_cost)
+            # Track rod_upgrades achievement
+            try:
+                await increment_stat(user_id, "fishing", "rod_upgrades", 1)
+                current_upgrades = await get_stat(user_id, "fishing", "rod_upgrades")
+                # Get bot instance from interaction/ctx
+                bot = ctx_or_interaction.client if isinstance(ctx_or_interaction, discord.Interaction) else ctx_or_interaction.bot
+                channel = ctx_or_interaction.channel
+                await bot.achievement_manager.check_unlock(user_id, "fishing", "rod_upgrades", current_upgrades, channel)
+                logger.info(f"[ROD] Tracked rod_upgrades for user {user_id}: {current_upgrades} total")
+            except Exception as e:
+                logger.error(f"[ROD] Error tracking rod_upgrades: {e}")
         
         # 3. Deduct Special Materials (Level 6 - Void Rod)
         if special_materials:
@@ -146,6 +156,18 @@ async def nangcap_action(ctx_or_interaction):
         # Reset durability to max of new level
         new_durability = next_rod_info['durability']
         await update_rod_data(user_id, new_durability, next_level)
+        
+        # Track rod_level_max achievement when reaching level 5 or 7
+        if next_level in [5, 7]:
+            try:
+                await increment_stat(user_id, "fishing", "rod_level_max", next_level)
+                current_level_max = await get_stat(user_id, "fishing", "rod_level_max")
+                bot = ctx_or_interaction.client if isinstance(ctx_or_interaction, discord.Interaction) else ctx_or_interaction.bot
+                channel = ctx_or_interaction.channel
+                await bot.achievement_manager.check_unlock(user_id, "fishing", "rod_level_max", current_level_max, channel)
+                logger.info(f"[ROD] Tracked rod_level_max for user {user_id}: level {current_level_max}")
+            except Exception as e:
+                logger.error(f"[ROD] Error tracking rod_level_max: {e}")
         
         # ==================== SPECIAL LORE MESSAGE (Level 7 - Chrono Rod) ====================
         if next_level == 7:

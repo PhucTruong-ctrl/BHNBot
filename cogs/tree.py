@@ -332,9 +332,9 @@ class CommunityCog(commands.Cog):
                     for idx, (uid, amount_val, exp_val) in enumerate(current_season_contributors, 1):
                         try:
                             user = await self.bot.fetch_user(uid)
-                            season_text += f"{idx}. **{user.name}** - {amount_val} Hạt\n"
+                            season_text += f"{idx}. **{user.name}** - {amount_val} Kinh Nghiệm\n"
                         except Exception as e:
-                            season_text += f"{idx}. **User #{uid}** - {amount_val} Hạt\n"
+                            season_text += f"{idx}. **User #{uid}** - {amount_val} Kinh Nghiệm\n"
                     
                     embed.add_field(name=f"🏆 Top 3 Người Góp mùa {current_season}", value=season_text, inline=False)
                 

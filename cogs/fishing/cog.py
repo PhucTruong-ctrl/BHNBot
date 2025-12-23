@@ -564,40 +564,58 @@ class FishingCog(commands.Cog):
                 # Casting animation
                 wait_time = random.randint(1, 5)
         
-                # Build casting embed
+                # ==================== REDESIGNED CASTING EMBED ====================
                 embed = discord.Embed(
-                    title=f"🎣 {username} quăng cần câu...",
-                    description=f"⏳ Chờ cá cắn câu trong **{wait_time}s**",
+                    title=f"🎣 {username} - Đang Câu Cá",
+                    description=f"⏳ **Chờ cá cắn câu trong {wait_time}s...**",
                     color=discord.Color.blue()
                 )
                 
-                # Add worm status
+                # ROD INFO (HIGHLIGHTED)
+                rod_name = rod_config.get('name', 'Unknown')
+                max_durability = rod_config.get('durability', 10)
+                cd_time = rod_config.get('cd', 0)
+                
+                # Create visual durability bar (same as result embed)
+                durability_percent = int((rod_durability / max_durability) * 100) if max_durability > 0 else 0
+                filled_blocks = int((rod_durability / max_durability) * 10) if max_durability > 0 else 0
+                empty_blocks = 10 - filled_blocks
+                durability_bar = f"[{'█' * filled_blocks}{'░' * empty_blocks}] {durability_percent}%"
+                
+                rod_value = f"**{rod_name}** (Lv. {rod_lvl})\n"
+                rod_value += f"Độ bền: {durability_bar}\n"
+                rod_value += f"└ {rod_durability}/{max_durability}\n"
+                rod_value += f"⏱️ Cooldown: {cd_time}s"
+                
+                embed.add_field(
+                    name="🎣 Cần Câu",
+                    value=rod_value,
+                    inline=False
+                )
+                
+                # BAIT STATUS
                 if auto_bought:
-                    embed.add_field(name="💸 Mồi", value=f"Tự động mua (-{WORM_COST} Hạt)", inline=True)
+                    bait_value = f"✅ **Tự Động Mua**\n└ Phí: {WORM_COST} Hạt"
+                    bait_icon = "💸"
                 elif not has_worm:
-                    embed.add_field(name="⚠️ Mồi", value="Không có mồi (Tỉ lệ rác cao)", inline=True)
+                    bait_value = f"❌ **Không Có Mồi**\n└ Tỉ lệ rác cao!"
+                    bait_icon = "⚠️"
                 else:
-                    embed.add_field(name="✅ Mồi", value="Đã sử dụng", inline=True)
+                    bait_value = f"✅ **Đã Sử Dụng**\n└ Tăng khả năng bắt cá"
+                    bait_icon = "🐛"
                 
-                # Add rod info
                 embed.add_field(
-                    name="🎣 Cần câu", 
-                    value=f"{rod_config['emoji']} {rod_config['name']}\nCooldown: {rod_config['cd']}s",
+                    name=f"{bait_icon} Mồi Câu",
+                    value=bait_value,
                     inline=True
                 )
                 
-                # Add durability
-                embed.add_field(
-                    name="🛡️ Độ bền",
-                    value=f"{rod_durability}/{rod_config['durability']}",
-                    inline=True
-                )
-                
-                # Add repair message if exists
+                # Add footer if rod was repaired
                 if repair_msg:
-                    embed.set_footer(text=repair_msg.replace("\n", " "))
+                    embed.set_footer(text=repair_msg.replace("\n", " • "))
                 
                 casting_msg = await channel.send(embed=embed)
+
                 await asyncio.sleep(wait_time)
         
                 # ==================== TRIGGER RANDOM EVENTS ====================
@@ -1386,50 +1404,101 @@ class FishingCog(commands.Cog):
                 total_fish = sum(fish_only_items.values())
                 total_catches = total_fish + trash_count + chest_count
         
-                # Create summary text for title
-                summary_parts = []
-                for key, qty in fish_only_items.items():
-                    fish = ALL_FISH[key]
-                    fish_name = self.apply_display_glitch(fish['name'])
-                    summary_parts.append(f"{qty} {fish_name}")
-                if chest_count > 0:
-                    summary_parts.append(f"{chest_count} Rương")
-            
-                summary_text = " và ".join(summary_parts) if summary_parts else "Rác"
-                title = f"🎣 {username} Câu Được {summary_text}"
-            
-                if total_fish > 2:
-                    title = f"🎣 THỜI TỚI! {username} Bắt {total_fish} Con Cá! 🎉"
-            
-                # Add title-earned message if applicable
+                # ==================== NEW EMBED DESIGN ====================
+                # Short, clean title
+                title = f"🎣 {username} - Kết Quả Câu Cá"
+                
+                # Add achievement notification to title if earned
                 if title_earned:
-                    title = f"🎣 {title}\n👑 **DANH HIỆU: VUA CÂU CÁ ĐƯỢC MỞ KHÓA!** 👑"
-            
-                # *** APPLY GLITCH TO TITLE ***
+                    title = f"👑 {username} - VUA CÂU CÁ! 👑"
+                
+                # Apply glitch effect
                 title = self.apply_display_glitch(title)
-        
-                # Build description with broken rod warning if needed
-                display_content = "\n".join(fish_display) if fish_display else "Không có gì"
-            
-                # *** APPLY DISPLAY GLITCH EFFECT *** (removed duplicate application)
-                # display_content = self.apply_display_glitch(display_content)  # Already applied to individual fish names
-            
-                desc_parts = [display_content]
-                if is_broken_rod:
-                    desc_parts.append("\n⚠️ **CẢNH BÁO: Cần câu gãy!** (Chỉ 1% cá hiếm, 1 item/lần, không rương)")
-                    desc_parts[-1] = self.apply_display_glitch(desc_parts[-1])
-        
+                
+                # Consistent blue theme (fishing aesthetic)
+                embed_color = discord.Color.red() if is_broken_rod else (discord.Color.gold() if title_earned else discord.Color.blue())
+                
                 embed = discord.Embed(
                     title=title,
-                    description="".join(desc_parts),
-                    color=discord.Color.red() if is_broken_rod else (discord.Color.gold() if title_earned else (discord.Color.blue() if total_catches == 1 else discord.Color.gold()))
+                    color=embed_color
                 )
-        
+                
+                # ==================== FIELD 1: ROD INFO (HIGHLIGHTED) ====================
+                rod_name = rod_config.get('name', 'Unknown')
+                max_durability = rod_config.get('durability', 10)
+                
+                # Create visual durability bar
+                durability_percent = int((rod_durability / max_durability) * 100) if max_durability > 0 else 0
+                filled_blocks = int((rod_durability / max_durability) * 10) if max_durability > 0 else 0
+                empty_blocks = 10 - filled_blocks
+                durability_bar = f"[{'█' * filled_blocks}{'░' * empty_blocks}] {durability_percent}%"
+                
+                rod_field_value = f"**{rod_name}** (Lv. {rod_lvl})\n"
+                rod_field_value += f"Độ bền: {durability_bar}\n"
+                rod_field_value += f"└ {rod_durability}/{max_durability}"
+                
+                if rod_durability <= 0:
+                    rod_field_value += f"\n⚠️ **CẦN SỬA: {rod_config['repair']} Hạt**"
+                
+                embed.add_field(
+                    name="🎣 Cần Câu",
+                    value=self.apply_display_glitch(rod_field_value),
+                    inline=False
+                )
+                
+                # ==================== FIELD 2: CAUGHT ITEMS ====================
+                items_value = ""
+                
+                # Group fish
+                if fish_only_items:
+                    for key, qty in fish_only_items.items():
+                        fish = ALL_FISH[key]
+                        fish_name = self.apply_display_glitch(fish['name'])
+                        fish_emoji = fish.get('emoji', '🐟')
+                        items_value += f"{fish_emoji} **{fish_name}** x{qty}\n"
+                
+                # Group chests
+                if chest_count > 0:
+                    items_value += f"🎁 **Rương Kho Báu** x{chest_count}\n"
+                
+                # Group trash
+                if trash_count > 0:
+                    items_value += f"🗑️ **Rác** x{trash_count}\n"
+                
+                # If nothing caught
+                if not items_value:
+                    items_value = "_(Không có gì)_"
+                
+                # Add separator and total
+                items_value += f"\n{'─' * 15}\n"
+                items_value += f"📊 **Tổng:** {total_catches} items"
+                
+                embed.add_field(
+                    name="🐟 Đã Bắt Được",
+                    value=items_value,
+                    inline=False
+                )
+                
+                # ==================== SPECIAL NOTIFICATIONS ====================
+                # Achievement completion message
                 if title_earned:
-                    completion_text = "Bạn đã bắt được **tất cả các loại cá**!\nChúc mừng bạn trở thành **Vua Câu Cá**! 🎉\nXem `/suutapca` để xác nhận!"
+                    completion_text = "Bạn đã bắt được **tất cả các loại cá**!\n"
+                    completion_text += "Chúc mừng bạn trở thành **Vua Câu Cá**! 🎉"
                     embed.add_field(
-                        name="🏆 HOÀN THÀNH!",
+                        name="🏆 HOÀN THÀNH BỘ SƯU TẬP!",
                         value=self.apply_display_glitch(completion_text),
+                        inline=False
+                    )
+                
+                # Broken rod warning
+                if is_broken_rod:
+                    warning_text = "⚠️ **CẢNH BÁO: Cần câu gãy!**\n"
+                    warning_text += "• Chỉ bắt được 1% cá hiếm\n"
+                    warning_text += "• Giới hạn 1 item/lần\n"
+                    warning_text += "• Không bắt được rương"
+                    embed.add_field(
+                        name="🚨 Trạng Thái",
+                        value=self.apply_display_glitch(warning_text),
                         inline=False
                     )
         
@@ -1443,13 +1512,11 @@ class FishingCog(commands.Cog):
                 except Exception as e:
                     logger.info(f"[FISHING] [DURABILITY_ERROR] Failed to update durability for {username}: {e}")
                     # Don't update local variable, keep old value for display
-        
-                durability_status = f"🛡️ Độ bền còn lại: {rod_durability}/{rod_config['durability']}"
-                if rod_durability <= 0:
-                    durability_status += f" ⚠️ CẦN SỬA ({rod_config['repair']} Hạt)"
             
                 # *** APPLY GLITCH TO FOOTER ***
-                footer_text = f"Tổng câu được: {total_catches} vật{boost_text} | {durability_status}"
+                # The durability_status variable is no longer used directly in the footer,
+                # as the rod info is now in a dedicated field.
+                footer_text = f"Tổng câu được: {total_catches} vật{boost_text}"
                 footer_text = self.apply_display_glitch(footer_text)
                 embed.set_footer(text=footer_text)
         
@@ -1680,7 +1747,7 @@ class FishingCog(commands.Cog):
 
     @commands.command(name="nangcap", aliases=["upgrade", "nc"])
     async def nangcap_prefix(self, ctx):
-        await self._nangcap_action(ctx)
+        await _nangcap_impl(ctx)
 
     async def _nangcap_action(self, ctx_or_interaction):
         """Rod upgrade logic. Delegate to rod module."""

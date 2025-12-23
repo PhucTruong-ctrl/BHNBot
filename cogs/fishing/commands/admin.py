@@ -166,8 +166,8 @@ async def trigger_event_action(cog, ctx_or_interaction, target_user_id: int,
     }[event_type]
     
     embed = discord.Embed(
-        title="⚡ THẢM HỌA ĐƯỢC LÊNH CHỈ",
-        description=f"Người chơi {target_name} sẽ bị trigger **{event_name}** {event_emoji} {action_desc}!",
+        title="EVENT TRIGGER",
+        description=f"Người chơi {target_name} sẽ trigger **{event_name}** {event_emoji} {action_desc}!",
         color=discord.Color.red()
     )
     

@@ -226,154 +226,44 @@ class EconomyCog(commands.Cog):
         seeds = await self.get_user_balance_local(target_user.id)
         
         # Get inventory
-        from database_manager import get_inventory
+        from database_manager import get_inventory, get_stat
         inventory = await get_inventory(target_user.id)
         
-        # Import glitch function to check if active
-        from cogs.fishing.mechanics.glitch import is_glitch_active
+        # Get rod data from fishing module
+        rod_data = None
+        try:
+            from cogs.fishing.mechanics.rod_system import get_rod_data
+            fishing_rod = await get_rod_data(target_user.id)
+            if fishing_rod:
+                rod_data = {
+                    'name': fishing_rod.get('name', 'Unknown'),
+                    'level': fishing_rod.get('level', 1),
+                    'durability': fishing_rod.get('durability', 0),
+                    'max_durability': fishing_rod.get('max_durability', 10)
+                }
+        except Exception as e:
+            logger.error(f"Could not fetch rod data: {e}")
         
-        embed_title = f"💰 Thông tin của {target_user.name}"
-        if is_glitch_active():
-            from cogs.fishing.mechanics.glitch import apply_display_glitch
-            embed_title = apply_display_glitch(embed_title)
+        # Get legendary fish caught
+        legendary_caught = []
+        try:
+            from cogs.fishing.constants import LEGENDARY_FISH_KEYS
+            for fish_key in LEGENDARY_FISH_KEYS:
+                caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
+                if caught and caught > 0:
+                    legendary_caught.append(fish_key)
+        except Exception as e:
+            logger.error(f"Could not fetch legendary fish data: {e}")
         
-        embed = discord.Embed(
-            title=embed_title,
-            color=discord.Color.green()
+        # Create embed using new module
+        from cogs.fishing.commands.inventory_display import create_inventory_embed
+        embed = await create_inventory_embed(
+            user=target_user,
+            seeds=seeds,
+            inventory=inventory,
+            rod_data=rod_data,
+            legendary_fish_caught=legendary_caught
         )
-        
-        seeds_display = f"**{seeds}**"
-        if is_glitch_active():
-            from cogs.fishing.mechanics.glitch import apply_display_glitch
-            seeds_display = apply_display_glitch(seeds_display)
-        embed.add_field(name="🌱 Hạt", value=seeds_display, inline=False)
-        
-        # Display inventory items
-        if inventory:
-            # Import fish names for display
-            from cogs.fishing import ALL_FISH, GIFT_ITEMS
-            from cogs.fishing.mechanics.glitch import apply_display_glitch
-            from cogs.fishing.constants import ALL_ITEMS_DATA
-            
-            # Fish items
-            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "vat_lieu_nang_cap"}
-            if fish_items:
-                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {apply_display_glitch(str(ALL_FISH[k]['sell_price'] * v))} Hạt" for k, v in sorted(fish_items.items())])
-                # Split into multiple fields if too long (max 1024 chars per field)
-                if len(fish_text) > 1024:
-                    fish_list = sorted(fish_items.items())
-                    mid = len(fish_list) // 2
-                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[:mid]])
-                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[mid:]])
-                    embed.add_field(name="🐟 Cá (1/2)", value=part1, inline=False)
-                    embed.add_field(name="🐟 Cá (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="🐟 Cá", value=fish_text, inline=False)
-            
-            # Gift items
-            gift_lookup = {
-                "cafe": ("Cà Phê", "☕"),
-                "flower": ("Hoa", "🌹"),
-                "ring": ("Nhẫn", "💍"),
-                "gift": ("Quà", "🎁"),
-                "chocolate": ("Sô Cô La", "🍫"),
-                "card": ("Thiệp", "💌"),
-            }
-            gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
-            if gift_items:
-                if is_glitch_active():
-                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(gift_items.items())])
-                else:
-                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
-                if len(gift_text) > 1024:
-                    gift_list = sorted(gift_items.items())
-                    mid = len(gift_list) // 2
-                    if is_glitch_active():
-                        part1 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[:mid]])
-                        part2 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[mid:]])
-                    else:
-                        part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
-                        part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
-                    embed.add_field(name="💝 Quà Tặng (1/2)", value=part1, inline=False)
-                    embed.add_field(name="💝 Quà Tặng (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="💝 Quà Tặng", value=gift_text, inline=False)
-            
-            # Tool items & Consumables
-            tool_lookup = {
-                "ruong_kho_bau": ("Rương Kho Báu", "🎁"),
-                "phan_bon": ("Phân Bón", "🌾"),
-                "ngoc_trai": ("Ngọc Trai", "🔮"),
-                "vat_lieu_nang_cap": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
-                "manh_ghep_a": ("Mảnh Ghép A", "🧩"),
-                "manh_ghep_b": ("Mảnh Ghép B", "🧩"),
-                "manh_ghep_c": ("Mảnh Ghép C", "🧩"),
-                "manh_ghep_d": ("Mảnh Ghép D", "🧩"),
-                "manh_ban_do_a": ("Mảnh Bản Đồ A", "🗺️"),
-                "manh_ban_do_b": ("Mảnh Bản Đồ B", "🗺️"),
-                "manh_ban_do_c": ("Mảnh Bản Đồ C", "🗺️"),
-                "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
-                "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
-                "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
-                "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
-                "may_do_song": ("Máy Dò Sóng", "📡"),
-                # Commemorative items (season rewards)
-                "qua_ngot_mua_1": ("Quả Ngọt Mùa 1", "🍎"),
-                "qua_ngot_mua_2": ("Quả Ngọt Mùa 2", "🍏"),
-                "qua_ngot_mua_3": ("Quả Ngọt Mùa 3", "🍊"),
-                "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
-                "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
-                # Consumable buff items
-                "nuoc_tang_luc": ("Nước Tăng Lực", "💪"),
-                "gang_tay_xin": ("Găng Tay Câu Cá", "🥊"),
-                "thao_tac_tinh_vi": ("Thao Tác Tinh Vi", "🎯"),
-                "tinh_yeu_ca": ("Tình Yêu Với Cá", "❤️"),
-                "tinh_cau": ("Tinh Cầu Không Gian", "🌌"),
-            }
-            tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
-            if tool_items:
-                if is_glitch_active():
-                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(tool_items.items())])
-                else:
-                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
-                if len(tool_text) > 1024:
-                    tool_list = sorted(tool_items.items())
-                    mid = len(tool_list) // 2
-                    if is_glitch_active():
-                        part1 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[:mid]])
-                        part2 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[mid:]])
-                    else:
-                        part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
-                        part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
-                    embed.add_field(name="🛠️ Công Cụ (1/2)", value=part1, inline=False)
-                    embed.add_field(name="🛠️ Công Cụ (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="🛠️ Công Cụ", value=tool_text, inline=False)
-            
-            # Trash items
-            trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
-            if trash_items:
-                if is_glitch_active():
-                    trash_text = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
-                else:
-                    trash_text = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in sorted(trash_items.items())])
-                if len(trash_text) > 1024:
-                    trash_list = sorted(trash_items.items())
-                    mid = len(trash_list) // 2
-                    if is_glitch_active():
-                        part1 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
-                    else:
-                        part1 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[mid:]])
-                    embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
-                    embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="🗑️ Rác", value=trash_text, inline=False)
-        else:
-            embed.add_field(name="🎒 Túi Đồ", value="Trống rỗng", inline=False)
-        
-        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
         
         await interaction.followup.send(embed=embed, ephemeral=False)
 
@@ -386,147 +276,47 @@ class EconomyCog(commands.Cog):
         seeds = await self.get_user_balance_local(target_user.id)
         
         # Get inventory
-        from database_manager import get_inventory
+        from database_manager import get_inventory, get_stat
         inventory = await get_inventory(target_user.id)
         
-        # Import glitch functions at the start
-        from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
-        from cogs.fishing.constants import ALL_ITEMS_DATA
+        # Get rod data from fishing module
+        rod_data = None
+        try:
+            from cogs.fishing.mechanics.rod_system import get_rod_data
+            fishing_rod = await get_rod_data(target_user.id)
+            if fishing_rod:
+                rod_data = {
+                    'name': fishing_rod.get('name', 'Unknown'),
+                    'level': fishing_rod.get('level', 1),
+                    'durability': fishing_rod.get('durability', 0),
+                    'max_durability': fishing_rod.get('max_durability', 10)
+                }
+        except Exception as e:
+            logger.error(f"Could not fetch rod data: {e}")
         
-        embed = discord.Embed(
-            title=f"💰 Thông tin của {target_user.name}",
-            color=discord.Color.green()
+        # Get legendary fish caught
+        legendary_caught = []
+        try:
+            from cogs.fishing.constants import LEGENDARY_FISH_KEYS
+            for fish_key in LEGENDARY_FISH_KEYS:
+                caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
+                if caught and caught > 0:
+                    legendary_caught.append(fish_key)
+        except Exception as e:
+            logger.error(f"Could not fetch legendary fish data: {e}")
+        
+        # Create embed using new module
+        from cogs.fishing.commands.inventory_display import create_inventory_embed
+        embed = await create_inventory_embed(
+            user=target_user,
+            seeds=seeds,
+            inventory=inventory,
+            rod_data=rod_data,
+            legendary_fish_caught=legendary_caught
         )
-        embed.add_field(name="🌱 Hạt", value=f"**{seeds}**", inline=False)
-        
-        # Display inventory items
-        if inventory:
-            # Import fish names for display
-            from cogs.fishing import ALL_FISH, GIFT_ITEMS
-            from cogs.fishing.mechanics.glitch import apply_display_glitch
-            
-            # Fish items
-            fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "vat_lieu_nang_cap"}
-            if fish_items:
-                fish_text = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in sorted(fish_items.items())])
-                # Split into multiple fields if too long (max 1024 chars per field)
-                if len(fish_text) > 1024:
-                    fish_list = sorted(fish_items.items())
-                    mid = len(fish_list) // 2
-                    part1 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[:mid]])
-                    part2 = "\n".join([f"{ALL_FISH[k]['emoji']} **{apply_display_glitch(ALL_FISH[k]['name'])}** x{v} = {ALL_FISH[k]['sell_price'] * v} Hạt" for k, v in fish_list[mid:]])
-                    embed.add_field(name="🐟 Cá (1/2)", value=part1, inline=False)
-                    embed.add_field(name="🐟 Cá (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="🐟 Cá", value=fish_text, inline=False)
-            
-            # Gift items
-            gift_lookup = {
-                "cafe": ("Cà Phê", "☕"),
-                "flower": ("Hoa", "🌹"),
-                "ring": ("Nhẫn", "💍"),
-                "gift": ("Quà", "🎁"),
-                "chocolate": ("Sô Cô La", "🍫"),
-                "card": ("Thiệp", "💌"),
-            }
-            gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
-            if gift_items:
-                if is_glitch_active():
-                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(gift_items.items())])
-                else:
-                    gift_text = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in sorted(gift_items.items())])
-                if len(gift_text) > 1024:
-                    gift_list = sorted(gift_items.items())
-                    mid = len(gift_list) // 2
-                    if is_glitch_active():
-                        part1 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[:mid]])
-                        part2 = "\n".join([f"{gift_lookup[k][1]} **{apply_display_glitch(gift_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in gift_list[mid:]])
-                    else:
-                        part1 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[:mid]])
-                        part2 = "\n".join([f"{gift_lookup[k][1]} **{gift_lookup[k][0]}** x{v}" for k, v in gift_list[mid:]])
-                    embed.add_field(name="💝 Quà Tặng (1/2)", value=part1, inline=False)
-                    embed.add_field(name="💝 Quà Tặng (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="💝 Quà Tặng", value=gift_text, inline=False)
-            
-            # Tool items & Consumables
-            tool_lookup = {
-                "ruong_kho_bau": ("Rương Kho Báu", "🎁"),
-                "phan_bon": ("Phân Bón", "🌾"),
-                "ngoc_trai": ("Ngọc Trai", "🔮"),
-                "vat_lieu_nang_cap": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
-                "puzzle_a": ("Mảnh Ghép A", "🧩"),
-                "puzzle_b": ("Mảnh Ghép B", "🧩"),
-                "puzzle_c": ("Mảnh Ghép C", "🧩"),
-                "puzzle_d": ("Mảnh Ghép D", "🧩"),
-                "manh_ban_do_a": ("Mảnh Bản Đồ A", "🗺️"),
-                "manh_ban_do_b": ("Mảnh Bản Đồ B", "🗺️"),
-                "manh_ban_do_c": ("Mảnh Bản Đồ C", "🗺️"),
-                "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
-                "ban_do_ham_am": ("Bản Đồ Hắc Ám", "🗺️✨"),
-                "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
-                "manh_sao_bang": ("Mảnh Sao Băng", "✨🎣"),
-                "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
-                "may_do_song": ("Máy Dò Sóng", "📡"),
-                # Commemorative items (season rewards)
-                "qua_ngot_mua_1": ("Quả Ngọt Mùa 1", "🍎"),
-                "qua_ngot_mua_2": ("Quả Ngọt Mùa 2", "🍏"),
-                "qua_ngot_mua_3": ("Quả Ngọt Mùa 3", "🍊"),
-                "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
-                "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
-                # Consumable buff items
-                "nuoc_tang_luc": ("Nước Tăng Lực", "💪"),
-                "gang_tay_xin": ("Găng Tay Câu Cá", "🥊"),
-                "thao_tac_tinh_vi": ("Thao Tác Tinh Vi", "🎯"),
-                "tinh_yeu_ca": ("Tình Yêu Với Cá", "❤️"),
-                "tinh_cau": ("Tinh Cầu Không Gian", "🌌"),
-            }
-            tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
-            if tool_items:
-                if is_glitch_active():
-                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in sorted(tool_items.items())])
-                else:
-                    tool_text = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in sorted(tool_items.items())])
-                if len(tool_text) > 1024:
-                    tool_list = sorted(tool_items.items())
-                    mid = len(tool_list) // 2
-                    if is_glitch_active():
-                        part1 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[:mid]])
-                        part2 = "\n".join([f"{tool_lookup[k][1]} **{apply_display_glitch(tool_lookup[k][0])}** x{apply_display_glitch(str(v))}" for k, v in tool_list[mid:]])
-                    else:
-                        part1 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[:mid]])
-                        part2 = "\n".join([f"{tool_lookup[k][1]} **{tool_lookup[k][0]}** x{v}" for k, v in tool_list[mid:]])
-                    embed.add_field(name="🛠️ Công Cụ (1/2)", value=part1, inline=False)
-                    embed.add_field(name="🛠️ Công Cụ (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="🛠️ Công Cụ", value=tool_text, inline=False)
-            
-            # Trash items
-            trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
-            if trash_items:
-                if is_glitch_active():
-                    trash_text = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in sorted(trash_items.items())])
-                else:
-                    trash_text = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in sorted(trash_items.items())])
-                if len(trash_text) > 1024:
-                    trash_list = sorted(trash_items.items())
-                    mid = len(trash_list) // 2
-                    if is_glitch_active():
-                        part1 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{apply_display_glitch(ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' ')))}** x{apply_display_glitch(str(v))}" for k, v in trash_list[mid:]])
-                    else:
-                        part1 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[:mid]])
-                        part2 = "\n".join([f"**{ALL_ITEMS_DATA.get(k, {}).get('name', k.replace('trash_', '').replace('_', ' '))}** x{v}" for k, v in trash_list[mid:]])
-                    embed.add_field(name="🗑️ Rác (1/2)", value=part1, inline=False)
-                    embed.add_field(name="🗑️ Rác (2/2)", value=part2, inline=False)
-                else:
-                    embed.add_field(name="🗑️ Rác", value=trash_text, inline=False)
-        else:
-            embed.add_field(name="🎒 Túi Đồ", value="Trống rỗng", inline=False)
-        
-        embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else target_user.default_avatar.url)
         
         await ctx.send(embed=embed)
+
     async def leaderboard(self, interaction: discord.Interaction):
         """Show leaderboard"""
         await interaction.response.defer(ephemeral=True)
