@@ -96,8 +96,12 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
     
     # ==================== INVENTORY ITEMS ====================
     if inventory:
-        # FISH
-        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k not in LEGENDARY_FISH_KEYS}
+        # FISH - Exclude items that are shown in other sections
+        # ruong_kho_bau and vat_lieu_nang_cap are shown in Tools, not Fish
+        fish_items = {k: v for k, v in inventory.items() 
+                     if k in ALL_FISH 
+                     and k not in LEGENDARY_FISH_KEYS
+                     and k not in ["ruong_kho_bau", "vat_lieu_nang_cap"]}  # Exclude tools from fish display
         if fish_items:
             fish_lines = []
             for key, qty in sorted(fish_items.items())[:15]:  # Limit to 15 to avoid overflow

@@ -7,6 +7,7 @@ import random
 import time
 import asyncio
 import discord
+from datetime import datetime
 
 from database_manager import get_inventory, add_seeds, db_manager, get_stat, increment_stat, remove_item
 from ..constants import ALL_FISH, LEGENDARY_FISH_KEYS, COMMON_FISH_KEYS, RARE_FISH_KEYS
@@ -31,14 +32,33 @@ async def _should_auto_sell_item(user_id: int, item_key: str) -> bool:
     """
     from database_manager import get_rod_data, get_stat
     
-    # Define protected items inline to avoid import issues
+    # COMPREHENSIVE protected items list
+    # Import would be ideal but avoiding circular dependency
     PROTECTED_ITEMS = {
-        # Chests & containers
+        # === CHESTS (CRITICAL - User reported bug) ===
+        "ruong_kho_bau",  # Main treasure chest from fishing events
         "ruong_go", "ruong_bac", "ruong_vang", "ruong_kim_cuong",
-        # Consumables  
-        "moi", "co_bon_la", "phan_bon",
-        # Crafting materials (always protected)
-        "card", "cafe"
+        
+        # === GIFTS (For trading/giving) ===
+        "cafe", "flower", "ring", "gift", "chocolate", "card",
+        
+        # === CONSUMABLES (Bait & Buffs) ===
+        "moi",  # Worm (bait)
+        "co_bon_la",  # Four-leaf clover
+        "phan_bon",  # Fertilizer (for tree)
+        "nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca", "tinh_cau",
+        
+        # === LEGENDARY COMPONENTS (Rare crafting) ===
+        "long_vu_lua",  # Phoenix feather
+        
+        # === PUZZLE PIECES (Quest items) ===
+        "manh_ghep_a", "manh_ghep_b", "manh_ghep_c", "manh_ghep_d",
+        
+        # === COMMEMORATIVE (Season rewards - never sellable) ===
+        "qua_ngot_mua_1", "qua_ngot_mua_2", "qua_ngot_mua_3", "qua_ngot_mua_4", "qua_ngot_mua_5",
+        
+        # === SPECIAL (Manual sell only via /banca ngoc_trai) ===
+        "ngoc_trai",  # Pearl
     }
     
     # Always forbid protected items
@@ -303,65 +323,72 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         final_value = int(adjusted_total * server_boost_mul)
         
         # ==================== BUILD EMBED ====================
+        # ==================== BUILD EMBED (REDESIGN) ====================
+        # Receipt Style Design
         embed = discord.Embed(
-            title=f"💰 {username} Bán Cá",
-            description="",
-            color=discord.Color.green()
+            title=f"🧾 HÓA ĐƠN BÁN CÁ - {username}",
+            description=f"Thời gian: {datetime.now().strftime('%H:%M %d/%m/%Y')}",
+            color=discord.Color.gold()
         )
         
-        # 1. LIST OF FISH
-        fish_list_str = ""
+        # 1. DETAILED FISH LIST
+        # Format: 🐟 Cá Chép x5 = 500 Hạt
+        fish_lines = []
         if len(fish_sold) <= 20:
             for fish_key, details in fish_sold.items():
                 fish_name = _glitch(ALL_FISH[fish_key]["name"])
                 emoji = ALL_FISH[fish_key].get("emoji", "🐟")
-                # Format: 🐟 Cá Chép x5 (100 Hạt)
-                # If multiplier is active, show original price ? User said "hiển thị rõ mỗi con cá bán dc bao tiền"
-                # Showing Base Unit Price * Quantity?
-                # Or Showing Final amount for that line?
-                # Let's show: Emoji Name xQty (Base Total)
-                fish_list_str += f"{emoji} **{fish_name}** x{details['quantity']}\n"
-        else:
-            fish_list_str = f"**Tổng {len(fish_sold)} loại cá** (quá nhiều để hiển thị chi tiết)"
-            
-        fish_list_str += f"\n----------------\n**💵 Tổng gốc:** {total_value} Hạt"
-        embed.description = fish_list_str
-        
-        # 2. EVENT FIELD (If triggered)
-        if event_result.get("triggered"):
-            event_name = event_result.get("message", "Sự Kiện") # Use message/name as title
-            # Describe effect
-            effects = []
-            if price_multiplier != 1.0:
-                effects.append(f"Giá x{price_multiplier:.2f}")
-            if flat_bonus != 0:
-                sign = "+" if flat_bonus > 0 else ""
-                effects.append(f"{sign}{flat_bonus} Hạt")
-            if "special" in event_result:
-                effects.append("🎁 Quà Tặng")
+                qty = details['quantity']
+                # Calculate line total (Base Price * Qty)
+                # Note: This is BASE price. Modifiers are applied to the total sum later.
+                # To be clear, we show Base Total here.
+                line_total = details['unit_price'] * qty
                 
-            effect_str = " | ".join(effects) if effects else "Hiệu ứng ẩn"
-            embed.add_field(
-                name=f"🎲 Sự Kiện: {event_name}",
-                value=f"{effect_str}\n*(Sau sự kiện: {adjusted_total} Hạt)*",
-                inline=False
-            )
+                fish_lines.append(f"{emoji} **{fish_name}** x{qty} = `{line_total:,} Hạt`")
+        else:
+            fish_lines.append(f"📦 **Tổng {len(fish_sold)} loại cá** (Danh sách quá dài...)")
             
-        # 3. SERVER BOOST FIELD
-        if is_boosted:
-             embed.add_field(
-                name="🌳 Cây Server",
-                value="🌟 **ĐANG BOOST (x2)**\n*(Buff từ Cây Hiên Nhà)*",
-                inline=False
-            )
+        # Join lines
+        items_content = "\n".join(fish_lines)
+        if len(items_content) > 1000: # Safety truncation
+             items_content = items_content[:900] + "\n... (danh sách quá dài)"
+             
+        embed.add_field(name="📋 Chi Tiết Đơn Hàng", value=items_content, inline=False)
         
-        # 4. FINAL TOTAL (Footer or Field)
-        # Using a field is clearer
+        # 2. CALCULATION BREAKDOWN
+        # Show clearer math: Base -> Event/Buff -> Boost -> Final
+        breakdown_lines = []
+        breakdown_lines.append(f"💵 **Tổng Gốc:** `{total_value:,} Hạt`")
+        
+        # Buffs/Events
+        if price_multiplier != 1.0 or flat_bonus != 0:
+            buff_text = []
+            if price_multiplier > 1.0: buff_text.append(f"x{price_multiplier:.1f} (Event/Buff)")
+            if price_multiplier < 1.0: buff_text.append(f"x{price_multiplier:.1f} (Giá Giảm)")
+            if flat_bonus != 0: 
+                sign = "+" if flat_bonus > 0 else ""
+                buff_text.append(f"{sign}{flat_bonus} Hạt")
+            
+            breakdown_lines.append(f"� **Biến Động:** {' | '.join(buff_text)}")
+            if event_result.get("triggered"):
+                 breakdown_lines.append(f"   _(Sự kiện: {event_result.get('message', 'Unknown')})_")
+        
+        # Server Boost
+        if is_boosted:
+            breakdown_lines.append(f"🌳 **Cây Server:** x{server_boost_mul:.1f} (Buff Toàn Server)")
+            
+        embed.add_field(name="📊 Tổng Kết", value="\n".join(breakdown_lines), inline=False)
+        
+        # 3. FINAL TOTAL (Big & Bold)
         embed.add_field(
-            name="💰 TỔNG NHẬN",
-            value=f"# **{final_value} Hạt**",
+            name="� TỔNG NHẬN",
+            value=f"# +{final_value:,} Hạt",
             inline=False
         )
+        
+        embed.set_footer(text="Cảm ơn đã ủng hộ vựa cá Bà Năm! 🐟")
+        if is_boosted:
+            embed.set_thumbnail(url="https://media.discordapp.net/attachments/1253945310690934835/1265842340535308369/tree_buff.png") # Optional visual flair
         
         # Handle Special Item rewards
         reward_msg = ""

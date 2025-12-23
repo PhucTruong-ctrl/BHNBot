@@ -641,6 +641,36 @@
       "type": "bad",
       "name": "🚽 Tào Tháo 2!",
       "effect": "cooldown_medium"
+    },
+    "skibidi_toilet": {
+      "chance": 0.003,
+      "type": "bad",
+      "name": "🚽 Skibidi Toilet!",
+      "effect": "lose_turn"
+    },
+    "italian_brainrot": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "🇮🇹 Italian Brainrot!",
+      "effect": "duplicate_catch_2"
+    },
+    "ai_cat_drama": {
+      "chance": 0.005,
+      "type": "neutral",
+      "name": "😺 AI Cat Drama!",
+      "effect": "blind_box"
+    },
+    "pookie_couple": {
+      "chance": 0.004,
+      "type": "good",
+      "name": "💕 Pookie Couple!",
+      "effect": "lucky_buff"
+    },
+    "labubu_found": {
+      "chance": 0.002,
+      "type": "good",
+      "name": "🧸 Câu Được Labubu!",
+      "effect": "gain_money_huge"
     }
   },
   "messages": {
@@ -750,6 +780,11 @@
     "scrap_metal": "Vớt được đống sắt vụn từ vệ tinh Starlink rớt. Đem về 'độ' cần câu thì hết nước chấm! 📡✨",
     "diving_gear": "Thấy cái bóng loáng thoáng, lặn xuống mò được túi đồ nghề kim cương của Shark Hưng bỏ quên! 💎🔧",
     "kraken_puke": "Con Kraken bị say sóng ói ra nguyên đống hợp kim Vibranium. Nhặt lẹ về cường hóa cần câu! 🐙🤮",
-    "keo_ly_npc": "Gặp một cô gái/chàng trai vừa xinh/đẹp trai vừa 'keo lỳ'. Họ liên tục nhắn tin 'anh/em ơi', khiến bạn cảm thấy được yêu thương! Hiệu ứng: **BÁN CÁ X2 TIỀN TRONG 10 PHÚT!** 💅💕"
+    "keo_ly_npc": "Gặp một cô gái/chàng trai vừa xinh/đẹp trai vừa 'keo lỳ'. Họ liên tục nhắn tin 'anh/em ơi', khiến bạn cảm thấy được yêu thương! Hiệu ứng: **BÁN CÁ X2 TIỀN TRONG 10 PHÚT!** 💅💕",
+    "skibidi_toilet": "Một cái đầu nhô ra từ toilet biển! 🚽 Nó hát 'Skibidi dop dop yes yes' làm bạn choáng váng, quên mất lần câu này! 🎵😵",
+    "italian_brainrot": "Cá mà bạn câu được đột nhiên đội mũ chef, uống espresso! 'Mamma Mia!' AI bị lỗi, cá nhân bản đôi! 🦈☕👨‍🍳",
+    "ai_cat_drama": "Một con mèo AI nổi lên: 'Tôi bị phản bội bởi chị dâu tôi!' Kịch càng drama, bạn nhận hộp quà ngẫu nhiên! 😿🎭",
+    "pookie_couple": "Một cặp đôi 'Pookie' đi qua: 'Pookie ơi câu cá giúp Pookie đi!' Vibe tình yêu tràn ngập, bạn được buff may mắn! 💑✨",
+    "labubu_found": "Câu được con thú nhồi bông Labubu nguyên bản! Giới mê LabubuCollection săn lùng, trả giá cực cao! 💰🧸✨"
   }
 }
