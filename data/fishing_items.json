@@ -405,7 +405,7 @@
       "key": "manh_ban_do_a",
       "name": "Mảnh Bản Đồ A",
       "emoji": "🗺️",
-      "sell_price": 0,
+      "sell_price": 50,
       "description": "Một góc giấy nhăn nheo, nhìn chả hiểu vẽ cái gì."
     },
     "manh_ban_do_b": {
@@ -413,7 +413,7 @@
       "key": "manh_ban_do_b",
       "name": "Mảnh Bản Đồ B",
       "emoji": "🗺️",
-      "sell_price": 0,
+      "sell_price": 50,
       "description": "Vẽ đường đi nước bước, nhưng thiếu 3 mảnh kia thì chịu."
     },
     "manh_ban_do_c": {
@@ -421,7 +421,7 @@
       "key": "manh_ban_do_c",
       "name": "Mảnh Bản Đồ C",
       "emoji": "🗺️",
-      "sell_price": 0,
+      "sell_price": 50,
       "description": "Có vẻ như nó chỉ dẫn đến một kho báu... hoặc một bãi rác."
     },
     "manh_ban_do_d": {
@@ -429,7 +429,7 @@
       "key": "manh_ban_do_d",
       "name": "Mảnh Bản Đồ D",
       "emoji": "🗺️",
-      "sell_price": 0,
+      "sell_price": 50,
       "description": "Mảnh ghép nhân phẩm cuối cùng. Gom đủ đi rồi tính."
     },
     "cafe": {
@@ -549,7 +549,7 @@
       "key": "ban_do_ham_am",
       "name": "Bản Đồ Hắc Ám",
       "emoji": "🌑",
-      "sell_price": 0,
+      "sell_price": 300,
       "description": "Tấm bản đồ toát lên khí tức u ám, chỉ lối đến nơi say ngủ của cổ thần đáy biển (Hiệu lực 10 lượt)."
     },
     "may_do_song": {
@@ -557,7 +557,7 @@
       "key": "may_do_song",
       "name": "Máy Dò Sóng",
       "emoji": "📡",
-      "sell_price": 0,
+      "sell_price": 200,
       "description": "Thiết bị chuyên dụng để tìm kiếm tần số âm thanh cô đơn nhất đại dương."
     },
     "tinh_cau": {

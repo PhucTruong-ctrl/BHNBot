@@ -16,6 +16,58 @@ from ..mechanics.events import trigger_random_event
 logger = logging.getLogger("fishing")
 
 
+async def _should_auto_sell_item(user_id: int, item_key: str) -> bool:
+    """Determine if item should be auto-sold based on player achievements.
+    
+    Protected items (chests, materials, commemorative, consumables) are never auto-sold.
+    Some items can be sold conditionally after achieving specific milestones.
+    
+    Args:
+        user_id (int): Discord user ID
+        item_key (str): Item key to check
+        
+    Returns:
+        bool: True if item can be auto-sold, False if protected
+    """
+    from .constants import PROTECTED_ITEMS
+    from database_manager import get_rod_data, get_stat
+    
+    # Always forbid protected items
+    if item_key in PROTECTED_ITEMS:
+        return False
+    
+    # === Conditional Items (can sell after achievements) ===
+    
+    # Upgrade materials: Only sell if rod is max level (7)
+    if item_key == "vat_lieu_nang_cap":
+        rod_level, _ = await get_rod_data(user_id)
+        return rod_level >= 7
+    
+    # Map fragments & dark map: Only sell after catching Cthulhu
+    if item_key in ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d", "ban_do_ham_am"]:
+        cthulhu_caught = await get_stat(user_id, "ca_cthulhu_non")
+        return cthulhu_caught and cthulhu_caught > 0
+    
+    # Meteor fragments: Only sell after catching Galaxy Fish AND max rod level
+    if item_key == "manh_sao_bang":
+        galaxy_caught = await get_stat(user_id, "ca_ngan_ha")
+        rod_level, _ = await get_rod_data(user_id)
+        return (galaxy_caught and galaxy_caught > 0) and rod_level >= 7
+    
+    # Sonic detector: Only sell after catching 52 Hz Whale
+    if item_key == "may_do_song":
+        whale_caught = await get_stat(user_id, "ca_voi_52_hz")
+        return whale_caught and whale_caught > 0
+    
+    # Phoenix feather: Only sell after catching Phoenix
+    if item_key == "long_vu_lua":
+        phoenix_caught = await get_stat(user_id, "ca_phuong_hoang")
+        return phoenix_caught and phoenix_caught > 0
+    
+    # Default: allow selling (regular fish items)
+    return True
+
+
 async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
     """Sell all fish or specific types logic with RANDOM EVENTS
     
@@ -69,8 +121,19 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         # Get inventory
         inventory = await get_inventory(user_id)
         
-        # Filter fish items by type (exclude rod materials from selling)
-        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and k != "vat_lieu_nang_cap"}
+        # ==================== FILTER SELLABLE ITEMS ====================
+        # Start with items that are in ALL_FISH (fish + special items from fishing)
+        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
+        
+        # Apply achievement-based filter for protected/conditional items
+        # This will exclude: chests, materials, commemorative items, consumables
+        # And conditionally allow: upgrade materials (rod lv7), map fragments (after Cthulhu), etc.
+        sellable_items = {}
+        for item_key, quantity in fish_items.items():
+            if await _should_auto_sell_item(user_id, item_key):
+                sellable_items[item_key] = quantity
+        
+        fish_items = sellable_items
         
         # ==================== CHECK FOR LEGENDARY FISH ====================
         # Remove legendary fish from sellable items (exclude ca_isekai as it's from consumables)
@@ -84,12 +147,6 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             # Remove legendary fish from sellable items
             for legend_key in legendary_fish_in_inventory.keys():
                 del fish_items[legend_key]
-        
-        # ==================== EXCLUDE CRAFTING MATERIALS ====================
-        # Remove ngoc_trai from auto-sell (can only be sold explicitly via /banca ngoc_trai)
-        # ngoc_trai is used for crafting Tinh Cau (Galaxy Fish summoning)
-        if "ngoc_trai" in fish_items and not fish_types:
-            del fish_items["ngoc_trai"]
         
         # If fish_types specified, filter to only those types
         if fish_types:
