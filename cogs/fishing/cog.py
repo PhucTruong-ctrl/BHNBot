@@ -1027,7 +1027,7 @@ class FishingCog(commands.Cog):
                             continue # Skip bad event logic if no trash items
 
                         trash = random.choice(TRASH_ITEMS)
-                        item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
+                        item_key = trash.get("key", f"trash_{trash['name'].lower().replace(' ', '_')}")
                         await self.add_inventory_item(user_id, item_key, "trash")
                         # Track for embed
                         if item_key not in trash_items: trash_items[item_key] = 0
@@ -1178,33 +1178,17 @@ class FishingCog(commands.Cog):
                     fish_name = self.apply_display_glitch(fish['name'])
                     fish_display.append(f"{emoji} {fish_name} x{qty} ({total_price} Hạt)")
         
-                # Process trash (độc lập)
+                # Process trash (independent)
                 if trash_count > 0:
-                    trash_items_caught = {}
                     for _ in range(trash_count):
                         trash = random.choice(TRASH_ITEMS)
-                        item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
+                        item_key = trash.get("key", f"trash_{trash['name'].lower().replace(' ', '_')}")
                         await self.add_inventory_item(user_id, item_key, "trash")
-                        if item_key not in trash_items_caught:
-                            trash_items_caught[item_key] = 0
-                        trash_items_caught[item_key] += 1
-            
-                    # Determine if only trash was caught
-                    only_trash = not fish_only_items and chest_count == 0
-            
-                    for key, qty in trash_items_caught.items():
-                        if only_trash:
-                            trash_info = ALL_FISH.get(key, {"description": "Unknown trash", "emoji": "🥾", "name": "Unknown trash"})
-                            trash_desc = trash_info.get('description', 'Unknown trash')
-                            trash_emoji = trash_info.get('emoji', '🥾')
-                            trash_name = trash_info.get('name', 'Unknown trash')
-                            fish_display.append(f"{trash_emoji} {self.apply_display_glitch(trash_name)} - {self.apply_display_glitch(trash_desc)}")
-                        else:
-                            # Get proper trash name from ALL_ITEMS_DATA
-                            # from .constants import ALL_ITEMS_DATA  <-- REMOVED to fix UnboundLocalError
-                            trash_data = ALL_ITEMS_DATA.get(key, {})
-                            trash_name = trash_data.get('name', key.replace("trash_", "").replace("_", " ").title())
-                            fish_display.append(f"🗑️ {self.apply_display_glitch(trash_name)} x{qty}")
+                        
+                        # Populate main trash_items dict for central embed generation
+                        if item_key not in trash_items:
+                            trash_items[item_key] = 0
+                        trash_items[item_key] += 1
             
                     # Track trash caught for achievement
                     try:

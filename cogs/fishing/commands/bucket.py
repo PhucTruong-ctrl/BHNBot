@@ -85,14 +85,23 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     user_luck = await cog.get_user_total_luck(user_id)
     
     # Base item count weights: 0, 1, 2, 3 items per chest
-    base_weights = [30, 45, 20, 5]
-    rod_bonus = (rod_level - 1) * 5
-    base_weights[0] = max(5, base_weights[0] - rod_bonus)
-    base_weights[2] += rod_bonus
+    # Base item count weights: 1, 2, 3, 4 items per chest (No more empty chests!)
+    # Weights: 50% for 1, 35% for 2, 12% for 3, 3% for 4
+    base_weights = [50, 35, 12, 3]
+    rod_bonus = (rod_level - 1) * 2 # Reduced bonus scaling to prevent too many items
     
+    # Shift weights towards higher counts based on rod level
+    if rod_level > 1:
+        base_weights[0] = max(10, base_weights[0] - rod_bonus * 2)
+        base_weights[1] = max(20, base_weights[1] - rod_bonus)
+        base_weights[2] += rod_bonus * 2
+        base_weights[3] += rod_bonus
+
     luck_factor = max(0, user_luck)
-    base_weights[2] = int(base_weights[2] * (1 + luck_factor))
-    base_weights[3] = int(base_weights[3] * (1 + luck_factor * 2))
+    # Luck further shifts to higher item counts
+    if luck_factor > 0:
+        base_weights[2] = int(base_weights[2] * (1 + luck_factor))
+        base_weights[3] = int(base_weights[3] * (1 + luck_factor * 2))
     
     # Loot Keys & Weights
     loot_keys = list(CHEST_LOOT.keys())
@@ -105,7 +114,9 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             multiplier = 1.0 + max(0, user_luck * 1.5)
             loot_weights.append(base_weight * multiplier)
         elif "trash" in item or item in trash_key_list:
-            multiplier = max(0.1, 1.0 - max(0, user_luck))
+            # Drastically reduce trash weight (Base 0.3 instead of 1.0)
+            # Trash should be filler, not main loot
+            multiplier = max(0.05, 0.3 - max(0, user_luck * 0.5))
             loot_weights.append(base_weight * multiplier)
         else:
             loot_weights.append(base_weight)
