@@ -938,6 +938,7 @@ class FishingCog(commands.Cog):
                 # Build summary display and process all results
                 fish_display = []
                 fish_only_items = {}
+                trash_items = {}  # Track specific trash items
         
                 # FIX: Track if rare fish already caught this turn (Max 1 rare per cast)
                 caught_rare_this_turn = False
@@ -1007,6 +1008,8 @@ class FishingCog(commands.Cog):
                         item_key = trash.get("key", f"trash_{hash(str(trash)) % 1000}")
                         try:
                             await self.add_inventory_item(user_id, item_key, "trash")
+                            if item_key not in trash_items: trash_items[item_key] = 0
+                            trash_items[item_key] += 1
                             logger.info(f"[DISASTER_TRASH] {username} caught trash: {item_key} due to {self.current_disaster.get('name', 'disaster')}")
                         except Exception as e:
                             logger.info(f"[FISHING] [ERROR] Failed to add trash item {item_key} for {username}: {e}")
@@ -1018,6 +1021,8 @@ class FishingCog(commands.Cog):
                         trash = random.choice(TRASH_ITEMS)
                         item_key = f"trash_{trash['name'].lower().replace(' ', '_')}"
                         await self.add_inventory_item(user_id, item_key, "trash")
+                        if item_key not in trash_items: trash_items[item_key] = 0
+                        trash_items[item_key] += 1
                         logger.info(f"[EVENT-POLLUTION] {username} fish converted to trash: {item_key}")
                         continue
             
@@ -1177,8 +1182,11 @@ class FishingCog(commands.Cog):
                             trash_name = trash_info.get('name', 'Unknown trash')
                             fish_display.append(f"{trash_emoji} {self.apply_display_glitch(trash_name)} - {self.apply_display_glitch(trash_desc)}")
                         else:
-                            trash_name = key.replace("trash_", "").replace("_", " ").title()
-                            fish_display.append(f"🥾 {self.apply_display_glitch(trash_name)} x{qty}")
+                            # Get proper trash name from ALL_ITEMS_DATA
+                            from .constants import ALL_ITEMS_DATA
+                            trash_data = ALL_ITEMS_DATA.get(key, {})
+                            trash_name = trash_data.get('name', key.replace("trash_", "").replace("_", " ").title())
+                            fish_display.append(f"🗑️ {self.apply_display_glitch(trash_name)} x{qty}")
             
                     # Track trash caught for achievement
                     try:
@@ -1462,8 +1470,16 @@ class FishingCog(commands.Cog):
                     items_value += f"🎁 **Rương Kho Báu** x{chest_count}\n"
                 
                 # Group trash
-                if trash_count > 0:
-                    items_value += f"🗑️ **Rác** x{trash_count}\n"
+                # Ungrouped trash display
+                if trash_items:
+                    for trash_key, qty in trash_items.items():
+                        trash_info = ALL_ITEMS_DATA.get(trash_key, {})
+                        trash_name = trash_info.get("name", "Rác")
+                        trash_name = self.apply_display_glitch(trash_name)
+                        items_value += f"🗑️ **{trash_name}** x{qty}\n"
+                elif trash_count > 0: # Fallback
+                     trash_name = self.apply_display_glitch("Rác")
+                     items_value += f"🗑️ **{trash_name}** x{trash_count}\n"
                 
                 # If nothing caught
                 if not items_value:

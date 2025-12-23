@@ -1339,13 +1339,6 @@
         "category": "rare"
       },
       {
-        "key": "ruong_kho_bau",
-        "name": "Rương Kho Báu",
-        "emoji": "💰",
-        "sell_price": 200,
-        "category": "rare"
-      },
-      {
         "key": "ca_than",
         "name": "Cá Thần",
         "emoji": "✨",
@@ -1396,9 +1389,9 @@
       }
     ],
     "metadata": {
-      "total": 199,
+      "total": 198,
       "common": 100,
-      "rare": 99,
+      "rare": 98,
       "note": "Common and Rare fish only. Legendary fish in separate legendaryFish_data.json"
     }
   }

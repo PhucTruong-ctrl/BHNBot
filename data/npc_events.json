@@ -376,5 +376,146 @@
       "decline": "Bạn bật lại hắn! Hắn sợ quá bỏ chạy và làm rơi lại đồ.\n**Nhận 5 Vật Liệu** (Nếu may mắn) hoặc **Gãy Cần** (Nếu xui)."
     },
     "cost": "fish"
+  },
+  "skibidi_boss": {
+    "name": "🚽 Skibidi Toilet Boss",
+    "description": "Một cái đầu khổng lồ từ toilet giữa hồ. Nó hát 'brr skibidi dop dop'.\n'Đưa cá ta mới cho ngươi đi!'",
+    "question": "**Đưa cá để thoát khỏi ma ám Skibidi?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/catbegging.png",
+    "chance": 0.12,
+    "rewards": {
+      "accept": [
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 5,
+          "chance": 0.6,
+          "message": "Toilet nuốt cá rồi ọe ra 5 Vật Liệu Vibranium! 🚽✨"
+        },
+        {
+          "type": "cursed",
+          "amount": 30,
+          "chance": 0.4,
+          "message": "Toilet xả nước làm cần câu của bạn ướt sũng! Giảm 30 độ bền! 💦"
+        }
+      ],
+      "decline": "Toilet giận dữ hát to hơn làm bạn choáng tai 10 giây."
+    },
+    "cost": "fish"
+  },
+  "ai_cat_therapist": {
+    "name": "😺 AI Cat Therapist",
+    "description": "Một con mèo AI xuống nước: 'Tôi là bác sĩ tâm lý. Bạn có vấn đề gì không? Kể cho tôi nghe! Phí tư vấn: 100 Hạt.'",
+    "question": "**Trả tiền để mèo AI giúp bạn giải tỏa stress?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/catbegging.png",
+    "chance": 0.15,
+    "rewards": {
+      "accept": [
+        {
+          "type": "legendary_buff",
+          "duration": 10,
+          "chance": 0.5,
+          "message": "Mèo AI tư vấn xong, bạn enlightened! Buff cá hiếm 10 lần câu! 😺💡"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "Mèo AI chỉ nói: 'Skill issue.' rồi block bạn. Mất tiền oan! 😿"
+        }
+      ],
+      "decline": "Mèo AI: 'Bạn cần therapy nhưng không muốn đầu tư vào bản thân à?'"
+    },
+    "cost": 100
+  },
+  "pookie_sponsor": {
+    "name": "💕 Pookie Sugar Sponsor",
+    "description": "Một người lạ ngọt ngào: 'Pookie ơi, anh/chị thấy em câu cá vất vả quá! Anh/chị cho em tiền mua cần mới đi Pookie!'",
+    "question": "**Nhận tiền từ 'Pookie' stranger không?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/richkid.png",
+    "chance": 0.1,
+    "rewards": {
+      "accept": [
+        {
+          "type": "money",
+          "amount": 1000,
+          "chance": 0.3,
+          "message": "Họ thật lòng! Chuyển 1000 Hạt: 'Pookie mua gì cũng được!' 💝💰"
+        },
+        {
+          "type": "cursed",
+          "amount": 40,
+          "chance": 0.4,
+          "message": "Hóa ra là catfish! Họ trộm luôn cần câu của bạn! (-40 Độ bền) 💔"
+        },
+        {
+          "type": "worm",
+          "amount": 10,
+          "chance": 0.3,
+          "message": "Họ chỉ cho 10 con giun rồi bỏ đi. Red flag! 🚩"
+        }
+      ],
+      "decline": "'Pookie không yêu anh/chị à?' - Họ khóc lóc bỏ đi."
+    },
+    "cost": "cooldown_2min"
+  },
+  "nano_photographer": {
+    "name": "📸 Nano Banana Pro",
+    "description": "Người nhiếp ảnh chuyên nghiệp: 'Tôi đang làm project Nano Banana! Cho tôi chụp con cá này, tôi sẽ trả công!'",
+    "question": "**Cho họ chụp cá bằng app Nano Banana?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/idol.png",
+    "chance": 0.15,
+    "rewards": {
+      "accept": [
+        {
+          "type": "money",
+          "amount": 300,
+          "chance": 0.5,
+          "message": "Tác phẩm Nano Banana viral! Họ chia sẻ doanh thu! 🍌📸 (+300 Hạt)"
+        },
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 3,
+          "chance": 0.3,
+          "message": "Họ tặng bạn 3 Vật Liệu để cảm ơn! 🎁"
+        },
+        {
+          "type": "lucky_buff",
+          "chance": 0.2,
+          "message": "Bạn nổi tiếng trên app! Buff may mắn! ✨"
+        }
+      ],
+      "decline": "Họ thất vọng: 'Missed opportunity...'"
+    },
+    "cost": "fish"
+  },
+  "gorilla_judge": {
+    "name": "🦍 The Gorilla Judge",
+    "description": "Một chú Gorilla khổng lồ ngồi trên ghế vua:\n'Con người! Trả lời ta: 100 người vs Ta, ai thắng? Trả lời đúng ta cho thưởng!'",
+    "question": "**Chọn: '100 Men Win' hay 'Gorilla Wins'?**",
+    "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/gymbro.png",
+    "chance": 0.08,
+    "rewards": {
+      "accept": [
+        {
+          "type": "money",
+          "amount": 500,
+          "chance": 0.4,
+          "message": "Đáp 'Gorilla thắng chứ sao!' - Gorilla vui tặng 500 Hạt! 🦍👑"
+        },
+        {
+          "type": "rod_durability",
+          "amount": 50,
+          "chance": 0.3,
+          "message": "Gorilla khen bạn thông minh, sửa cần câu cho! (+50 Độ bền) 🔧"
+        },
+        {
+          "type": "cursed",
+          "amount": 30,
+          "chance": 0.3,
+          "message": "Đáp 'Con người thắng!' - Gorilla tức giận đấm cần câu gãy! (-30 Độ bền) 💢"
+        }
+      ],
+      "decline": "Gorilla thất vọng, quăng chuối vào mặt bạn rồi rời đi. 🍌"
+    },
+    "cost": "fish"
   }
 }

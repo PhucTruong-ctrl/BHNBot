@@ -674,6 +674,41 @@
       "flat": 0,
       "name": "Fan Donate!",
       "special": "vat_lieu_nang_cap"
+    },
+    "holy_airball": {
+      "chance": 0.006,
+      "type": "bad",
+      "mul": 0.6,
+      "flat": 0,
+      "name": "🏀 Holy Airball!"
+    },
+    "employee_panic": {
+      "chance": 0.005,
+      "type": "bad",
+      "mul": 1.0,
+      "flat": -150,
+      "name": "📋 Employee Panic!"
+    },
+    "nano_banana": {
+      "chance": 0.004,
+      "type": "good",
+      "mul": 1.4,
+      "flat": 0,
+      "name": "🍌 Nano Banana!"
+    },
+    "lush_life": {
+      "chance": 0.005,
+      "type": "good",
+      "mul": 1.3,
+      "flat": 100,
+      "name": "💃 Lush Life Flex!"
+    },
+    "gorilla_debate": {
+      "chance": 0.003,
+      "type": "mixed",
+      "mul": 1.0,
+      "flat": 0,
+      "name": "🦍 Gorilla Debate!"
     }
   },
   "messages": {
@@ -771,6 +806,11 @@
     "startup_invest": "🦈 Shark Bình thấy sạp cá của bạn có tiềm năng Unicorn nên tặng gói hỗ trợ start-up. (Nhận Vật Liệu)",
     "green_recycle": "♻️ Tổ chức GreenPeace tuyên dương bạn vì dùng lá chuối gói cá thay túi nilon. (Nhận Vật Liệu)",
     "trash_exchange": "🗑️ Chương trình 'Đổi Vảy Cá Lấy Quà' của phường. Bạn gom hết vảy cá đi đổi. (Nhận Vật Liệu)",
-    "fan_donate": "🖥️ Một Fan cứng là chủ tiệm Net thanh lý dàn máy, gửi tặng bạn mớ linh kiện cũ để 'độ' cần câu. (Nhận Vật Liệu)"
+    "fan_donate": "🖥️ Một Fan cứng là chủ tiệm Net thanh lý dàn máy, gửi tặng bạn mớ linh kiện cũ để 'độ' cần câu. (Nhận Vật Liệu)",
+    "holy_airball": "Bạn định giá cá như Michael Jordan nhưng... 'HOLY F—ING AIRBALL!' Trượt phát rớt giá thê thảm! 🏀💸 (Giảm 40%)",
+    "employee_panic": "Đang bán cá thì được công ty gọi: 'Chúc mừng nhân viên xuất sắc!' Chuyển sang... AAAAAHHH!!! Stress quá làm rơi tiền! 😱📋 (Mất 150 Hạt)",
+    "nano_banana": "Khách chụp ảnh cá qua app Nano Banana, tạo thành 3D figurine siêu cute! Viral TikTok, giá tăng vọt! 🍌📱✨ (Tăng 40%)",
+    "lush_life": "Bạn bật nhạc 'Lush Life' rồi nhảy múa điên cuồng bên sạp cá! Khách thấy vui vẻ mua ủng hộ đầy đủ! 🎵💅 (Tăng 30% + 100 Hạt)",
+    "gorilla_debate": "Khách tranh cãi '100 người vs 1 Gorilla ai thắng?' Quên mất mua cá! Nhưng người thắng debate mua hết để chứng minh! 🦍👊 (Ngẫu nhiên: 50% tăng x2, 50% mất khách)"
   }
 }
