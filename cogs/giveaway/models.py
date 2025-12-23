@@ -54,5 +54,6 @@ class Giveaway:
             end_time=end_time,
             requirements=json.loads(row[7]) if row[7] else {},
             status=row[8],
-            image_url=row[9] if len(row) > 9 else None
+            image_url=row[9] if len(row) > 9 else None,
+            winners=json.loads(row[10]) if len(row) > 10 and row[10] else []
         )

@@ -5,6 +5,7 @@ import asyncio
 import random
 import json
 import time
+import os
 import traceback
 from datetime import datetime
 from database_manager import db_manager, get_stat, get_or_create_user
@@ -12,8 +13,8 @@ from core.logger import setup_logger
 
 logger = setup_logger("NoiTu", "cogs/noitu.log")
 
-DB_PATH = "./data/database.db"
-WORDS_DICT_PATH = "./data/words_dict.json"
+DB_PATH = os.path.abspath("./data/database.db")
+WORDS_DICT_PATH = os.path.abspath("./data/words_dict.json")
 
 class GameNoiTu(commands.Cog):
     def __init__(self, bot):
@@ -97,21 +98,35 @@ class GameNoiTu(commands.Cog):
             logger.error(f"FATAL ERROR in _initialize_games_on_load: {e}", exc_info=True)
 
     async def _load_dictionary(self):
-        """Load words dictionary from file"""
+        """Load words dictionary from file (non-blocking)"""
         try:
-            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
-                self.words_dict = json.load(f)
+            def load_json():
+                with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                    return json.load(f)
+
+            loop = asyncio.get_running_loop()
+            self.words_dict = await loop.run_in_executor(None, load_json)
             
             # Clear old lists
             self.all_words.clear()
             self.all_words_list.clear()
             
-            # Build set of all words for random selection
-            for first, seconds in self.words_dict.items():
-                for second in seconds:
-                    word = f"{first} {second}"
-                    self.all_words.add(word)
-                    self.all_words_list.append(word)
+            # Build set of all words for random selection (CPU intensive, run in executor too?)
+            # Ideally yes, but let's do it in the same executor call for simplicity next time. 
+            # For now, we'll keep it here but note it might be slightly blocking if dict is HUGE.
+            # actually better to move all processing to executor
+            
+            def process_words(words_dict):
+                all_words = set()
+                all_words_list = []
+                for first, seconds in words_dict.items():
+                    for second in seconds:
+                        word = f"{first} {second}"
+                        all_words.add(word)
+                        all_words_list.append(word)
+                return all_words, all_words_list
+
+            self.all_words, self.all_words_list = await loop.run_in_executor(None, process_words, self.words_dict)
             
             self.dict_loaded = True
             logger.info(f"✅ Loaded words dict: {len(self.words_dict)} starting syllables, {len(self.all_words)} total words")
@@ -201,9 +216,14 @@ class GameNoiTu(commands.Cog):
             logger.error(f"ERROR reloading words dict: {e}")
     
     def cleanup_game_lock(self, guild_id):
-        """Clean up lock after game ends (prevent memory leak)"""
-        if guild_id in self.game_locks:
-            del self.game_locks[guild_id]
+        """Clean up lock after game ends (prevent memory leak)
+        
+        NOTE: Actually, deleting locks is dangerous while async operations might be waiting on them.
+        For now, we will NOT delete them. A few lock objects (one per active guild) is negligible memory.
+        """
+        pass
+        # if guild_id in self.game_locks:
+        #     del self.game_locks[guild_id]
     
     async def save_game_state(self, guild_id, channel_id):
         """Save NoiTu game state to database for resume after restart"""
