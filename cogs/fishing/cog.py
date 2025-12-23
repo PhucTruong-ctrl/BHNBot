@@ -1202,7 +1202,7 @@ class FishingCog(commands.Cog):
                             logger.error(f"[ACHIEVEMENT] Error tracking trash_recycled for {user_id}: {e}")
                     except Exception as e:
                         logger.error(f"Unexpected error: {e}")
-                    logger.info(f"[FISHING] {username} caught trash: {trash_items_caught}")
+                    logger.info(f"[FISHING] {username} caught trash (independent): {trash_count}")
         
                 # Process chest (độc lập)
                 if chest_count > 0:
