@@ -194,7 +194,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             await cog.add_inventory_item(user_id, item_key, count)
             # Try to find name in GIFT_ITEMS logic or ALL_ITEMS_DATA
             gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
-                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp"}
+                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp",
+                         "qua_ngau_nhien": "🎁 Quà Ngẫu Nhiên"}
             name = gift_names.get(item_key, item_key.title())
             loot_messages.append(f"🎁 **{name}** x{count}")
 
