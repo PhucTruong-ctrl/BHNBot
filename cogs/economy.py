@@ -235,11 +235,13 @@ class EconomyCog(commands.Cog):
             from cogs.fishing.mechanics.rod_system import get_rod_data
             fishing_rod = await get_rod_data(target_user.id)
             if fishing_rod:
+                # fishing_rod is (level, durability) tuple
+                rod_level, rod_durability = fishing_rod
                 rod_data = {
-                    'name': fishing_rod.get('name', 'Unknown'),
-                    'level': fishing_rod.get('level', 1),
-                    'durability': fishing_rod.get('durability', 0),
-                    'max_durability': fishing_rod.get('max_durability', 10)
+                    'name': f"Cần Cấp {rod_level}", # Fallback name logic if not available
+                    'level': rod_level,
+                    'durability': rod_durability,
+                    'max_durability': 120 # Default or fetch constant
                 }
         except Exception as e:
             logger.error(f"Could not fetch rod data: {e}")
@@ -285,11 +287,13 @@ class EconomyCog(commands.Cog):
             from cogs.fishing.mechanics.rod_system import get_rod_data
             fishing_rod = await get_rod_data(target_user.id)
             if fishing_rod:
+                # fishing_rod is (level, durability) tuple
+                rod_level, rod_durability = fishing_rod
                 rod_data = {
-                    'name': fishing_rod.get('name', 'Unknown'),
-                    'level': fishing_rod.get('level', 1),
-                    'durability': fishing_rod.get('durability', 0),
-                    'max_durability': fishing_rod.get('max_durability', 10)
+                    'name': f"Cần Cấp {rod_level}", # Fallback name logic if not available
+                    'level': rod_level,
+                    'durability': rod_durability,
+                    'max_durability': 120 # Default or fetch constant
                 }
         except Exception as e:
             logger.error(f"Could not fetch rod data: {e}")

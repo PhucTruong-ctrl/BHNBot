@@ -1046,3 +1046,26 @@ async def remove_user_buff(user_id: int, buff_type: str):
         (user_id, buff_type)
     )
     db_manager.clear_cache_by_prefix(f"buffs_{user_id}")
+
+
+async def get_collection(user_id: int) -> Dict[str, int]:
+    """Retrieves the user's fishing collection (stats).
+    
+    Args:
+        user_id (int): The Discord user ID.
+
+    Returns:
+        Dict[str, int]: A dictionary of {stat_key: value}.
+    """
+    rows = await db_manager.execute(
+        "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = 'fishing'",
+        (user_id,),
+        use_cache=True,
+        cache_key=f"collection_{user_id}",
+        cache_ttl=60
+    )
+    
+    if not rows:
+        return {}
+        
+    return {row[0]: row[1] for row in rows}
