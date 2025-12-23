@@ -96,7 +96,7 @@ if not FISHING_DATA and not LEGENDARY_FISH_DATA:
 # ==================== SPECIAL ITEMS (Added to ALL_FISH after loading) ====================
 # Add special items that aren't in JSON
 ALL_FISH["ngoc_trai"] = {"key": "ngoc_trai", "name": "Ngọc Trai", "emoji": "🔮", "sell_price": 150}
-ALL_FISH["vat_lieu_nang_cap"] = {"key": "vat_lieu_nang_cap", "name": "Vật Liệu Nâng Cấp Cần", "emoji": "⚙️", "sell_price": 0}
+ALL_FISH["vat_lieu_nang_cap"] = {"key": "vat_lieu_nang_cap", "name": "Vật Liệu Nâng Cấp Cần", "emoji": "⚙️", "sell_price": 100}
 
 # Chest loot (will be populated after TRASH_ITEMS is defined)
 CHEST_LOOT = {
@@ -142,6 +142,17 @@ ALL_ITEMS_DATA = _all_items_data.get("items", {})
 TRASH_ITEMS = [v for v in ALL_ITEMS_DATA.values() if v.get("type") == "trash"]
 LEGENDARY_ITEMS = [v for v in ALL_ITEMS_DATA.values() if v.get("type") == "legendary_component"]
 GIFT_ITEMS = [v.get("key") for v in ALL_ITEMS_DATA.values() if v.get("type") == "gift"]
+
+# Items that should NEVER be auto-sold (protected from accidental sale)
+# These are valuable special items: chests, materials, quest items, commemorative rewards, consumables
+PROTECTED_ITEMS = {
+    "ruong_kho_bau",  # Treasure Chest
+    "phan_bon",  # Fertilizer (used for tree growth)
+    "manh_ghep_a", "manh_ghep_b", "manh_ghep_c", "manh_ghep_d",  # Puzzle pieces
+    "qua_ngot_mua_1", "qua_ngot_mua_2", "qua_ngot_mua_3", "qua_ngot_mua_4", "qua_ngot_mua_5",  # Season rewards
+    "nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca", "tinh_cau",  # Consumable buffs
+    "ngoc_trai",  # Pearl (only manual sell via /banca ngoc_trai)
+}
 
 # NOW populate CHEST_LOOT with trash items (after TRASH_ITEMS is defined)
 for trash_item in TRASH_ITEMS:

@@ -57,7 +57,6 @@ def init_database():
                     item_id TEXT, -- Khớp với key trong constants.py
                     quantity INTEGER DEFAULT 1,
                     item_type TEXT, -- 'tool', 'consumable', 'material'
-                    obtained_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id, item_id)
                 )''')
 
