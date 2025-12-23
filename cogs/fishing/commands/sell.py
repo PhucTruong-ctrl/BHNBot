@@ -29,8 +29,17 @@ async def _should_auto_sell_item(user_id: int, item_key: str) -> bool:
     Returns:
         bool: True if item can be auto-sold, False if protected
     """
-    from .constants import PROTECTED_ITEMS
     from database_manager import get_rod_data, get_stat
+    
+    # Define protected items inline to avoid import issues
+    PROTECTED_ITEMS = {
+        # Chests & containers
+        "ruong_go", "ruong_bac", "ruong_vang", "ruong_kim_cuong",
+        # Consumables  
+        "moi", "co_bon_la", "phan_bon",
+        # Crafting materials (always protected)
+        "card", "cafe"
+    }
     
     # Always forbid protected items
     if item_key in PROTECTED_ITEMS:
@@ -45,23 +54,23 @@ async def _should_auto_sell_item(user_id: int, item_key: str) -> bool:
     
     # Map fragments & dark map: Only sell after catching Cthulhu
     if item_key in ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d", "ban_do_ham_am"]:
-        cthulhu_caught = await get_stat(user_id, "ca_cthulhu_non")
+        cthulhu_caught = await get_stat(user_id, "fishing", "cthulhu_con_caught")
         return cthulhu_caught and cthulhu_caught > 0
     
     # Meteor fragments: Only sell after catching Galaxy Fish AND max rod level
     if item_key == "manh_sao_bang":
-        galaxy_caught = await get_stat(user_id, "ca_ngan_ha")
+        galaxy_caught = await get_stat(user_id, "fishing", "ca_ngan_ha_caught")
         rod_level, _ = await get_rod_data(user_id)
         return (galaxy_caught and galaxy_caught > 0) and rod_level >= 7
     
     # Sonic detector: Only sell after catching 52 Hz Whale
     if item_key == "may_do_song":
-        whale_caught = await get_stat(user_id, "ca_voi_52_hz")
+        whale_caught = await get_stat(user_id, "fishing", "ca_voi_52hz_caught")
         return whale_caught and whale_caught > 0
     
     # Phoenix feather: Only sell after catching Phoenix
     if item_key == "long_vu_lua":
-        phoenix_caught = await get_stat(user_id, "ca_phuong_hoang")
+        phoenix_caught = await get_stat(user_id, "fishing", "ca_phuong_hoang_caught")
         return phoenix_caught and phoenix_caught > 0
     
     # Default: allow selling (regular fish items)
@@ -126,8 +135,8 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH}
         
         # Apply achievement-based filter for protected/conditional items
-        # This will exclude: chests, materials, commemorative items, consumables
-        # And conditionally allow: upgrade materials (rod lv7), map fragments (after Cthulhu), etc.
+        # This excludes: chests, materials, commemorative items, consumables
+        # And conditionally allows: upgrade materials (rod lv7), map fragments (after Cthulhu), etc.
         sellable_items = {}
         for item_key, quantity in fish_items.items():
             if await _should_auto_sell_item(user_id, item_key):
@@ -211,10 +220,22 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
                             event_key = random.choices(keys, weights=weights, k=1)[0]
                             event_data = sell_events[event_key]
                             
-                            event_result = {"triggered": True, "type": event_key}
+                            event_result = {" triggered": True, "type": event_key}
                             event_result["message"] = sell_messages.get(event_key, event_data["name"])
                             event_result.update(event_data)
                             logger.info(f"[SELL] Random event {event_key} triggered for {username}")
+                            
+                            # Track sell event achievement
+                            from ..constants import SELL_EVENT_STAT_MAPPING
+                            if event_key in SELL_EVENT_STAT_MAPPING:
+                                stat_key = SELL_EVENT_STAT_MAPPING[event_key]
+                                try:
+                                    await increment_stat(user_id, "fishing", stat_key, 1)
+                                    current_value = await get_stat(user_id, "fishing", stat_key)
+                                    await cog.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, ctx.channel)
+                                    logger.info(f"[SELL] Tracked {stat_key} for user {user_id} on sell event {event_key}")
+                                except Exception as e:
+                                    logger.error(f"[SELL] Error tracking {stat_key}: {e}")
                 except Exception as e:
                     logger.error(f"[SELL] Error loading sell events: {e}")
         
@@ -375,14 +396,14 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         try:
             total_fish_sold = sum(fish_items.values())
             await increment_stat(user_id, "fishing", "fish_sold", total_fish_sold)
-            await increment_stat(user_id, "fishing", "money_earned", final_value)
+            await increment_stat(user_id, "fishing", "total_money_earned", final_value)
             
-            # Check merchant achievement
-            current_money = await get_stat(user_id, "fishing", "money_earned")
+            # Check millionaire achievement
+            current_money = await get_stat(user_id, "fishing", "total_money_earned")
             await cog.bot.achievement_manager.check_unlock(
                 user_id=user_id,
                 game_category="fishing",
-                stat_key="money_earned",
+                stat_key="total_money_earned",
                 current_value=current_money,
                 channel=ctx.channel
             )

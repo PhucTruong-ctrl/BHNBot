@@ -293,7 +293,9 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
 
 
 async def use_phan_bon_action(cog, ctx_or_interaction):
-    """Use phan_bon on server tree.
+    """Use ALL phan_bon (fertilizers) to contribute to server tree.
+    
+    Each fertilizer gives 50-100 random EXP to the tree.
     
     Args:
         cog: The FishingCog instance
@@ -303,62 +305,86 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     
     if is_slash:
         user_id = ctx_or_interaction.user.id
-        user_name = ctx_or_interaction.user.name
+        username = ctx_or_interaction.user.display_name
         guild_id = ctx_or_interaction.guild.id
         await ctx_or_interaction.response.defer(ephemeral=False)
         ctx = ctx_or_interaction
     else:
         user_id = ctx_or_interaction.author.id
-        user_name = ctx_or_interaction.author.name
+        username = ctx_or_interaction.author.display_name
         guild_id = ctx_or_interaction.guild.id
         ctx = ctx_or_interaction
     
-    # Check if user has phan_bon
+    # Get inventory
     inventory = await get_inventory(user_id)
-    if inventory.get("phan_bon", 0) <= 0:
-        msg = "❌ Bạn không có Phân Bón! Mở rương để có cơ hội nhận được."
+    fertilizer_count = inventory.get("phan_bon", 0)
+    
+    # Check if user has fertilizers
+    if fertilizer_count == 0:
+        msg = "❌ Bạn không có phân bón nào để bón cho cây!"
         if is_slash:
             await ctx.followup.send(msg, ephemeral=True)
         else:
             await ctx.reply(msg)
         return
     
-    # Remove phan_bon
-    await remove_item(user_id, "phan_bon", 1)
+    # Calculate random EXP for each fertilizer (50-100 each)
+    total_exp = sum(random.randint(50, 100) for _ in range(fertilizer_count))
     
-    # Apply random effect
-    effect = random.choice(phan_bon_EFFECTS)
-    effect_type = effect["type"]
-    effect_value = effect.get("value", 0)
-    effect_message = effect["message"]
+    # Remove all fertilizers from inventory
+    await remove_item(user_id, "phan_bon", fertilizer_count)
+    logger.info(f"[BONPHAN] {username} used {fertilizer_count} fertilizers for {total_exp} EXP")
     
-    # Process effect
-    if effect_type == "xp_boost":
-        # Give tree XP boost (delegate to tree cog)
-        tree_cog = cog.bot.get_cog("TreeCog")
-        if tree_cog:
-            try:
-                await tree_cog.add_tree_xp(guild_id, effect_value)
-                logger.info(f"[phan_bon] {user_name} gave {effect_value} XP to server tree")
-            except Exception as e:
-                logger.error(f"[phan_bon] Error adding tree XP: {e}")
+    # Use tree cog's API to add contribution
+    tree_cog = cog.bot.get_cog("CommunityCog")
+    if tree_cog:
+        try:
+            # Add contribution with phan_bon type
+            await tree_cog.add_contributor(user_id, guild_id, total_exp, contribution_type="phan_bon")
+            
+            # Get tree data for progress display
+            tree_level, tree_prog, tree_total, season, _, _ = await tree_cog.get_tree_data(guild_id)
+            percentage = int((tree_prog / tree_total) * 100) if tree_total > 0 else 0
+            
+            # Update tree message
+            await tree_cog.update_or_create_pin_message(guild_id, ctx.channel.id)
+        except Exception as e:
+            logger.error(f"[BONPHAN] Error with tree contribution: {e}", exc_info=True)
+            tree_prog = 0
+            tree_total = 1
+            percentage = 0
+    else:
+        logger.warning("[BONPHAN] Tree cog not found")
+        tree_prog = 0
+        tree_total = 1
+        percentage = 0
     
-    elif effect_type == "seeds":
-        await add_seeds(user_id, effect_value)
-        logger.info(f"[phan_bon] {user_name} received {effect_value} seeds")
-    
-    elif effect_type == "moi":
-        await add_item(user_id, "moi", effect_value)
-        logger.info(f"[phan_bon] {user_name} received {effect_value} worms")
-    
-    # Build embed
+    # Create result embed
     embed = discord.Embed(
-        title="🌾 Bón Phân",
-        description=effect_message,
+        title="🌾 Bón Phân Cho Cây!",
+        description=f"**{username}** đã sài **{fertilizer_count} Phân Bón**",
         color=discord.Color.green()
     )
-    embed.set_footer(text=f"👤 {user_name}")
     
+    embed.add_field(
+        name="⚡ Tổng EXP",
+        value=f"**{total_exp} EXP** → +{total_exp} điểm cho cây",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📋 Chi tiết",
+        value=f"{fertilizer_count} × (50-100 EXP mỗi cái)",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="� Tiến độ Cây",
+        value=f"**{percentage}%** ({tree_prog:,}/{tree_total:,} EXP)",
+        inline=False
+    )
+    
+    # Send result
     if is_slash:
         await ctx.followup.send(embed=embed)
     else:

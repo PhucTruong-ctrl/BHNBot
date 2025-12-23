@@ -219,6 +219,16 @@ class FishSellView(discord.ui.View):
                 # Execute transaction
                 await db_manager.batch_modify(operations)
                 
+                # Track black market success achievement
+                try:
+                    from database_manager import increment_stat, get_stat
+                    await increment_stat(self.user_id, "fishing", "black_market_successes", 1)
+                    current_success = await get_stat(self.user_id, "fishing", "black_market_successes")
+                    await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "black_market_successes", current_success, interaction.channel)
+                    logger.info(f"[BLACK_MARKET] Tracked black_market_successes for user {self.user_id}: {current_success} total")
+                except Exception as e:
+                    logger.error(f"[BLACK_MARKET] Error tracking success achievement: {e}")
+                
                 # Clear caches
                 db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
                 db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
@@ -273,6 +283,16 @@ class FishSellView(discord.ui.View):
                 
                 # Execute transaction
                 await db_manager.batch_modify(operations)
+                
+                # Track black market failure achievement
+                try:
+                    from database_manager import increment_stat, get_stat
+                    await increment_stat(self.user_id, "fishing", "black_market_failures", 1)
+                    current_failures = await get_stat(self.user_id, "fishing", "black_market_failures")
+                    await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "black_market_failures", current_failures, interaction.channel)
+                    logger.info(f"[BLACK_MARKET] Tracked black_market_failures for user {self.user_id}: {current_failures} total")
+                except Exception as e:
+                    logger.error(f"[BLACK_MARKET] Error tracking failure achievement: {e}")
                 
                 # Clear caches
                 db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")

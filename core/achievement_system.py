@@ -178,7 +178,7 @@ class AchievementManager:
             )
 
             # Add trophy image
-            embed.set_thumbnail(url="https://media.giphy.com/media/2gtoSIzdrSMFO/giphy.gif")
+            embed.set_thumbnail(url="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3djV0aWw2ZGgwa2p4aGgxZnk2dXg1amp0NDF4N3FoM3A3ejV0b3A3YSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/IX96Ceg5hiMNBn7Ls7/giphy.gif")
 
             # Add reward info
             reward_seeds = achievement_data.get("reward_seeds", 0)
