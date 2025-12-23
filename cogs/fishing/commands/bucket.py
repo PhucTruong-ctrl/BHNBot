@@ -22,189 +22,225 @@ from ..mechanics.glitch import apply_display_glitch
 logger = logging.getLogger("fishing")
 
 
-async def open_chest_action(cog, ctx_or_interaction):
-    """Open treasure chest logic.
+async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
+    """Open treasure chest logic (Bulk supported).
     
     Args:
         cog: The FishingCog instance
         ctx_or_interaction: Command context or interaction
+        quantity: Number of chests to open (default 1)
     """
     is_slash = isinstance(ctx_or_interaction, discord.Interaction)
     
     if is_slash:
-        user_id = ctx_or_interaction.user.id
-        user_name = ctx_or_interaction.user.name
+        # Check if deferred already
+        if not ctx_or_interaction.response.is_done():
+            await ctx_or_interaction.response.defer(ephemeral=False)
+        ctx = ctx_or_interaction
+        user = ctx_or_interaction.user
+        channel = ctx_or_interaction.channel
     else:
-        user_id = ctx_or_interaction.author.id
-        user_name = ctx_or_interaction.author.name
+        ctx = ctx_or_interaction
+        user = ctx.author
+        channel = ctx.channel
     
+    user_id = user.id
+    user_name = user.name
+    
+    # 1. Validate Quantity
+    if quantity < 1:
+        msg = "❌ Số lượng phải lớn hơn 0!"
+        if is_slash: await ctx.followup.send(msg, ephemeral=True)
+        else: await ctx.reply(msg)
+        return
+
     # *** CHECK AND APPLY LAG DEBUFF DELAY ***
-    if cog.check_emotional_state(user_id, "lag"):
+    if await cog.check_emotional_state(user_id, "lag"):
         await asyncio.sleep(3)
         logger.info(f"[EVENT] {user_name} experienced lag delay (3s) - open chest")
     
-    if is_slash:
-        await ctx_or_interaction.response.defer(ephemeral=False)
-        ctx = ctx_or_interaction
-    else:
-        ctx = ctx_or_interaction
-    
-    # Check if user has chest
+    # 2. Check Inventory & Deduct Chests
     inventory = await get_inventory(user_id)
-    if inventory.get("ruong_kho_bau", 0) <= 0:
-        msg = "❌ Bạn không có Rương Kho Báu!"
-        if is_slash:
-            await ctx.followup.send(msg, ephemeral=True)
-        else:
-            await ctx.reply(msg)
+    current_chests = inventory.get("ruong_kho_bau", 0)
+    
+    if current_chests < quantity:
+        msg = f"❌ Bạn chỉ có **{current_chests}** Rương Kho Báu! (Muốn mở: {quantity})"
+        if is_slash: await ctx.followup.send(msg, ephemeral=True)
+        else: await ctx.reply(msg)
         return
     
-    # Remove chest from inventory
-    await remove_item(user_id, "ruong_kho_bau", 1)
+    # Deduct chests immediately
+    await remove_item(user_id, "ruong_kho_bau", quantity)
     
-    # Track chests opened for achievement
+    # 3. Track Stats
     try:
-        await increment_stat(user_id, "fishing", "chests_opened", 1)
+        await increment_stat(user_id, "fishing", "chests_opened", quantity)
         current_opened = await get_stat(user_id, "fishing", "chests_opened")
-        channel = ctx.channel if not is_slash else ctx_or_interaction.channel
         await cog.bot.achievement_manager.check_unlock(user_id, "fishing", "chests_opened", current_opened, channel)
     except Exception as e:
         logger.error(f"[ACHIEVEMENT] Error updating chests_opened for {user_id}: {e}")
     
-    # Get rod level for luck calculation
+    # 4. Prepare RNG Factors
     rod_level, _ = await get_rod_data(user_id)
-    
-    # Calculate Luck
     user_luck = await cog.get_user_total_luck(user_id)
     
-    # Calculate item count based on rod level AND total luck
-    # Base weights: 0, 1, 2, 3 items
-    base_weights = [30, 45, 20, 5] 
-    
-    # Apply Rod Level bonus
-    # Level 5 (+4 levels) -> Shift 20 weight from 0/1 to 2/3
+    # Base item count weights: 0, 1, 2, 3 items per chest
+    base_weights = [30, 45, 20, 5]
     rod_bonus = (rod_level - 1) * 5
     base_weights[0] = max(5, base_weights[0] - rod_bonus)
-    base_weights[2] += rod_bonus 
+    base_weights[2] += rod_bonus
     
-    # Apply User Luck
     luck_factor = max(0, user_luck)
     base_weights[2] = int(base_weights[2] * (1 + luck_factor))
     base_weights[3] = int(base_weights[3] * (1 + luck_factor * 2))
     
-    num_items = random.choices([0, 1, 2, 3], weights=base_weights, k=1)[0]
-    
-    logger.info(f"[CHEST] {user_name} (rod_level={rod_level}) rolled {num_items} items")
-    
-    # Roll items
-    loot_items = []
-    
-    # Prepare Weighted Loot Table with Luck
+    # Loot Keys & Weights
     loot_keys = list(CHEST_LOOT.keys())
     loot_weights = []
-    
     trash_key_list = [t.get("key") for t in TRASH_ITEMS]
     
     for item in loot_keys:
         base_weight = CHEST_LOOT[item]
-        
-        # Modify weight based on Item Type and Luck
         if "manh_" in item or "gift" in item or "tui_tien" in item:
-             # Good items: Increase weight with luck
-             multiplier = 1.0 + max(0, user_luck * 1.5)
-             loot_weights.append(base_weight * multiplier)
+            multiplier = 1.0 + max(0, user_luck * 1.5)
+            loot_weights.append(base_weight * multiplier)
         elif "trash" in item or item in trash_key_list:
-             # Bad items: Decrease weight with luck
-             multiplier = max(0.1, 1.0 - max(0, user_luck)) 
-             loot_weights.append(base_weight * multiplier)
+            multiplier = max(0.1, 1.0 - max(0, user_luck))
+            loot_weights.append(base_weight * multiplier)
         else:
-             # Neutral items (phan_bon?)
-             loot_weights.append(base_weight)
-
-    for _ in range(num_items):
-        loot_type = random.choices(loot_keys, weights=loot_weights, k=1)[0]
-        loot_items.append(loot_type)
-    
-    # Process loot and build display
-    loot_display = []
-    trash_only = all(item in [t.get("key") for t in TRASH_ITEMS] for item in loot_items) and len(loot_items) == 1
-    
-    for loot_type in loot_items:
-        if loot_type == "nothing":
-            continue
-        
-        elif loot_type == "phan_bon":
-            await cog.add_inventory_item(user_id, "phan_bon", "tool")
-            loot_display.append("🌾 Phân Bón (Dùng `/bonphan` để nuôi cây)")
-        
-        elif loot_type == "manh_ghep":
-            pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
-            piece = random.choice(pieces)
-            await cog.add_inventory_item(user_id, piece, "tool")
-            piece_display = piece.split("_")[1].upper()
+            loot_weights.append(base_weight)
             
-            # Check if user now has all 4 pieces
-            inventory = await get_inventory(user_id)
-            has_all_pieces = all(inventory.get(f"puzzle_{p}", 0) > 0 for p in ["a", "b", "c", "d"])
-            
-            if has_all_pieces:
-                await remove_item(user_id, "puzzle_a", 1)
-                await remove_item(user_id, "puzzle_b", 1)
-                await remove_item(user_id, "puzzle_c", 1)
-                await remove_item(user_id, "puzzle_d", 1)
+    # 5. Bulk Roll Logic (Loop)
+    aggregated_loot = {} # {item_key: count}
+    total_seeds = 0
+    total_items_count = 0
+    
+    for _ in range(quantity):
+        # Roll item count for this chest
+        num_items = random.choices([0, 1, 2, 3], weights=base_weights, k=1)[0]
+        total_items_count += num_items
+        
+        if num_items > 0:
+            # Roll looting items
+            items_rolled = random.choices(loot_keys, weights=loot_weights, k=num_items)
+            for item in items_rolled:
+                if item == "nothing": continue
                 
-                reward = random.randint(5000, 10000)
-                await add_seeds(user_id, reward)
-                
-                loot_display.append(f"🧩 Mảnh Ghép {piece_display} → 🎉 **ĐỦ 4 MẢNH - TỰ ĐỘNG GHÉP!** 💰 **{reward} Hạt!**")
-            else:
-                loot_display.append(f"🧩 Mảnh Ghép {piece_display} (Gom đủ 4 mảnh A-B-C-D để đổi quà siêu to!)")
-        
-        elif loot_type == "tui_tien":
-            coins = random.randint(100, 200)
-            await add_seeds(user_id, coins)
-            loot_display.append(f"💰 Túi Hạt - **{coins} Hạt**")
-        
-        elif loot_type in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
-            await cog.add_inventory_item(user_id, loot_type, "legendary_component")
-            item_data = ALL_ITEMS_DATA.get(loot_type, {})
-            item_id = item_data.get("name", loot_type)
-            item_emoji = item_data.get("emoji", "❓")
-            loot_display.append(f"{item_emoji} {item_id}")
-        
-        elif loot_type in [t.get("key") for t in TRASH_ITEMS]:
-            trash_item = next((t for t in TRASH_ITEMS if t.get("key") == loot_type), None)
-            if trash_item:
-                await cog.add_inventory_item(user_id, loot_type, "trash")
-                if trash_only:
-                    trash_desc = trash_item.get('description', 'Unknown trash')
-                    loot_display.append(f"{trash_item['emoji']} {apply_display_glitch(trash_item['name'])} - {apply_display_glitch(trash_desc)}")
+                if item == "tui_tien":
+                    coins = random.randint(100, 200)
+                    total_seeds += coins
                 else:
-                    loot_display.append(f"🗑️ {trash_item['name']}")
+                    aggregated_loot[item] = aggregated_loot.get(item, 0) + 1
+
+    logger.info(f"[CHEST] {user_name} opened {quantity} chests, got {total_items_count} items, {total_seeds} seeds")
+
+    # 6. Process Rewards & Batch DB Update
+    loot_messages = []
+    
+    # A. Add Seeds
+    if total_seeds > 0:
+        await add_seeds(user_id, total_seeds)
+        loot_messages.append(f"💰 **+{total_seeds:,} Hạt**")
         
-        else:  # gift_random
-            gift = random.choice(GIFT_ITEMS)
-            await cog.add_inventory_item(user_id, gift, "gift")
+    # B. Add Items (Batch Optimization)
+    # We iterate aggregated_loot and call add_inventory_item (which handles INSERT/UPDATE)
+    # Ideally, we should have a batch_add_items function in DB manager, but currently looping add_inventory_item is okay-ish for async sqlite
+    # Optimization: Sort items to group DB writes logically if needed, but not strictly required.
+    
+    puzzle_pieces_got = []
+    
+    for item_key, count in aggregated_loot.items():
+        if item_key == "phan_bon":
+            await cog.add_inventory_item(user_id, "phan_bon", count)
+            loot_messages.append(f"🌾 **Phân Bón** x{count}")
+            
+        elif item_key == "manh_ghep":
+            # Randomize puzzle pieces
+            pieces = ["puzzle_a", "puzzle_b", "puzzle_c", "puzzle_d"]
+            for _ in range(count):
+                p = random.choice(pieces)
+                puzzle_pieces_got.append(p)
+                await cog.add_inventory_item(user_id, p, 1) # Add one by one to randomize types
+            
+            # Since we added individually, we just summarize
+            loot_messages.append(f"🧩 **Mảnh Ghép** x{count} (Ngẫu nhiên)")
+            
+        elif item_key in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
+            await cog.add_inventory_item(user_id, item_key, count)
+            item_data = ALL_ITEMS_DATA.get(item_key, {})
+            name = item_data.get("name", item_key)
+            emoji = item_data.get("emoji", "❓")
+            loot_messages.append(f"{emoji} **{name}** x{count}")
+            
+        elif item_key in trash_key_list:
+            await cog.add_inventory_item(user_id, item_key, count)
+            trash_data = next((t for t in TRASH_ITEMS if t["key"] == item_key), {})
+            name = trash_data.get("name", item_key)
+            emoji = trash_data.get("emoji", "🗑️")
+            loot_messages.append(f"{emoji} **{name}** x{count}")
+            
+        else: # Gifts or generic Items
+            await cog.add_inventory_item(user_id, item_key, count)
+            # Try to find name in GIFT_ITEMS logic or ALL_ITEMS_DATA
             gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
                          "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp"}
-            loot_display.append(f"{gift_names[gift]} (Dùng `/tangqua` để tặng cho ai đó)")
-    
-    # Build embed
-    if num_items == 0 or not loot_display:
-        embed = discord.Embed(
-            title="🎁 Rương Kho Báu",
-            description="**❌ Rương trống không - Không có gì cả!**",
-            color=discord.Color.greyple()
-        )
+            name = gift_names.get(item_key, item_key.title())
+            loot_messages.append(f"🎁 **{name}** x{count}")
+
+    # 7. Post-Process Special Logics (Puzzle Check)
+    if puzzle_pieces_got:
+        # Check full set logic again? 
+        # For bulk opening, maybe just warn them to check inventory or auto-claim?
+        # The original code auto-claimed. Let's do a quick check.
+        inv_check = await get_inventory(user_id)
+        if all(inv_check.get(f"puzzle_{p}", 0) > 0 for p in ["a", "b", "c", "d"]):
+            # Auto claim ONE set if they have full set? 
+            # Or many sets?
+            # Complexity: Checking how many FULL SETS they have.
+            # set_count = min(inv_check["puzzle_a"], inv_check["puzzle_b"]...)
+            # For simplicity and UX, let's just trigger one claim notification if they have at least one set.
+            # Actual claiming usually happens in a separate event or re-check.
+            # Original code did: remove 1 set -> give 5000-10000 seeds.
+            # We will keep it simple: if valid set found, auto-exchange 1 set and notify.
+            
+            # Logic: greedy exchange all sets?
+            a, b, c, d = [inv_check.get(f"puzzle_{x}", 0) for x in "abcd"]
+            sets_can_make = min(a, b, c, d)
+            
+            if sets_can_make > 0:
+                reward_total = 0
+                for _ in range(sets_can_make):
+                    reward_total += random.randint(5000, 10000)
+                
+                await remove_item(user_id, "puzzle_a", sets_can_make)
+                await remove_item(user_id, "puzzle_b", sets_can_make)
+                await remove_item(user_id, "puzzle_c", sets_can_make)
+                await remove_item(user_id, "puzzle_d", sets_can_make)
+                await add_seeds(user_id, reward_total)
+                
+                loot_messages.append(f"🎉 **ĐỦ {sets_can_make} BỘ MẢNH GHÉP!** Tự động đổi: +{reward_total:,} Hạt!")
+
+    # 8. Build Premium Embed
+    if not loot_messages:
+        description = "**❌ Rương trống không!** (Xui quá đen thôi...)"
+        color = discord.Color.dark_grey()
     else:
-        loot_text = "\n".join(loot_display)
-        embed = discord.Embed(
-            title="🎁 Rương Kho Báu",
-            description=loot_text,
-            color=discord.Color.gold()
-        )
+        # Sort loot messages slightly?
+        # Actually random order is fine, or group by type.
+        # We constructed them by type order above.
+        description = "\n".join(loot_messages)
+        color = discord.Color.gold()
+        
+    embed = discord.Embed(
+        title=f"🎁 {user_name} Mở {quantity} Rương!",
+        description=description,
+        color=color
+    )
     
-    embed.set_footer(text=f"👤 {user_name} | Cấp Cần: {rod_level}")
+    # Footer Stats
+    stats_text = f"Cấp Cần: {rod_level} | Tổng Item: {total_items_count}"
+    if total_seeds > 0: stats_text += f" | +{total_seeds} Hạt"
+    embed.set_footer(text=stats_text)
     
     if is_slash:
         await ctx.followup.send(embed=embed)
