@@ -1201,7 +1201,7 @@ class FishingCog(commands.Cog):
                             fish_display.append(f"{trash_emoji} {self.apply_display_glitch(trash_name)} - {self.apply_display_glitch(trash_desc)}")
                         else:
                             # Get proper trash name from ALL_ITEMS_DATA
-                            from .constants import ALL_ITEMS_DATA
+                            # from .constants import ALL_ITEMS_DATA  <-- REMOVED to fix UnboundLocalError
                             trash_data = ALL_ITEMS_DATA.get(key, {})
                             trash_name = trash_data.get('name', key.replace("trash_", "").replace("_", " ").title())
                             fish_display.append(f"🗑️ {self.apply_display_glitch(trash_name)} x{qty}")
