@@ -327,16 +327,24 @@ class ConfigCog(commands.Cog):
                     await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_fishing")
                     return
                 
-                # Save
-                await db.execute("INSERT OR REPLACE INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) VALUES (?, ?, ?, ?)", 
-                                 (guild_id, new_logs, new_noitu, new_fishing))
+                # Save using UPSERT to preserve other columns (bump_channel_id, exclude_chat, etc.)
+                # This fixes the bug where !config would reset bump settings to NULL
+                await db.execute("""
+                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) 
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id) DO UPDATE SET
+                        logs_channel_id = excluded.logs_channel_id,
+                        noitu_channel_id = excluded.noitu_channel_id,
+                        fishing_channel_id = excluded.fishing_channel_id
+                """, (guild_id, new_logs, new_noitu, new_fishing))
+                
                 await db.commit()
                 
                 # Get channel mention for confirmation
                 channel_mention = f"<#{channel.id}>"
                 
                 await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
-                print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention if key != 'kenh_soi' else new_wolf}")
+                print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention}")
                 
                 # Start game if setting kenh_noitu
                 if key == "kenh_noitu":
