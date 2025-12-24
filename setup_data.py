@@ -128,7 +128,10 @@ def init_database():
                     fishing_channel_id INTEGER,
                     giveaway_channel_id INTEGER,
                     exclude_chat_channels TEXT,
-                    harvest_buff_until DATETIME
+                    harvest_buff_until DATETIME,
+                    bump_channel_id INTEGER,
+                    bump_start_time TEXT,
+                    last_reminder_sent TEXT
                 )''')
     
     c.execute('''CREATE TABLE IF NOT EXISTS server_tree (
