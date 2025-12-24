@@ -27,15 +27,12 @@ SHOP_ITEMS = {
     "chocolate": {"name": "Sô cô la", "cost": 60, "emoji": "🍫", "description": "Sô cô la ngon ngon, ngọt ngào"},
     "card": {"name": "Thiệp", "cost": 40, "emoji": "💌", "description": "Thiệp chúc mừng lời chúc tốt"},
     "moi": {"name": "Giun (Mồi Câu)", "cost": 10, "emoji": "🪱", "description": "Mồi để câu cá"},
-    # Pet Items
-    "nuoc": {"name": "Nước Tinh Khiết", "cost": 20, "emoji": "💧", "description": "Nước sạch cho thú cưng"},
-    "vitamin": {"name": "Vitamin Tổng Hợp", "cost": 50, "emoji": "💊", "description": "Giúp thú cưng mau lớn"},
-    "thuc_an_cao_cap": {"name": "Thức Ăn Cao Cấp", "cost": 100, "emoji": "🍱", "description": "Bữa ăn sang chảnh cho thú cưng"},
-    # Consumable buff items (very expensive)
-    "nuoc_tang_luc": {"name": "Nước Tăng Lực", "cost": 15000, "emoji": "💪", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần)"},
-    "gang_tay_xin": {"name": "Găng Tay Câu Cá", "cost": 15000, "emoji": "🥊", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần)"},
-    "thao_tac_tinh_vi": {"name": "Thao Tác Tinh Vi", "cost": 16000, "emoji": "🎯", "description": "Tăng 65% lên 92% thắng 'Dìu Cá' (1 lần)"},
-    "tinh_yeu_ca": {"name": "Tình Yêu Với Cá", "cost": 14500, "emoji": "❤️", "description": "Tăng 65% lên 88% thắng 'Dìu Cá' (1 lần)"},
+
+    # Consumable buff items (Tiered)
+    "nuoc_tang_luc": {"name": "Nước Tăng Lực", "cost": 2500, "emoji": "💪", "description": "Tăng 65% lên 75% thắng 'Dìu Cá' (1 lần) - Tier 1"},
+    "gang_tay_xin": {"name": "Găng Tay Câu Cá", "cost": 6000, "emoji": "🥊", "description": "Tăng 65% lên 82% thắng 'Dìu Cá' (1 lần) - Tier 2"},
+    "thao_tac_tinh_vi": {"name": "Thao Tác Tinh Vi", "cost": 12000, "emoji": "🎯", "description": "Tăng 65% lên 90% thắng 'Dìu Cá' (1 lần) - Tier 3"},
+    "tinh_yeu_ca": {"name": "Tình Yêu Với Cá", "cost": 18000, "emoji": "❤️", "description": "Tăng 65% lên 95% thắng 'Dìu Cá' (1 lần) - Tier MAX"},
     # Wave detector for legendary whale
     "may_do_song": {"name": "Máy Dò Sóng", "cost": 20000, "emoji": "📡", "description": "Phát hiện sóng 52Hz của Cá Voi Buồn Bã (1 lần dùng)"},
     # Commemorative items (Season rewards - NOT for sale)
@@ -366,8 +363,7 @@ class ShopCog(commands.Cog):
             line = f"{item_info['emoji']} **{item_info['name']}** - {item_info['cost']} hạt\n    💬 {item_info.get('description', 'N/A')}\n"
             if item_key in ["cafe", "flower", "ring", "gift", "chocolate", "card"]:
                 regular_gifts.append(line)
-            elif item_key in ["nuoc", "vitamin", "thuc_an_cao_cap"]:
-                pet_items.append(line)
+
             elif item_key == "moi":
                 fishing_items.append(line)
             elif item_key in ["nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca"]:
@@ -380,8 +376,7 @@ class ShopCog(commands.Cog):
         if regular_gifts:
             embed.add_field(name="🎁 Quà Tặng Cơ Bản", value="".join(regular_gifts), inline=False)
         
-        if pet_items:
-            embed.add_field(name="🐱 Đồ Cho Pet", value="".join(pet_items), inline=False)
+
         
         if fishing_items:
             embed.add_field(name="🎣 Đồ Câu Cá", value="".join(fishing_items), inline=False)

@@ -16,7 +16,7 @@ class RelationshipCog(commands.Cog):
     @app_commands.command(name="tangqua", description="Tặng quà healing cho người khác (Cà phê, Hoa, Quà...)")
     @app_commands.describe(
         user="Người nhận",
-        item="Tên vật phẩm (cafe, hoa, nhan...)",
+        item="Tên vật phẩm (cafe, flower, ring, gift, chocolate, card)",
         message="Lời nhắn gửi kèm (Nếu để trống sẽ dùng lời nhắn ngẫu nhiên)",
         an_danh="Gửi ẩn danh (True/False)"
     )
