@@ -1726,10 +1726,30 @@ class FishingCog(commands.Cog):
                 duration = time.time() - start_time
                 logger.info(f"[FISHING] [PERF] Cast completed in {duration:.2f}s for {username}")
         
+        except asyncio.TimeoutError as e:
+            total_time = time.time() - start_time
+            # Track timeout for monitoring
+            from core.timeout_monitor import record_timeout
+            record_timeout(
+                context="fishing.channel.send",
+                user_id=user_id,
+                command="cauca",
+                duration=total_time
+            )
+            logger.error(f"[FISHING] [TIMEOUT] Discord send timeout after {total_time:.2f}s for user {user_id}", exc_info=True)
+            # Try to notify user if possible
+            try:
+                if is_slash and not ctx_or_interaction.response.is_done():
+                    await ctx_or_interaction.response.send_message("❌ Mạng yếu! Thử lại sau.", ephemeral=True)
+                elif is_slash:
+                    await ctx_or_interaction.followup.send("❌ Mạng yếu! Thử lại sau.", ephemeral=True)
+                else:
+                    await ctx_or_interaction.reply("❌ Mạng yếu! Thử lại sau.")
+            except:
+                pass  # Can't notify, just log
         except Exception as e:
-            # Catch-all error handler for _fish_action
-            duration = time.time() - start_time
-            logger.info(f"[FISHING] [ERROR] [PERF] Unexpected error in _fish_action after {duration:.2f}s: {e}")
+            total_time = time.time() - start_time
+            logger.error(f"[FISHING] [ERROR] [PERF] Unexpected error in _fish_action after {total_time:.2f}s: {e}", exc_info=True)
             import traceback
             traceback.print_exc()
             try:

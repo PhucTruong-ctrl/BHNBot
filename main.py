@@ -11,6 +11,7 @@ from core.achievement_system import AchievementManager
 load_dotenv()
 
 from core.logger import setup_logger
+from core.timeout_monitor import get_monitor as get_timeout_monitor
 
 # Setup System Logger
 logger = setup_logger("System", "system.log")
@@ -24,7 +25,21 @@ bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 bot.owner_id = 598046112959430657  # Your Discord User ID
 bot.cogs_loaded = False  # Flag to track if cogs are already loaded
 
-# Hàm chạy khi Bot khởi động
+# Command error handler with timeout monitoring
+@bot.event
+async def on_command_error(ctx, error):
+    """Handle command errors with timeout monitoring."""
+    # Track timeout errors
+    if isinstance(error, asyncio.TimeoutError):
+        timeout_monitor = get_timeout_monitor()
+        timeout_monitor.record_timeout(
+            context="command_execution",
+            user_id=ctx.author.id if ctx.author else None,
+            command=ctx.command.name if ctx.command else "unknown"
+        )
+        logger.error(f"[TIMEOUT] Command timeout: {ctx.command} by user {ctx.author.id}")
+
+# Bot ready event
 @bot.event
 async def on_ready():
     logger.info(f'Login successfully as: {bot.user} (ID: {bot.user.id})')
