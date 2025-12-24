@@ -273,6 +273,25 @@ class FishingCog(commands.Cog):
             # Clean expired legendary buff - Migrated to DB, no cleanup needed here
             pass
             
+            # MEMORY LEAK FIX: Clean inactive user locks (older than 24h)
+            # Track last lock usage
+            if not hasattr(self, '_lock_last_used'):
+                self._lock_last_used = {}
+            
+            # Find locks not used in 24 hours
+            cutoff_time = current_time - 86400  # 24 hours
+            inactive_locks = [
+                uid for uid in list(self.user_locks.keys())
+                if self._lock_last_used.get(uid, 0) < cutoff_time
+            ]
+            
+            for uid in inactive_locks:
+                if uid in self.user_locks:
+                    del self.user_locks[uid]
+                if uid in self._lock_last_used:
+                    del self._lock_last_used[uid]
+                cleaned_count += 1
+            
             # Clean old sell_processing entries (older than 5 minutes)
             old_sell = [uid for uid, t in list(self.sell_processing.items()) 
                        if current_time - t > 300]
@@ -293,51 +312,65 @@ class FishingCog(commands.Cog):
     
     @tasks.loop(time=dt_time(21, 0))
     async def meteor_shower_event(self):
-        """Daily meteor shower event at 21:00"""
+        """Daily meteor shower event at 21:00.
+        
+        PERFORMANCE FIX: Runs meteors in PARALLEL for all guilds.
+        """
         try:
-            # Check for pending meteor showers first
             pending_users = list(self.pending_meteor_shower) if hasattr(self, "pending_meteor_shower") else []
             self.pending_meteor_shower.clear()
             
-            # Get all guilds with fishing channels configured
             from database_manager import db_manager
-            rows = await db_manager.execute("SELECT guild_id, fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
+            rows = await db_manager.execute(
+                "SELECT guild_id, fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
+            )
             
-            for guild_id, channel_id in rows:
-                channel = self.bot.get_channel(channel_id)
-                if channel:
-                    # Force meteor shower for pending users
-                    if pending_users:
-                        await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
-                        logger.info(f"[METEOR] Force triggering meteor shower for pending users: {pending_users}")
-                        
-                        # Send meteor for each pending user
-                        for user_id in pending_users:
-                            embed = discord.Embed(
-                                title="💫 Một ngôi sao vừa vụt qua!",
-                                description="Ước mau!",
-                                color=discord.Color.blue()
-                            )
-                            view = MeteorWishView(self)
-                            await channel.send(embed=embed, view=view)
-                            await asyncio.sleep(1)  # Small delay between messages
-                    
-                    # Regular random meteor shower (skip if we already sent for pending users to avoid double)
-                    elif random.random() < 0.4:  # 40% chance
-                        await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
-                        
-                        # Send 5-10 messages over 30 minutes
-                        for _ in range(random.randint(5, 10)):
-                            await asyncio.sleep(random.randint(120, 300))  # 2-5 minutes
-                            embed = discord.Embed(
-                                title="💫 Một ngôi sao vừa vụt qua!",
-                                description="Ước mau!",
-                                color=discord.Color.blue()
-                            )
-                            view = MeteorWishView(self)
-                            await channel.send(embed=embed, view=view)
+            if not rows:
+                logger.info("[METEOR] No configured guilds")
+                return
+            
+            logger.info(f"[METEOR] Starting for {len(rows)} guilds")
+            
+            # PARALLEL execution
+            tasks = [
+                asyncio.create_task(
+                    self._run_meteor_shower_for_guild(gid, cid, pending_users)
+                )
+                for gid, cid in rows
+            ]
+            
+            done, pending = await asyncio.wait(tasks, timeout=1800, return_when=asyncio.ALL_COMPLETED)
+            
+            if pending:
+                logger.warning(f"[METEOR] {len(pending)} guilds timed out")
+                for task in pending:
+                    task.cancel()
+            
+            logger.info(f"[METEOR] Done: {len(done)} ok, {len(pending)} timeout")
         except Exception as e:
-            logger.error(f"[METEOR] Error in meteor shower event: {e}")
+            logger.error(f"[METEOR] Error: {e}", exc_info=True)
+    
+    async def _run_meteor_shower_for_guild(self, guild_id: int, channel_id: int, pending_users: list):
+        """Run meteor for one guild."""
+        try:
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return
+            
+            if pending_users:
+                await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
+                for user_id in pending_users:
+                    embed = discord.Embed(title="💫 Một ngôi sao vừa vụt qua!", description="Ước mau!", color=discord.Color.blue())
+                    await channel.send(embed=embed, view=MeteorWishView(self))
+                    await asyncio.sleep(1)
+            elif random.random() < 0.4:
+                await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
+                for _ in range(random.randint(5, 10)):
+                    await asyncio.sleep(random.randint(120, 300))
+                    embed = discord.Embed(title="💫 Một ngôi sao vừa vụt qua!", description="Ước mau!", color=discord.Color.blue())
+                    await channel.send(embed=embed, view=MeteorWishView(self))
+        except Exception as e:
+            logger.error(f"[METEOR] Guild {guild_id} error: {e}", exc_info=True)
     
     async def _force_meteor_shower(self, user_id: int, channel):
         """Force trigger meteor shower for a specific user"""
@@ -470,8 +503,9 @@ class FishingCog(commands.Cog):
                         await ctx.followup.send(msg, ephemeral=True)
                     else:
                         try:
-                            # Auto-delete cooldown message after 10 seconds
-                            await ctx.reply(msg, delete_after=10)
+                            # Auto-delete cooldown message when cooldown expires
+                            # Use actual remaining time instead of hardcoded 10 seconds
+                            await ctx.reply(msg, delete_after=remaining)
                         except Exception as e:
                             logger.error(f"[FISHING] Error sending cooldown message: {e}")
                     return
@@ -1366,7 +1400,21 @@ class FishingCog(commands.Cog):
             
                     # Wait for interaction or timeout
                     try:
-                        await asyncio.sleep(60)  # 60 second timeout
+                        
+                        # PERFORMANCE FIX: Progress updates instead of silent 60s wait
+                        # Improves UX by showing battle is in progress
+                        for i in range(12):  # 12 × 5s = 60s total
+                            await asyncio.sleep(5)
+                            
+                            # Send progress update every 15 seconds (every 3 iterations)
+                            if i % 3 == 0 and i > 0:  # Skip first iteration (0)
+                                remaining = 60 - (i * 5)
+                                progress_msg = f"⚔️ **Trận chiến với {legendary['name']} đang diễn ra...**\n⏱️ Còn {remaining}s"
+                                try:
+                                    await channel.send(progress_msg)
+                                    logger.debug(f"[LEGENDARY] Battle progress: {60 - remaining}s/{60}s")
+                                except Exception as e:
+                                    logger.warning(f"[LEGENDARY] Could not send progress update: {e}")
                     except Exception as e:
                         logger.error(f"Unexpected error: {e}")
             
