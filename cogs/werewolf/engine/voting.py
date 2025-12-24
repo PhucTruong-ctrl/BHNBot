@@ -37,6 +37,7 @@ class VoteSession:
         duration: int,
         allow_skip: bool = True,
         vote_weights: Optional[Dict[int, int]] = None,
+        disabled_voters: Optional[Iterable[int]] = None,
     ) -> None:
         self.bot = bot
         self.channel = channel
@@ -44,6 +45,8 @@ class VoteSession:
         self.description = description
         self.options = options
         self.eligible_voters = set(eligible_voters)
+        # SECURITY: Track voters who are disabled (vote_disabled flag)
+        self.disabled_voters = set(disabled_voters) if disabled_voters else set()
         # SECURITY: Ensure duration is positive
         if duration <= 0:
             duration = 60
@@ -113,9 +116,13 @@ class VoteSession:
             )
             return
         
-        # Check if voter is disabled (e.g., by Pharmacist's sleeping potion)
-        # We'll check this by looking at the voter's vote_disabled attribute
-        # This should be checked before recording the vote
+        # SECURITY: Check if voter is disabled (e.g., by Pharmacist's sleeping potion)
+        if voter_id in self.disabled_voters:
+            logging.getLogger("werewolf").warning(
+                "Vote blocked: voter is disabled | voter=%s title=%s",
+                voter_id, self.title
+            )
+            return
         
         # SECURITY: Validate target_id is None or in options
         if target_id is not None and target_id not in self.options:

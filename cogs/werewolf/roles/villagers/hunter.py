@@ -17,6 +17,8 @@ logger = logging.getLogger("werewolf")
 
 @register_role
 class Hunter(Role):
+    """Hunter role - Takes someone with them when they die."""
+    
     metadata = RoleMetadata(
         name="Thợ Săn",
         alignment=Alignment.VILLAGE,
@@ -52,46 +54,100 @@ class Hunter(Role):
             logger.warning("Hunter failed to mark or skipped | guild=%s hunter=%s", game.guild.id, player.user_id)
 
     async def on_death(self, game: WerewolfGame, player: PlayerState, cause: str) -> None:  # type: ignore[override]
-        """When Hunter dies, take someone with them."""
-        logger.info("Hunter on_death triggered | guild=%s hunter=%s cause=%s alive=%s marked=%s", game.guild.id, player.user_id, cause, player.alive, self.marked_target)
+        """When Hunter dies, take someone with them - DRAMATIC!
+        
+        NOTE: player.alive is already False when this is called (set before _handle_death).
+        Do NOT check player.alive here - that was a bug causing Hunter to never trigger!
+        """
+        logger.info("Hunter on_death triggered | guild=%s hunter=%s cause=%s marked=%s", 
+                   game.guild.id, player.user_id, cause, self.marked_target)
+        
         if cause == "lynch":
-            # Voted out - choose who to shoot
+            # === DRAMATIC ANNOUNCEMENT: HUNTER REVEALS (gửi vào diễn-biến) ===
+            try:
+                await game.text_channel.send(
+                    f"🔫 **{player.display_name()} là một THỢ SĂN!**\n"
+                    f"💥 *Họ rút súng Shotgun ra, tay run rẩy tìm mục tiêu cuối cùng...*\n"
+                    f"⏳ _{player.display_name()} có 30 giây để chọn ai sẽ chết cùng mình..._"
+                )
+            except Exception as e:
+                logger.error("Failed to send Hunter reveal | error=%s", e)
+            
+            # Voted out - choose who to shoot (exclude self)
             choices = {p.user_id: p.display_name() for p in game.alive_players() if p.user_id != player.user_id}
             if not choices:
                 logger.warning("No valid targets for Hunter revenge | guild=%s hunter=%s", game.guild.id, player.user_id)
                 return
-            # CRITICAL FIX: Verify alive before prompting dead player
-            if not player.alive:
-                logger.warning("Hunter is dead, skipping revenge DM | guild=%s hunter=%s", game.guild.id, player.user_id)
-                return
+            
+            # DM prompt to choose target
             target_id = await game._prompt_dm_choice(  # pylint: disable=protected-access
                 player,
-                title="Thợ Săn Trả Thù",
-                description="Bạn bị treo cổ! Chọn 1 người để bắn trước khi gục ngã.",
+                title="🔫 Thợ Săn - Báo Thù Cuối Cùng",
+                description=(
+                    "**BẠN BỊ TREO CỔ!**\n\n"
+                    "💀 Trước khi chết, bạn có thể bắn một người!\n"
+                    "⏰ 30 giây để chọn..."
+                ),
                 options=choices,
                 allow_skip=True,
+                timeout=30,
             )
+            
             if target_id and target_id in choices:
-                logger.info("Hunter lynch revenge kill queued | guild=%s hunter=%s victim=%s", game.guild.id, player.user_id, target_id)
-                game._pending_deaths.append((target_id, "hunter"))  # pylint: disable=protected-access
-                # Check for achievement: Hunter kill wolf
                 target_player = game.players.get(target_id)
+                
+                # === DRAMATIC SHOOTING ANNOUNCEMENT (gửi vào diễn-biến) ===
+                try:
+                    await game.text_channel.send(
+                        f"💥💥💥 **BANG!!!** 💥💥💥\n\n"
+                        f"🔫 {player.display_name()} đã BẮN CHẾT {target_player.display_name()}!\n"
+                        f"💀 ...rồi quay súng tự sát.\n\n"
+                        f"_Hai thi thể nằm gục, máu chảy trên nền đất..._"
+                    )
+                except Exception as e:
+                    logger.error("Failed to send shooting announcement | error=%s", e)
+                
+                logger.info("Hunter lynch revenge kill queued | guild=%s hunter=%s victim=%s", 
+                           game.guild.id, player.user_id, target_id)
+                game._pending_deaths.append((target_id, "hunter"))  # pylint: disable=protected-access
+                
+                # Check for achievement: Hunter kill wolf
                 if target_player and target_player.get_alignment_priority() == Alignment.WEREWOLF:
                     player.hunter_killed_wolf = True
             else:
+                # === NO SHOT ANNOUNCEMENT ===
+                try:
+                    await game.text_channel.send(
+                        f"🔫 {player.display_name()} run tay... không bắn được ai...\n"
+                        f"💀 _Họ gục xuống trong tuyệt vọng._"
+                    )
+                except Exception as e:
+                    logger.error("Failed to send no-shot announcement | error=%s", e)
                 logger.info("Hunter skipped revenge | guild=%s hunter=%s", game.guild.id, player.user_id)
         else:
             # Killed by other means (wolves, witch, etc) - use marked target
-            logger.info("Hunter killed by %s, checking marked target | guild=%s hunter=%s marked=%s", cause, game.guild.id, player.user_id, self.marked_target)
+            logger.info("Hunter killed by %s, checking marked target | guild=%s hunter=%s marked=%s", 
+                       cause, game.guild.id, player.user_id, self.marked_target)
             if self.marked_target and self.marked_target in game.players:
                 target_player = game.players.get(self.marked_target)
                 if target_player and target_player.alive:
-                    logger.info("Hunter mark revenge kill queued | guild=%s hunter=%s victim=%s", game.guild.id, player.user_id, self.marked_target)
+                    # Announce in diễn-biến
+                    try:
+                        await game.text_channel.send(
+                            f"🔫 **{player.display_name()} (Thợ Săn) đã kéo theo {target_player.display_name()} trước khi chết!**"
+                        )
+                    except Exception:
+                        pass
+                    
+                    logger.info("Hunter mark revenge kill queued | guild=%s hunter=%s victim=%s", 
+                               game.guild.id, player.user_id, self.marked_target)
                     game._pending_deaths.append((self.marked_target, "hunter"))  # pylint: disable=protected-access
-                    # Check for achievement: Hunter kill wolf
+                    
+                    # Check for achievement
                     if target_player.get_alignment_priority() == Alignment.WEREWOLF:
                         player.hunter_killed_wolf = True
                 else:
-                    logger.info("Hunter marked target already dead | guild=%s hunter=%s target=%s", game.guild.id, player.user_id, self.marked_target)
+                    logger.info("Hunter marked target already dead | guild=%s hunter=%s target=%s", 
+                               game.guild.id, player.user_id, self.marked_target)
             else:
                 logger.debug("Hunter has no marked target | guild=%s hunter=%s", game.guild.id, player.user_id)

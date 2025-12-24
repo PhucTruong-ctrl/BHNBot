@@ -31,6 +31,16 @@ class Idiot(Role):
                 # Idiot is last alive - Village wins instead
                 return
             
+            # DRAMATIC FOOL REVEAL
+            try:
+                await game.text_channel.send(
+                    f"🤡 **PLOT TWIST!!!**\\n\\n"
+                    f"😂 **{player.display_name()} là HỀ (FOOL)!**\\n"
+                    f"_Họ cười điên cuồng... Mọi người đã bị lừa! Hề đã THẮNG!_\\n\\n"
+                    f"🎭 **GAME KẾT THÚC** - Fool chiến thắng!"
+                )
+            except Exception:
+                pass
+            
             # Idiot wins
             game._idiot_won = True  # pylint: disable=protected-access
-

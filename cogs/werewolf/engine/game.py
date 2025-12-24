@@ -7,6 +7,7 @@ import contextlib
 import logging
 import random
 from collections import Counter
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import discord
@@ -22,7 +23,7 @@ from core.logger import setup_logger
 
 DB_PATH = "./data/database.db"
 CARD_BACK_URL = "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/banner.png"
-# Lowered to 4 for easier local testing; raise back to 6 for production balance
+# Minimum players required - SET TO 4 FOR TESTING
 MIN_PLAYERS = 4
 
 load_all_roles()
@@ -37,19 +38,27 @@ class WerewolfGame:
         self,
         bot: discord.Client,
         guild: discord.Guild,
-        channel: discord.TextChannel,
         host: discord.Member,
         expansions: Set[Expansion],
-        voice_channel_id: Optional[int] = None,
-        game_mode: str = "text",
+        lobby_channel: discord.TextChannel,  # Where /masoi create was run
     ) -> None:
         self.bot = bot
         self.guild = guild
-        self.channel = channel
         self.host = host
-        self.voice_channel_id = voice_channel_id
-        self.game_mode = game_mode  # "text" or "voice"
-        self.werewolf_role: Optional[discord.Role] = None
+        self.lobby_channel = lobby_channel  # Public channel for lobby
+        
+        # NEW: Category-based infrastructure
+        self.category: Optional[discord.CategoryChannel] = None
+        self.voice_channel: Optional[discord.VoiceChannel] = None
+        self.text_channel: Optional[discord.TextChannel] = None  # Bot-only event log
+        
+        # NEW: Threads for communication
+        self.thread_wolves: Optional[discord.Thread] = None  # Wolf discussion
+        self.thread_dead: Optional[discord.Thread] = None  # Dead player spectators
+        self.thread_main: Optional[discord.Thread] = None  # Main discussion
+        
+        # Track activity for auto-cleanup
+        self.last_activity: datetime = datetime.now(timezone.utc)
         self.settings = GameSettings(expansions=set(expansions))
         self.players: Dict[int, PlayerState] = {}
         self.phase = Phase.LOBBY
@@ -58,10 +67,10 @@ class WerewolfGame:
         self.is_finished = False
         self._winner: Optional[Alignment] = None
         self._loop_task: Optional[asyncio.Task] = None
-        self._wolf_thread: Optional[discord.Thread] = None
         self._lobby_message: Optional[discord.Message] = None
-        self._player_role: Optional[discord.Role] = None  # Role for game participants
         self._lobby_view: Optional[_LobbyView] = None
+        # NOTE: _wolf_thread removed - now using self.thread_wolves
+        # NOTE: _player_role removed - using permissions instead of roles
         # (player_id, cause) where cause in {wolves, white_wolf, witch, pyro, hunter, lynch, lover, scapegoat}
         self._pending_deaths: List[Tuple[int, str]] = []
         self._lovers: Set[int] = set()
@@ -71,7 +80,7 @@ class WerewolfGame:
         self._death_log: List[Tuple[int, str, str]] = []
         self._little_girl_peeking: Optional[int] = None  # Little girl user_id if peeking this night
         self._sisters_ids: List[int] = []  # Two Sisters player IDs
-        self._sisters_thread: Optional[discord.Thread] = None
+        self._sisters_thread: Optional[discord.Thread] = None  # Sisters have their own thread
         # Pyromaniac state: set of player IDs soaked in oil (max 6)
         self._pyro_soaked: Set[int] = set()
         self._pyro_id: Optional[int] = None  # Pyromaniac player ID
@@ -99,12 +108,24 @@ class WerewolfGame:
         self._devoted_servant_id: Optional[int] = None  # Devoted Servant player ID
         self._devoted_servant_stolen_role: Optional[Role] = None  # Stolen role by Devoted Servant
         self._devoted_servant_original_target: Optional[int] = None  # Original target of Devoted Servant swap
+        
+        # NOTE: Voice state listener is now handled centrally by WerewolfManager
+        # to avoid listener overwrites in multi-game scenarios
+
+    @property
+    def channel(self) -> Optional[discord.TextChannel]:
+        """Backwards compatibility: return text_channel (event log channel).
+        
+        TODO: Refactor all usages to explicitly use lobby_channel or text_channel.
+        """
+        return self.text_channel if self.text_channel else self.lobby_channel
 
     async def open_lobby(self) -> None:
+        """Open lobby in public channel for players to join."""
         self._lobby_view = _LobbyView(self)
         embed = self._build_lobby_embed()
-        self._lobby_message = await self.channel.send(embed=embed, view=self._lobby_view)
-        logger.info("Lobby opened | guild=%s channel=%s host=%s", self.guild.id, self.channel.id, self.host.id)
+        self._lobby_message = await self.lobby_channel.send(embed=embed, view=self._lobby_view)
+        logger.info("Lobby opened | guild=%s channel=%s host=%s", self.guild.id, self.lobby_channel.id, self.host.id)
 
     def _build_lobby_embed(self) -> discord.Embed:
         player_lines = [f"- {player.display_name()}" for player in self.list_players()]
@@ -133,36 +154,175 @@ class WerewolfGame:
         except discord.HTTPException:
             pass
 
+    async def _create_game_infrastructure(self) -> None:
+        """Create category, channels, and threads for game.
+        
+        Creates:
+        - Category: "🐺 Ma Sói #{game_id} - {host[:10]}"
+        - Voice Channel: "🔊 Bàn Tròn"
+        - Text Channel: "📜 diễn-biến" (bot-only messages)
+        - Threads: Hang Sói (wolves), Nghĩa Địa (dead), Bàn Tròn (all)
+        """
+        # Generate unique game ID
+        game_id = random.randint(100, 999)
+        host_short = self.host.display_name[:10]
+        category_name = f"🐺 Ma Sói #{game_id} - {host_short}"
+        
+        # Create Category (VIEWABLE for spectators, no interaction)
+        overwrites = {
+            self.guild.default_role: discord.PermissionOverwrite(
+                view_channel=True,       # Everyone can SEE
+                connect=False,           # Cannot join voice
+                speak=False,             # Cannot speak
+                send_messages=False      # Cannot chat
+            ),
+            self.guild.me: discord.PermissionOverwrite(
+                view_channel=True,
+                manage_channels=True,
+                manage_permissions=True,
+                manage_threads=True
+            )
+        }
+        
+        self.category = await self.guild.create_category(
+            name=category_name,
+            overwrites=overwrites,
+            reason=f"Werewolf Game #{game_id} - Host: {self.host.name}"
+        )
+        logger.info("✅ Created category | guild=%s id=%s name=%s", 
+                   self.guild.id, self.category.id, category_name)
+        
+        # Create Voice Channel
+        self.voice_channel = await self.category.create_voice_channel(
+            name="🔊 Bàn Tròn",
+            reason="Werewolf: Main voice channel"
+        )
+        logger.info("✅ Created voice channel | guild=%s id=%s name=%s", 
+                   self.guild.id, self.voice_channel.id, self.voice_channel.name)
+        
+        # Create Text Channel (spectators can watch events)
+        text_overwrites = {
+            self.guild.default_role: discord.PermissionOverwrite(
+                view_channel=True,       # Everyone can WATCH
+                send_messages=False      # Cannot chat
+            ),
+            self.guild.me: discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                manage_messages=True
+            )
+        }
+        
+        self.text_channel = await self.category.create_text_channel(
+            name="📜 diễn-biến",
+            overwrites=text_overwrites,
+            reason="Werewolf: Game events channel (bot-only messages)"
+        )
+        logger.info("✅ Created text channel | guild=%s id=%s name=%s", 
+                   self.guild.id, self.text_channel.id, self.text_channel.name)
+        
+        # Create Threads (Private)
+        # CRITICAL: Threads must override parent permissions!
+        self.thread_wolves = await self.text_channel.create_thread(
+            name="Hang Sói",
+            type=discord.ChannelType.private_thread,
+            reason="Werewolf: Wolf communication"
+        )
+        logger.info("✅ Created thread WOLVES | guild=%s id=%s name=%s", 
+                   self.guild.id, self.thread_wolves.id, self.thread_wolves.name)
+        
+        self.thread_dead = await self.text_channel.create_thread(
+            name="Nghĩa Địa", 
+            type=discord.ChannelType.private_thread,
+            reason="Werewolf: Dead player spectator area"
+        )
+        logger.info("✅ Created thread DEAD | guild=%s id=%s name=%s", 
+                   self.guild.id, self.thread_dead.id, self.thread_dead.name)
+        
+        self.thread_main = await self.text_channel.create_thread(
+            name="Bàn Tròn",
+            type=discord.ChannelType.private_thread,
+            reason="Werewolf: Main discussion"
+        )
+        logger.info("✅ Created thread MAIN | guild=%s id=%s name=%s", 
+                   self.guild.id, self.thread_main.id, self.thread_main.name)
+        
+        # Send metadata message for cleanup
+        await self.text_channel.send(
+            f"**Game Created**\n"
+            f"ID: {game_id}\n"
+            f"Host: {self.host.mention}\n"
+            f"Created: {datetime.now(timezone.utc).isoformat()}\n"
+            f"⚠️ Auto-cleanup if inactive >4h"
+        )
+        
+        logger.info(
+            "Created game infrastructure | guild=%s category=%s game_id=%s",
+            self.guild.id, self.category.id, game_id
+        )
+
+    async def _grant_player_access(self, member: discord.Member) -> None:
+        """Grant player access to game infrastructure.
+        
+        Args:
+            member: Player to grant access to
+        """
+        # Grant category access
+        await self.category.set_permissions(
+            member,
+            view_channel=True,
+            reason="Werewolf: Player access"
+        )
+        
+        # Grant voice access
+        await self.voice_channel.set_permissions(
+            member,
+            view_channel=True,
+            connect=True,
+            speak=True,
+            reason="Werewolf: Player voice access"
+        )
+        
+        # Grant text channel VIEW (but not send - bot only)
+        await self.text_channel.set_permissions(
+            member,
+            view_channel=True,
+            send_messages=False,
+            reason="Werewolf: Player can view events"
+        )
+        
+        logger.info("Granted infrastructure access | guild=%s player=%s", 
+                   self.guild.id, member.id)
+
     async def cleanup(self) -> None:
+        """Cleanup game infrastructure."""
         self._stop_event.set()
+        
+        # Cancel game loop
         if self._loop_task and not self._loop_task.done():
             self._loop_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._loop_task
+        
+        # Edit lobby message
         if self._lobby_message and not self.is_finished:
             try:
                 await self._lobby_message.edit(content="Bàn chơi đã huỷ.", embed=None, view=None)
             except discord.HTTPException:
                 pass
-        if self._wolf_thread:
+        
+        # Delete entire category (this deletes all channels/threads inside)
+        if self.category:
             try:
-                await self._wolf_thread.delete()
-            except discord.HTTPException:
-                pass
-        # Unmute all players in voice channel
-        await self._unmute_voice(force_unmute_all=True)
-        # Delete player role if it exists
-        if self._player_role:
-            try:
-                await self._player_role.delete(reason="Werewolf: Game ended - cleanup role")
-            except discord.HTTPException:
-                pass
-        # Delete werewolf role if it exists
-        if self.werewolf_role:
-            try:
-                await self.werewolf_role.delete(reason="Werewolf: Game ended - cleanup role")
-            except discord.HTTPException:
-                pass
+                await self.category.delete(reason="Werewolf: Game ended")
+                logger.info("Deleted game category | guild=%s", self.guild.id)
+            except discord.HTTPException as e:
+                logger.error("Failed to delete category: %s", e)
+        
+        # NOTE: Old role deletion code removed - using permissions now
+        # NOTE: Old wolf thread deletion removed - deleted with category
+        
+        self.is_finished = True
     
     async def _save_game_state(self) -> None:
         """Save current game state to database (called by game loop)"""
@@ -224,6 +384,7 @@ class WerewolfGame:
         return wolves
 
     async def add_player(self, member: discord_abc.User) -> None:
+        """Add player to game (lobby or late join with infrastructure access)."""
         if self.phase != Phase.LOBBY:
             raise RuntimeError("Không thể tham gia sau khi trận đấu đã bắt đầu")
         guild_member = member if isinstance(member, discord.Member) else self.guild.get_member(member.id)
@@ -231,9 +392,19 @@ class WerewolfGame:
             raise RuntimeError("Không thể xác định thành viên trong máy chủ")
         if guild_member.id in self.players:
             return
+        
         self.players[guild_member.id] = PlayerState(member=guild_member)
+        
+        # If infrastructure exists, grant access immediately
+        # (This handles late joins after game started but before first night)
+        if self.category:
+            await self._grant_player_access(guild_member)
+            logger.info("Granted infrastructure access to late joiner | guild=%s player=%s", 
+                       self.guild.id, guild_member.id)
+        
         await self._refresh_lobby()
-        logger.info("Player joined lobby | guild=%s channel=%s player=%s", self.guild.id, self.channel.id, guild_member.id)
+        logger.info("Player joined lobby | guild=%s channel=%s player=%s", 
+                   self.guild.id, self.lobby_channel.id, guild_member.id)
 
     async def remove_player(self, member: discord_abc.User) -> None:
         if self.phase != Phase.LOBBY:
@@ -257,24 +428,75 @@ class WerewolfGame:
         await self._refresh_lobby()
 
     async def start(self) -> None:
+        """Start the werewolf game with infrastructure creation."""
         if self.phase != Phase.LOBBY:
             raise RuntimeError("Bàn chơi đã khởi động")
         if len(self.players) < MIN_PLAYERS:
-            raise RuntimeError("Cần ít nhất 6 người mới bắt đầu được")
+            raise RuntimeError(f"Cần ít nhất {MIN_PLAYERS} người mới bắt đầu được")
+        
+        # Create game infrastructure (category, channels, threads)
+        await self._create_game_infrastructure()
+        
+        # Grant all players access to infrastructure (PARALLEL for speed)
+        access_tasks = [
+            self._grant_player_access(player.member)
+            for player in self.list_players()
+        ]
+        await asyncio.gather(*access_tasks)
+        
+        # Add all players to main thread for discussion (PARALLEL)
+        # Note: Threads don't use set_permissions, they inherit from parent
+        thread_tasks = [
+            self.thread_main.add_user(player.member)
+            for player in self.list_players()
+        ]
+        await asyncio.gather(*thread_tasks)
+        
+        # Send welcome message in dedicated text channel
+        await self.text_channel.send(
+            f"🐺 **Trò Chơi Ma Sói Bắt Đầu!**\n\n"
+            f"Người chơi: {', '.join(p.display_name() for p in self.list_players())}\n"
+            f"Voice: {self.voice_channel.mention}\n"
+            f"Thảo luận: {self.thread_main.mention}\n\n"
+            "Hãy vào voice và thread để bắt đầu!"
+        )
+        
+        # Notify in lobby channel
+        await self.lobby_channel.send(
+            f"✅ Game Ma Sói đã bắt đầu tại {self.category.name}!"
+        )
+        
         self.phase = Phase.NIGHT
         self.night_number = 1
         await self._assign_roles()
-        await self._create_player_role()  # Create role and set permissions efficiently
+        
+        # Add wolves to their thread
+        wolves = [
+            p for p in self.list_players() 
+            if any(r.alignment == Alignment.WEREWOLF for r in p.roles)
+        ]
+        if wolves:
+            wolf_add_tasks = [
+                self.thread_wolves.add_user(wolf.member)
+                for wolf in wolves
+            ]
+            await asyncio.gather(*wolf_add_tasks)
+            logger.info("Added %s wolves to Hang Sói thread", len(wolves))
+        
+        # NOTE: Old _create_player_role() removed - using permissions now
         await self._notify_roles()
-        await self._create_wolf_thread()
+        # NOTE: Old _create_wolf_thread() removed - created in infrastructure
         await self._announce_role_composition()
+        
         if self._lobby_message:
             try:
                 await self._lobby_message.edit(content="Trận đấu đã bắt đầu", view=None)
             except discord.HTTPException:
                 pass
+        
         self._loop_task = asyncio.create_task(self._game_loop())
-        logger.info("Game started | guild=%s channel=%s players=%s expansions=%s", self.guild.id, self.channel.id, len(self.players), list(self.settings.expansions))
+        logger.info("Game started | guild=%s category=%s players=%s expansions=%s", 
+                   self.guild.id, self.category.id, len(self.players), list(self.settings.expansions))
 
     async def _game_loop(self) -> None:
         try:
@@ -318,41 +540,73 @@ class WerewolfGame:
             # Clear all channel permissions to reset for next game
             await self._clear_channel_permissions()
             self.is_finished = True
-            if self._wolf_thread:
+            if self.thread_wolves:
                 with contextlib.suppress(discord.HTTPException):
-                    await self._wolf_thread.delete()
+                    await self.thread_wolves.delete()
             if self._sisters_thread:
                 with contextlib.suppress(discord.HTTPException):
                     await self._sisters_thread.delete()
             
             # Delete saved game state when game finishes
             await self._delete_game_state()
+            
+            # DELETE ENTIRE CATEGORY (this deletes voice, text channels and remaining threads)
+            if self.category:
+                try:
+                    # Wait a bit for final messages to be sent
+                    await asyncio.sleep(5)
+                    await self.category.delete(reason="Werewolf: Game ended - cleanup")
+                    logger.info("Deleted game category | guild=%s category=%s", 
+                               self.guild.id, self.category.id)
+                except discord.HTTPException as e:
+                    logger.error("Failed to delete category | guild=%s error=%s", 
+                               self.guild.id, e)
 
     async def _run_night(self) -> None:
+        """Execute night phase with new architecture."""
         self.phase = Phase.NIGHT
+        self.last_activity = datetime.now(timezone.utc)  # Track activity for cleanup
+        
         for player in self.alive_players():
             player.reset_night_flags()
+        
         # Announce night with embed
         embed = discord.Embed(
             title=f"🌙 Đêm {self.night_number}",
-            description="Buông xuống. Tất cả đi ngủ.",
+            description="Màn đêm buông xuống. Tất cả đi ngủ.",
             colour=discord.Colour.dark_blue(),
         )
         embed.set_image(url=CARD_BACK_URL)
-        await self.channel.send(embed=embed)
-        await self._run_countdown(self.channel, f"Đêm {self.night_number}", self.settings.night_intro_duration)
-        logger.info("Night start | guild=%s channel=%s night=%s", self.guild.id, self.channel.id, self.night_number)
+        await self.text_channel.send(embed=embed)
+        await self._run_countdown(self.text_channel, f"Đêm {self.night_number}", self.settings.night_intro_duration)
+        logger.info("Night start | guild=%s channel=%s night=%s", self.guild.id, self.text_channel.id, self.night_number)
         
-        # Disable text chat and mute voice channel for night phase
+        # Disable text chat (bot-only channel already, this is for threads)
         await self._disable_text_chat()
-        if self.game_mode == "voice":
-            await self._mute_voice()
         
-        # Mute Werewolf Player role during night
-        if self.werewolf_role and self.voice_channel_id:
-            channel = self.bot.get_channel(self.voice_channel_id)
-            if isinstance(channel, discord.VoiceChannel):
-                await channel.set_permissions(self.werewolf_role, speak=False)
+        # Mute all alive players in voice (PARALLEL with asyncio.gather)
+        if self.voice_channel:
+            mute_tasks = []
+            for member in self.voice_channel.members:
+                player = self.players.get(member.id)
+                if player and player.alive:
+                    mute_tasks.append(
+                        member.edit(mute=True, reason="Werewolf: Night phase")
+                    )
+            if mute_tasks:
+                await asyncio.gather(*mute_tasks, return_exceptions=True)
+        
+        # LOCK thread_main - Read-only for all players during night
+        if self.thread_main:
+            await self.thread_main.edit(locked=True, reason="Werewolf: Night phase - locked")
+            logger.info("Locked thread_main for night | guild=%s", self.guild.id)
+        
+        # UNLOCK thread_wolves - Wolves can chat during night
+        if self.thread_wolves:
+            await self.thread_wolves.edit(locked=False, reason="Werewolf: Night phase - wolves active")
+            logger.info("Unlocked thread_wolves for night | guild=%s", self.guild.id)
+        
+        # NOTE: Old werewolf_role muting removed - using threads now
         
         # Wake Two Sisters on even nights (2, 4, 6...) for coordination
         if self.night_number % 2 == 0 and len(self._sisters_ids) == 2:
@@ -363,14 +617,12 @@ class WerewolfGame:
         self.night_number += 1
 
     async def _run_day(self) -> None:
+        """Execute day phase with new architecture."""
         self.phase = Phase.DAY
         self.day_number += 1
+        self.last_activity = datetime.now(timezone.utc)  # Track activity
         
-        # Unmute Werewolf Player role during day
-        if self.werewolf_role and self.voice_channel_id:
-            channel = self.bot.get_channel(self.voice_channel_id)
-            if isinstance(channel, discord.VoiceChannel):
-                await channel.set_permissions(self.werewolf_role, speak=True)
+        # NOTE: Old werewolf_role unmuting removed - using threads now
         
         # Reset wolves died tracking for the new day
         self._wolves_died_today = []
@@ -380,16 +632,42 @@ class WerewolfGame:
         
         # Enable text chat and unmute voice channel for day phase
         await self._enable_text_chat()
-        if self.game_mode == "voice":
-            await self._unmute_voice()
+        
+        # Unmute all alive players in voice (PARALLEL with asyncio.gather)
+        if self.voice_channel:
+            unmute_tasks = []
+            for member in self.voice_channel.members:
+                player = self.players.get(member.id)
+                if player and player.alive:
+                    unmute_tasks.append(
+                        member.edit(mute=False, reason="Werewolf: Day phase")
+                    )
+            if unmute_tasks:
+                await asyncio.gather(*unmute_tasks, return_exceptions=True)
+        
+        # UNLOCK thread_main - Players can discuss during day
+        if self.thread_main:
+            await self.thread_main.edit(locked=False, reason="Werewolf: Day phase - open discussion")
+            logger.info("Unlocked thread_main for day | guild=%s", self.guild.id)
+        
+        # LOCK thread_wolves - Wolves cannot chat during day
+        if self.thread_wolves:
+            await self.thread_wolves.edit(locked=True, reason="Werewolf: Day phase - wolves silent")
+            logger.info("Locked thread_wolves for day | guild=%s", self.guild.id)
         
         announcements = []
         new_deaths = [p for p in self.list_players() if not p.alive and p.death_pending]
         if new_deaths:
             deaths_text = ", ".join(p.display_name() for p in new_deaths)
-            announcements.append(f"Sáng nay phát hiện {deaths_text} đã chết.")
+            announcements.append(
+                f"☀️ **BÌNH MINH MÁU...**\n"
+                f"💀 _Tiếng hét xé toạc buổi sáng! Thi thể của **{deaths_text}** được tìm thấy..._"
+            )
         else:
-            announcements.append("Sáng nay bình yên, không ai chết.")
+            announcements.append(
+                "☀️ **BÌNH MINH LÊN...**\n"
+                "✨ _Mọi người thức dậy an toàn. Nhưng sự bình yên này có kéo dài?_"
+            )
         await self.channel.send("\n".join(announcements))
         for player in new_deaths:
             player.death_pending = False
@@ -514,8 +792,8 @@ class WerewolfGame:
                 target.add_role(Werewolf())
                 
                 # Add to wolf thread
-                if self._wolf_thread:
-                    await self._wolf_thread.add_user(target.member)
+                if self.thread_wolves:
+                    await self.thread_wolves.add_user(target.member)
                 
                 # Notify the cursed player
                 await target.member.send(
@@ -523,8 +801,8 @@ class WerewolfGame:
                 )
                 
                 # Notify wolves about new member
-                if self._wolf_thread:
-                    await self._wolf_thread.send(
+                if self.thread_wolves:
+                    await self.thread_wolves.send(
                         f"{target.display_name()} đã được nguyền rủa thành Ma Sói! Họ sẽ gia nhập bầy từ đêm tiếp theo."
                     )
             
@@ -551,7 +829,8 @@ class WerewolfGame:
             await self.channel.send("Không đủ người sống để bỏ phiếu ban ngày.")
             return
         eligible = [p.user_id for p in alive if not p.vote_disabled]
-        logger.info("Day vote start | guild=%s day=%s eligible=%s", self.guild.id, self.day_number, eligible)
+        disabled = [p.user_id for p in alive if p.vote_disabled]
+        logger.info("Day vote start | guild=%s day=%s eligible=%s disabled=%s", self.guild.id, self.day_number, eligible, disabled)
         options = {p.user_id: p.display_name() for p in alive}
         vote = VoteSession(
             self.bot,
@@ -563,6 +842,7 @@ class WerewolfGame:
             duration=self.settings.day_vote_duration,
             allow_skip=True,
             vote_weights={p.user_id: p.vote_weight for p in alive},
+            disabled_voters=disabled,
         )
         result = await vote.start()
         tally = Counter(result.tally)
@@ -591,7 +871,7 @@ class WerewolfGame:
                 logger.info("Sisters bonus vote applied | guild=%s day=%s target=%s", self.guild.id, self.day_number, sister1_vote)
         
         if not tally:
-            await self.channel.send("Không có ai bị trưng cầu đủ phiếu.")
+            await self.thread_main.send("Không có ai bị trưng cầu đủ phiếu.")
             return
         top = tally.most_common()
         if len(top) > 1 and top[0][1] == top[1][1]:
@@ -602,7 +882,7 @@ class WerewolfGame:
                 tied = [pid for pid, count in top if count == top[0][1]]
                 tie_options = {pid: self.players[pid].display_name() for pid in tied if pid in self.players}
                 
-                await self.channel.send(f"⚖️ Hòa phiếu! Trưởng Làng {mayor.display_name()} sẽ quyết định.")
+                await self.thread_main.send(f"⚖️ Hòa phiếu! Trưởng Làng {mayor.display_name()} sẽ quyết định.")
                 choice = await self._prompt_dm_choice(
                     mayor,
                     title="Trưởng Làng - Phá vỡ hòa phiếu",
@@ -615,34 +895,34 @@ class WerewolfGame:
                 if choice and choice in tie_options:
                     target_player = self.players.get(choice)
                     if target_player:
-                        await self.channel.send(f"🎖️ Trưởng Làng đã quyết định: {target_player.display_name()} bị treo cổ.")
+                        await self.thread_main.send(f"🎖️ Trưởng Làng đã quyết định: {target_player.display_name()} bị treo cổ.")
                         logger.info("Mayor broke tie | guild=%s mayor=%s target=%s", self.guild.id, mayor.user_id, choice)
                     else:
-                        await self.channel.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
+                        await self.thread_main.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
                         logger.info("Day vote tie no execution | guild=%s day=%s", self.guild.id, self.day_number)
                         return
                 else:
-                    await self.channel.send("Trưởng Làng không quyết định được, không ai bị treo cổ.")
+                    await self.thread_main.send("Trưởng Làng không quyết định được, không ai bị treo cổ.")
                     logger.info("Mayor failed to break tie | guild=%s day=%s", self.guild.id, self.day_number)
                     return
             else:
                 # No mayor, check scapegoat
                 scapegoat = self._find_role_holder("Oan Nhân")
                 if scapegoat:
-                    await self.channel.send("Lá phiếu bế tắc. Oan nhân phải ra đi thay làng.")
+                    await self.thread_main.send("Lá phiếu bế tắc. Oan nhân phải ra đi thay làng.")
                     scapegoat.alive = False
                     await self._handle_death(scapegoat, cause="tie")
                     logger.info("Scapegoat executed due to tie | guild=%s player=%s", self.guild.id, scapegoat.user_id)
                     return
-                await self.channel.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
+                await self.thread_main.send("Dân làng tranh cãi không dứt, chưa ai bị treo cổ.")
                 logger.info("Day vote tie no execution | guild=%s day=%s", self.guild.id, self.day_number)
                 return
         target_player = self.players.get(top[0][0])
         if not target_player:
-            await self.channel.send("Không có kết quả rõ ràng.")
+            await self.thread_main.send("Không có kết quả rõ ràng.")
             return
         
-        await self.channel.send(f"🎪 **{target_player.display_name()} bị đưa lên giàn treo cổ.**")
+        await self.thread_main.send(f"🎪 **{target_player.display_name()} bị đưa lên giàn treo cổ.**")
         
         # NEW: Defense Phase (Biện hộ)
         await self._run_defense_phase(target_player)
@@ -770,7 +1050,12 @@ class WerewolfGame:
         )
         embed.set_footer(text=f"Menu luôn sẵn sàng, không timeout")
         
-        skip_message = await self.channel.send(embed=embed, view=skip_vote_view)
+        # CRITICAL: Null check for thread_main
+        if not self.thread_main:
+            logger.error("thread_main is None, cannot run discussion | guild=%s", self.guild.id)
+            return
+        
+        skip_message = await self.thread_main.send(embed=embed, view=skip_vote_view)
         skip_vote_view.message = skip_message
         
         logger.info("Discussion phase started with skip voting | guild=%s day=%s time=%s alive=%s", 
@@ -783,7 +1068,7 @@ class WerewolfGame:
         while remaining_time > 0:
             # Check if all players voted to skip
             if skip_vote_view.can_skip():
-                await self.channel.send("✅ **Tất cả người chơi đều bỏ qua thảo luận!**\n💨 Chuyển sang giai đoạn treo cổ...")
+                await self.thread_main.send("✅ **Tất cả người chơi đều bỏ qua thảo luận!**\n💨 Chuyển sang giai đoạn treo cổ...")
                 logger.info("Discussion skipped by all players | guild=%s day=%s", self.guild.id, self.day_number)
                 skip_vote_view.stop()
                 break
@@ -812,7 +1097,7 @@ class WerewolfGame:
         # Final summary
         skip_votes = len(skip_vote_view.skip_votes)
         if skip_votes > 0:
-            await self.channel.send(f"📊 **Kết quả bỏ phiếu:** {skip_votes}/{alive_count} người chọn bỏ qua")
+            await self.thread_main.send(f"📊 **Kết quả bỏ phiếu:** {skip_votes}/{alive_count} người chọn bỏ qua")
         
         logger.info("Discussion phase ended | guild=%s day=%s skip_votes=%s", 
                    self.guild.id, self.day_number, skip_votes)
@@ -822,9 +1107,14 @@ class WerewolfGame:
         Defense/Biện hộ phase: Allow the nominated player to speak for their defense.
         Duration: day_defense_duration seconds (default: 75 seconds)
         """
-        defense_time = self.settings.day_defense_duration
+        defense_time = 30  # Changed from 75s to 30s
         
-        await self.channel.send(
+        # CRITICAL: Null check
+        if not self.thread_main:
+            logger.error("thread_main is None, skipping defense | guild=%s", self.guild.id)
+            return
+        
+        defense_msg = await self.thread_main.send(
             f"⏱️ **Biện hộ:** {target_player.display_name()} có {defense_time} giây để thuyết phục mọi người. (Cả làng vui lòng lắng nghe...)"
         )
         logger.info("Defense phase started | guild=%s player=%s duration=%s", 
@@ -848,7 +1138,7 @@ class WerewolfGame:
             2: "Tha",
         }
         
-        await self.channel.send(
+        await self.thread_main.send(
             f"📋 **Biểu quyết:** Bạn có {judgment_time} giây để quyết định: **Giết** hay **Tha** {target_player.display_name()}?"
         )
         
@@ -901,7 +1191,12 @@ class WerewolfGame:
         """
         last_words_time = self.settings.day_last_words_duration
         
-        await self.channel.send(
+        # CRITICAL: Null check
+        if not self.thread_main:
+            logger.error("thread_main is None, skipping last words | guild=%s", self.guild.id)
+            return
+        
+        await self.thread_main.send(
             f"💬 **Lời cuối cùng:** {target_player.display_name()} có {last_words_time} giây để nói lời tạm biệt..."
         )
         logger.info("Last words phase started | guild=%s player=%s duration=%s", 
@@ -1017,12 +1312,7 @@ class WerewolfGame:
                 sister_player.user_id,
             )
 
-        # Create Werewolf Player role for voice mode
-        if self.game_mode == "voice" and self.voice_channel_id:
-            self.werewolf_role = await self.guild.create_role(name="Werewolf Player", permissions=discord.Permissions.none())
-            for player in self.players.values():
-                if any(role.alignment == Alignment.WEREWOLF for role in player.roles):
-                    await player.member.add_roles(self.werewolf_role)
+        # NOTE: Werewolf role creation removed - using permissions instead of roles in new architecture
 
     async def _notify_roles(self) -> None:
         wolf_players = [p for p in self.players.values() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
@@ -1249,21 +1539,21 @@ class WerewolfGame:
             return
         name = f"{self.settings.wolf_thread_name} - Đêm 1"
         try:
-            self._wolf_thread = await self.channel.create_thread(name=name, auto_archive_duration=60)
+            self.thread_wolves = await self.channel.create_thread(name=name, auto_archive_duration=60)
         except discord.HTTPException:
             await self.channel.send("Không tạo được thread cho Ma Sói.")
             return
         wolf_mentions = " ".join(p.member.mention for p in wolves)
-        await self._wolf_thread.send(f"{wolf_mentions} đây là nơi bàn kế hoạch. Hãy dùng menu để chọn mục tiêu mỗi đêm.")
+        await self.thread_wolves.send(f"{wolf_mentions} đây là nơi bàn kế hoạch. Hãy dùng menu để chọn mục tiêu mỗi đêm.")
 
     async def _mute_voice(self) -> None:
         """Mute all players in voice channel during night phase, keep dead players muted."""
-        if not self.voice_channel_id:
+        if not self.voice_channel.id:
             return
         try:
-            voice_channel = self.bot.get_channel(self.voice_channel_id)
+            voice_channel = self.bot.get_channel(self.voice_channel.id)
             if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
-                logger.warning("Voice channel not found or invalid | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
+                logger.warning("Voice channel not found or invalid | guild=%s channel_id=%s", self.guild.id, self.voice_channel.id)
                 return
             
             # Mute all players currently in the voice channel
@@ -1277,8 +1567,8 @@ class WerewolfGame:
                                  self.guild.id, member.id, str(e))
             
             logger.info("Voice muted | guild=%s voice_channel=%s muted_count=%s", 
-                       self.guild.id, self.voice_channel_id, muted_count)
-        except Exception as e:
+                       self.guild.id, self.voice_channel.id, muted_count)
+        except discord.HTTPException as e:
             logger.error("Failed to mute voice channel | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _unmute_voice(self, force_unmute_all: bool = False) -> None:
@@ -1287,12 +1577,12 @@ class WerewolfGame:
         Args:
             force_unmute_all: If True, unmute all players regardless of alive status (used in cleanup).
         """
-        if not self.voice_channel_id:
+        if not self.voice_channel.id:
             return
         try:
-            voice_channel = self.bot.get_channel(self.voice_channel_id)
+            voice_channel = self.bot.get_channel(self.voice_channel.id)
             if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
-                logger.warning("Voice channel not found or invalid | guild=%s channel_id=%s", self.guild.id, self.voice_channel_id)
+                logger.warning("Voice channel not found or invalid | guild=%s channel_id=%s", self.guild.id, self.voice_channel.id)
                 return
             
             # Unmute only alive players in the voice channel
@@ -1317,36 +1607,31 @@ class WerewolfGame:
                                  self.guild.id, member.id, str(e))
             
             logger.info("Voice unmuted | guild=%s voice_channel=%s unmuted_count=%s force_unmute_all=%s", 
-                       self.guild.id, self.voice_channel_id, unmuted_count, force_unmute_all)
-        except Exception as e:
+                       self.guild.id, self.voice_channel.id, unmuted_count, force_unmute_all)
+        except discord.HTTPException as e:
             logger.error("Failed to unmute voice channel | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _disable_text_chat(self) -> None:
-        """Disable text chat in game channel (only during night phase)."""
-        try:
-            everyone_role = self.guild.default_role
-            await self.channel.set_permissions(
-                everyone_role,
-                send_messages=False,
-                reason="Werewolf: Night phase - disable text chat"
-            )
-            logger.info("Text chat disabled | guild=%s channel=%s", self.guild.id, self.channel.id)
-        except discord.HTTPException as e:
-            logger.error("Failed to disable text chat | guild=%s error=%s", self.guild.id, str(e))
+        """Disable text chat - NO-OP in new architecture.
+        
+        In new architecture, text_channel is bot-only.
+        Players use threads which have own permissions.
+        """
+        # NOTE: Old architecture modified @everyone permissions on text channel
+        # New architecture: text_channel is bot-only, players use threads
+        logger.info("Text chat disabled (threads mode) | guild=%s channel=%s", 
+                   self.guild.id, self.text_channel.id)
 
     async def _enable_text_chat(self) -> None:
-        """Re-enable text chat in game channel (only during day phase)."""
-        try:
-            everyone_role = self.guild.default_role
-            # Set to None to inherit channel defaults
-            await self.channel.set_permissions(
-                everyone_role,
-                send_messages=None,
-                reason="Werewolf: Day phase - enable text chat"
-            )
-            logger.info("Text chat enabled | guild=%s channel=%s", self.guild.id, self.channel.id)
-        except discord.HTTPException as e:
-            logger.error("Failed to enable text chat | guild=%s error=%s", self.guild.id, str(e))
+        """Re-enable text chat - NO-OP in new architecture.
+        
+        In new architecture, text_channel is bot-only.
+        Players use threads which handle day/night via thread permissions.
+        """
+        # NOTE: Old architecture reverted @everyone permissions
+        # New architecture: text_channel remains bot-only always
+        logger.info("Text chat enabled (threads mode) | guild=%s channel=%s", 
+                   self.guild.id, self.text_channel.id)
 
     async def _run_wolf_vote(self) -> Optional[int]:
         """Run wolf vote to choose a target for the night kill."""
@@ -1354,7 +1639,7 @@ class WerewolfGame:
         candidates = self.alive_players()
         if not wolves or not candidates:
             return None
-        channel = self._wolf_thread or self.channel
+        channel = self.thread_wolves or self.channel
         options = {p.user_id: p.display_name() for p in candidates}
         vote = VoteSession(
             self.bot,
@@ -1484,7 +1769,7 @@ class WerewolfGame:
             if self._little_girl_peeking:
                 try:
                     # Run a quick yes/no vote in wolf thread - NO COUNTDOWN, IMMEDIATE
-                    channel = self._wolf_thread or self.channel
+                    channel = self.thread_wolves or self.channel
                     options = {
                         self._little_girl_peeking: "Giết người hé mắt (Cô Bé)",
                         target_id if target_id is not None else -1: "Giữ mục tiêu cũ",
@@ -1663,15 +1948,15 @@ class WerewolfGame:
         await new_role.on_assign(self, thief)
         
         # If thief becomes a werewolf, add to wolf thread
-        if new_role.alignment == Alignment.WEREWOLF and self._wolf_thread:
+        if new_role.alignment == Alignment.WEREWOLF and self.thread_wolves:
             try:
-                await self._wolf_thread.add_user(thief.member)
+                await self.thread_wolves.add_user(thief.member)
                 # Notify other wolves
                 wolf_players = [p for p in self.players.values() 
                                if p.alive and any(r.alignment == Alignment.WEREWOLF for r in p.roles) and p.user_id != thief.user_id]
                 wolf_mention = " ".join(p.member.mention for p in wolf_players)
                 if wolf_mention:
-                    await self._wolf_thread.send(f"{wolf_mention} - {thief.display_name()} đã trở thành {new_role.metadata.name} và gia nhập bầy sói!")
+                    await self.thread_wolves.send(f"{wolf_mention} - {thief.display_name()} đã trở thành {new_role.metadata.name} và gia nhập bầy sói!")
                 logger.info("Thief joined wolf thread | guild=%s player=%s", self.guild.id, thief.user_id)
             except discord.HTTPException as e:
                 logger.warning("Failed to add thief to wolf thread | guild=%s player=%s error=%s", 
@@ -2081,8 +2366,8 @@ class WerewolfGame:
             self._little_girl_peeking = little.user_id
             logger.info("Little girl discovered peeking | guild=%s night=%s chance=20%%", self.guild.id, self.night_number)
             # Notify wolves that they spotted someone peeking
-            if self._wolf_thread:
-                await self._wolf_thread.send(
+            if self.thread_wolves:
+                await self.thread_wolves.send(
                     "⚠️ **Cảnh báo:** Các bạn phát hiện có ai đó đang hé mắt nhìn các bạn! "
                     "Bạn muốn thay đổi mục tiêu và giết người đó thay thế không?"
                 )
@@ -2477,10 +2762,10 @@ class WerewolfGame:
 
     async def _force_unmute_all(self) -> None:
         """Force unmute all players in voice channel when game ends."""
-        if not self.voice_channel_id:
+        if not self.voice_channel.id:
             return
         try:
-            voice_channel = self.bot.get_channel(self.voice_channel_id)
+            voice_channel = self.bot.get_channel(self.voice_channel.id)
             if not voice_channel or not isinstance(voice_channel, discord.VoiceChannel):
                 return
             
@@ -2497,8 +2782,8 @@ class WerewolfGame:
             
             if unmuted_count > 0:
                 logger.info("Force unmuted all players | guild=%s voice_channel=%s unmuted_count=%s", 
-                           self.guild.id, self.voice_channel_id, unmuted_count)
-        except Exception as e:
+                           self.guild.id, self.voice_channel.id, unmuted_count)
+        except discord.HTTPException as e:
             logger.error("Failed to force unmute all players | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
     async def _clear_channel_permissions(self) -> None:
@@ -2524,7 +2809,7 @@ class WerewolfGame:
             if cleared_count > 0:
                 logger.info("Cleared channel permissions for all players | guild=%s channel=%s cleared_count=%s",
                            self.guild.id, self.channel.id, cleared_count)
-        except Exception as e:
+        except discord.HTTPException as e:
             logger.error("Failed to clear channel permissions | guild=%s error=%s", self.guild.id, str(e), exc_info=True)
 
 
@@ -2642,10 +2927,10 @@ class WerewolfGame:
             
             try:
                 await self.channel.send(embed=embed)
-            except Exception as e:
+            except discord.HTTPException as e:
                 logger.error("Failed to send reward embed: %s", str(e))
         
-        except Exception as e:
+        except discord.HTTPException as e:
             logger.error("Error distributing rewards: %s", str(e), exc_info=True)
 
     async def _check_werewolf_achievements(self) -> None:
@@ -2870,9 +3155,9 @@ class WerewolfGame:
         wolves = [p for p in self.alive_players() if any(r.alignment == Alignment.WEREWOLF for r in p.roles)]
         wolf_names = ", ".join(p.display_name() for p in wolves)
         
-        if self._wolf_thread:
+        if self.thread_wolves:
             try:
-                await self._wolf_thread.send(
+                await self.thread_wolves.send(
                     f"🐺💢 **Sói Em {sister.display_name()} tức giận gia nhập phe sói!**\n"
                     f"Đồng đội sói hiện tại: {wolf_names}"
                 )
@@ -2893,8 +3178,8 @@ class WerewolfGame:
         
         try:
             # 1. Mute dead player in voice channel
-            if self.voice_channel_id:
-                voice_channel = self.bot.get_channel(self.voice_channel_id)
+            if self.voice_channel:
+                voice_channel = self.voice_channel
                 if voice_channel and isinstance(voice_channel, discord.VoiceChannel):
                     try:
                         if player.member.voice:
@@ -2903,29 +3188,11 @@ class WerewolfGame:
                         pass
             
             # 2. Prevent dead player from messaging in main game channel
-            if self._player_role:
-                # Remove player role to revoke channel access
-                try:
-                    await player.member.remove_roles(self._player_role, reason="Werewolf: Player died - remove from game")
-                except discord.HTTPException as e:
-                    logger.warning("Failed to remove player role | guild=%s player=%s error=%s",
-                                 self.guild.id, player.user_id, str(e))
-            else:
-                # Fallback: set individual permissions
-                try:
-                    await self.channel.set_permissions(
-                        player.member,
-                        send_messages=False,
-                        reason="Werewolf: Player died - mute text chat"
-                    )
-                except discord.HTTPException as e:
-                    logger.warning("Failed to restrict dead player in game channel | guild=%s player=%s error=%s", 
-                                 self.guild.id, player.user_id, str(e))
             
             # 3. Prevent dead player from messaging in werewolf thread
-            if self._wolf_thread:
+            if self.thread_wolves:
                 try:
-                    await self._wolf_thread.set_permissions(
+                    await self.thread_wolves.set_permissions(
                         player.member,
                         send_messages=False,
                         reason="Werewolf: Player died - mute werewolf thread"
@@ -2943,7 +3210,7 @@ class WerewolfGame:
                     )
                 except (discord.HTTPException, AttributeError):
                     pass
-        except Exception as e:
+        except discord.HTTPException as e:
             logger.error("Failed to restrict dead player | guild=%s player=%s error=%s", 
                         self.guild.id, player.user_id, str(e), exc_info=True)
 
@@ -2979,7 +3246,7 @@ class WerewolfGame:
                 try:
                     await successor.member.send(f"Bạn đã được {player.display_name()} chỉ định làm Trưởng Làng kế nhiệm! Phiếu bạn tính x2 và bạn phá vỡ hòa phiếu.")
                     await self.channel.send(f"{successor.display_name()} đã trở thành Trưởng Làng mới!")
-                except Exception as e:
+                except discord.HTTPException as e:
                     logger.error(f"Unexpected error: {e}")
 
     async def _handle_death(self, player: PlayerState, *, cause: str) -> None:
@@ -3053,6 +3320,16 @@ class WerewolfGame:
         if player.lover_id:
             lover = self.players.get(player.lover_id)
             if lover and lover.alive:
+                # DRAMATIC LOVER DEATH REVEAL
+                try:
+                    await self.text_channel.send(
+                        f"💔 **TÌNH NHÂNself.text_channel.send (*\n\n"
+                        f"_Khi một người chết, người còn lại không thể sống thiếu nhau..._ \n\n"
+                        f"💀 Cả hai cùng ra đi..."
+                    )
+                except discord.HTTPException:
+                    pass
+                
                 lover.alive = False
                 lover.death_pending = True
                 await self._handle_death(lover, cause="lover")
@@ -3197,7 +3474,7 @@ class _StartButton(discord.ui.Button):
                 await interaction.followup.send("Đã bắt đầu trận đấu.", ephemeral=True)
             else:
                 await interaction.response.send_message("Đã bắt đầu trận đấu.", ephemeral=True)
-        except Exception as exc:  # pylint: disable=broad-except
+        except discord.HTTPException as exc:  # pylint: disable=broad-except
             logger.exception("Error when starting game via button | guild=%s host=%s", self.game.guild.id, self.game.host.id)
             if interaction.response.is_done():
                 await interaction.followup.send(str(exc), ephemeral=True)
