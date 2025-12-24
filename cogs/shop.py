@@ -382,7 +382,7 @@ class ShopCog(commands.Cog):
             embed.add_field(name="🎣 Đồ Câu Cá", value="".join(fishing_items), inline=False)
         
         if buff_items:
-            embed.add_field(name="💪 Vật Phẩm Buff (Siêu Đắt)", value="".join(buff_items), inline=False)
+            embed.add_field(name="💪 Vật Phẩm Buff", value="".join(buff_items), inline=False)
         
         if special_items:
             embed.add_field(name="📡 Vật Phẩm Đặc Biệt", value="".join(special_items), inline=False)
