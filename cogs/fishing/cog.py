@@ -2243,6 +2243,10 @@ class FishingCog(commands.Cog):
         """Get user's title."""
         if user_id in self.user_titles:
             return self.user_titles[user_id]
+        # Get Tree Cog from bot
+        Tree = self.bot.get_cog("Tree")
+        if not Tree:
+            return "" # Or handle error appropriately
         
         try:
             guild = self.bot.get_guild(guild_id)

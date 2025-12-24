@@ -379,7 +379,7 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     logger.info(f"[BONPHAN] {username} used {fertilizer_count} fertilizers for {total_exp} EXP")
     
     # Use tree cog's API to add contribution
-    tree_cog = cog.bot.get_cog("CommunityCog")
+    tree_cog = cog.bot.get_cog("Tree")
     if tree_cog:
         try:
             # Add contribution with phan_bon type
