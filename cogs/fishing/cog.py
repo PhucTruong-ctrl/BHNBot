@@ -1124,7 +1124,7 @@ class FishingCog(commands.Cog):
                             # Check first_catch achievement (catch any fish for the first time)
                             # Get current collection count BEFORE adding this fish
                             collection = await get_collection(user_id)
-                            was_empty = len(collection) == 0  # Check if collection was empty before this catch
+                            was_empty = len(collection) <= 1  # Check if this was the first fish (size 1 after add)
                             if was_empty:  # This is the first fish ever caught
                                 await increment_stat(user_id, "fishing", "first_catch", 1)
                                 await self.bot.achievement_manager.check_unlock(user_id, "fishing", "first_catch", 1, channel)

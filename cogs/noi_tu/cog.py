@@ -895,10 +895,10 @@ class GameNoiTu(commands.Cog):
             if game['player_count'] == 0:  # First player
                 await self.increment_stat(user_id, 'game_starters', 1)
             
-            # 2. Track low time answers (clutch moments) - under 3 seconds
+            # 2. Track low time answers (clutch moments) - under 3 seconds left (Timer is 60s)
             if game.get('last_message_time'):
                 time_since_last = time.time() - game['last_message_time']
-                if time_since_last < 3.0:  # Less than 3 seconds
+                if time_since_last > 57.0:  # More than 57 seconds passed (less than 3s left)
                     await self.increment_stat(user_id, 'low_time_answers', 1)
             
             # 2.5. Track fast answers - under 5 seconds
@@ -925,7 +925,7 @@ class GameNoiTu(commands.Cog):
                     current_starters = await get_stat(user_id, 'noitu', 'game_starters')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "game_starters", current_starters, message.channel)
                 
-                if game.get('last_message_time') and (time.time() - game['last_message_time']) < 3.0:
+                if game.get('last_message_time') and (time.time() - game['last_message_time']) > 57.0:
                     current_low_time = await get_stat(user_id, 'noitu', 'low_time_answers')
                     await self.bot.achievement_manager.check_unlock(user_id, "noitu", "low_time_answers", current_low_time, message.channel)
                 
@@ -1061,7 +1061,7 @@ class GameNoiTu(commands.Cog):
             
             # Start timer only after 2nd player joins
             if game['player_count'] >= 2:
-                logger.info(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 25s countdown")
+                logger.info(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 60s countdown")
                 game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
             else:
                 logger.info(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")

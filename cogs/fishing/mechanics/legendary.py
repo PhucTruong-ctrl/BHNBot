@@ -77,7 +77,7 @@ class LegendaryBossFightView(discord.ui.View):
             # Check achievement
             legendary_key = self.legendary_fish['key']
             legendary_stat_map = {
-                "thuong_luong": "legendary_caught",
+                "thuong_luong": "thuong_luong_caught",
                 "ca_ngan_ha": "ca_ngan_ha_caught",
                 "ca_phuong_hoang": "ca_phuong_hoang_caught",
                 "cthulhu_con": "cthulhu_con_caught",
@@ -194,7 +194,7 @@ class LegendaryBossFightView(discord.ui.View):
             # Track legendary achievement
             legendary_key = self.legendary_fish['key']
             legendary_stat_map = {
-                "thuong_luong": "legendary_caught",
+                "thuong_luong": "thuong_luong_caught",
                 "ca_ngan_ha": "ca_ngan_ha_caught",
                 "ca_phuong_hoang": "ca_phuong_hoang_caught",
                 "cthulhu_con": "cthulhu_con_caught",

@@ -36,15 +36,6 @@
             "reward_role_key": "role_ty_phu",
             "emoji": "💰"
         },
-        "dragon_slayer": {
-            "name": "Long Vương",
-            "description": "Đánh bại cá huyền thoại Thuồng Luồng",
-            "condition_stat": "legendary_caught",
-            "target_value": 1,
-            "reward_seeds": 5000,
-            "reward_role_key": "role_long_vuong",
-            "emoji": "🐉"
-        },
         "collection_master": {
             "name": "Vua Câu Cá",
             "description": "Thu thập đủ tất cả cá thường và hiếm",
@@ -66,7 +57,7 @@
         "treasure_hunter": {
             "name": "Thợ Săn Kho Báu",
             "description": "Mở được 100 rương kho báu",
-            "condition_stat": "chests_caught",
+            "condition_stat": "chests_opened",
             "target_value": 100,
             "reward_seeds": 800,
             "reward_role_key": "role_tho_san_kho_bau",
@@ -97,7 +88,7 @@
             "target_value": 10,
             "reward_seeds": 1000,
             "reward_role_key": "role_than_tai_go_cua",
-            "emoji": "�"
+            "emoji": "🧧"
         },
         "diligent_smith": {
             "name": "Thợ Rèn Cần Mẫn",
@@ -138,7 +129,7 @@
         "river_lord": {
             "name": "Chúa Tể Vùng Nước Xoáy",
             "description": "Câu được cá huyền thoại Thuồng Luồng",
-            "condition_stat": "legendary_caught",
+            "condition_stat": "thuong_luong_caught",
             "target_value": 1,
             "reward_seeds": 8000,
             "reward_role_key": "role_chua_te_vung_nuoc_xoay",

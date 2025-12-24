@@ -535,7 +535,7 @@
       "effect": "flexing"
     },
     "football_bet": {
-      "chance": 0.002,
+      "chance": 0.0005,
       "type": "bad",
       "name": "⚽ Về Bờ!",
       "effect": "football_bet"
