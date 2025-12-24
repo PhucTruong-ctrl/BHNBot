@@ -59,6 +59,86 @@ class TreeCog(commands.Cog):
                     exc_info=True
                 )
     
+    #==================== EXTERNAL_API ====================
+    
+    async def get_tree_data(self, guild_id: int):
+        """Get tree data tuple for external display.
+        
+        Returns:
+            (level, progress, total, season, requirement, percentage)
+        """
+        tree_data = await TreeData.load(guild_id)
+        level_reqs = tree_data.get_level_requirements()
+        req = level_reqs.get(tree_data.current_level + 1, level_reqs[6])
+        percentage = tree_data.calculate_progress_percent()
+        
+        return (
+            tree_data.current_level,
+            tree_data.current_progress,
+            tree_data.total_contributed,
+            tree_data.season,
+            req,
+            percentage
+        )
+
+    async def add_external_contribution(
+        self, 
+        user_id: int, 
+        guild_id: int, 
+        amount: int, 
+        contribution_type: str = "seeds"
+    ):
+        """Handle contribution from other cogs (e.g. fertilizer).
+        
+        Args:
+            user_id: User contributing
+            guild_id: Guild ID
+            amount: Amount/Value to contribute
+            contribution_type: Type of contribution
+        """
+        # Load data
+        tree_data = await TreeData.load(guild_id)
+        
+        # Check max level
+        if tree_data.current_level >= 6:
+            return  # No effect if maxed
+            
+        # Add to progress
+        # For external contributions like fertilizer, amount IS ALL EXP
+        # TreeData stores progress in 'seeds equivalent'
+        
+        # Update Tree Progress
+        new_progress = tree_data.current_progress + amount
+        new_total = tree_data.total_contributed + amount # Fertilizer adds to total too
+        
+        # Handle Level Up
+        level_reqs = tree_data.get_level_requirements()
+        req = level_reqs.get(tree_data.current_level + 1, level_reqs[6])
+        new_level = tree_data.current_level
+        
+        while new_progress >= req and new_level < 6:
+            new_level += 1
+            new_progress = new_progress - req
+            req = level_reqs.get(new_level + 1, level_reqs[6])
+            
+        tree_data.current_level = new_level
+        tree_data.current_progress = new_progress
+        tree_data.total_contributed = new_total
+        await tree_data.save()
+        
+        # Record Contribution
+        await self.contributor_manager.add_contribution(
+            user_id,
+            guild_id,
+            tree_data.season,
+            amount,
+            contribution_type
+        )
+        
+        # Update Message
+        if tree_data.tree_channel_id:
+            await self.tree_manager.update_tree_message(guild_id, tree_data.tree_channel_id)
+    
     #==================== COMMANDS ====================
     
     @app_commands.command(name="gophat", description="Góp Hạt nuôi cây server")

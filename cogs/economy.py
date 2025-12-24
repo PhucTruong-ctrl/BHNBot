@@ -39,11 +39,11 @@ class EconomyCog(commands.Cog):
         self.chat_cooldowns = {}  # {user_id: last_reward_time}
         self.reaction_cooldowns = {}  # {user_id: last_reaction_reward_time}
         self.voice_reward_task.start()
-        self.voice_affinity_task.start()
+
 
     def cog_unload(self):
         self.voice_reward_task.cancel()
-        self.voice_affinity_task.cancel()
+
 
     # ==================== HELPER FUNCTIONS ====================
     async def get_or_create_user_local(self, user_id: int, username: str):
@@ -661,45 +661,14 @@ class EconomyCog(commands.Cog):
         except Exception as e:
             logger.error(f"[ECONOMY] Voice reward error: {e}", exc_info=True)
 
-    @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
-    async def voice_affinity_task(self):
-        """Increase affinity between members speaking in the same voice channel"""
-        try:
-            relationship_cog = self.bot.get_cog("RelationshipCog")
-            if not relationship_cog:
-                return
-            
-            for guild in self.bot.guilds:
-                for voice_channel in guild.voice_channels:
-                    # Get members in voice (exclude bots) who are SPEAKING
-                    speaking_members = [m for m in voice_channel.members if not m.bot and m.voice and m.voice.self_mute == False]
-                    
-                    # Need at least 2 members to increase affinity
-                    if len(speaking_members) < 2:
-                        continue
-                    
-                    # Increase affinity between all pairs of speaking members
-                    for i, member1 in enumerate(speaking_members):
-                        for member2 in speaking_members[i+1:]:
-                            # Add 1 affinity point per person pair in voice
-                            await relationship_cog.add_affinity(member1.id, member2.id, 1)
-                            logger.info(
-                                f"[AFFINITY] [VOICE] user1_id={member1.id} user1={member1.name} "
-                                f"user2_id={member2.id} user2={member2.name} affinity_change=+1"
-                            )
-        
-        except Exception as e:
-            logger.error(f"[ECONOMY] Voice affinity task error: {e}", exc_info=True)
+
 
     @voice_reward_task.before_loop
     async def before_voice_reward_task(self):
         """Wait for bot to be ready before starting task"""
         await self.bot.wait_until_ready()
 
-    @voice_affinity_task.before_loop
-    async def before_voice_affinity_task(self):
-        """Wait for bot to be ready before starting task"""
-        await self.bot.wait_until_ready()
+
 
 async def setup(bot):
     await bot.add_cog(EconomyCog(bot))

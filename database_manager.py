@@ -109,66 +109,7 @@ async def get_top_contributors(guild_id: int, limit: int = 3) -> List[tuple]:
     return result
 
 
-# ==================== RELATIONSHIP QUERIES ====================
 
-async def get_affinity(user_id_1: int, user_id_2: int) -> int:
-    """Get affinity between users with caching"""
-    if user_id_1 > user_id_2:
-        user_id_1, user_id_2 = user_id_2, user_id_1
-    
-    result = await db_manager.fetchone(
-        "SELECT affinity FROM relationships WHERE user_id_1 = ? AND user_id_2 = ?",
-        (user_id_1, user_id_2),
-        use_cache=True,
-        cache_key=f"affinity_{user_id_1}_{user_id_2}",
-        cache_ttl=600
-    )
-    return result[0] if result else 0
-
-
-async def add_affinity(user_id_1: int, user_id_2: int, amount: int):
-    """Add affinity and invalidate cache"""
-    if user_id_1 > user_id_2:
-        user_id_1, user_id_2 = user_id_2, user_id_1
-    
-    # Check if relationship exists
-    existing = await db_manager.fetchone(
-        "SELECT affinity FROM relationships WHERE user_id_1 = ? AND user_id_2 = ?",
-        (user_id_1, user_id_2)
-    )
-    
-    if existing:
-        await db_manager.modify(
-            "UPDATE relationships SET affinity = affinity + ?, last_interaction = CURRENT_TIMESTAMP WHERE user_id_1 = ? AND user_id_2 = ?",
-            (amount, user_id_1, user_id_2)
-        )
-    else:
-        await db_manager.modify(
-            "INSERT INTO relationships (user_id_1, user_id_2, affinity) VALUES (?, ?, ?)",
-            (user_id_1, user_id_2, amount)
-        )
-    
-    db_manager.clear_cache_by_prefix(f"affinity_{min(user_id_1, user_id_2)}")
-
-
-async def get_top_affinity_friends(user_id: int, limit: int = 3) -> List[tuple]:
-    """Get top friends by affinity"""
-    # Query as user_id_1
-    results_1 = await db_manager.execute(
-        "SELECT user_id_2, affinity FROM relationships WHERE user_id_1 = ? ORDER BY affinity DESC LIMIT ?",
-        (user_id, limit)
-    )
-    
-    # Query as user_id_2
-    results_2 = await db_manager.execute(
-        "SELECT user_id_1, affinity FROM relationships WHERE user_id_2 = ? ORDER BY affinity DESC LIMIT ?",
-        (user_id, limit)
-    )
-    
-    # Combine and sort
-    combined = list(results_1) + list(results_2)
-    combined.sort(key=lambda x: x[1], reverse=True)
-    return combined[:limit]
 
 
 # ==================== INVENTORY QUERIES ====================

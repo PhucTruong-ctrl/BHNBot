@@ -379,28 +379,30 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     logger.info(f"[BONPHAN] {username} used {fertilizer_count} fertilizers for {total_exp} EXP")
     
     # Use tree cog's API to add contribution
-    tree_cog = cog.bot.get_cog("Tree")
+    tree_cog = cog.bot.get_cog("TreeCog")
     if tree_cog:
         try:
             # Add contribution with phan_bon type
-            await tree_cog.add_contributor(user_id, guild_id, total_exp, contribution_type="phan_bon")
+            await tree_cog.add_external_contribution(user_id, guild_id, total_exp, contribution_type="phan_bon")
             
             # Get tree data for progress display
-            tree_level, tree_prog, tree_total, season, _, _ = await tree_cog.get_tree_data(guild_id)
-            percentage = int((tree_prog / tree_total) * 100) if tree_total > 0 else 0
+            tree_level, tree_prog, tree_total, season, req, percentage = await tree_cog.get_tree_data(guild_id)
             
-            # Update tree message
-            await tree_cog.update_or_create_pin_message(guild_id, ctx.channel.id)
         except Exception as e:
             logger.error(f"[BONPHAN] Error with tree contribution: {e}", exc_info=True)
             tree_prog = 0
             tree_total = 1
             percentage = 0
+            req = 1
     else:
-        logger.warning("[BONPHAN] Tree cog not found")
+        logger.warning("[BONPHAN] TreeCog not found")
         tree_prog = 0
         tree_total = 1
         percentage = 0
+        req = 1
+    
+    # Calculate average for display
+    avg_exp = total_exp // fertilizer_count
     
     # Create result embed
     embed = discord.Embed(
@@ -417,13 +419,13 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     
     embed.add_field(
         name="📋 Chi tiết",
-        value=f"{fertilizer_count} × (50-100 EXP mỗi cái)",
+        value=f"{fertilizer_count} x {avg_exp} EXP (Trung bình)",
         inline=False
     )
     
     embed.add_field(
-        name="� Tiến độ Cây",
-        value=f"**{percentage}%** ({tree_prog:,}/{tree_total:,} EXP)",
+        name="📊 Tiến độ Cây",
+        value=f"**{percentage}%** ({tree_prog:,}/{req:,} EXP)",
         inline=False
     )
     
