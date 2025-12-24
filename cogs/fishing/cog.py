@@ -687,8 +687,17 @@ class FishingCog(commands.Cog):
                 if hasattr(self, "avoid_event_users") and self.avoid_event_users.get(user_id, False):
                     was_protected = True
         
-                # Initialize durability loss (apply after event check)
-                durability_loss = 1  # Default: 1 per cast
+                # *** INITIALIZE DURABILITY LOSS ***
+                # Extract event durability penalty FIRST before setting default
+                event_durability_penalty = abs(event_result.get("durability_loss", 0))
+                
+                if event_durability_penalty > 0:
+                    # Event specified durability loss (e.g., flexing = 20)
+                    durability_loss = event_durability_penalty
+                    logger.info(f"[EVENT] {username} event durability penalty: {durability_loss}")
+                else:
+                    # Default durability loss per cast
+                    durability_loss = 1
         
                 if event_result.get("triggered", False):
                     # Random event occurred!
@@ -703,27 +712,29 @@ class FishingCog(commands.Cog):
                     # Update achievement tracking
                     try:
                         if is_event_good:
-                            await increment_stat(user_id, "fishing", "good_events_encountered", 1)  # stat update
+                            await increment_stat(user_id, "fishing", "good_events_encountered", 1)
                             current_good_events = await get_stat(user_id, "fishing", "good_events_encountered")
                             await self.bot.achievement_manager.check_unlock(user_id, "fishing", "good_events", current_good_events, channel)
                         else:
                             # Track bad events
-                            await increment_stat(user_id, "fishing", "bad_events_encountered", 1)  # stat update
+                            await increment_stat(user_id, "fishing", "bad_events_encountered", 1)
                             current_bad_events = await get_stat(user_id, "fishing", "bad_events_encountered")
                             await self.bot.achievement_manager.check_unlock(user_id, "fishing", "bad_events", current_bad_events, channel)
                     except Exception as e:
                         logger.error(f"Unexpected error: {e}")
             
-                    # *** DURABILITY LOSS FROM EVENTS ***
+                    # *** SPECIAL DURABILITY OVERRIDES FOR SPECIFIC EVENTS ***
+                    # These override event penalty for special cases
                     if event_type == "equipment_break":
                         # Gãy cần: Trừ hết độ bền
-                        durability_loss = rod_durability  # Trừ sạch về 0
-                    elif event_type in ["snapped_line", "plastic_trap", "big_log", "crab_cut", "electric_eel"]:
-                        # Đứt dây / Vướng rác / Mắc gỗ / Cua kẹp / Lươn Điện: Trừ 5 độ bền
+                        durability_loss = rod_durability
+                    elif event_type in ["snapped_line", "plastic_trap", "big_log", "crab_cut", "electric_eel"] and event_durability_penalty == 0:
+                        # ONLY override if event didn't specify penalty
                         durability_loss = 5
-                    elif event_type == "predator":
+                    elif event_type == "predator" and event_durability_penalty == 0:
                         # Cá dữ: Trừ 3 độ bền
                         durability_loss = 3
+
             
                     # Process event effects
                     if event_result.get("lose_worm", False) and has_worm:
