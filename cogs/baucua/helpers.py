@@ -126,44 +126,70 @@ def create_summary_text(
     final_result = [result1, result2, result3]
     summary_lines = []
     
+    # Gen Z templates
+    import random
+    
+    WIN_MSGS = [
+        "{user} đã hốt bạc **{amount}** 🌱. Flex nhẹ cái nhân phẩm!",
+        "{user} làm giàu không khó, ẵm trọn **{amount}** 🌱. Mời cả làng đi ăn đi!",
+        "Cuộc đời nở hoa! {user} thắng **{amount}** 🌱. Đỉnh nóc, kịch trần, bay phấp phới!",
+        "Ao chình server! {user} bú đẫm **{amount}** 🌱. Chia tiền cho bot với!",
+        "Tài năng hay may mắn? {user} lụm **{amount}** 🌱. Keo lỳ quá bạn ơi!",
+        "{user} nhân phẩm bùng nổ, húp trọn **{amount}** 🌱. Đại gia đây rồi!",
+        "Chấn động địa cầu! {user} thắng lớn **{amount}** 🌱. SOS, cứu ví nhà cái!",
+        "{user} nay được tổ độ, thắng **{amount}** 🌱. Đừng ai cản bạn tôi!",
+        "10 điểm không có nhưng! {user} đem về **{amount}** 🌱.",
+        "Mê chữ ê kéo dài! {user} thắng **{amount}** 🌱. Slay quá đi!"
+    ]
+    
+    LOSS_MSGS = [
+        "{user} xa bờ rồi, bay màu **{amount}** 🌱. Một phút bốc đồng, cả đời bốc cám.",
+        "Đen thôi đỏ quên đi. {user} cúng cho nhà cái **{amount}** 🌱. Hẹn kiếp sau gỡ lại.",
+        "{user} lỗ **{amount}** 🌱. Còn cái nịt, còn đúng cái nịt.",
+        "{user} đã tạch **{amount}** 🌱. Xu cà na, đi nhảy cầu thôi.",
+        "Chia buồn cùng {user}, bay mất **{amount}** 🌱. Tam tai chưa qua, thái tuế đã tới.",
+        "{user} âm **{amount}** 🌱. Ra đê mà ở chứ còn gì nữa.",
+        "Cuộc sống bế tắc, {user} thua **{amount}** 🌱. Trầm cảm part n.",
+        "{user} đã hiến máu nhân đạo **{amount}** 🌱. Bot cảm ơn nhà tài trợ.",
+        "Khóc tiếng mán! {user} mất **{amount}** 🌱. Thôi đừng buồn, em ơi đừng khóc...",
+        "{user} toang rồi ông giáo ạ, âm **{amount}** 🌱."
+    ]
+    
+    NEUTRAL_MSGS = [
+        "{user} hòa vốn. Đời không như là mơ nhưng cũng không như là thơ.",
+        "{user} bảo toàn tính mạng. Không thắng không thua, coi như tập thể dục.",
+        "{user} vốn liếng y nguyên. Vui vẻ không quạu nha.",
+        "{user} huề tiền. Chơi cho vui, tiền bạc phù du.",
+        "{user} về bờ an toàn. Hú hồn chim én!"
+    ]
+
     for user_id, bet_list in bets_data.items():
         # Use user ID mention format (no fetch needed, instant)
         user_mention = f"<@{user_id}>"
         
-        # Build detailed bet breakdown
-        bet_details = []
-        total_winnings = 0
-        total_loss = 0
+        # Calculate NET profit/loss
+        total_payout = 0
+        total_bet = 0
         
         for animal_key, bet_amount in bet_list:
+            total_bet += bet_amount
             matches = sum(1 for r in final_result if r == animal_key)
-            
-            # Add animal name and amount to details
-            animal_name = ANIMALS[animal_key]['name']
-            bet_details.append(f"{animal_name} {bet_amount}")
-            
             if matches > 0:
-                # Formula: bet_amount * (matches + 1)
-                # cược 10 ăn 1 = 10 * 2 = 20 (lời 10)
-                # cược 10 ăn 2 = 10 * 3 = 30 (lời 20)
-                # cược 10 ăn 3 = 10 * 4 = 40 (lời 30)
-                total_winnings += bet_amount * (matches + 1)
-            else:
-                total_loss += bet_amount
+                # Payout includes original bet
+                total_payout += bet_amount * (matches + 1)
         
-        # Build summary for this user
-        bet_str = ", ".join(bet_details)
+        net_profit = total_payout - total_bet
         
-        # Build result string with both wins and losses
-        result_parts = []
-        if total_winnings > 0:
-            result_parts.append(f"thắng {total_winnings}")
-        if total_loss > 0:
-            result_parts.append(f"thua {total_loss}")
-        
-        result_str = ", ".join(result_parts) if result_parts else "hoà"
-        
-        summary = f"{user_mention} đã cược {bet_str} 🌱 và {result_str} 🌱"
+        if net_profit > 0:
+            msg_template = random.choice(WIN_MSGS)
+            summary = msg_template.format(user=user_mention, amount=net_profit)
+        elif net_profit < 0:
+            msg_template = random.choice(LOSS_MSGS)
+            summary = msg_template.format(user=user_mention, amount=abs(net_profit))
+        else:
+            msg_template = random.choice(NEUTRAL_MSGS)
+            summary = msg_template.format(user=user_mention)
+            
         summary_lines.append(summary)
     
     return "\n".join(summary_lines)
