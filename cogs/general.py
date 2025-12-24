@@ -91,100 +91,151 @@ class General(commands.Cog):
         await self._send_help(interaction, is_admin)
 
     async def _send_help(self, ctx_or_interaction, is_admin: bool = False):
-        """Helper to send help embed"""
+        """Comprehensive help command with admin filtering.
+        
+        Shows all available commands categorized by feature.
+        Admin-only commands are only displayed to users with Administrator permission.
+        
+        Args:
+            ctx_or_interaction: Discord Context or Interaction
+            is_admin: Whether user has admin permissions
+        """
         embed = discord.Embed(
-            title="📖 Danh sách lệnh BHNBot",
+            title="📚 Hướng Dẫn Sử Dụng - Bên Hiên Nhà Bot",
             color=discord.Color.blue(),
-            description="Bot hỗ trợ cả **Slash Command (/)** và **Prefix Command (!)**.\n_Các lệnh đánh dấu (/) là chỉ dùng Slash._"
+            description="Danh sách đầy đủ các lệnh có sẵn\n"
+                       "_Bot hỗ trợ cả Slash Command `/` và Prefix Command `!`_"
         )
         
-        # 1. Fishing
+        # ==================== ECONOMY ====================
+        economy_cmds = [
+            "`/chao` - Nhận quà hàng ngày (5h-10h sáng)",
+            "`/tuido` `!tuido` - Xem túi đồ và số hạt",
+            "`/top` `!top` - Bảng xếp hạng top 10 giàu nhất",
+            "`/hoso` `!hoso [user]` - Xem thẻ hồ sơ cá nhân"
+        ]
+        embed.add_field(
+            name="💰 Kinh Tế",
+            value="\n".join(economy_cmds),
+            inline=False
+        )
+        
+        # ==================== FISHING ====================
+        fishing_cmds = [
+            "`/cauca` `!cauca` - Câu cá (cooldown 30s)",
+            "`/banca` `!banca` - Bán cá kiếm tiền",
+            "`/moruong` `!moruong` - Mở rương kho báu",
+            "`/nangcap` `!nangcap` - Nâng cấp cần câu",
+            "`/bosuutap` `!bosuutap` - Xem bộ sưu tập cá",
+            "`/huyenthoai` `!huyenthoai` - Bảng Vàng Huyền Thoại",
+            "",
+            "**Cá Huyền Thoại:**",
+            "`/hiente` `!hiente` - Hiến tế cá (Thuồng Luồng)",
+            "`/chetao` `!chetao` - Chế tạo Tinh Cầu",
+            "`/dosong` `!dosong` - Dò Cá Voi 52hz",
+            "`/ghepbando` `!ghepbando` - Ghép Bản Đồ Cthulhu",
+            "`/bonphan` `!bonphan` - Bón phân cho cây",
+            "`/taiche` `!taiche` - Tái chế rác (10 rác → 1 phân)"
+        ]
         embed.add_field(
             name="🎣 Câu Cá & Khám Phá",
-            value="• `/cauca` (!cauca) - Câu cá (cooldown 30s)\n"
-                  "• `/banca` (!banca) - Bán cá (VD: `/banca ca_loc`)\n"
-                  "• `/moruong` (!moruong) - Mở rương kho báu\n"
-                  "• `/hiente` (!hiente) - Hiến tế cá (Gọi Thuồng Luồng)\n"
-                  "• `/chetao` (!chetao) - Chế tạo mồi/vật phẩm\n"
-                  "• `/dosong` (!dosong) - Dò tìm Cá Voi 52Hz\n"
-                  "• `/ghepbando` (!ghepbando) - Ghép bản đồ kho báu\n"
-                  "• `/taiche` (!taiche) - Tái chế rác thành phân bón",
+            value="\n".join(fishing_cmds),
             inline=False
         )
-
-        # 2. Economy
-        embed.add_field(
-            name="💰 Kinh Tế & Túi Đồ",
-            value="• `/chao` (Slash only) - Nhận quà sáng (5h-10h)\n"
-                  "• `/tuido` (!tuido) - Xem túi đồ và hạt\n"
-                  "• `/top` (!top) - Xem BXH đại gia hạt",
-            inline=False
-        )
-
-        # 3. Shop & Items
+        
+        # ==================== SHOP ====================
+        shop_cmds = [
+            "`/mua` `!mua [item] [số_lượng]` - Mua vật phẩm",
+            "`/sudung` `!sudung [item]` - Dùng buff câu cá"
+        ]
         embed.add_field(
             name="🛍️ Cửa Hàng",
-            value="• `/mua` (!mua) - Mua quà & vật phẩm từ cửa hàng",
+            value="\n".join(shop_cmds),
             inline=False
         )
-
-        # 4. Relationship & Pet
+        
+        # ==================== SOCIAL ====================
+        social_cmds = [
+            "`/tangqua` - Tặng quà tăng thân thiết",
+            "`/thanthiet` `!thanthiet [user]` - Xem độ thân thiết",
+            "`/kethop` - Mời nuôi thú cưng chung",
+            "`/nuoi` - Chăm sóc pet (Cho ăn/Vuốt ve)"
+        ]
         embed.add_field(
-            name="🐱 Thú Cưng & Quan Hệ",
-            value="• `/tangqua` (Slash only) - Tặng quà tăng thân thiết\n"
-                  "• `/thanthiet` (!thanthiet) - Xem điểm thân thiết\n"
-                  "• `/kethop` (Slash only) - Mời nuôi pet chung\n"
-                  "• `/nuoi` (Slash only) - Chăm sóc pet (cho ăn/vuốt ve)",
+            name="🤝 Xã Hội",
+            value="\n".join(social_cmds),
             inline=False
         )
-
-        # 5. Games
+        
+        # ==================== COMMUNITY ====================
+        community_cmds = [
+            "`/gophat` - Góp hạt nuôi cây server",
+            "`/cay` - Xem trạng thái cây server",
+            "`/giveaway create` - Tạo giveaway mới",
+            "`/giveaway end` - Kết thúc giveaway sớm"
+        ]
         embed.add_field(
-            name="🎮 Minigames",
-            value="• `/baucua` (!baucua) - Chơi Bầu Cua Tôm Cá\n"
-                  "• `/masoi` (!masoi) - Chơi Ma Sói\n"
-                  "• `/ntrank` (!ntrank) - BXH Nối Từ\n"
-                  "• `/themtu` (!themtu) - Đề xuất từ mới cho Nối Từ\n"
-                  "• `/reset` (!reset) - Reset game (Nối từ/Ma sói) tại kênh",
+            name="🌳 Cộng Đồng",
+            value="\n".join(community_cmds),
             inline=False
         )
-
-        # 6. Utility
+        
+        # ==================== GAMES ====================
+        games_cmds = [
+            "`/baucua` `!baucua` - Bầu Cua Tôm Cá Gà Nai",
+            "`/masoi` - Chơi Ma Sói",
+            "`/themtu` `!themtu` - Đề xuất từ mới Nối Từ",
+            "`/ntrank` `!ntrank` - BXH Nối Từ",
+            "`/reset` `!reset` - Reset game trong kênh"
+        ]
+        embed.add_field(
+            name="🎮 Trò Chơi",
+            value="\n".join(games_cmds),
+            inline=False
+        )
+        
+        # ==================== UTILITY ====================
+        utility_cmds = [
+            "`/avatar` `!avatar [user]` - Xem avatar",
+            "`/help` `!help` - Lệnh này",
+            "`!ping` - Kiểm tra độ trễ bot"
+        ]
         embed.add_field(
             name="🔧 Tiện Ích",
-            value="• `/hoso` (!hoso) - Xem thẻ hồ sơ cá nhân đẹp\n"
-                  "• `/avatar` (!avatar) - Xem ảnh đại diện\n"
-                  "• `!ping` - Kiểm tra mạng bot",
+            value="\n".join(utility_cmds),
             inline=False
         )
         
-        # 7. Giveaway (Host)
-        embed.add_field(
-            name="🎁 Giveaway",
-            value="• `/giveaway create` (Slash only) - Tạo Giveaway mới\n" 
-                  "• `/giveaway end` (Slash only) - Kết thúc Giveaway sớm\n",
-            inline=False
-        )
-
-        # 8. Admin Only (Separate field)
+        # ==================== ADMIN ONLY ====================
+        # Only show this section if user is admin
         if is_admin:
+            admin_cmds = [
+                "**Quản Lý Hệ Thống:**",
+                "`/config` `!config` - Cài đặt kênh chức năng",
+                "`/exclude add/remove` - Chặn kênh nhận hạt chat",
+                "`/exclude_list` - Xem danh sách kênh loại trừ",
+                "`/sync` `!sync` - Đồng bộ slash commands",
+                "",
+                "**Quản Lý Game:**",
+                "`/themhat` `!themhat <user> <số>` - Thêm hạt",
+                "`/themitem` `!themitem <user> <item>` - Thêm item",
+                "`/sukiencauca` `!sukiencauca` - Trigger sự kiện câu cá",
+                "`/thuhoach` - Thu hoạch cây server"
+            ]
             embed.add_field(
-                name="⚙️ Admin / Quản Lý (Admin Only)",
-                value="• `/config set ...` - Cài đặt kênh (Nối từ, Log, v.v.)\n"
-                      "• `/exclude add/remove` - Chặn kênh nhận hạt chat\n"
-                      "• `/themhat` (!themhat) - Cộng hạt cho member\n"
-                      "• `/sync` (!sync) - Đồng bộ lệnh Slash\n"
-                      "• `/thuhoach` - Thu hoạch cây server\n"
-                      "• `!cog load/reload` - Quản lý module",
+                name="🔒 Admin Only (Chỉ Quản Trị Viên)",
+                value="\n".join(admin_cmds),
                 inline=False
             )
-
-        embed.set_footer(text="Gõ / hoặc ! tên lệnh để bắt đầu")
         
+        embed.set_footer(text="Gõ / hoặc ! + tên lệnh để sử dụng • Developed by Bên Hiên Nhà")
+        
+        # Send message
         if isinstance(ctx_or_interaction, commands.Context):
             await ctx_or_interaction.send(embed=embed)
         else:
-            await ctx_or_interaction.response.send_message(embed=embed)
+            # Slash command - send ephemeral (only user sees it)
+            await ctx_or_interaction.response.send_message(embed=embed, ephemeral=True)
 
     @commands.command(name="ntrank")
     async def ntrank_prefix(self, ctx):
