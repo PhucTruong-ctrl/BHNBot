@@ -355,7 +355,7 @@ class General(commands.Cog):
             await ctx.send(f"Lỗi tạo profile: {e}")
             logger.error(f"[PROFILE] Error: {e}", exc_info=True)
 
-    def _generate_profile_image_sync(self, user_data, avatar_bytes, friend_data=None, friend_avatar_bytes=None):
+    def _generate_profile_image_sync(self, user_data, avatar_bytes):
         """Synchronous CPU-bound Pillow image generation (runs in executor)"""
         import os
         
@@ -447,23 +447,7 @@ class General(commands.Cog):
             fill_w = int(bar_w * progress)
             draw.rounded_rectangle([(bar_x, bar_y), (bar_x + fill_w, bar_y + bar_h)], radius=12, fill=COLOR_BAR_FILL)
             
-        # --- FRIEND SECTION ---
-        if friend_data and friend_avatar_bytes:
-            f_size = 200
-            f_avatar = Image.open(friend_avatar_bytes).convert('RGBA').resize((f_size, f_size))
-            
-            f_mask = Image.new('L', (f_size, f_size), 0)
-            ImageDraw.Draw(f_mask).ellipse((0, 0, f_size, f_size), fill=255)
-            
-            f_x, f_y = 680, 50
-            img.paste(f_avatar, (f_x, f_y), f_mask)
-            draw.ellipse((f_x-2, f_y-2, f_x+f_size+2, f_y+f_size+2), outline=COLOR_HEART, width=2)
-            
-            affinity_title = self._get_affinity_title(friend_data['affinity'])
-            draw.text((info_x, 190), f"Đang thân với: {friend_data['name']}", font=font_info, fill=COLOR_HEART)
-            draw.text((info_x, 210), f"Mức độ: {affinity_title} ({friend_data['affinity']})", font=font_small, fill=COLOR_TEXT_MAIN)
-        else:
-            draw.text((info_x, 210), "Chưa có tri kỷ", font=font_info, fill=(150, 150, 150))
+
 
         # Save to bytes
         img_bytes = io.BytesIO()
@@ -488,49 +472,20 @@ class General(commands.Cog):
             async with session.get(user_avatar_url) as resp:
                 avatar_bytes = io.BytesIO(await resp.read())
         
-        # Get best friend and download their avatar if exists
-        friend_data = None
-        friend_avatar_bytes = None
-        best_friend_data = await self._get_best_friend(user.id)
-        
-        if best_friend_data:
-            f_id, f_affinity = best_friend_data
-            try:
-                friend = await self.bot.fetch_user(f_id)
-                friend_data = {
-                    'name': friend.name,
-                    'affinity': f_affinity
-                }
-                
-                f_avatar_url = str(friend.avatar.url if friend.avatar else friend.default_avatar.url)
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(f_avatar_url) as resp:
-                        friend_avatar_bytes = io.BytesIO(await resp.read())
-            except Exception as e:
-                logger.warning(f"Error loading friend: {e}")
+
         
         # Run CPU-bound image generation in executor to avoid blocking
         loop = asyncio.get_running_loop()
         img_bytes = await loop.run_in_executor(
             None,
-            functools.partial(
-                self._generate_profile_image_sync,
-                user_data,
-                avatar_bytes,
-                friend_data,
-                friend_avatar_bytes
-            )
+            self._generate_profile_image_sync,
+            user_data,
+            avatar_bytes
         )
         
         return img_bytes
 
-    async def _get_best_friend(self, user_id):
-        from database_manager import get_top_affinity_friends
-        
-        friends = await get_top_affinity_friends(user_id, 1)
-        if friends:
-            return friends[0]
-        return None
+
 
     def _get_rank_title_no_emoji(self, seeds: int) -> str:
         """Get rank title based on seeds earned (without emoji)"""
@@ -561,68 +516,6 @@ class General(commands.Cog):
             return "🌸 Ra Hoa"
         else:
             return "🍎 Cây Đại Thụ"
-
-    def _get_affinity_title(self, affinity: int) -> str:
-        """Get affinity level title"""
-        if affinity < 10:
-            return "Quen biết"
-        elif affinity < 30:
-            return "Bạn tốt"
-        elif affinity < 60:
-            return "Bạn thân"
-        elif affinity < 100:
-            return "Gia đình"
-        else:
-            return "Linh hồn song sinh"
-
-    async def _create_profile_card(self, user, seeds, best_friend):
-        """Create profile card using Pillow - Legacy version"""
-        from urllib.request import urlopen
-        
-        # Create image
-        width, height = 800, 400
-        img = Image.new('RGB', (width, height), color=(30, 30, 30))
-        draw = ImageDraw.Draw(img)
-        
-        # Load avatar
-        try:
-            avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
-            avatar_data = urlopen(avatar_url).read()
-            avatar_img = Image.open(io.BytesIO(avatar_data)).convert('RGBA')
-            avatar_img = avatar_img.resize((120, 120))
-            
-            # Add avatar (rounded)
-            img.paste(avatar_img, (30, 30), avatar_img)
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-        
-        # Get fonts (use default if unavailable)
-        try:
-            title_font = ImageFont.truetype("arial.ttf", 40)
-            stat_font = ImageFont.truetype("arial.ttf", 24)
-            label_font = ImageFont.truetype("arial.ttf", 16)
-        except Exception as e:
-            title_font = ImageFont.load_default()
-            stat_font = ImageFont.load_default()
-            label_font = ImageFont.load_default()
-        
-        # Draw username
-        draw.text((170, 40), f"{user.name}", font=title_font, fill=(255, 255, 255))
-        
-        # Draw stats
-        stats_text = f"💰 {seeds} Hạt"
-        draw.text((170, 100), stats_text, font=stat_font, fill=(200, 200, 200))
-        
-        # Draw best friend
-        draw.text((30, 180), "👥 Người tri kỷ:", font=label_font, fill=(255, 165, 0))
-        draw.text((200, 180), best_friend, font=stat_font, fill=(255, 200, 0))
-        
-        # Convert to bytes
-        img_bytes = io.BytesIO()
-        img.save(img_bytes, format='PNG')
-        img_bytes.seek(0)
-        
-        return img_bytes
 
 # Hàm setup bắt buộc để load Cog
 async def setup(bot):

@@ -297,9 +297,8 @@ class ShopCog(commands.Cog):
             return
 
         try:
-            # Use add_inventory_item for UPSERT (handles INSERT OR UPDATE)
-            from database_manager import add_inventory_item
-            await add_inventory_item(target_user_id, item_key, count)
+            # Use add_item from global scope (already imported)
+            await add_item(target_user_id, item_key, count)
             
             # Get item display name
             item_display = SHOP_ITEMS.get(item_key, {}).get("name", item_key)

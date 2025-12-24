@@ -21,7 +21,8 @@ class RelationshipCog(commands.Cog):
         an_danh="Gửi ẩn danh (True/False)"
     )
     async def tangqua(self, interaction: discord.Interaction, user: discord.User, item: str, message: str = None, an_danh: bool = False):
-        await interaction.response.defer()
+        # Defer ephemerally if anonymous to hide usage
+        await interaction.response.defer(ephemeral=an_danh)
 
         if user.id == interaction.user.id:
             return await interaction.followup.send("❌ Hãy thương lấy chính mình trước khi thương người khác nhé! (Nhưng tặng quà cho mình thì hơi kỳ)")
@@ -76,8 +77,17 @@ class RelationshipCog(commands.Cog):
         embed.set_thumbnail(url=user.display_avatar.url)
         embed.set_footer(text=f"Vật phẩm: {SHOP_ITEMS[item_key]['name']} {SHOP_ITEMS[item_key]['emoji']}")
         
-        # Send to channel (Public Event logic)
-        await interaction.followup.send(content=user.mention, embed=embed)
+        # Send to channel
+        if an_danh:
+            # Ephemeral confirm first
+            await interaction.followup.send("✅ Đã gửi quà bí mật thành công! (Tin nhắn sẽ xuất hiện trong giây lát)", ephemeral=True)
+            # Wait then send public message disconnected from interaction
+            import asyncio
+            await asyncio.sleep(2)
+            await interaction.channel.send(content=user.mention, embed=embed)
+        else:
+            # Normal reply
+            await interaction.followup.send(content=user.mention, embed=embed)
 
 async def setup(bot):
     await bot.add_cog(RelationshipCog(bot))
