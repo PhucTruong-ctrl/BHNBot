@@ -108,7 +108,7 @@ class ConfigCog(commands.Cog):
             # Check if current channel is tree channel
             if tree_row and tree_row[0] and channel_id == tree_row[0]:
                 # This is the tree channel - refresh the tree message
-                tree_cog = self.bot.get_cog("CommunityCog")
+                tree_cog = self.bot.get_cog("Tree")
                 if tree_cog:
                     # Delete old pinned message if it exists
                     if tree_row[1]:
@@ -231,7 +231,7 @@ class ConfigCog(commands.Cog):
                     new_tree = kenh_cay.id
                     
                     # Get tree cog
-                    tree_cog = self.bot.get_cog("CommunityCog")
+                    tree_cog = self.bot.get_cog("Tree")
                     if tree_cog:
                         # Create or update pinned message
                         await tree_cog.update_or_create_pin_message(guild_id, kenh_cay.id)

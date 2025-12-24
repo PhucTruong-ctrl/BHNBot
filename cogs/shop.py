@@ -274,15 +274,19 @@ class ShopCog(commands.Cog):
         )
 
     @app_commands.command(name="themitem", description="Thêm item cho user (Admin Only)")
-    @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
-        user="Người nhận item",
-        item_key="Key của item (cá, consumable, etc.)",
-        count="Số lượng muốn thêm (mặc định: 1)"
+        user="User nhận item",
+        item_key="Key của item (VD: phan_bon, gift, trash_01)",
+        count="Số lượng (mặc định 1)"
     )
-    async def themitem_slash(self, interaction: discord.Interaction, user: discord.User, item_key: str, count: int = 1):
-        """Slash command: Admin tool to add items to a user (Admin Only)."""
-        # await interaction.response.defer(ephemeral=True)
+    @app_commands.checks.has_permissions(administrator=True)
+    async def add_item_admin_slash(self, interaction: discord.Interaction, user: discord.User, item_key: str, count: int = 1):
+        """Admin command to give items to users"""
+        # CRITICAL: Defer immediately to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+        
+        admin_id = interaction.user.id
+        target_user_id = user.id
         
         # Validate count
         if count <= 0:
@@ -291,24 +295,28 @@ class ShopCog(commands.Cog):
                 ephemeral=True
             )
             return
-        
-        # Add item to user's inventory
+
         try:
-            await self.add_item_local(user.id, item_key, count)
+            # Use add_inventory_item for UPSERT (handles INSERT OR UPDATE)
+            from database_manager import add_inventory_item
+            await add_inventory_item(target_user_id, item_key, count)
+            
+            # Get item display name
+            item_display = SHOP_ITEMS.get(item_key, {}).get("name", item_key)
+            
+            logger.info(f"[ADMIN] [ADD_ITEM] admin_id={admin_id} target_user_id={target_user_id} item_key={item_key} count={count}")
             
             embed = discord.Embed(
                 title="✅ Thêm Item Thành Công",
-                description=f"Đã thêm **{item_key} x{count}** cho {user.mention}",
+                description=f"Đã thêm **{count}x {item_display}** cho {user.mention}",
                 color=discord.Color.green()
             )
             
-            logger.info(f"[ADMIN] [ADD_ITEM] admin_id={interaction.user.id} target_user_id={user.id} item_key={item_key} count={count}")
-            
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
-            logger.error(f"[SHOP] Error adding item {item_key} to {user.id}: {e}")
-            await interaction.response.send_message(
-                "❌ Có lỗi xảy ra khi thêm item!",
+            logger.error(f"[SHOP] Error adding item {item_key} to {target_user_id}: {e}")
+            await interaction.followup.send(
+                f"❌ Lỗi khi thêm item: {e}",
                 ephemeral=True
             )
 
