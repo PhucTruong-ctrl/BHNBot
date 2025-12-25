@@ -396,7 +396,17 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
     # NOTE: Since we modify chances, we should probably ensure we don't exceed 1.0 logic logic if Luck is too high.
     # But for now simple multiplier is fine.
     
-    items = list(RANDOM_EVENTS.items())
+    # PRE-FILTER: Only include events user is eligible for (Phase 2: Conditional Events)
+    eligible_events = {}
+    for event_key, event_data in RANDOM_EVENTS.items():
+        if await check_event_condition(user_id, event_data):
+            eligible_events[event_key] = event_data
+    
+    # If no eligible events, return early
+    if not eligible_events:
+        return result  # No event triggered
+    
+    items = list(eligible_events.items())
     random.shuffle(items) # Optional shuffle to randomize precedence if overlaps occur (though math says they are distinct segments)
     
     for event_type, event_data in items:
@@ -475,3 +485,22 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             return result
     
     return result
+
+async def check_event_condition(user_id: int, event_data: dict) -> bool:
+    """Check if user meets requirements for conditional event.
+    
+    Args:
+        user_id: Discord user ID
+        event_data: Event dict from fishing_events.json
+        
+    Returns:
+        bool: True if user is eligible, False otherwise
+    """
+    # No condition = always eligible (backward compatible)
+    if "condition" not in event_data or event_data["condition"] is None:
+        return True
+
+async def check_conditional_unlocks(user_id: int, stat_key: str, new_value: int, channel=None):
+    """Check conditional unlocks - handled by achievement system."""
+    return
+

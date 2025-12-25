@@ -1,559 +1,757 @@
 {
-    "fishing": {
-        "first_catch": {
-            "name": "Tân Thủ Tập Sự",
-            "description": "Câu được con cá đầu tiên",
-            "condition_stat": "first_catch",
-            "target_value": 1,
-            "reward_seeds": 50,
-            "reward_role_key": "role_tan_thu_tap_su",
-            "emoji": "🎣"
-        },
-        "worm_destroyer": {
-            "name": "Kẻ Hủy Diệt Giun",
-            "description": "Sử dụng 100 con giun câu",
-            "condition_stat": "worms_used",
-            "target_value": 100,
-            "reward_seeds": 200,
-            "reward_role_key": "role_ke_huy_diet_giun",
-            "emoji": "🐛"
-        },
-        "trash_master": {
-            "name": "Hiệp Sĩ Môi Trường",
-            "description": "Tái chế 500 rác",
-            "condition_stat": "trash_recycled",
-            "target_value": 500,
-            "reward_seeds": 500,
-            "reward_role_key": "role_hiep_si_moi_truong",
-            "emoji": "♻️"
-        },
-        "millionaire": {
-            "name": "Tỷ Phú",
-            "description": "Kiếm được 1,000,000 hạt từ bán cá",
-            "condition_stat": "total_money_earned",
-            "target_value": 1000000,
-            "reward_seeds": 10000,
-            "reward_role_key": "role_ty_phu",
-            "emoji": "💰"
-        },
-        "collection_master": {
-            "name": "Vua Câu Cá",
-            "description": "Thu thập đủ tất cả cá thường và hiếm",
-            "condition_stat": "collection_complete",
-            "target_value": 1,
-            "reward_seeds": 2000,
-            "reward_role_key": "role_vua_cau_ca",
-            "emoji": "�"
-        },
-        "child_of_sea": {
-            "name": "Dứa Con Của Biển",
-            "description": "Câu được 1000 con cá",
-            "condition_stat": "total_fish_caught",
-            "target_value": 1000,
-            "reward_seeds": 1500,
-            "reward_role_key": "role_dua_con_cua_bien",
-            "emoji": "🌊"
-        },
-        "treasure_hunter": {
-            "name": "Thợ Săn Kho Báu",
-            "description": "Mở được 100 rương kho báu",
-            "condition_stat": "chests_opened",
-            "target_value": 100,
-            "reward_seeds": 800,
-            "reward_role_key": "role_tho_san_kho_bau",
-            "emoji": "💎"
-        },
-        "market_manipulator": {
-            "name": "Gian Thương",
-            "description": "Thành công mặc cả 20 lần",
-            "condition_stat": "successful_haggles",
-            "target_value": 20,
-            "reward_seeds": 300,
-            "reward_role_key": "role_gian_thuong",
-            "emoji": "🤝"
-        },
-        "market_unluckiest": {
-            "name": "Thánh Nhọ Chợ Cá",
-            "description": "Bán chợ đen thất bại 10 lần",
-            "condition_stat": "black_market_failures",
-            "target_value": 10,
-            "reward_seeds": 200,
-            "reward_role_key": "role_thanh_nho_cho_ca",
-            "emoji": "😱"
-        },
-        "god_of_wealth": {
-            "name": "Thần Tài Gõ Cửa",
-            "description": "Bán chợ đen thành công 10 lần",
-            "condition_stat": "black_market_successes",
-            "target_value": 10,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_than_tai_go_cua",
-            "emoji": "🧧"
-        },
-        "diligent_smith": {
-            "name": "Thợ Rèn Cần Mẫn",
-            "description": "Nâng cấp cần câu lên cấp 5",
-            "condition_stat": "rod_level_max",
-            "target_value": 5,
-            "reward_seeds": 3000,
-            "reward_role_key": "role_tho_ren_can_man",
-            "emoji": "⚒️"
-        },
-        "rod_tycoon": {
-            "name": "Ông Trùm Cần Câu",
-            "description": "Sử dụng vật liệu nâng cấp cần 50 lần",
-            "condition_stat": "rod_upgrades",
-            "target_value": 50,
-            "reward_seeds": 1200,
-            "reward_role_key": "role_ong_trum_can_cau",
-            "emoji": "🎣"
-        },
-        "master_recycler": {
-            "name": "Nhà Tài Chế Đại Tài",
-            "description": "Tái chế 1000 rác",
-            "condition_stat": "trash_recycled",
-            "target_value": 1000,
-            "reward_seeds": 500,
-            "reward_role_key": "role_nha_tai_che_dai_tai",
-            "emoji": "♻️"
-        },
-        "boss_hunter": {
-            "name": "Chuyên Gia Săn Boss",
-            "description": "Đánh bại 10 con cá huyền thoại",
-            "condition_stat": "boss_caught",
-            "target_value": 10,
-            "reward_seeds": 10000,
-            "reward_role_key": "role_chuyen_gia_san_boss",
-            "emoji": "🏆"
-        },
-        "river_lord": {
-            "name": "Chúa Tể Vùng Nước Xoáy",
-            "description": "Câu được cá huyền thoại Thuồng Luồng",
-            "condition_stat": "thuong_luong_caught",
-            "target_value": 1,
-            "reward_seeds": 8000,
-            "reward_role_key": "role_chua_te_vung_nuoc_xoay",
-            "emoji": "🌪️"
-        },
-        "star_walker": {
-            "name": "Kẻ Hái Sao",
-            "description": "Câu được cá huyền thoại Cá Ngân Hà",
-            "condition_stat": "ca_ngan_ha_caught",
-            "target_value": 1,
-            "reward_seeds": 7000,
-            "reward_role_key": "role_ke_hai_sao",
-            "emoji": "⭐"
-        },
-        "sun_guardian": {
-            "name": "Ngư Lâm Quan Mặt Trời",
-            "description": "Câu được cá huyền thoại Cá Phượng Hoàng",
-            "condition_stat": "ca_phuong_hoang_caught",
-            "target_value": 1,
-            "reward_seeds": 6000,
-            "reward_role_key": "role_ngu_lam_quan_mat_troi",
-            "emoji": "☀️"
-        },
-        "void_gazer": {
-            "name": "Kẻ Nhìn Thấu Vực Thẳm",
-            "description": "Câu được cá huyền thoại Cthulhu Con",
-            "condition_stat": "cthulhu_con_caught",
-            "target_value": 1,
-            "reward_seeds": 9000,
-            "reward_role_key": "role_ke_nhin_thau_vuc_tham",
-            "emoji": "🕳️"
-        },
-        "lonely_frequency": {
-            "name": "Tần Số Cô Đơn",
-            "description": "Câu được cá huyền thoại Cá Vòi 52Hz",
-            "condition_stat": "ca_voi_52hz_caught",
-            "target_value": 1,
-            "reward_seeds": 7500,
-            "reward_role_key": "role_tan_so_co_don",
-            "emoji": "📻"
-        },
-        "legendary_hunter": {
-            "name": "Thợ Săn Huyền Thoại",
-            "description": "Câu được tất cả cá huyền thoại",
-            "condition_stat": "all_legendary_caught",
-            "target_value": 1,
-            "reward_seeds": 50000,
-            "reward_role_key": "role_tho_san_huyen_thoai",
-            "emoji": "👑"
-        },
-        "traffic_nightmare": {
-            "name": "Hung Thần Xa Lộ",
-            "description": "Tông trúng siêu xe (Maybach, Bugatti, Ferrari...) 5 lần khi bán cá",
-            "condition_stat": "luxury_car_crashes",
-            "target_value": 5,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_hung_than_xa_lo",
-            "emoji": "💥"
-        },
-        "crypto_whale": {
-            "name": "Chứng Thủ Đu Đỉnh",
-            "description": "Bị 'Thua Coin', 'Lùa Gà' hoặc 'Sập Sàn' 5 lần",
-            "condition_stat": "crypto_fails",
-            "target_value": 5,
-            "reward_seeds": 404,
-            "reward_role_key": "role_chung_thu_du_dinh",
-            "emoji": "📉"
-        },
-        "shark_tank_deal": {
-            "name": "Shark Tank Gọi Vốn",
-            "description": "Kích hoạt sự kiện 'Shark Tank' khi bán cá",
-            "condition_stat": "shark_tank_event",
-            "target_value": 1,
-            "reward_seeds": 2000,
-            "reward_role_key": "role_shark_tank",
-            "emoji": "🦈"
-        },
-        "drama_king": {
-            "name": "Chiến Thần Hóng Hớt",
-            "description": "Gặp sự kiện Drama, Check VAR hoặc Phốt 5 lần",
-            "condition_stat": "drama_events",
-            "target_value": 5,
-            "reward_seeds": 500,
-            "reward_role_key": "role_chien_than_hong_hot",
-            "emoji": "🍿"
-        },
-        "isekai_traveler": {
-            "name": "Người Chuyển Sinh",
-            "description": "Gặp sự kiện 'Xe Tải Isekai' (Truck-kun)",
-            "condition_stat": "isekai_event",
-            "target_value": 1,
-            "reward_seeds": 5000,
-            "reward_role_key": "role_nguoi_chuyen_sinh",
-            "emoji": "🚛"
-        },
-        "world_destroyer": {
-            "name": "Kẻ Hủy Diệt Server",
-            "description": "Kích hoạt một Thảm Họa (Disaster) toàn server",
-            "condition_stat": "disaster_triggered",
-            "target_value": 1,
-            "reward_seeds": 666,
-            "reward_role_key": "role_ke_huy_diet_server",
-            "emoji": "☢️"
-        },
-        "ninja_survivor": {
-            "name": "Kẻ Sống Sót Ninja Lead",
-            "description": "Gặp NPC Ninja Lead 3 lần",
-            "condition_stat": "ninja_lead_encounter",
-            "target_value": 3,
-            "reward_seeds": 500,
-            "reward_role_key": "role_ninja_survivor",
-            "emoji": "🥷"
-        },
-        "scam_victim": {
-            "name": "Tấm Chiếu Mới",
-            "description": "Bị NPC lừa hoặc sự kiện mất tiền (Cân điêu, Tiền giả) 10 lần",
-            "condition_stat": "scam_events",
-            "target_value": 10,
-            "reward_seeds": 300,
-            "reward_role_key": "role_tam_chieu_moi",
-            "emoji": "💸"
-        },
-        "time_traveler": {
-            "name": "Kẻ Du Hành Thời Gian",
-            "description": "Kích hoạt sự kiện Global Reset (Đồng hồ vỡ, Cổng không gian...)",
-            "condition_stat": "global_reset_triggered",
-            "target_value": 1,
-            "reward_seeds": 3000,
-            "reward_role_key": "role_du_hanh_thoi_gian",
-            "emoji": "⏳"
-        },
-        "land_lord": {
-            "name": "Đại Gia Bất Động Sản",
-            "description": "Gặp sự kiện 'Sốt Đất' khi bán cá",
-            "condition_stat": "land_fever_event",
-            "target_value": 1,
-            "reward_seeds": 2500,
-            "reward_role_key": "role_dai_gia_bds",
-            "emoji": "🏗️"
-        }
+  "fishing": {
+    "first_catch": {
+      "name": "Tân Thủ Tập Sự",
+      "description": "Câu được con cá đầu tiên",
+      "condition_stat": "first_catch",
+      "target_value": 1,
+      "reward_seeds": 50,
+      "reward_role_key": "role_tan_thu_tap_su",
+      "emoji": "🎣"
     },
-    "werewolf": {
-        "lone_wolf": {
-            "name": "Sói Đầu Đàn Cô Độc",
-            "description": "Giành chiến thắng một mình với vai trò Sói Trắng",
-            "condition_stat": "white_wolf_win",
-            "target_value": 1,
-            "reward_seeds": 5000,
-            "reward_role_key": "role_soi_trang_huyen_thoai",
-            "emoji": "🐺"
-        },
-        "pied_piper_charm": {
-            "name": "Nghệ Sĩ Thổi Sáo",
-            "description": "Thắng bằng cách mê hoặc tất cả người chơi",
-            "condition_stat": "pied_piper_win",
-            "target_value": 1,
-            "reward_seeds": 4000,
-            "reward_role_key": "role_nghe_si_thoi_sao",
-            "emoji": "🎶"
-        },
-        "forbidden_love": {
-            "name": "Chuyện Tình Ngang Trái",
-            "description": "Thắng với tư cách là Cặp Đôi (Phe thứ 3)",
-            "condition_stat": "couple_win",
-            "target_value": 1,
-            "reward_seeds": 3000,
-            "reward_role_key": "role_chuyen_tinh_ngang_trai",
-            "emoji": "💘"
-        },
-        "perfect_witch": {
-            "name": "Phù Thủy Tối Thượng",
-            "description": "Dùng bình cứu sống người và bình giết hạ gục Sói trong cùng một ván",
-            "condition_stat": "witch_perfect_play",
-            "target_value": 1,
-            "reward_seeds": 1500,
-            "reward_role_key": "role_phu_thuy_toi_thuong",
-            "emoji": "🧪"
-        },
-        "headshot_hunter": {
-            "name": "Xạ Thủ Bách Phát",
-            "description": "Khi chết đã kéo theo (ghim) chính xác một con Sói",
-            "condition_stat": "hunter_kill_wolf",
-            "target_value": 1,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_xa_thu_bach_phat",
-            "emoji": "🔫"
-        },
-        "steel_shield": {
-            "name": "Lá Chắn Thép",
-            "description": "Bảo vệ thành công người chơi khỏi bị Sói cắn trong đêm",
-            "condition_stat": "bodyguard_save",
-            "target_value": 5,
-            "reward_seeds": 800,
-            "reward_role_key": "role_la_chan_thep",
-            "emoji": "🛡️"
-        },
-        "pyromaniac": {
-            "name": "Kẻ Phóng Hỏa Điên Cuồng",
-            "description": "Tẩm xăng đốt thành công 2 người chơi trong một ván",
-            "condition_stat": "arsonist_burn",
-            "target_value": 1,
-            "reward_seeds": 1200,
-            "reward_role_key": "role_ke_phong_hoa",
-            "emoji": "🔥"
-        },
-        "divine_seer": {
-            "name": "Mắt Thần Soi Rọi",
-            "description": "Soi trúng Sói trong 3 đêm liên tiếp",
-            "condition_stat": "seer_find_wolf_streak",
-            "target_value": 1,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_mat_than",
-            "emoji": "🔮"
-        },
-        "fool_hanged": {
-            "name": "Giả Ngu Qua Ải",
-            "description": "Tất cả đều đã bị lừa",
-            "condition_stat": "fool_hang",
-            "target_value": 1,
-            "reward_seeds": 1500,
-            "reward_role_key": "role_gia_ngu_qua_ai",
-            "emoji": "🤡"
-        },
-        "jinxed": {
-            "name": "Số Nhọ",
-            "description": "Bị giết (cắn hoặc treo cổ) ngay trong đêm đầu/ngày đầu tiên 5 lần",
-            "condition_stat": "die_first_night",
-            "target_value": 5,
-            "reward_seeds": 500,
-            "reward_role_key": "role_so_nho_ma_soi",
-            "emoji": "💀"
-        },
-        "elder_immortal": {
-            "name": "Già Gân",
-            "description": "Là Già Làng và bị Sói cắn nhưng không chết (mất mạng phụ)",
-            "condition_stat": "elder_survive_bite",
-            "target_value": 1,
-            "reward_seeds": 600,
-            "reward_role_key": "role_gia_gan",
-            "emoji": "👴"
-        },
-        "fire_wolf_king": {
-            "name": "Thủ Lĩnh Sói Lửa",
-            "description": "Thắng game với vai trò Sói Lửa mà không bị chết",
-            "condition_stat": "fire_wolf_win_alive",
-            "target_value": 1,
-            "reward_seeds": 2000,
-            "reward_role_key": "role_thu_linh_soi_lua",
-            "emoji": "🐺🔥"
-        },
-        "assassin_contract": {
-            "name": "Sát Thủ Bóng Đêm",
-            "description": "Là Thích Khách và ám sát thành công mục tiêu",
-            "condition_stat": "assassin_kill",
-            "target_value": 1,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_sat_thu_bong_dem",
-            "emoji": "🗡️"
-        }
+    "worm_destroyer": {
+      "name": "Kẻ Hủy Diệt Giun",
+      "description": "Sử dụng 100 con giun câu",
+      "condition_stat": "worms_used",
+      "target_value": 100,
+      "reward_seeds": 200,
+      "reward_role_key": "role_ke_huy_diet_giun",
+      "emoji": "🐛"
     },
-    "noitu": {
-        "word_novice": {
-            "name": "Tập Sự Nối Từ",
-            "description": "Nối đúng 10 từ",
-            "condition_stat": "correct_words",
-            "target_value": 10,
-            "reward_seeds": 50,
-            "reward_role_key": "role_tap_su_noi_tu",
-            "emoji": "📝"
-        },
-        "word_master": {
-            "name": "Thánh Nối Từ",
-            "description": "Nối đúng 100 từ",
-            "condition_stat": "correct_words",
-            "target_value": 100,
-            "reward_seeds": 500,
-            "reward_role_key": "role_thanh_noi_tu",
-            "emoji": "🧠"
-        },
-        "speed_demon": {
-            "name": "Quỷ Tốc Độ",
-            "description": "Nối từ trong vòng 5 giây",
-            "condition_stat": "fast_answers",
-            "target_value": 50,
-            "reward_seeds": 300,
-            "reward_role_key": "role_quy_toc_do",
-            "emoji": "⚡"
-        },
-        "streak_master": {
-            "name": "Vua Chuỗi Thắng",
-            "description": "Chuỗi thắng 20 từ liên tiếp",
-            "condition_stat": "max_streak",
-            "target_value": 20,
-            "reward_seeds": 800,
-            "reward_role_key": "role_vua_chuoi_thang",
-            "emoji": "🔥"
-        },
-        "noitu_legend": {
-            "name": "Huyền Thoại Nối Từ",
-            "description": "Nối đúng 1000 từ",
-            "condition_stat": "correct_words",
-            "target_value": 1000,
-            "reward_seeds": 2000,
-            "reward_role_key": "role_huyen_thoai_noi_tu",
-            "emoji": "👑"
-        },
-        "clutch_master": {
-            "name": "Cứu Tinh Phút Chót",
-            "description": "Nối từ thành công khi thời gian còn dưới 3 giây (20 lần)",
-            "condition_stat": "low_time_answers",
-            "target_value": 20,
-            "reward_seeds": 600,
-            "reward_role_key": "role_cuu_tinh_phut_chot",
-            "emoji": "⏰"
-        },
-        "trap_king": {
-            "name": "Ông Trùm Hiểm Hóc",
-            "description": "Đưa ra từ khiến game kết thúc (không ai nối tiếp được) 10 lần",
-            "condition_stat": "game_ending_words",
-            "target_value": 10,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_ong_trum_hiem_hoc",
-            "emoji": "💣"
-        },
-        "dictionary_god": {
-            "name": "Từ Điển Sống",
-            "description": "Đạt mốc 5000 từ nối đúng (Nâng cấp của Huyền Thoại)",
-            "condition_stat": "correct_words",
-            "target_value": 5000,
-            "reward_seeds": 10000,
-            "reward_role_key": "role_tu_dien_song",
-            "emoji": "📚"
-        },
-        "typo_king": {
-            "name": "Thánh Sai Chính Tả",
-            "description": "Nhập từ sai hoặc không có trong từ điển 50 lần",
-            "condition_stat": "invalid_words",
-            "target_value": 50,
-            "reward_seeds": 100,
-            "reward_role_key": "role_thanh_sai_chinh_ta",
-            "emoji": "🥴"
-        },
-        "marathon_runner": {
-            "name": "Kẻ Bền Bỉ",
-            "description": "Tham gia vào một chuỗi nối từ dài trên 50 lượt",
-            "condition_stat": "long_chain_participation",
-            "target_value": 1,
-            "reward_seeds": 500,
-            "reward_role_key": "role_ke_ben_bi",
-            "emoji": "🏃"
-        },
-        "first_blood": {
-            "name": "Người Mở Bát",
-            "description": "Là người bắt đầu game (nối từ đầu tiên) 50 lần",
-            "condition_stat": "game_starters",
-            "target_value": 50,
-            "reward_seeds": 400,
-            "reward_role_key": "role_nguoi_mo_bat",
-            "emoji": "🚩"
-        },
-        "night_owl_scholar": {
-            "name": "Học Giả Cú Đêm",
-            "description": "Nối đúng 100 từ trong khung giờ 0h - 5h sáng",
-            "condition_stat": "night_answers",
-            "target_value": 100,
-            "reward_seeds": 800,
-            "reward_role_key": "role_hoc_gia_cu_dem",
-            "emoji": "🦉"
-        },
-        "reduplicative_master": {
-            "name": "Vua Từ Láy",
-            "description": "Sử dụng thành công 50 từ láy (Xinh xắn, Lung linh...)",
-            "condition_stat": "reduplicative_words",
-            "target_value": 50,
-            "reward_seeds": 600,
-            "reward_role_key": "role_vua_tu_lay",
-            "emoji": "🎶"
-        }
+    "trash_master": {
+      "name": "Hiệp Sĩ Môi Trường",
+      "description": "Tái chế 500 rác",
+      "condition_stat": "trash_recycled",
+      "target_value": 500,
+      "reward_seeds": 500,
+      "reward_role_key": "role_hiep_si_moi_truong",
+      "emoji": "♻️"
     },
-    "baucua": {
-        "gambler_novice": {
-            "name": "Tập Sự Đỏ Đen",
-            "description": "Tham gia chơi Bầu Cua lần đầu tiên",
-            "condition_stat": "baucua_played",
-            "target_value": 1,
-            "reward_seeds": 100,
-            "reward_role_key": "role_tap_su_do_den",
-            "emoji": "🎲"
-        },
-        "casino_regular": {
-            "name": "Khách Quen Sòng Bài",
-            "description": "Tham gia chơi 100 ván Bầu Cua",
-            "condition_stat": "baucua_played",
-            "target_value": 100,
-            "reward_seeds": 1000,
-            "reward_role_key": "role_khach_quen_song_bai",
-            "emoji": "🎰"
-        },
-        "baucua_master": {
-            "name": "Thần Bài",
-            "description": "Thắng tổng cộng 1,000,000 Hạt từ Bầu Cua",
-            "condition_stat": "baucua_total_won",
-            "target_value": 1000000,
-            "reward_seeds": 10000,
-            "reward_role_key": "role_than_bai",
-            "emoji": "🃏"
-        },
-        "unlucky_gambler": {
-            "name": "Thua Keo Này Bày Keo Khác",
-            "description": "Thua tổng cộng 500,000 Hạt (Nhà cái cảm ơn bạn)",
-            "condition_stat": "baucua_total_lost",
-            "target_value": 500000,
-            "reward_seeds": 5000,
-            "reward_role_key": "role_thua_keo_nay",
-            "emoji": "💸"
-        },
-        "triple_jackpot": {
-            "name": "Bàn Tay Vàng (Nổ Hũ)",
-            "description": "Thắng cược khi kết quả ra 3 con giống nhau (X3 tiền)",
-            "condition_stat": "baucua_triple_wins",
-            "target_value": 1,
-            "reward_seeds": 2000,
-            "reward_role_key": "role_ban_tay_vang",
-            "emoji": "🔥"
-        }
+    "millionaire": {
+      "name": "Tỷ Phú",
+      "description": "Kiếm được 1,000,000 hạt từ bán cá",
+      "condition_stat": "total_money_earned",
+      "target_value": 1000000,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_ty_phu",
+      "emoji": "💰"
+    },
+    "collection_master": {
+      "name": "Vua Câu Cá",
+      "description": "Thu thập đủ tất cả cá thường và hiếm",
+      "condition_stat": "collection_complete",
+      "target_value": 1,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_vua_cau_ca",
+      "emoji": "�"
+    },
+    "child_of_sea": {
+      "name": "Dứa Con Của Biển",
+      "description": "Câu được 1000 con cá",
+      "condition_stat": "total_fish_caught",
+      "target_value": 1000,
+      "reward_seeds": 1500,
+      "reward_role_key": "role_dua_con_cua_bien",
+      "emoji": "🌊"
+    },
+    "treasure_hunter": {
+      "name": "Thợ Săn Kho Báu",
+      "description": "Mở được 100 rương kho báu",
+      "condition_stat": "chests_opened",
+      "target_value": 100,
+      "reward_seeds": 800,
+      "reward_role_key": "role_tho_san_kho_bau",
+      "emoji": "💎"
+    },
+    "market_manipulator": {
+      "name": "Gian Thương",
+      "description": "Thành công mặc cả 20 lần",
+      "condition_stat": "successful_haggles",
+      "target_value": 20,
+      "reward_seeds": 300,
+      "reward_role_key": "role_gian_thuong",
+      "emoji": "🤝"
+    },
+    "market_unluckiest": {
+      "name": "Thánh Nhọ Chợ Cá",
+      "description": "Bán chợ đen thất bại 10 lần",
+      "condition_stat": "black_market_failures",
+      "target_value": 10,
+      "reward_seeds": 200,
+      "reward_role_key": "role_thanh_nho_cho_ca",
+      "emoji": "😱"
+    },
+    "god_of_wealth": {
+      "name": "Thần Tài Gõ Cửa",
+      "description": "Bán chợ đen thành công 10 lần",
+      "condition_stat": "black_market_successes",
+      "target_value": 10,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_than_tai_go_cua",
+      "emoji": "🧧"
+    },
+    "diligent_smith": {
+      "name": "Thợ Rèn Cần Mẫn",
+      "description": "Nâng cấp cần câu lên cấp 5",
+      "condition_stat": "rod_level_max",
+      "target_value": 5,
+      "reward_seeds": 3000,
+      "reward_role_key": "role_tho_ren_can_man",
+      "emoji": "⚒️"
+    },
+    "rod_tycoon": {
+      "name": "Ông Trùm Cần Câu",
+      "description": "Sử dụng vật liệu nâng cấp cần 50 lần",
+      "condition_stat": "rod_upgrades",
+      "target_value": 50,
+      "reward_seeds": 1200,
+      "reward_role_key": "role_ong_trum_can_cau",
+      "emoji": "🎣"
+    },
+    "master_recycler": {
+      "name": "Nhà Tài Chế Đại Tài",
+      "description": "Tái chế 1000 rác",
+      "condition_stat": "trash_recycled",
+      "target_value": 1000,
+      "reward_seeds": 500,
+      "reward_role_key": "role_nha_tai_che_dai_tai",
+      "emoji": "♻️"
+    },
+    "boss_hunter": {
+      "name": "Chuyên Gia Săn Boss",
+      "description": "Đánh bại 10 con cá huyền thoại",
+      "condition_stat": "boss_caught",
+      "target_value": 10,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_chuyen_gia_san_boss",
+      "emoji": "🏆"
+    },
+    "river_lord": {
+      "name": "Chúa Tể Vùng Nước Xoáy",
+      "description": "Câu được cá huyền thoại Thuồng Luồng",
+      "condition_stat": "thuong_luong_caught",
+      "target_value": 1,
+      "reward_seeds": 8000,
+      "reward_role_key": "role_chua_te_vung_nuoc_xoay",
+      "emoji": "🌪️"
+    },
+    "star_walker": {
+      "name": "Kẻ Hái Sao",
+      "description": "Câu được cá huyền thoại Cá Ngân Hà",
+      "condition_stat": "ca_ngan_ha_caught",
+      "target_value": 1,
+      "reward_seeds": 7000,
+      "reward_role_key": "role_ke_hai_sao",
+      "emoji": "⭐"
+    },
+    "sun_guardian": {
+      "name": "Ngư Lâm Quan Mặt Trời",
+      "description": "Câu được cá huyền thoại Cá Phượng Hoàng",
+      "condition_stat": "ca_phuong_hoang_caught",
+      "target_value": 1,
+      "reward_seeds": 6000,
+      "reward_role_key": "role_ngu_lam_quan_mat_troi",
+      "emoji": "☀️"
+    },
+    "void_gazer": {
+      "name": "Kẻ Nhìn Thấu Vực Thẳm",
+      "description": "Câu được cá huyền thoại Cthulhu Con",
+      "condition_stat": "cthulhu_con_caught",
+      "target_value": 1,
+      "reward_seeds": 9000,
+      "reward_role_key": "role_ke_nhin_thau_vuc_tham",
+      "emoji": "🕳️"
+    },
+    "lonely_frequency": {
+      "name": "Tần Số Cô Đơn",
+      "description": "Câu được cá huyền thoại Cá Vòi 52Hz",
+      "condition_stat": "ca_voi_52hz_caught",
+      "target_value": 1,
+      "reward_seeds": 7500,
+      "reward_role_key": "role_tan_so_co_don",
+      "emoji": "📻"
+    },
+    "legendary_hunter": {
+      "name": "Thợ Săn Huyền Thoại",
+      "description": "Câu được tất cả cá huyền thoại",
+      "condition_stat": "all_legendary_caught",
+      "target_value": 1,
+      "reward_seeds": 50000,
+      "reward_role_key": "role_tho_san_huyen_thoai",
+      "emoji": "👑"
+    },
+    "traffic_nightmare": {
+      "name": "Hung Thần Xa Lộ",
+      "description": "Tông trúng siêu xe (Maybach, Bugatti, Ferrari...) 5 lần khi bán cá",
+      "condition_stat": "luxury_car_crashes",
+      "target_value": 5,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_hung_than_xa_lo",
+      "emoji": "💥"
+    },
+    "crypto_whale": {
+      "name": "Chứng Thủ Đu Đỉnh",
+      "description": "Bị 'Thua Coin', 'Lùa Gà' hoặc 'Sập Sàn' 5 lần",
+      "condition_stat": "crypto_fails",
+      "target_value": 5,
+      "reward_seeds": 404,
+      "reward_role_key": "role_chung_thu_du_dinh",
+      "emoji": "📉"
+    },
+    "shark_tank_deal": {
+      "name": "Shark Tank Gọi Vốn",
+      "description": "Kích hoạt sự kiện 'Shark Tank' khi bán cá",
+      "condition_stat": "shark_tank_event",
+      "target_value": 1,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_shark_tank",
+      "emoji": "🦈"
+    },
+    "drama_king": {
+      "name": "Chiến Thần Hóng Hớt",
+      "description": "Gặp sự kiện Drama, Check VAR hoặc Phốt 5 lần",
+      "condition_stat": "drama_events",
+      "target_value": 5,
+      "reward_seeds": 500,
+      "reward_role_key": "role_chien_than_hong_hot",
+      "emoji": "🍿"
+    },
+    "isekai_traveler": {
+      "name": "Người Chuyển Sinh",
+      "description": "Gặp sự kiện 'Xe Tải Isekai' (Truck-kun)",
+      "condition_stat": "isekai_event",
+      "target_value": 1,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_nguoi_chuyen_sinh",
+      "emoji": "🚛"
+    },
+    "world_destroyer": {
+      "name": "Kẻ Hủy Diệt Server",
+      "description": "Kích hoạt một Thảm Họa (Disaster) toàn server",
+      "condition_stat": "disaster_triggered",
+      "target_value": 1,
+      "reward_seeds": 666,
+      "reward_role_key": "role_ke_huy_diet_server",
+      "emoji": "☢️"
+    },
+    "ninja_survivor": {
+      "name": "Kẻ Sống Sót Ninja Lead",
+      "description": "Gặp NPC Ninja Lead 3 lần",
+      "condition_stat": "ninja_lead_encounter",
+      "target_value": 3,
+      "reward_seeds": 500,
+      "reward_role_key": "role_ninja_survivor",
+      "emoji": "🥷"
+    },
+    "scam_victim": {
+      "name": "Tấm Chiếu Mới",
+      "description": "Bị NPC lừa hoặc sự kiện mất tiền (Cân điêu, Tiền giả) 10 lần",
+      "condition_stat": "scam_events",
+      "target_value": 10,
+      "reward_seeds": 300,
+      "reward_role_key": "role_tam_chieu_moi",
+      "emoji": "💸"
+    },
+    "time_traveler": {
+      "name": "Kẻ Du Hành Thời Gian",
+      "description": "Kích hoạt sự kiện Global Reset (Đồng hồ vỡ, Cổng không gian...)",
+      "condition_stat": "global_reset_triggered",
+      "target_value": 1,
+      "reward_seeds": 3000,
+      "reward_role_key": "role_du_hanh_thoi_gian",
+      "emoji": "⏳"
+    },
+    "land_lord": {
+      "name": "Đại Gia Bất Động Sản",
+      "description": "Gặp sự kiện 'Sốt Đất' khi bán cá",
+      "condition_stat": "land_fever_event",
+      "target_value": 1,
+      "reward_seeds": 2500,
+      "reward_role_key": "role_dai_gia_bds",
+      "emoji": "🏗️"
+    },
+    "frequent_seller": {
+      "name": "Thương Nhân Chuyên Nghiệp",
+      "description": "Bán cá 1000 lần",
+      "condition_stat": "sell_count",
+      "target_value": 1000,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_thuong_nhan_chuyen_nghiep",
+      "emoji": "🏪"
+    },
+    "luxury_merchant": {
+      "name": "Nhà Buôn Hàng Hiệu",
+      "description": "Bán 500 cá hiếm",
+      "condition_stat": "rare_fish_sold",
+      "target_value": 500,
+      "reward_seeds": 8000,
+      "reward_role_key": "role_nha_buon_hang_hieu",
+      "emoji": "✨"
+    },
+    "vip_network_unlock": {
+      "name": "Mở Khóa: Mạng Lưới VIP",
+      "description": "Đạt 100 lần bán cá - Mở khóa event 'Mạng Lưới VIP' khi bán cá!",
+      "condition_stat": "sell_count",
+      "target_value": 100,
+      "reward_seeds": 500,
+      "emoji": "🤝",
+      "reward_role_key": "role_mang_luoi_vip"
+    },
+    "luxury_contacts_unlock": {
+      "name": "Mở Khóa: Khách Hàng Cao Cấp",
+      "description": "Bán 100 cá hiếm - Mở khóa event 'Khách Hàng Cao Cấp' khi bán cá!",
+      "condition_stat": "rare_fish_sold",
+      "target_value": 100,
+      "reward_seeds": 500,
+      "emoji": "💎",
+      "reward_role_key": "role_khach_hang_cao_cap"
+    },
+    "market_master_unlock": {
+      "name": "Mở Khóa: Bậc Thầy Chợ",
+      "description": "Bán tổng 5000 cá - Mở khóa event 'Bậc Thầy Chợ' khi bán cá!",
+      "condition_stat": "fish_sold",
+      "target_value": 5000,
+      "reward_seeds": 1000,
+      "emoji": "🏪",
+      "reward_role_key": "role_bac_thay_cho"
+    },
+    "tycoon_deals_unlock": {
+      "name": "Mở Khóa: Ông Trùm Giao Dịch",
+      "description": "Kiếm được 50,000 Hạt - Mở khóa event 'Ông Trùm Giao Dịch' khi bán cá!",
+      "condition_stat": "total_money_earned",
+      "target_value": 50000,
+      "reward_seeds": 1000,
+      "emoji": "💼",
+      "reward_role_key": "role_ong_trum_giao_dich"
+    },
+    "market_veteran_unlock": {
+      "name": "Mở Khóa: Lão Làng Chợ Cá",
+      "description": "Câu được 10,000 cá - Mở khóa event 'Lão Làng Chợ Cá' khi bán cá!",
+      "condition_stat": "total_fish_caught",
+      "target_value": 10000,
+      "reward_seeds": 1500,
+      "emoji": "🎣",
+      "reward_role_key": "role_lao_lang_cho_ca"
+    },
+    "veteran_luck_unlock": {
+      "name": "Mở Khóa: Trực Giác Lão Làng",
+      "description": "Câu được 1000 cá - Mở khóa event 'Trực Giác Lão Làng' khi câu cá!",
+      "condition_stat": "total_fish_caught",
+      "target_value": 1000,
+      "reward_seeds": 500,
+      "reward_role_key": "role_truc_giac_lao_lang",
+      "emoji": "🎖️"
+    },
+    "legendary_hunter_unlock": {
+      "name": "Mở Khóa: Thợ Săn Huyền Thoại",
+      "description": "Câu được 3 cá huyền thoại - Mở khóa event 'Thợ Săn Huyền Thoại' khi câu cá!",
+      "condition_stat": "legendary_caught",
+      "target_value": 3,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_tho_san_huyen_thoai_event",
+      "emoji": "👑"
+    },
+    "money_bags_unlock": {
+      "name": "Mở Khóa: Túi Tiền Vô Tận",
+      "description": "Kiếm được 10,000 Hạt - Mở khóa event 'Túi Tiền Vô Tận' khi câu cá!",
+      "condition_stat": "total_money_earned",
+      "target_value": 10000,
+      "reward_seeds": 500,
+      "reward_role_key": "role_tui_tien_vo_tan",
+      "emoji": "💰"
+    },
+    "iron_will_unlock": {
+      "name": "Mở Khóa: Ý Chí Sắt Đá",
+      "description": "Gặp 100 sự kiện xấu - Mở khóa event 'Ý Chí Sắt Đá' khi câu cá!",
+      "condition_stat": "bad_events_encountered",
+      "target_value": 100,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_y_chi_sat_da",
+      "emoji": "��️"
+    },
+    "speedster_unlock": {
+      "name": "Mở Khóa: Tốc Độ Ánh Sáng",
+      "description": "Dùng 50 con giun - Mở khóa event 'Tốc Độ Ánh Sáng' khi câu cá!",
+      "condition_stat": "worms_used",
+      "target_value": 50,
+      "reward_seeds": 300,
+      "reward_role_key": "role_toc_do_anh_sang",
+      "emoji": "⚡"
+    },
+    "charity_king": {
+      "name": "Nhà Hảo Tâm",
+      "description": "Thực hiện 10 lần quyên góp từ thiện khi bán cá",
+      "condition_stat": "charity_donations",
+      "target_value": 10,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_nha_hao_tam",
+      "emoji": "❤️"
+    },
+    "beauty_queen": {
+      "name": "Hoa Hậu Đại Dương",
+      "description": "Thắng giải nhất 'Thi Cá Đẹp' 5 lần",
+      "condition_stat": "contest_wins",
+      "target_value": 5,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_hoa_hau_dai_duong",
+      "emoji": "👑"
+    },
+    "wall_street_wolf": {
+      "name": "Sói Già Phố Wall",
+      "description": "Thắng lớn khi đầu tư Startup cá 5 lần",
+      "condition_stat": "investment_wins",
+      "target_value": 5,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_soi_gia_pho_wall",
+      "emoji": "📈"
+    },
+    "daredevil": {
+      "name": "Kẻ Liều Lĩnh",
+      "description": "Đưa ra 50 quyết định mạo hiểm trong các sự kiện",
+      "condition_stat": "risky_choices_made",
+      "target_value": 50,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_lieu_an_nhieu",
+      "emoji": "🎲"
+    },
+    "auction_tycoon": {
+      "name": "Đấu Giá Sư",
+      "description": "Thắng lớn tại Sàn Đấu Giá (x3 tiền) 5 lần",
+      "condition_stat": "auction_house_wins",
+      "target_value": 5,
+      "reward_seeds": 3000,
+      "reward_role_key": "role_dau_gia_su",
+      "emoji": "🔨"
+    },
+    "charity_king": {
+      "name": "Nhà Hảo Tâm",
+      "description": "Thực hiện 10 lần quyên góp từ thiện khi bán cá",
+      "condition_stat": "charity_donations",
+      "target_value": 10,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_nha_hao_tam",
+      "emoji": "❤️"
+    },
+    "beauty_queen": {
+      "name": "Hoa Hậu Đại Dương",
+      "description": "Thắng giải nhất 'Thi Cá Đẹp' 5 lần",
+      "condition_stat": "contest_wins",
+      "target_value": 5,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_hoa_hau_dai_duong",
+      "emoji": "👑"
+    },
+    "wall_street_wolf": {
+      "name": "Sói Già Phố Wall",
+      "description": "Thắng lớn khi đầu tư Startup cá 5 lần",
+      "condition_stat": "investment_wins",
+      "target_value": 5,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_soi_gia_pho_wall",
+      "emoji": "📈"
+    },
+    "daredevil": {
+      "name": "Kẻ Liều Lĩnh",
+      "description": "Đưa ra 50 quyết định mạo hiểm trong các sự kiện",
+      "condition_stat": "risky_choices_made",
+      "target_value": 50,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_lieu_an_nhieu",
+      "emoji": "🎲"
+    },
+    "auction_tycoon": {
+      "name": "Đấu Giá Sư",
+      "description": "Thắng lớn tại Sàn Đấu Giá (x3 tiền) 5 lần",
+      "condition_stat": "auction_house_wins",
+      "target_value": 5,
+      "reward_seeds": 3000,
+      "reward_role_key": "role_dau_gia_su",
+      "emoji": "🔨"
     }
+  },
+  "werewolf": {
+    "lone_wolf": {
+      "name": "Sói Đầu Đàn Cô Độc",
+      "description": "Giành chiến thắng một mình với vai trò Sói Trắng",
+      "condition_stat": "white_wolf_win",
+      "target_value": 1,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_soi_trang_huyen_thoai",
+      "emoji": "🐺"
+    },
+    "pied_piper_charm": {
+      "name": "Nghệ Sĩ Thổi Sáo",
+      "description": "Thắng bằng cách mê hoặc tất cả người chơi",
+      "condition_stat": "pied_piper_win",
+      "target_value": 1,
+      "reward_seeds": 4000,
+      "reward_role_key": "role_nghe_si_thoi_sao",
+      "emoji": "🎶"
+    },
+    "forbidden_love": {
+      "name": "Chuyện Tình Ngang Trái",
+      "description": "Thắng với tư cách là Cặp Đôi (Phe thứ 3)",
+      "condition_stat": "couple_win",
+      "target_value": 1,
+      "reward_seeds": 3000,
+      "reward_role_key": "role_chuyen_tinh_ngang_trai",
+      "emoji": "💘"
+    },
+    "perfect_witch": {
+      "name": "Phù Thủy Tối Thượng",
+      "description": "Dùng bình cứu sống người và bình giết hạ gục Sói trong cùng một ván",
+      "condition_stat": "witch_perfect_play",
+      "target_value": 1,
+      "reward_seeds": 1500,
+      "reward_role_key": "role_phu_thuy_toi_thuong",
+      "emoji": "🧪"
+    },
+    "headshot_hunter": {
+      "name": "Xạ Thủ Bách Phát",
+      "description": "Khi chết đã kéo theo (ghim) chính xác một con Sói",
+      "condition_stat": "hunter_kill_wolf",
+      "target_value": 1,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_xa_thu_bach_phat",
+      "emoji": "🔫"
+    },
+    "steel_shield": {
+      "name": "Lá Chắn Thép",
+      "description": "Bảo vệ thành công người chơi khỏi bị Sói cắn trong đêm",
+      "condition_stat": "bodyguard_save",
+      "target_value": 5,
+      "reward_seeds": 800,
+      "reward_role_key": "role_la_chan_thep",
+      "emoji": "🛡️"
+    },
+    "pyromaniac": {
+      "name": "Kẻ Phóng Hỏa Điên Cuồng",
+      "description": "Tẩm xăng đốt thành công 2 người chơi trong một ván",
+      "condition_stat": "arsonist_burn",
+      "target_value": 1,
+      "reward_seeds": 1200,
+      "reward_role_key": "role_ke_phong_hoa",
+      "emoji": "🔥"
+    },
+    "divine_seer": {
+      "name": "Mắt Thần Soi Rọi",
+      "description": "Soi trúng Sói trong 3 đêm liên tiếp",
+      "condition_stat": "seer_find_wolf_streak",
+      "target_value": 1,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_mat_than",
+      "emoji": "🔮"
+    },
+    "fool_hanged": {
+      "name": "Giả Ngu Qua Ải",
+      "description": "Tất cả đều đã bị lừa",
+      "condition_stat": "fool_hang",
+      "target_value": 1,
+      "reward_seeds": 1500,
+      "reward_role_key": "role_gia_ngu_qua_ai",
+      "emoji": "🤡"
+    },
+    "jinxed": {
+      "name": "Số Nhọ",
+      "description": "Bị giết (cắn hoặc treo cổ) ngay trong đêm đầu/ngày đầu tiên 5 lần",
+      "condition_stat": "die_first_night",
+      "target_value": 5,
+      "reward_seeds": 500,
+      "reward_role_key": "role_so_nho_ma_soi",
+      "emoji": "💀"
+    },
+    "elder_immortal": {
+      "name": "Già Gân",
+      "description": "Là Già Làng và bị Sói cắn nhưng không chết (mất mạng phụ)",
+      "condition_stat": "elder_survive_bite",
+      "target_value": 1,
+      "reward_seeds": 600,
+      "reward_role_key": "role_gia_gan",
+      "emoji": "👴"
+    },
+    "fire_wolf_king": {
+      "name": "Thủ Lĩnh Sói Lửa",
+      "description": "Thắng game với vai trò Sói Lửa mà không bị chết",
+      "condition_stat": "fire_wolf_win_alive",
+      "target_value": 1,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_thu_linh_soi_lua",
+      "emoji": "🐺🔥"
+    },
+    "assassin_contract": {
+      "name": "Sát Thủ Bóng Đêm",
+      "description": "Là Thích Khách và ám sát thành công mục tiêu",
+      "condition_stat": "assassin_kill",
+      "target_value": 1,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_sat_thu_bong_dem",
+      "emoji": "🗡️"
+    }
+  },
+  "noitu": {
+    "word_novice": {
+      "name": "Tập Sự Nối Từ",
+      "description": "Nối đúng 10 từ",
+      "condition_stat": "correct_words",
+      "target_value": 10,
+      "reward_seeds": 50,
+      "reward_role_key": "role_tap_su_noi_tu",
+      "emoji": "📝"
+    },
+    "word_master": {
+      "name": "Thánh Nối Từ",
+      "description": "Nối đúng 100 từ",
+      "condition_stat": "correct_words",
+      "target_value": 100,
+      "reward_seeds": 500,
+      "reward_role_key": "role_thanh_noi_tu",
+      "emoji": "🧠"
+    },
+    "speed_demon": {
+      "name": "Quỷ Tốc Độ",
+      "description": "Nối từ trong vòng 5 giây",
+      "condition_stat": "fast_answers",
+      "target_value": 50,
+      "reward_seeds": 300,
+      "reward_role_key": "role_quy_toc_do",
+      "emoji": "⚡"
+    },
+    "streak_master": {
+      "name": "Vua Chuỗi Thắng",
+      "description": "Chuỗi thắng 20 từ liên tiếp",
+      "condition_stat": "max_streak",
+      "target_value": 20,
+      "reward_seeds": 800,
+      "reward_role_key": "role_vua_chuoi_thang",
+      "emoji": "🔥"
+    },
+    "noitu_legend": {
+      "name": "Huyền Thoại Nối Từ",
+      "description": "Nối đúng 1000 từ",
+      "condition_stat": "correct_words",
+      "target_value": 1000,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_huyen_thoai_noi_tu",
+      "emoji": "👑"
+    },
+    "clutch_master": {
+      "name": "Cứu Tinh Phút Chót",
+      "description": "Nối từ thành công khi thời gian còn dưới 3 giây (20 lần)",
+      "condition_stat": "low_time_answers",
+      "target_value": 20,
+      "reward_seeds": 600,
+      "reward_role_key": "role_cuu_tinh_phut_chot",
+      "emoji": "⏰"
+    },
+    "trap_king": {
+      "name": "Ông Trùm Hiểm Hóc",
+      "description": "Đưa ra từ khiến game kết thúc (không ai nối tiếp được) 10 lần",
+      "condition_stat": "game_ending_words",
+      "target_value": 10,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_ong_trum_hiem_hoc",
+      "emoji": "💣"
+    },
+    "dictionary_god": {
+      "name": "Từ Điển Sống",
+      "description": "Đạt mốc 5000 từ nối đúng (Nâng cấp của Huyền Thoại)",
+      "condition_stat": "correct_words",
+      "target_value": 5000,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_tu_dien_song",
+      "emoji": "📚"
+    },
+    "typo_king": {
+      "name": "Thánh Sai Chính Tả",
+      "description": "Nhập từ sai hoặc không có trong từ điển 50 lần",
+      "condition_stat": "invalid_words",
+      "target_value": 50,
+      "reward_seeds": 100,
+      "reward_role_key": "role_thanh_sai_chinh_ta",
+      "emoji": "🥴"
+    },
+    "marathon_runner": {
+      "name": "Kẻ Bền Bỉ",
+      "description": "Tham gia vào một chuỗi nối từ dài trên 50 lượt",
+      "condition_stat": "long_chain_participation",
+      "target_value": 1,
+      "reward_seeds": 500,
+      "reward_role_key": "role_ke_ben_bi",
+      "emoji": "🏃"
+    },
+    "first_blood": {
+      "name": "Người Mở Bát",
+      "description": "Là người bắt đầu game (nối từ đầu tiên) 50 lần",
+      "condition_stat": "game_starters",
+      "target_value": 50,
+      "reward_seeds": 400,
+      "reward_role_key": "role_nguoi_mo_bat",
+      "emoji": "🚩"
+    },
+    "night_owl_scholar": {
+      "name": "Học Giả Cú Đêm",
+      "description": "Nối đúng 100 từ trong khung giờ 0h - 5h sáng",
+      "condition_stat": "night_answers",
+      "target_value": 100,
+      "reward_seeds": 800,
+      "reward_role_key": "role_hoc_gia_cu_dem",
+      "emoji": "🦉"
+    },
+    "reduplicative_master": {
+      "name": "Vua Từ Láy",
+      "description": "Sử dụng thành công 50 từ láy (Xinh xắn, Lung linh...)",
+      "condition_stat": "reduplicative_words",
+      "target_value": 50,
+      "reward_seeds": 600,
+      "reward_role_key": "role_vua_tu_lay",
+      "emoji": "🎶"
+    }
+  },
+  "baucua": {
+    "gambler_novice": {
+      "name": "Tập Sự Đỏ Đen",
+      "description": "Tham gia chơi Bầu Cua lần đầu tiên",
+      "condition_stat": "baucua_played",
+      "target_value": 1,
+      "reward_seeds": 100,
+      "reward_role_key": "role_tap_su_do_den",
+      "emoji": "🎲"
+    },
+    "casino_regular": {
+      "name": "Khách Quen Sòng Bài",
+      "description": "Tham gia chơi 100 ván Bầu Cua",
+      "condition_stat": "baucua_played",
+      "target_value": 100,
+      "reward_seeds": 1000,
+      "reward_role_key": "role_khach_quen_song_bai",
+      "emoji": "🎰"
+    },
+    "baucua_master": {
+      "name": "Thần Bài",
+      "description": "Thắng tổng cộng 1,000,000 Hạt từ Bầu Cua",
+      "condition_stat": "baucua_total_won",
+      "target_value": 1000000,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_than_bai",
+      "emoji": "🃏"
+    },
+    "unlucky_gambler": {
+      "name": "Thua Keo Này Bày Keo Khác",
+      "description": "Thua tổng cộng 500,000 Hạt (Nhà cái cảm ơn bạn)",
+      "condition_stat": "baucua_total_lost",
+      "target_value": 500000,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_thua_keo_nay",
+      "emoji": "💸"
+    },
+    "triple_jackpot": {
+      "name": "Bàn Tay Vàng (Nổ Hũ)",
+      "description": "Thắng cược khi kết quả ra 3 con giống nhau (X3 tiền)",
+      "condition_stat": "baucua_triple_wins",
+      "target_value": 1,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_ban_tay_vang",
+      "emoji": "🔥"
+    }
+  }
 }

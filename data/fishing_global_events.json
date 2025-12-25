@@ -1,0 +1,132 @@
+{
+  "meta_config": {
+    "check_interval_seconds": 60,
+    "announce_channel_id": null
+  },
+  "events": {
+  
+    "cthulhu_raid": {
+      "id": "cthulhu_raid",
+      "name": "🐙 Cthulhu: Cơn Đói Vĩnh Hằng",
+      "type": "raid_boss",
+      "priority": 100,
+      "schedule": {
+        "days": [5, 6],
+        "time_ranges": ["20:00-21:00"],
+        "frequency_chance": 1.0, 
+        "duration_minutes": 60,
+        "cooldown_minutes": 0
+      },
+      "mechanics": {
+        "hp_goal": 1000000,
+        "input_type": "fish_value",
+        "boss_state_key": "cthulhu_hp",
+        "update_interval": 60
+      },
+      "visuals": {
+        "title": "🦑 CTHULHU ĐÃ TỈNH GIÁC!",
+        "color": "#992D22",
+        "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023778536009778/cthulhu.png"
+      },
+      "effects": {
+        "money_multiplier": 0.0
+      },
+      "rewards": {
+        "success": {
+          "items": [{"key": "ruong_kho_bau", "min": 1, "max": 3}],
+          "mvp_bonus": [{"key": "ruong_kho_bau", "min": 5, "max": 10}, {"key": "vat_lieu_nang_cap", "min": 5, "max": 10}]
+        },
+        "fail": {
+          "global_debuff": "market_crash_50",
+          "debuff_duration_hours": 12
+        }
+      },
+      "messages": {
+        "start": "🌩️ TRỜI ĐẤT QUAY CUỒNG!\n\nTừ vực thẳm đen ngòm, thực thể Cthulhu Non đã trồi lên mặt nước! Tiếng gầm gừ đòi ăn của nó vang vọng khắp server.\n\n⚠️ **KHẨN CẤP:** Mọi nỗ lực bán cá (`!banca`) giờ đây sẽ trở thành Vật Phẩm Hiến Tế! Hãy chung tay cho nó ăn no trước khi nó nhấn chìm tất cả!\n\n🎁 **Thưởng:** Kho Báu & Vật Liệu (MVP nhận nhiều hơn!)\n💀 **Phạt:** Giá cá giảm 50% toàn server nếu thất bại!",
+        "end": "🌌 **SỰ TĨNH LẶNG TRỞ LẠI...**\nCthulhu Non đã no nê và chìm xuống đáy biển. Cảm ơn các Chiến Thần đã bảo vệ sự bình yên của server!"
+      }
+    },
+
+    "meteor_shower": {
+      "id": "meteor_shower",
+      "name": "🌠 Dạ Tiệc Ánh Sao",
+      "type": "mini_game",
+      "priority": 90,
+      "schedule": {
+        "time_ranges": ["21:00-21:30"],
+        "frequency_chance": 0.5,
+        "duration_minutes": 30
+      },
+      "mechanics": {
+        "view_class": "MeteorWishView",
+        "spawn_interval": [60, 120] 
+      },
+      "visuals": {
+        "title": "🌠 MƯA SAO BĂNG",
+        "color": "#F1C40F",
+        "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023915832770580/meteor.png"
+      },
+      "effects": {},
+      "messages": {
+        "start": "🌌 **DẠ TIỆC ÁNH SAO BẮT ĐẦU!**\n\nBầu trời đêm nay bỗng rực sáng những vệt sao băng. Truyền thuyết kể rằng, ai nhanh tay **Ước Nguyện** khi sao rơi sẽ nhận được phước lành từ vũ trụ.",
+        "end": "🌌 **Màn Đêm Buông Xuống.**\n\nCơn mưa sao băng đã kết thúc. Hy vọng điều ước của bạn sẽ thành hiện thực."
+      }
+    },
+
+    "high_tide": {
+      "id": "high_tide",
+      "name": "🌊 Triều Cường Đỏ",
+      "type": "environment",
+      "priority": 50,
+      "schedule": {
+        "time_ranges": ["08:00-23:00"],
+        "frequency_chance": 0.015,
+        "duration_minutes": 30,
+        "cooldown_minutes": 120
+      },
+      "mechanics": {},
+      "visuals": {
+        "title": "🌊 THỦY TRIỀU DÂNG CAO",
+        "color": "#1ABC9C"
+      },
+      "effects": {
+        "rare_chance_multiplier": 3.0,
+        "trash_chance_multiplier": 0.0
+      },
+      "messages": {
+        "start": "🌊 **TRIỀU CƯỜNG ĐỎ DÂNG CAO!**\n\nMực nước sông đang dâng lên dữ dội! Những con quái vật khổng lồ dưới đáy sâu đang trồi lên đi săn.\n✨ **Cơ hội vàng:** Tỉ lệ câu **Cá Khổng Lồ** tăng mạnh & Không có rác!",
+        "end": "🌊 **Nước Rút.**\n\nDòng sông trở lại vẻ hiền hòa vốn có."
+      }
+    },
+
+    "scrap_yard": {
+      "id": "scrap_yard",
+      "name": "🚛 Vựa Ve Chai Chú Ba",
+      "type": "npc_shop",
+      "priority": 40,
+      "schedule": {
+        "time_ranges": ["08:00-23:59"],
+        "frequency_chance": 0.03,
+        "duration_minutes": 15,
+        "cooldown_minutes": 180
+      },
+      "mechanics": {
+        "view_type": "TrashSellView",
+        "trash_price_min": 5,
+        "trash_price_max": 100
+      },
+      "visuals": {
+        "title": "🚛 VỰA VE CHAI CHÚ BA",
+        "color": "#2ECC71",
+        "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023847247089704/trash_truck.png"
+      },
+      "effects": {
+        "trash_chance_multiplier": 1.5
+      },
+      "messages": {
+        "start": "🚛 **VỰA VE CHAI ĐẾN RỒI!**\n\nTiếng loa phường vang lên: *'Ai chai bao, nhôm nhựa, sắt vụn bán hông...'* Chú Ba Ve Chai vừa lái xe tải tới bến cảng.\n👇 **Bấm nút bên dưới để dọn rác kiếm tiền nào!**",
+        "end": "🚛 **Xe Lăn Bánh.**\n\nChú Ba đã gom đủ hàng và lái xe đi mất. Hẹn gặp lại!"
+      }
+    }
+  }
+}

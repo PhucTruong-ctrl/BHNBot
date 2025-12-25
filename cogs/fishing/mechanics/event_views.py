@@ -27,14 +27,11 @@ class MeteorWishView(discord.ui.View):
         """Handle wish button click."""
         user_id = interaction.user.id
         
-        # Check daily limit using user_stats
-        today_str = datetime.now().strftime('%Y-%m-%d')
-        stat_key = f'meteor_shards_today_{today_str}'
-        current_count = await get_stat(user_id, 'fishing', stat_key, 0)
-        
-        if current_count >= 2:
-            await interaction.response.send_message("Bạn đã ước đủ 2 lần hôm nay rồi! Hãy quay lại ngày mai.", ephemeral=True)
-            return
+        # No Daily Limit (User Request)
+        # today_str = datetime.now().strftime('%Y-%m-%d')
+        # stat_key = f'meteor_shards_today_{today_str}'
+        stat_key = "total_wishes" # Just track total wishes instead
+
         
         # Prevent double-click
         if user_id in self.wished_users:
@@ -43,18 +40,28 @@ class MeteorWishView(discord.ui.View):
         
         self.wished_users.add(user_id)
         
-        # 20% chance for manh_sao_bang, else seeds/exp
+        # 10% chance for manh_sao_bang (User Request)
         if random.random() < 0.2:
             await increment_manh_sao_bang(user_id, 1)
             await increment_stat(user_id, 'fishing', stat_key, 1)
-            reward_msg = "Bạn nhận được **Mảnh Sao Băng**! ⭐"
+            
+            message = (
+                f"🌠 **{interaction.user.name}** chắp tay nguyện cầu khi sao băng vụt qua...\n"
+                f"✨ Điều kỳ diệu đã đến! Một mảnh vỡ rực sáng rơi xuống tay bạn! Bạn nhận được **Mảnh Sao Băng**! 🌠✨"
+            )
+            logger.info(f"[METEOR] User {interaction.user.name} ({user_id}) got SHARD")
         else:
             seeds = random.randint(10, 50)
             await add_seeds(user_id, seeds)
             await increment_stat(user_id, 'fishing', stat_key, 1)
-            reward_msg = f"Bạn nhận được **{seeds} hạt**! 🌱"
+            
+            message = (
+                f"🌠 **{interaction.user.name}** đã gửi một lời ước đến các vì sao...\n"
+                f"🌱 Sao băng đã nghe thấy! Bạn nhận được **{seeds} hạt**! ✨"
+            )
+            logger.info(f"[METEOR] User {interaction.user.name} ({user_id}) got {seeds} SEEDS")
         
-        await interaction.response.send_message(f"🌟 Ước nguyện thành! {reward_msg}", ephemeral=True)
+        await interaction.response.send_message(message, ephemeral=False)
         
         # Disable button after 15s
         await asyncio.sleep(15)

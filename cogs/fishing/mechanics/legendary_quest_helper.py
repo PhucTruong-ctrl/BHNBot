@@ -3,7 +3,7 @@ Legendary Quest Helper Functions
 Quản lý tiến độ quest cho các cá huyền thoại
 """
 
-from database_manager import db_manager
+from database_manager import db_manager, get_inventory, add_item, remove_item
 
 
 # ==================== THUỒNG LUỒNG - Hiến Tế Cá ====================
@@ -200,62 +200,69 @@ async def set_frequency_hunt_status(user_id: int, status: int, fish_key: str = "
 # ==================== CÁ NGÂN HÀ - Mảnh Sao Băng & Tinh Cầu ====================
 
 async def get_manh_sao_bang_count(user_id: int) -> int:
-    """Lấy số lượng Mảnh Sao Băng người chơi đang sở hữu"""
+    """Lấy số lượng Mảnh Sao Băng từ Inventory (Real Item)"""
     try:
-        row = await db_manager.fetchone(
-            "SELECT quest_status FROM legendary_quests WHERE user_id = ? AND fish_key = 'ca_ngan_ha'",
-            (user_id,)
-        )
-        return row[0] if row else 0
+        inv = await get_inventory(user_id)
+        return inv.get("manh_sao_bang", 0)
     except Exception as e:
         print(f"[LEGENDARY] Error getting manh sao bang count: {e}")
         return 0
 
 
 async def set_manh_sao_bang_count(user_id: int, count: int) -> None:
-    """Set số lượng Mảnh Sao Băng"""
+    """Set số lượng Mảnh Sao Băng (Sync with Inventory)"""
     try:
-        await db_manager.modify(
-            "INSERT OR REPLACE INTO legendary_quests (user_id, fish_key, quest_status) VALUES (?, 'ca_ngan_ha', ?)",
-            (user_id, count)
-        )
+        current = await get_manh_sao_bang_count(user_id)
+        diff = count - current
+        
+        if diff > 0:
+            await add_item(user_id, "manh_sao_bang", diff)
+        elif diff < 0:
+            await remove_item(user_id, "manh_sao_bang", abs(diff))
+            
         print(f"[LEGENDARY] Set manh sao bang count for {user_id}: {count}")
     except Exception as e:
         print(f"[LEGENDARY] Error setting manh sao bang count: {e}")
 
 
 async def increment_manh_sao_bang(user_id: int, amount: int = 1) -> int:
-    """Tăng số lượng Mảnh Sao Băng"""
+    """Tăng số lượng Mảnh Sao Băng (dùng add_item)"""
     try:
-        current = await get_manh_sao_bang_count(user_id)
-        new_count = current + amount
-        await set_manh_sao_bang_count(user_id, new_count)
-        return new_count
+        if amount > 0:
+            await add_item(user_id, "manh_sao_bang", amount)
+        elif amount < 0:
+            await remove_item(user_id, "manh_sao_bang", abs(amount))
+            
+        return await get_manh_sao_bang_count(user_id)
     except Exception as e:
         print(f"[LEGENDARY] Error incrementing manh sao bang: {e}")
-        return await get_manh_sao_bang_count(user_id)
+        return 0
 
 
 async def has_tinh_cau(user_id: int) -> bool:
-    """Kiểm tra người chơi có Tinh Cầu Không Gian không"""
+    """Kiểm tra có Tinh Cầu (Sync with Inventory)"""
     try:
-        row = await db_manager.fetchone(
-            "SELECT quest_completed FROM legendary_quests WHERE user_id = ? AND fish_key = 'ca_ngan_ha'",
-            (user_id,)
-        )
-        return row[0] if row else False
+        inv = await get_inventory(user_id)
+        # Check standard item
+        return inv.get("tinh_cau", 0) > 0
     except Exception as e:
         print(f"[LEGENDARY] Error checking tinh cau: {e}")
         return False
 
 
 async def set_has_tinh_cau(user_id: int, has: bool = True) -> None:
-    """Set trạng thái có Tinh Cầu Không Gian"""
+    """Set trạng thái Tinh Cầu (Sync with Inventory)"""
     try:
-        await db_manager.modify(
-            "INSERT OR REPLACE INTO legendary_quests (user_id, fish_key, quest_completed) VALUES (?, 'ca_ngan_ha', ?) ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_completed = ?",
-            (user_id, has, has)
-        )
+        inv = await get_inventory(user_id)
+        current = inv.get("tinh_cau", 0) > 0
+        
+        # If we need it but don't have it -> add 1
+        if has and not current:
+            await add_item(user_id, "tinh_cau", 1)
+        # If we don't need it but have it -> remove 1 (consume)
+        elif not has and current:
+            await remove_item(user_id, "tinh_cau", 1) # Assumes 1 consumed per use
+            
         print(f"[LEGENDARY] Set tinh cau for {user_id}: {has}")
     except Exception as e:
         print(f"[LEGENDARY] Error setting tinh cau: {e}")
@@ -304,9 +311,9 @@ async def craft_tinh_cau(user_id: int) -> bool:
             return False
         
         # Trừ vật phẩm
-        from database_manager import remove_item
+        from database_manager import remove_item # Already imported at top, but local scope ok
         await remove_item(user_id, 'ngoc_trai', 1)
-        await set_manh_sao_bang_count(user_id, manh_count - 5)
+        await remove_item(user_id, 'manh_sao_bang', 5) # Use remove_item now
         await set_has_tinh_cau(user_id, True)
         
         print(f"[LEGENDARY] {user_id} crafted Tinh Cầu")
