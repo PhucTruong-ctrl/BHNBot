@@ -131,12 +131,7 @@ class XiDachCog(commands.Cog):
             )
             return False
 
-        if bet_amount > MAX_BET:
-            await interaction.response.send_message(
-                f"❌ Tiền cược tối đa là **{MAX_BET:,}** hạt!",
-                ephemeral=ephemeral
-            )
-            return False
+
 
         user_balance = await self.get_user_seeds(interaction.user.id)
         if user_balance < bet_amount:
@@ -185,13 +180,7 @@ class XiDachCog(commands.Cog):
                     await ctx.send(msg)
                 return
 
-            if bet_amount > MAX_BET:
-                msg = f"❌ Tiền cược tối đa là **{MAX_BET:,}** hạt!"
-                if is_slash:
-                    await interaction.followup.send(msg, ephemeral=True)
-                else:
-                    await ctx.send(msg)
-                return
+
 
             # Check user balance
             user_balance = await self.get_user_seeds(user.id)

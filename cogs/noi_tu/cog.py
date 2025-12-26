@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import aiosqlite
 import asyncio
 import random
@@ -346,8 +347,8 @@ class GameNoiTu(commands.Cog):
     
     async def distribute_streak_rewards(self, guild_id, all_players, final_streak, channel):
         """Distribute rewards based on community streak (Co-op system)
-        - Base reward: 2 hạt × streak (minimum 10 hạt)
-        - Bonus: 1 hạt per correct word per player
+        - Base reward: 5 hạt × streak (minimum 20 hạt) - INCREASED from 2
+        - Bonus: 3 hạt per correct word per player - INCREASED from 1
         - All rewards multiplied by buff if active
         """
         try:
@@ -360,8 +361,8 @@ class GameNoiTu(commands.Cog):
             is_buff_active = await economy_cog.is_harvest_buff_active(guild_id)
             buff_multiplier = 2 if is_buff_active else 1
             
-            # Calculate base reward: 2 seeds per word in final streak
-            base_reward = max(10, final_streak * 2) * buff_multiplier
+            # Calculate base reward: 5 seeds per word in final streak (INCREASED from 2)
+            base_reward = max(20, final_streak * 5) * buff_multiplier
             
             # Distribute rewards to all participants
             player_display_list = []
@@ -375,8 +376,8 @@ class GameNoiTu(commands.Cog):
                         username = player_data
                         correct_words = 0
                     
-                    # Calculate reward: base + bonus for each correct word
-                    bonus_reward = correct_words * buff_multiplier
+                    # Calculate reward: base + bonus for each correct word (INCREASED x3)
+                    bonus_reward = correct_words * 3 * buff_multiplier
                     total_reward = base_reward + bonus_reward
                     
                     await economy_cog.add_seeds_local(user_id, total_reward)
@@ -415,7 +416,7 @@ class GameNoiTu(commands.Cog):
             
             embed.add_field(
                 name="💚 Phần Thưởng Bổ Sung",
-                value=f"+{buff_multiplier} Hạt mỗi từ nối đúng",
+                value=f"+{3 * buff_multiplier} Hạt mỗi từ nối đúng",
                 inline=False
             )
             
@@ -1059,16 +1060,20 @@ class GameNoiTu(commands.Cog):
                 await self.save_game_state(guild_id, message.channel.id)
                 return "valid_move"
             
-            # Start timer only after 2nd player joins
-            if game['player_count'] >= 2:
-                logger.info(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 60s countdown")
-                game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
-            else:
-                logger.info(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
-                try:
-                    await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
-                except Exception as e:
-                    logger.error(f"Unexpected error: {e}")
+            # DISABLED: 60s timer removed per user request - game only ends on dead-end word
+            # Timer was causing pressure on small servers
+            # if game['player_count'] >= 2:
+            #     logger.info(f"TIMER_START [Guild {guild_id}] ({game['player_count']} players) - 60s countdown")
+            #     game['timer_task'] = asyncio.create_task(self.game_timer(guild_id, message.channel, time.time()))
+            # else:
+            #     logger.info(f"WAITING_P2 [Guild {guild_id}] ({game['player_count']}/2)")
+            #     try:
+            #         await message.channel.send(f"👥 Chờ người chơi thứ 2... ({game['player_count']}/2)")
+            #     except Exception as e:
+            #         logger.error(f"Unexpected error: {e}")
+            
+            # Just log player count without timer
+            logger.info(f"PLAYER_JOINED [Guild {guild_id}] ({game['player_count']} players) - No timer")
             
             return "valid_move"
         
@@ -1144,6 +1149,64 @@ class GameNoiTu(commands.Cog):
             return False
         except Exception as e:
             return False
+
+    @app_commands.command(name="resetnoitu", description="Reset game nối từ (mọi người đều dùng được)")
+    async def reset_noitu(self, interaction: discord.Interaction):
+        """Reset game nối từ - available to everyone with 5min anti-troll protection."""
+        guild_id = interaction.guild_id
+        
+        # Check if game exists
+        if guild_id not in self.games:
+            await interaction.response.send_message(
+                "❌ Không có game nào đang chạy trong server này!",
+                ephemeral=True
+            )
+            return
+        
+        game = self.games[guild_id]
+        
+        # Anti-troll: Check if game is active (last message within 5 minutes)
+        if game.get('last_message_time'):
+            time_since_last = time.time() - game['last_message_time']
+            if time_since_last < 300:  # 5 minutes = 300 seconds
+                remaining = int(300 - time_since_last)
+                await interaction.response.send_message(
+                    f"🛑 **Không thể reset!** Game đang sôi động.\n"
+                    f"Chờ thêm **{remaining}s** không có ai chơi mới được reset.\n"
+                    f"*(Tránh phá đám người khác đang chơi)*",
+                    ephemeral=True
+                )
+                return
+        
+        # Get channel and reset
+        channel_id = game.get('channel_id')
+        channel = self.bot.get_channel(channel_id)
+        
+        if not channel:
+            await interaction.response.send_message(
+                "❌ Không tìm thấy channel game!",
+                ephemeral=True
+            )
+            return
+        
+        # Distribute rewards before reset if any players
+        if game.get('players'):
+            current_streak = self.streak.get(guild_id, 0)
+            if current_streak > 0:
+                await self.distribute_streak_rewards(guild_id, game['players'], current_streak, channel)
+        
+        # Reset streak and start new round
+        self.streak[guild_id] = 0
+        await self.start_new_round(guild_id, channel)
+        await self.save_game_state(guild_id, channel_id)
+        
+        await interaction.response.send_message(
+            f"🔄 **Game đã được reset bởi {interaction.user.display_name}!**\n"
+            f"Từ mới đã được chọn. Chúc vui vẻ~",
+            ephemeral=False
+        )
+        
+        logger.info(f"[RESET_NOITU] User {interaction.user.id} reset game in guild {guild_id}")
 
 async def setup(bot):
     await bot.add_cog(GameNoiTu(bot))

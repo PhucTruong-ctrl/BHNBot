@@ -74,6 +74,8 @@ class MeteorWishView(discord.ui.View):
 
 
 
+from ..constants import ALL_FISH, ALL_ITEMS_DATA
+
 class GenericActionView(discord.ui.View):
     """Universal View for configured button-based events.
     
@@ -87,7 +89,7 @@ class GenericActionView(discord.ui.View):
         # Note: If manager.current_event is None, this will fail. 
         # But this view is created only when event is active.
         self.event_data = self.manager.current_event.get("data", {})
-        # Fix: buttons are in data.data.mechanics.buttons (nested structure)
+        # configuration is in data.data.mechanics.buttons (nested structure)
         self.buttons_config = self.event_data.get("data", {}).get("mechanics", {}).get("buttons", [])
         
         self._setup_buttons()
@@ -110,7 +112,13 @@ class GenericActionView(discord.ui.View):
         async def callback(interaction: discord.Interaction):
             await self._handle_click(interaction, idx)
         return callback
-        
+    
+    def _get_item_name(self, key):
+        """Resolve item name from constants."""
+        if key in ALL_FISH: return ALL_FISH[key].get("name", key)
+        if key in ALL_ITEMS_DATA: return ALL_ITEMS_DATA[key].get("name", key)
+        return key
+
     async def _handle_click(self, interaction: discord.Interaction, idx: int):
         user_id = interaction.user.id
         btn_config = self.buttons_config[idx]
@@ -125,15 +133,6 @@ class GenericActionView(discord.ui.View):
                     limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}"
                     
                     if limit > 0:
-                        # Use user_stats to track persistent limit for this event instance
-                        # Note: This persists forever unless cleared. 
-                        # Ideally we include start_time in key, but let's stick to simple key event_key
-                        # And we can clean it up effectively? 
-                        # Actually simpler: limit is "per event instance". 
-                        # Let's append timestamp to key to auto-expiration effectively (logic wise)
-                        # key = f"{limit_key}_{int(self.manager.current_event['start_time'])}"
-                        # But stat key max length? TEXT. It's fine.
-                        
                         unique_limit_key = f"{limit_key}_{int(self.manager.current_event['start_time'])}"
                         
                         cursor = await db_manager.db.execute(
@@ -187,22 +186,18 @@ class GenericActionView(discord.ui.View):
                             )
 
                     elif item_type_input:
-                        # Handle cost by generic TYPE (e.g. "Any 10 Trash")
                         req_type = item_type_input.get("type")
                         req_amt = item_type_input.get("amount", 10)
                         
                         if req_type and req_amt > 0:
                             # 1. Load Item Definitions to find keys
-                            import json
                             valid_keys = []
                             try:
-                                with open("data/fishing_items.json", "r", encoding="utf-8") as f:
-                                    f_data = json.load(f)
-                                    items_dict = f_data.get("items", {})
-                                    valid_keys = [k for k, v in items_dict.items() if v.get("type") == req_type]
+                                # Import locally if needed or reuse ALL_ITEMS_DATA
+                                valid_keys = [k for k, v in ALL_ITEMS_DATA.items() if v.get("type") == req_type]
                             except Exception as e:
-                                logger.error(f"Failed to load fishing_items.json: {e}")
-                                raise ValueError("Lỗi hệ thống: Không tải được danh sách vật phẩm.")
+                                logger.error(f"Failed to filter items: {e}")
+                                raise ValueError("Lỗi hệ thống: Không tìm thấy vật phẩm.")
                             
                             if not valid_keys:
                                 raise ValueError(f"Không tìm thấy loại vật phẩm '{req_type}' trong hệ thống.")
@@ -213,18 +208,16 @@ class GenericActionView(discord.ui.View):
                             params = [user_id] + valid_keys
                             
                             cursor = await db_manager.db.execute(query, params)
-                            rows = await cursor.fetchall() # [(item_id, qty), ...]
+                            rows = await cursor.fetchall()
                             
                             total_qty = sum(r[1] for r in rows)
                             if total_qty < req_amt:
                                 raise ValueError(f"Không đủ vật phẩm loại '{req_type}'! Cần {req_amt} (Có {total_qty}).")
                             
-                            # 3. Deduct Items (Greedy approach)
+                            # 3. Deduct Items
                             remaining_deduct = req_amt
                             for i_id, i_qty in rows:
-                                if remaining_deduct <= 0:
-                                    break
-                                    
+                                if remaining_deduct <= 0: break
                                 deduct_amt = min(remaining_deduct, i_qty)
                                 
                                 await db_manager.db.execute(
@@ -233,10 +226,6 @@ class GenericActionView(discord.ui.View):
                                 )
                                 remaining_deduct -= deduct_amt
                             
-                            # Cleanup 0 quantity rows? Usually database_manager.remove_item handles it
-                            # But raw SQL here might leave 0s. 
-                            # Safe to run a cleanup or just leave it (get_inventory usually explicitly filters >0 or handles 0)
-                            # Let's run a quick cleanup for cleanliness
                             await db_manager.db.execute(
                                 "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
                                 (user_id,)
@@ -257,21 +246,25 @@ class GenericActionView(discord.ui.View):
                         
                         if rtype == "item":
                             await add_item(user_id, rkey, ramount)
-                            acquired_txt.append(f"{ramount} {rkey}")
+                            name = self._get_item_name(rkey)
+                            acquired_txt.append(f"{ramount} {name}")
                             
                         elif rtype == "buff":
                             duration = r.get("duration", 10)
-                            # Need access to EmotionalStateManager... 
-                            # self.manager.bot.get_cog("FishingCog").emotional_state_manager
                             cog = self.manager.bot.get_cog("FishingCog")
+                            name = rkey
                             if cog:
                                 await cog.emotional_state_manager.apply_emotional_state(user_id, rkey, duration)
-                            acquired_txt.append(f"Buff {rkey} ({duration}p)")
+                                name = cog.emotional_state_manager.states.get(rkey, {}).get("name", rkey)
+                                
+                            acquired_txt.append(f"Buff {name} ({duration}p)")
                             
                     # 3. MESSAGE
                     msg = btn_config.get("message", "Thành công!")
                     if acquired_txt:
                         msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
+                    else:
+                        msg += "\n⚠️ Bạn không nhận được gì cả... (Xui quá!)"
                     
                     if limit > 0:
                          await db_manager.db.execute(
@@ -287,14 +280,12 @@ class GenericActionView(discord.ui.View):
                     # Ephemeral for user
                     await interaction.response.send_message(f"✅ {msg}", ephemeral=True)
                     
-                    # 5. PUBLIC BROADCAST (Optional)
+                    # 5. PUBLIC BROADCAST
                     public_msg = btn_config.get("public_message")
                     if public_msg:
-                        # Simple formatting
-                        # Support {user} placeholder
                         formatted_msg = public_msg.replace("{user}", f"<@{user_id}>")
-                        if acquired_txt:
-                            formatted_msg = formatted_msg.replace("{reward}", ", ".join(acquired_txt))
+                        reward_str = ", ".join(acquired_txt) if acquired_txt else "sự hư vô (miss all)"
+                        formatted_msg = formatted_msg.replace("{reward}", reward_str)
                         
                         await interaction.channel.send(formatted_msg)
                         

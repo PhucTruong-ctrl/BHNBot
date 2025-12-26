@@ -4,7 +4,7 @@
       "key": "river_pirates_raid",
       "name": "Cướp Sông Đà",
       "emoji": "🏴‍☠️",
-      "chance": 0.0005,
+      "chance": 0.0,
       "duration": 180,
       "description": "Một băng cướp sông hung hãn ập tới quấy phá làng chài! Mọi người phải trốn ngay!",
       "effects": {
@@ -19,7 +19,7 @@
       "key": "dragon_king_wrath",
       "name": "Long Vương Nổi Giận",
       "emoji": "🐉",
-      "chance": 0.0005,
+      "chance": 0.0,
       "duration": 300,
       "description": "Long Vương phật ý vì tiếng ồn và rác thải. Ngài quấy nước dữ dội khiến cá hoảng sợ!",
       "effects": {
@@ -35,7 +35,7 @@
       "key": "royal_inspection",
       "name": "Quan Triều Đình Tuần Tra",
       "emoji": "📜",
-      "chance": 0.0005,
+      "chance": 0.0,
       "duration": 180,
       "description": "Quan Khâm Sai đại diện Triều Đình xuống kiểm tra thuế và giấy phép câu cá của toàn bộ ngư dân.",
       "effects": {
@@ -52,7 +52,7 @@
       "key": "algae_bloom",
       "name": "Tảo Nở Hoa",
       "emoji": "🌿",
-      "chance": 0.0005,
+      "chance": 0.0,
       "duration": 300,
       "description": "Tảo độc nở rộ nhuộm xanh mặt hồ. Nước thiếu oxy khiến cá lờ đờ, chán ăn.",
       "effects": {
@@ -67,7 +67,7 @@
       "key": "mirage_fog",
       "name": "Sương Mù Ảo Ảnh",
       "emoji": "🌫️",
-      "chance": 0.0005,
+      "chance": 0.0,
       "duration": 180,
       "description": "Một màn sương mù dày đặc và quỷ dị bao phủ mặt hồ. Không ai biết mình đang câu cái gì.",
       "effects": {

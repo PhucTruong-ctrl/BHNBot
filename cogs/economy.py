@@ -39,10 +39,12 @@ class EconomyCog(commands.Cog):
         self.chat_cooldowns = {}  # {user_id: last_reward_time}
         self.reaction_cooldowns = {}  # {user_id: last_reaction_reward_time}
         self.voice_reward_task.start()
+        self.weekly_welfare_task.start()  # Weekly welfare for poor active users
 
 
     def cog_unload(self):
         self.voice_reward_task.cancel()
+        self.weekly_welfare_task.cancel()
 
 
     # ==================== HELPER FUNCTIONS ====================
@@ -668,6 +670,64 @@ class EconomyCog(commands.Cog):
         """Wait for bot to be ready before starting task"""
         await self.bot.wait_until_ready()
 
+    # ==================== WEEKLY WELFARE (Phát Chẩn) ====================
+    
+    @tasks.loop(time=time(hour=12, minute=0))  # Runs daily at 12:00, but only executes on Sunday
+    async def weekly_welfare_task(self):
+        """Weekly welfare: Give 500 Hạt to poor active users.
+        
+        Conditions:
+        - Balance < 1000 Hạt
+        - Active in last 7 days (has chat/fishing activity)
+        - Only runs on Sunday
+        """
+        try:
+            # Only run on Sunday (weekday 6)
+            if datetime.now().weekday() != 6:
+                return
+            
+            logger.info("[WELFARE] Starting weekly welfare distribution...")
+            
+            # Get poor users who were active in last 7 days
+            # Active = has last_chat_reward or last_daily within 7 days
+            poor_users = await db_manager.fetchall(
+                """SELECT user_id, seeds, username FROM users 
+                   WHERE seeds < 1000 
+                   AND (
+                       last_chat_reward > datetime('now', '-7 days')
+                       OR last_daily > datetime('now', '-7 days')
+                   )
+                   ORDER BY seeds ASC
+                   LIMIT 50""",  # Cap at 50 users to prevent abuse
+                ()
+            )
+            
+            if not poor_users:
+                logger.info("[WELFARE] No eligible users found")
+                return
+            
+            welfare_amount = 500
+            total_distributed = 0
+            recipients = []
+            
+            for user_id, balance, username in poor_users:
+                await add_seeds(user_id, welfare_amount)
+                total_distributed += welfare_amount
+                recipients.append((username or f"User#{user_id}", balance, balance + welfare_amount))
+                logger.info(f"[WELFARE] Gave {welfare_amount} to {username} (balance: {balance} -> {balance + welfare_amount})")
+            
+            logger.info(
+                f"[WELFARE] Weekly distribution complete: "
+                f"recipients={len(recipients)} total={total_distributed} Hạt"
+            )
+            
+        except Exception as e:
+            logger.error(f"[WELFARE] Error during distribution: {e}", exc_info=True)
+    
+    @weekly_welfare_task.before_loop
+    async def before_weekly_welfare_task(self):
+        """Wait for bot to be ready before starting welfare task"""
+        await self.bot.wait_until_ready()
 
 
 async def setup(bot):

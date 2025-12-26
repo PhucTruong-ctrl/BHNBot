@@ -238,15 +238,60 @@
             "label": "🎲 Để Chuyên Gia Định Giá",
             "style": "primary",
             "outcomes": [
-              {"weight": 10, "mul": 0.7, "flat": 0, "message": "🔍 **ĐỊNH GIÁ THẤP!** Chuyên gia chê cá xấu. (x0.7)"},
-              {"weight": 10, "mul": 0.8, "flat": 0, "message": "🔍 **HƠI THẤT VỌNG!** Cá không tươi lắm. (x0.8)"},
-              {"weight": 10, "mul": 0.9, "flat": 0, "message": "🔍 **DƯỚI TRUNG BÌNH!** Giá trị giảm nhẹ. (x0.9)"},
-              {"weight": 10, "mul": 1.0, "flat": 0, "message": "🔍 **BÌNH THƯỜNG!** Đúng giá thị trường. (x1.0)"},
-              {"weight": 10, "mul": 1.1, "flat": 0, "message": "🔍 **KHÁ ỔN!** Chất lượng tốt hơn chút. (x1.1)"},
-              {"weight": 12, "mul": 1.2, "flat": 0, "message": "🔍 **TỐT!** Cá tươi ngon. (x1.2)"},
-              {"weight": 13, "mul": 1.3, "flat": 0, "message": "🔍 **RẤT TỐT!** Hàng tuyển chọn. (x1.3)"},
-              {"weight": 12, "mul": 1.4, "flat": 0, "message": "🔍 **XUẤT SẮC!** Chuyên gia đánh giá cao. (x1.4)"},
-              {"weight": 13, "mul": 1.5, "flat": 0, "message": "🔍 **HOÀN HẢO!** Chất lượng tuyệt đỉnh! (x1.5)"}
+              {
+                "weight": 10,
+                "mul": 0.7,
+                "flat": 0,
+                "message": "🔍 **ĐỊNH GIÁ THẤP!** Chuyên gia chê cá xấu. (x0.7)"
+              },
+              {
+                "weight": 10,
+                "mul": 0.8,
+                "flat": 0,
+                "message": "🔍 **HƠI THẤT VỌNG!** Cá không tươi lắm. (x0.8)"
+              },
+              {
+                "weight": 10,
+                "mul": 0.9,
+                "flat": 0,
+                "message": "🔍 **DƯỚI TRUNG BÌNH!** Giá trị giảm nhẹ. (x0.9)"
+              },
+              {
+                "weight": 10,
+                "mul": 1.0,
+                "flat": 0,
+                "message": "🔍 **BÌNH THƯỜNG!** Đúng giá thị trường. (x1.0)"
+              },
+              {
+                "weight": 10,
+                "mul": 1.1,
+                "flat": 0,
+                "message": "🔍 **KHÁ ỔN!** Chất lượng tốt hơn chút. (x1.1)"
+              },
+              {
+                "weight": 12,
+                "mul": 1.2,
+                "flat": 0,
+                "message": "🔍 **TỐT!** Cá tươi ngon. (x1.2)"
+              },
+              {
+                "weight": 13,
+                "mul": 1.3,
+                "flat": 0,
+                "message": "🔍 **RẤT TỐT!** Hàng tuyển chọn. (x1.3)"
+              },
+              {
+                "weight": 12,
+                "mul": 1.4,
+                "flat": 0,
+                "message": "🔍 **XUẤT SẮC!** Chuyên gia đánh giá cao. (x1.4)"
+              },
+              {
+                "weight": 13,
+                "mul": 1.5,
+                "flat": 0,
+                "message": "🔍 **HOÀN HẢO!** Chất lượng tuyệt đỉnh! (x1.5)"
+              }
             ]
           },
           {
@@ -318,7 +363,7 @@
       }
     },
     "express_sale": {
-      "chance": 0.10,
+      "chance": 0.1,
       "condition": {
         "type": "rod_durability",
         "operator": ">",
@@ -461,252 +506,252 @@
       }
     },
     "aggressive_haggler": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.85,
       "flat": 0,
       "name": "Trả Giá!"
     },
     "competitor_sale": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 0.9,
       "flat": 0,
       "name": "Cạnh Tranh!"
     },
     "deflation": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.8,
       "flat": 0,
       "name": "Mất Giá!"
     },
     "wrong_season": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.75,
       "flat": 0,
       "name": "Nghịch Mùa!"
     },
     "oversupply": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.85,
       "flat": 0,
       "name": "Dư Thừa!"
     },
     "rotten_fish": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.6,
       "flat": 0,
       "name": "Cá Ươn!"
     },
     "bad_smell": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 0.9,
       "flat": 0,
       "name": "Mùi Hôi!"
     },
     "flies_swarm": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 0.95,
       "flat": -20,
       "name": "Ruồi Bu!"
     },
     "melting_ice": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.9,
       "flat": -10,
       "name": "Tan Đá!"
     },
     "skinny_fish": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.85,
       "flat": 0,
       "name": "Cá Còi!"
     },
     "parasite_found": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.5,
       "flat": 0,
       "name": "Ký Sinh!"
     },
     "tax_collector": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.85,
       "flat": 0,
       "name": "Thuế Chợ!"
     },
     "market_management": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 1.0,
       "flat": -200,
       "name": "QLTT Phạt!"
     },
     "sanitation_fine": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 1.0,
       "flat": -100,
       "name": "Vệ Sinh!"
     },
     "parking_fee": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "mul": 1.0,
       "flat": -10,
       "name": "Gửi Xe!"
     },
     "rent_increase": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 1.0,
       "flat": -50,
       "name": "Tăng Giá Thuê!"
     },
     "fake_money": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 1.0,
       "flat": -100,
       "name": "Tiền Giả!"
     },
     "pickpocket": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.7,
       "flat": 0,
       "name": "Móc Túi!"
     },
     "gangster_fee": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 1.0,
       "flat": -150,
       "name": "Bảo Kê!"
     },
     "scammer": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.8,
       "flat": 0,
       "name": "Lừa Đảo!"
     },
     "thief_run": {
-      "chance": 0.0005,
+      "chance": 0.00026,
       "type": "bad",
       "mul": 0.0,
       "flat": 0,
       "name": "Cướp!"
     },
     "dropped_money": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 1.0,
       "flat": -50,
       "name": "Rớt Tiền!"
     },
     "hole_in_bag": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 0.9,
       "flat": 0,
       "name": "Túi Thủng!"
     },
     "broken_scale": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 0.9,
       "flat": 0,
       "name": "Cân Điêu!"
     },
     "cat_steal_sell": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "mul": 1.0,
       "flat": -30,
       "name": "Mèo Cướp!"
     },
     "stray_dog": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "mul": 1.0,
       "flat": -40,
       "name": "Chó Dữ!"
     },
     "rainy_day": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 0.8,
       "flat": 0,
       "name": "Mưa Giông!"
     },
     "slip_fall": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 1.0,
       "flat": -80,
       "name": "Trượt Ngã!"
     },
     "plastic_bag_fee": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "mul": 1.0,
       "flat": -5,
       "name": "Tiền Túi!"
     },
     "mercedes_g63": {
-      "chance": 0.0005,
+      "chance": 0.00026,
       "type": "bad",
       "mul": 1.0,
       "flat": -600,
       "name": "Tông G63!"
     },
     "tiktok_drama": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.5,
       "flat": 0,
       "name": "Bị Phốt!"
     },
     "gaslighting": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.6,
       "flat": 0,
       "name": "Thao Túng!"
     },
     "nyc_revenge": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.5,
       "flat": -50,
       "name": "Gặp NYC!"
     },
     "debt_collector": {
-      "chance": 0.0005,
+      "chance": 0.00026,
       "type": "bad",
       "mul": 0.0,
       "flat": 0,
       "name": "Chủ Nợ!"
     },
     "check_var": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 1.0,
       "flat": -200,
       "name": "Check VAR!"
     },
     "crypto_dip": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 1.0,
       "flat": -300,
@@ -1026,7 +1071,6 @@
       "flat": 0,
       "name": "Sốt Đất!"
     },
-
     "scandal_pr": {
       "chance": 0.006,
       "type": "good",
@@ -1067,14 +1111,14 @@
       "special": "vat_lieu_nang_cap"
     },
     "holy_airball": {
-      "chance": 0.0025,
+      "chance": 0.00126,
       "type": "bad",
       "mul": 0.6,
       "flat": 0,
       "name": "🏀 Holy Airball!"
     },
     "employee_panic": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 1.0,
       "flat": -150,
@@ -1102,28 +1146,28 @@
       "name": "🦍 Gorilla Debate!"
     },
     "supercar_crash": {
-      "chance": 0.0005,
+      "chance": 0.00026,
       "type": "bad",
       "mul": 1.0,
       "flat": -1500,
       "name": "Tông Siêu Xe!"
     },
     "motorbike_crash": {
-      "chance": 0.006,
+      "chance": 0.003,
       "type": "bad",
       "mul": 1.0,
       "flat": -300,
       "name": "Tông Xe Máy!"
     },
     "bicycle_crash": {
-      "chance": 0.0125,
+      "chance": 0.00626,
       "type": "bad",
       "mul": 1.0,
       "flat": -50,
       "name": "Tông Xe Đạp!"
     },
     "container_truck": {
-      "chance": 0.0005,
+      "chance": 0.00026,
       "type": "bad",
       "mul": 1.0,
       "flat": -2500,

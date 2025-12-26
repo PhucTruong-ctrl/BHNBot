@@ -23,7 +23,7 @@ FISHING_ITEMS_PATH = os.path.join(DATA_DIR, "fishing_items.json")
 DISASTER_EVENTS_PATH = os.path.join(DATA_DIR, "disaster_events.json")
 
 # Game constants (static values that don't change per server)
-WORM_COST = 5
+WORM_COST = 3
 FISH_BUCKET_LIMIT = 15
 NPC_ENCOUNTER_CHANCE = 0.06
 NPC_ENCOUNTER_DELAY = 2

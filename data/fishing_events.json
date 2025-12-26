@@ -1,187 +1,187 @@
 {
   "events": {
     "snapped_line": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "name": "Đứt Dây!",
       "effect": "lose_worm"
     },
     "hook_stuck": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "name": "Mắc Cây!",
       "effect": "lose_worm"
     },
     "rat_bite": {
-      "chance": 0.02,
+      "chance": 0.01,
       "type": "bad",
       "name": "Chuột Cắn!",
       "effect": "lose_worm"
     },
     "poor_knot": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "name": "Tuột Nút!",
       "effect": "lose_worm"
     },
     "fish_escape": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "name": "Cá Sẩy!",
       "effect": "lose_worm"
     },
     "predator": {
-      "chance": 0.01,
+      "chance": 0.005,
       "type": "bad",
       "name": "Cá Dữ!",
       "effect": "lose_catch"
     },
     "cat_steal": {
-      "chance": 0.01,
+      "chance": 0.005,
       "type": "bad",
       "name": "Mèo Mun!",
       "effect": "thief"
     },
     "bird_steal": {
-      "chance": 0.01,
+      "chance": 0.005,
       "type": "bad",
       "name": "Chim Cướp!",
       "effect": "lose_catch"
     },
     "bucket_leak": {
-      "chance": 0.01,
+      "chance": 0.005,
       "type": "bad",
       "name": "Thủng Xô!",
       "effect": "lose_catch"
     },
     "otter_troll": {
-      "chance": 0.01,
+      "chance": 0.005,
       "type": "bad",
       "name": "Rái Cá!",
       "effect": "thief"
     },
     "police_fine": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "Công An!",
       "effect": "lose_money_50"
     },
     "broken_phone": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "Rớt ĐT!",
       "effect": "lose_money_200"
     },
     "wallet_fall": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "Rớt Ví!",
       "effect": "lose_money_100"
     },
     "snake_bite": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "Rắn Cắn!",
       "effect": "lose_money_percent"
     },
     "hospital_fee": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "Nhập Viện!",
       "effect": "lose_money_percent"
     },
     "bet_lose": {
-      "chance": 0.01,
+      "chance": 0.005,
       "type": "bad",
       "name": "Thua Cược!",
       "effect": "bet_loss"
     },
     "dropped_slipper": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "name": "Rớt Dép!",
       "effect": "cooldown_short"
     },
     "tangled_line": {
-      "chance": 0.025,
+      "chance": 0.0125,
       "type": "bad",
       "name": "Rối Dây!",
       "effect": "cooldown_short"
     },
     "stomach_ache": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "Đau Bụng!",
       "effect": "cooldown_medium"
     },
     "heavy_rain": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "Mưa To!",
       "effect": "cooldown_medium"
     },
     "equipment_break": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "Gãy Cần!",
       "effect": "cooldown_long"
     },
     "mom_called": {
-      "chance": 0.005,
+      "chance": 0.0025,
       "type": "bad",
       "name": "Mẹ Gọi!",
       "effect": "lose_turn"
     },
     "wife_gank": {
-      "chance": 0.003,
+      "chance": 0.0015,
       "type": "bad",
       "name": "Vợ Gank!",
       "effect": "lose_turn"
     },
     "sleepy": {
-      "chance": 0.005,
+      "chance": 0.0025,
       "type": "bad",
       "name": "Ngủ Gật!",
       "effect": "lose_turn"
     },
     "sneeze": {
-      "chance": 0.005,
+      "chance": 0.0025,
       "type": "bad",
       "name": "Hắt Xì!",
       "effect": "lose_turn"
     },
     "kids_rock": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "Trẻ Trâu!",
       "effect": "lose_turn"
     },
     "plastic_trap": {
-      "chance": 0.02,
+      "chance": 0.01,
       "type": "bad",
       "name": "Vướng Rác!",
       "effect": "durability_hit"
     },
     "big_log": {
-      "chance": 0.02,
+      "chance": 0.01,
       "type": "bad",
       "name": "Mắc Gỗ!",
       "effect": "durability_hit"
     },
     "crab_cut": {
-      "chance": 0.02,
+      "chance": 0.01,
       "type": "bad",
       "name": "Cua Kẹp!",
       "effect": "durability_hit"
     },
     "electric_eel": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "Lươn Điện!",
       "effect": "durability_hit"
     },
     "sea_sickness": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "Say Sóng!",
       "effect": "lose_all_bait"
@@ -451,25 +451,25 @@
       "effect": "gain_map_piece"
     },
     "nyc_gank": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "😭 Gặp NYC!",
       "effect": "suy_debuff"
     },
     "diarrhea": {
-      "chance": 0.003,
+      "chance": 0.0015,
       "type": "bad",
       "name": "🚽 Tào Tháo!",
       "effect": "cooldown_medium"
     },
     "tiktok_fail": {
-      "chance": 0.005,
+      "chance": 0.0025,
       "type": "bad",
       "name": "📱 Sống Ảo!",
       "effect": "lose_catch"
     },
     "check_var": {
-      "chance": 0.003,
+      "chance": 0.0015,
       "type": "bad",
       "name": "👊 Check Var!",
       "effect": "lose_money_100"
@@ -481,19 +481,19 @@
       "effect": "gain_money_medium"
     },
     "trash_food": {
-      "chance": 0.004,
+      "chance": 0.002,
       "type": "bad",
       "name": "🤢 Trúng Thực!",
       "effect": "lose_worm"
     },
     "drama_queen": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "👂 Hít Drama!",
       "effect": "lose_turn"
     },
     "crypto_scam": {
-      "chance": 0.0005,
+      "chance": 0.00025,
       "type": "bad",
       "name": "📉 Lùa Gà!",
       "effect": "crypto_loss"
@@ -505,7 +505,7 @@
       "effect": "gain_money_huge"
     },
     "wifi_lag": {
-      "chance": 0.005,
+      "chance": 0.0025,
       "type": "bad",
       "name": "📶 Mạng 4 Chữ!",
       "effect": "lag_debuff"
@@ -535,7 +535,7 @@
       "effect": "flexing"
     },
     "football_bet": {
-      "chance": 0.0005,
+      "chance": 0.00025,
       "type": "bad",
       "name": "⚽ Về Bờ!",
       "effect": "football_bet"
@@ -547,7 +547,7 @@
       "effect": "lucky_cat"
     },
     "inflation_hit": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "bad",
       "name": "📉 Bão Giá!",
       "effect": "inflation"
@@ -565,7 +565,7 @@
       "effect": "hack_map"
     },
     "mlm_invite": {
-      "chance": 0.003,
+      "chance": 0.0015,
       "type": "bad",
       "name": "🤝 Khởi Nghiệp!",
       "effect": "mlm_scheme"
@@ -637,13 +637,13 @@
       "effect": "nyc_comeback"
     },
     "diarrhea_2": {
-      "chance": 0.003,
+      "chance": 0.0015,
       "type": "bad",
       "name": "🚽 Tào Tháo 2!",
       "effect": "cooldown_medium"
     },
     "skibidi_toilet": {
-      "chance": 0.003,
+      "chance": 0.0015,
       "type": "bad",
       "name": "🚽 Skibidi Toilet!",
       "effect": "lose_turn"
