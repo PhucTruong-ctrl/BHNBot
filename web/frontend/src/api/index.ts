@@ -46,6 +46,7 @@ export const statsApi = {
   getEconomy: () => api.get<EconomyStats>('/stats/economy').then(r => r.data),
   getModules: () => api.get<ModuleStats>('/stats/modules').then(r => r.data),
   getDistribution: () => api.get('/stats/distribution').then(r => r.data),
+  getAdvanced: () => api.get('/stats/advanced').then(r => r.data),
 };
 
 export const usersApi = {
@@ -54,6 +55,7 @@ export const usersApi = {
   get: (userId: number) => api.get<{ user: UserDetail }>(`/users/${userId}`).then(r => r.data),
   updateSeeds: (userId: number, amount: number, reason = 'Admin') => 
     api.post(`/users/${userId}/seeds`, { amount, reason }).then(r => r.data),
+  getExportUrl: () => '/api/export/users',
 };
 
 export const rolesApi = {

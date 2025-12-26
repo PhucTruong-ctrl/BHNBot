@@ -11,11 +11,24 @@ pkill -f "uvicorn main:app"
 pkill -f "vite"
 sleep 2
 
+# Activate Virtual Environment
+VENV_PATH="$ROOT_DIR/venv"
+if [ ! -d "$VENV_PATH" ]; then
+    echo "🔨 Creating venv..."
+    python3 -m venv "$VENV_PATH"
+fi
+
+source "$VENV_PATH/bin/activate"
+
+echo "📦 Installing dependencies (venv)..."
+cd "$WEB_DIR"
+pip install -r requirements.txt > /dev/null 2>&1
+
 echo "🚀 Starting Admin Panel..."
 
-# Start Backend
-cd "$WEB_DIR"
-nohup python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+# Start Backend (using venv python)
+cd "$ROOT_DIR"
+nohup python -m uvicorn web.main:app --reload --host 0.0.0.0 --port 8000 > "$WEB_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo "✅ Backend started (PID $BACKEND_PID) -> http://0.0.0.0:8000"
 

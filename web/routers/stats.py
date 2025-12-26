@@ -86,9 +86,9 @@ async def get_module_stats() -> Dict[str, Any]:
     # Bầu Cua stats from user_stats
     baucua_stats = await fetchone(
         """SELECT 
-            COALESCE(SUM(CASE WHEN stat_key = 'games_played' THEN value END), 0) as games,
-            COALESCE(SUM(CASE WHEN stat_key = 'total_won' THEN value END), 0) as won,
-            COALESCE(SUM(CASE WHEN stat_key = 'total_lost' THEN value END), 0) as lost
+            COALESCE(SUM(CASE WHEN stat_key = 'baucua_played' THEN value END), 0) as games,
+            COALESCE(SUM(CASE WHEN stat_key = 'baucua_total_won' THEN value END), 0) as won,
+            COALESCE(SUM(CASE WHEN stat_key = 'baucua_total_lost' THEN value END), 0) as lost
         FROM user_stats WHERE game_id = 'baucua'"""
     )
     
@@ -154,3 +154,138 @@ async def get_wealth_distribution() -> Dict[str, Any]:
             for b in brackets
         ]
     }
+
+@router.get("/advanced")
+async def get_advanced_stats() -> Dict[str, Any]:
+    """Get advanced economy analytics."""
+    
+    # 1. Active Circulation Supply (Users active in last 7 days)
+    active_supply_data = await fetchone(
+        """SELECT SUM(seeds) as total FROM users 
+           WHERE last_daily >= datetime('now', '-7 days') 
+           OR last_chat_reward >= datetime('now', '-7 days')"""
+    )
+    active_supply = active_supply_data['total'] or 0
+    
+    # Total Supply for Whale calc
+    total_supply_data = await fetchone("SELECT SUM(seeds) as total FROM users")
+    total_supply = total_supply_data['total'] or 1
+    
+    # 2. Whale Alert (> 5% of Total Supply)
+    whale_threshold = total_supply * 0.05
+    whales = await fetchall(
+        "SELECT user_id, username, seeds FROM users WHERE seeds > ?", (whale_threshold,)
+    )
+    
+    # 3. Sink/Faucet Breakdown (Heuristic Estimate)
+    # We aggregate ALL-TIME stats from user_stats
+    stats = await fetchall(
+        """SELECT stat_key, SUM(value) as val FROM user_stats 
+           WHERE stat_key IN (
+             'baucua_total_won', 'baucua_total_lost', 
+             'total_money_earned', 
+             'worms_used', 'rods_repaired', 'rod_upgrades'
+           )
+           GROUP BY stat_key"""
+    )
+    
+    s_map = {row['stat_key']: row['val'] for row in stats}
+    
+    # Config-based estimates (Hardcoded here for estimation, ideally sync with config)
+    WORM_COST = 3
+    REPAIR_COST = 500 # Avg
+    UPGRADE_COST = 5000 # Avg
+    
+    faucet_breakdown = [
+        {"name": "Bầu Cua Won", "value": s_map.get('baucua_total_won', 0)},
+        {"name": "Fishing/Other Earned", "value": s_map.get('total_money_earned', 0)},
+        # Daily is NOT tracked in user_stats currently, big missing piece.
+    ]
+    
+    sink_breakdown = [
+        {"name": "Bầu Cua Lost", "value": s_map.get('baucua_total_lost', 0)},
+        {"name": "Worms", "value": s_map.get('worms_used', 0) * WORM_COST},
+        {"name": "Repairs", "value": s_map.get('rods_repaired', 0) * REPAIR_COST},
+        {"name": "Upgrades", "value": s_map.get('rod_upgrades', 0) * UPGRADE_COST},
+    ]
+    
+    return {
+        "active_circulation": active_supply,
+        "whales": whales,
+        "flow": {
+            "in": faucet_breakdown,
+            "out": sink_breakdown
+        }
+    }
+
+
+@router.get("/export")
+async def export_dashboard_data() -> Any:
+    """Export all dashboard data to Excel."""
+    try:
+        import pandas as pd
+        from io import BytesIO
+        from fastapi.responses import StreamingResponse
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Libraries pandas/openpyxl not installed.")
+
+    # 1. Fetch Data
+    
+    # Overview (Re-using logic, ideally should refactor to shared service helper but calling directly here for speed)
+    economy = await get_economy_stats()
+    modules = await get_module_stats()
+    dist = await get_wealth_distribution()
+    
+    # Top 100 Richest
+    top_100 = await fetchall(
+        "SELECT user_id, username, seeds FROM users ORDER BY seeds DESC LIMIT 100"
+    )
+    
+    # Inventory Summary
+    inventory = await fetchall(
+        """SELECT item_id, SUM(quantity) as total_qty, COUNT(DISTINCT user_id) as owners 
+           FROM inventory GROUP BY item_id ORDER BY total_qty DESC"""
+    )
+
+    # 2. Create Excel
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        
+        # Sheet 1: Overview
+        overview_data = {
+            "Metric": ["Total Seeds", "Total Users", "Active Users", "Gini Index", "Median Balance"],
+            "Value": [
+                economy['total_seeds'], 
+                economy['total_users'], 
+                economy['active_users'], 
+                economy['gini_index'], 
+                economy['median_balance']
+            ]
+        }
+        pd.DataFrame(overview_data).to_excel(writer, sheet_name='Overview', index=False)
+        
+        # Sheet 2: Top 100 Richest
+        if top_100:
+            pd.DataFrame(top_100).to_excel(writer, sheet_name='Top 100 Richest', index=False)
+            
+        # Sheet 3: Game Modules
+        module_rows = []
+        for mod, stats in modules.items():
+            for k, v in stats.items():
+                module_rows.append({"Module": mod.upper(), "Metric": k, "Value": v})
+        pd.DataFrame(module_rows).to_excel(writer, sheet_name='Game Modules', index=False)
+        
+        # Sheet 4: Wealth Distribution
+        if dist['brackets']:
+            pd.DataFrame(dist['brackets']).to_excel(writer, sheet_name='Wealth Distribution', index=False)
+            
+        # Sheet 5: Inventory
+        if inventory:
+            pd.DataFrame(inventory).to_excel(writer, sheet_name='Inventory Summary', index=False)
+
+    output.seek(0)
+    
+    headers = {
+        'Content-Disposition': 'attachment; filename="bhn_stats_export.xlsx"'
+    }
+    return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

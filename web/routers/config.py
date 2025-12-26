@@ -1,13 +1,13 @@
+
 """
 BHNBot Admin Panel - Game Configuration Router
-
-Endpoints for viewing and updating game settings.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import json
 import os
+import time
 
 from ..database import fetchone, execute
 from ..config import ROOT_DIR
@@ -30,14 +30,9 @@ class GameConfig(BaseModel):
 
 @router.get("/")
 async def get_config() -> Dict[str, Any]:
-    """Get current game configuration.
-    
-    Reads from server_config table and settings.py
-    """
+    """Get current game configuration."""
     # Get server configs from DB
-    server_config = await fetchone(
-        "SELECT * FROM server_config LIMIT 1"
-    )
+    server_config = await fetchone("SELECT * FROM server_config LIMIT 1")
     
     # Read current settings.py values
     settings = {}
@@ -67,83 +62,94 @@ async def get_config() -> Dict[str, Any]:
 
 @router.post("/")
 async def update_config(config: GameConfig) -> Dict[str, Any]:
-    """Update game configuration.
+    """Update game configuration and trigger Hot Reload."""
+    updates = config.model_dump(exclude_unset=True)
     
-    Note: This updates settings.py - requires bot restart to take effect.
-    For production, consider moving these to database.
-    """
-    updates = []
+    if not updates:
+        return {"status": "no_change"}
+
+    # 1. Update DB for Hot Reload Signal
+    for key, value in updates.items():
+        # Check if row exists
+        row = await fetchone("SELECT * FROM server_config WHERE key = ?", (key,))
+        if row:
+            await execute("UPDATE server_config SET value = ? WHERE key = ?", (str(value), key))
+        else:
+            await execute("INSERT INTO server_config (key, value) VALUES (?, ?)", (key, str(value)))
+            
+    # Trigger Hot Reload Signal (Update timestamp)
+    timestamp = str(int(time.time()))
+    await execute("INSERT OR REPLACE INTO server_config (key, value) VALUES ('last_config_update', ?)", (timestamp,))
     
+    # 2. Update settings.py file (for persistence)
     try:
-        with open(SETTINGS_PATH, 'r') as f:
-            content = f.read()
+        with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            
+        new_lines = []
+        for line in lines:
+            updated_line = False
+            for key, value in updates.items():
+                # Simple variable assignment check
+                if line.strip().upper().startswith(f"{key.upper()} ="):
+                    # Preserve comments if any
+                    comment = ""
+                    if "#" in line:
+                        comment = " # " + line.split("#", 1)[1].strip()
+                    
+                    # Handle types
+                    val_str = str(value)
+                    if isinstance(value, str):
+                        val_str = f'"{value}"'
+                    
+                    new_lines.append(f"{key.upper()} = {val_str}{comment}\n")
+                    updated_line = True
+                    break
+            
+            if not updated_line:
+                new_lines.append(line)
         
-        import re
-        
-        if config.worm_cost is not None:
-            content = re.sub(
-                r'WORM_COST\s*=\s*\d+',
-                f'WORM_COST = {config.worm_cost}',
-                content
-            )
-            updates.append(f"WORM_COST = {config.worm_cost}")
-        
-        if config.fish_bucket_limit is not None:
-            content = re.sub(
-                r'FISH_BUCKET_LIMIT\s*=\s*\d+',
-                f'FISH_BUCKET_LIMIT = {config.fish_bucket_limit}',
-                content
-            )
-            updates.append(f"FISH_BUCKET_LIMIT = {config.fish_bucket_limit}")
-        
-        if config.npc_encounter_chance is not None:
-            content = re.sub(
-                r'NPC_ENCOUNTER_CHANCE\s*=\s*[\d.]+',
-                f'NPC_ENCOUNTER_CHANCE = {config.npc_encounter_chance}',
-                content
-            )
-            updates.append(f"NPC_ENCOUNTER_CHANCE = {config.npc_encounter_chance}")
-        
-        with open(SETTINGS_PATH, 'w') as f:
-            f.write(content)
-        
-        import logging
-        logger = logging.getLogger("AdminPanel")
-        logger.info(f"[ADMIN] Config updated: {updates}")
-        
-        return {
-            "status": "success",
-            "updates": updates,
-            "note": "Bot restart required for changes to take effect"
-        }
-        
+        # Write back
+        with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+            
+        return {"status": "success", "note": "Config updated via Hot Reload Signal"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "partial_success", "note": f"DB updated but file write failed: {e}"}
 
 
 @router.get("/events")
 async def get_event_config() -> Dict[str, Any]:
     """Get event configuration from JSON files."""
-    events = {}
-    
-    data_dir = os.path.join(ROOT_DIR, "data")
-    
-    # Read disaster events
     try:
-        with open(os.path.join(data_dir, "disaster_events.json"), 'r') as f:
-            events["disasters"] = json.load(f)
+        data_dir = os.path.join(ROOT_DIR, "data")
+        
+        # Try different possible filenames since user might have standard names
+        files_to_check = {
+            "disasters": "disaster_events.json",
+            "sell_events": "sell_events.json"
+        }
+        
+        result = {}
+        for key, filename in files_to_check.items():
+            path = os.path.join(data_dir, filename)
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        # Summary for large files
+                        if key == "sell_events":
+                            result[key] = {
+                                "total": len(data.get("events", {})),
+                                "bad_events": sum(1 for e in data.get("events", {}).values() if e.get("type") == "bad")
+                            }
+                        else:
+                            result[key] = data
+                except Exception as e:
+                    result[key] = {"error": str(e)}
+            else:
+                result[key] = "File not found"
+
+        return result
     except Exception as e:
-        events["disasters"] = {"error": str(e)}
-    
-    # Read sell events summary (too large to return full)
-    try:
-        with open(os.path.join(data_dir, "sell_events.json"), 'r') as f:
-            data = json.load(f)
-            events["sell_events"] = {
-                "total": len(data.get("events", {})),
-                "bad_events": sum(1 for e in data.get("events", {}).values() if e.get("type") == "bad")
-            }
-    except Exception as e:
-        events["sell_events"] = {"error": str(e)}
-    
-    return events
+        raise HTTPException(status_code=500, detail=str(e))

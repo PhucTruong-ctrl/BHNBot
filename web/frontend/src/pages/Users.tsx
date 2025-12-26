@@ -38,17 +38,25 @@ export default function Users() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: '24px' }}>👥 User Management</h2>
+      <h2 style={{ marginBottom: '24px' }}>User Management</h2>
       
-      {/* Search */}
-      <div style={{ marginBottom: '20px' }}>
+      {/* Search & Export */}
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
         <input
           type="text"
-          placeholder="Tìm kiếm user..."
+          placeholder="Search user..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: '300px' }}
         />
+        <a 
+          href={usersApi.getExportUrl()} 
+          target="_blank" 
+          className="btn btn-primary"
+          style={{textDecoration: 'none', display: 'flex', alignItems: 'center'}}
+        >
+          Export Excel
+        </a>
       </div>
 
       <div className="card">
@@ -69,7 +77,7 @@ export default function Users() {
               <tr key={user.user_id}>
                 <td>{user.user_id}</td>
                 <td>{user.username || '-'}</td>
-                <td>{user.seeds.toLocaleString()} 🌱</td>
+                <td>{user.seeds.toLocaleString()}</td>
                 <td>{user.last_daily ? new Date(user.last_daily).toLocaleDateString() : '-'}</td>
                 <td>
                   {editingUser === user.user_id ? (
@@ -82,15 +90,15 @@ export default function Users() {
                         style={{ width: '120px' }}
                       />
                       <button className="btn btn-primary" onClick={() => handleAdjustSeeds(user.user_id)}>
-                        ✓
+                        OK
                       </button>
-                      <button className="btn" onClick={() => setEditingUser(null)}>
-                        ✗
+                      <button className="btn btn-danger" onClick={() => setEditingUser(null)}>
+                        Cancel
                       </button>
                     </div>
                   ) : (
-                    <button className="btn btn-primary" onClick={() => setEditingUser(user.user_id)}>
-                      Edit Seeds
+                    <button className="btn btn-secondary" onClick={() => setEditingUser(user.user_id)}>
+                      Edit Balance
                     </button>
                   )}
                 </td>
@@ -101,11 +109,11 @@ export default function Users() {
         
         {/* Pagination */}
         <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-          <button className="btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+          <button className="btn btn-secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
             ← Prev
           </button>
-          <span style={{ padding: '8px 16px' }}>Page {page} of {Math.ceil(total / 20)}</span>
-          <button className="btn" onClick={() => setPage(p => p + 1)} disabled={page * 20 >= total}>
+          <span style={{ padding: '8px 16px', color: 'var(--text-secondary)' }}>Page {page} of {Math.ceil(total / 20) || 1}</span>
+          <button className="btn btn-secondary" onClick={() => setPage(p => p + 1)} disabled={page * 20 >= total}>
             Next →
           </button>
         </div>

@@ -35,9 +35,5 @@ PORT = int(os.getenv("ADMIN_PORT", 8000))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 # CORS - Allow frontend dev server
-CORS_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-]
+# CORS - Allow all for Tailscale/Remote access
+CORS_ORIGINS = ["*"]

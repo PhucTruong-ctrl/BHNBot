@@ -7,7 +7,11 @@ from fastapi.staticfiles import StaticFiles
 import logging
 
 from .config import HOST, PORT, DEBUG, CORS_ORIGINS
-from .routers import stats, users, roles, config as config_router
+from .routers import stats, users, roles, config as config_router, export
+import logging
+import traceback
+from fastapi.responses import JSONResponse
+from fastapi import Request
 
 # Setup logging
 logging.basicConfig(
@@ -25,6 +29,16 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = f"Global Error: {str(exc)}\n{traceback.format_exc()}"
+    logging.error(error_msg)
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error", "detail": str(exc), "trace": traceback.format_exc()},
+    )
+
 # CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +53,7 @@ app.include_router(stats.router, prefix="/api/stats", tags=["Statistics"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(roles.router, prefix="/api/roles", tags=["Roles"])
 app.include_router(config_router.router, prefix="/api/config", tags=["Configuration"])
+app.include_router(export.router, prefix="/api/export", tags=["Export"])
 
 # Mount static files (for legacy role_manager UI if needed)
 # app.mount("/static", StaticFiles(directory="static"), name="static")

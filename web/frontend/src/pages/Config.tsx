@@ -50,17 +50,17 @@ export default function Config() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: '24px' }}>⚙️ Game Configuration</h2>
+      <h2 style={{ marginBottom: '24px' }}>System Configuration</h2>
       
       <div className="card">
         <div className="card-header">
-          <span className="card-title">🎣 Fishing Settings</span>
+          <span className="card-title">Fishing Settings</span>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: '#888' }}>
-              Worm Cost (Hạt)
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>
+              Worm Cost
             </label>
             <input
               type="number"
@@ -71,7 +71,7 @@ export default function Config() {
           </div>
           
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: '#888' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>
               Fish Bucket Limit
             </label>
             <input
@@ -83,7 +83,7 @@ export default function Config() {
           </div>
           
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: '#888' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>
               NPC Encounter Chance
             </label>
             <input
@@ -102,25 +102,27 @@ export default function Config() {
           disabled={saving}
           style={{ marginTop: '20px' }}
         >
-          {saving ? 'Saving...' : '💾 Save Changes'}
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
         
-        <p style={{ marginTop: '12px', color: '#888', fontSize: '0.9rem' }}>
-          ⚠️ Changes require bot restart to take effect
+        <p style={{ marginTop: '12px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
+          Note: Changes trigger automatic hot-reload.
         </p>
       </div>
 
       {/* Current Config Display */}
       <div className="card" style={{ marginTop: '20px' }}>
         <div className="card-header">
-          <span className="card-title">📋 Current Configuration</span>
+          <span className="card-title">Current Configuration (Read-only)</span>
         </div>
         <pre style={{ 
-          background: '#0f0f0f', 
+          background: 'var(--bg-base)', 
           padding: '16px', 
-          borderRadius: '8px',
+          borderRadius: '4px',
           overflow: 'auto',
-          fontSize: '0.85rem'
+          fontSize: '0.85rem',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--border-color)'
         }}>
           {JSON.stringify(config, null, 2)}
         </pre>

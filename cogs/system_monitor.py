@@ -1,0 +1,76 @@
+
+import discord
+from discord.ext import commands, tasks
+import importlib
+import sys
+import logging
+from core.database_manager import DatabaseManager
+import configs.settings as settings
+
+class SystemMonitor(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.logger = logging.getLogger("SystemMonitor")
+        self.db = DatabaseManager()
+        self.last_config_time = 0
+        self.monitor_config_changes.start()
+
+    def cog_unload(self):
+        self.monitor_config_changes.cancel()
+
+    @tasks.loop(seconds=10)
+    async def monitor_config_changes(self):
+        """Poll database for config changes."""
+        try:
+            # Check last_config_update timestamp
+            async with self.db.execute("SELECT value FROM server_config WHERE key = 'last_config_update'") as cursor:
+                row = await cursor.fetchone()
+                
+            if not row:
+                return
+
+            current_db_time = int(row[0])
+            
+            # Initial run: just sync state
+            if self.last_config_time == 0:
+                self.last_config_time = current_db_time
+                return
+            
+            # If changed, trigger reload
+            if current_db_time > self.last_config_time:
+                self.logger.info(f"Detected Config Change ({self.last_config_time} -> {current_db_time}). Reloading...")
+                await self.reload_system()
+                self.last_config_time = current_db_time
+                
+        except Exception as e:
+            self.logger.error(f"Monitor error: {e}")
+
+    async def reload_system(self):
+        """Reload configuration and modules."""
+        try:
+            # 1. Reload Settings Module
+            importlib.reload(settings)
+            self.logger.info("✓ Reloaded configs.settings")
+
+            # 2. Reload Dependent Cogs
+            # Add cogs that use settings here
+            target_cogs = ['cogs.fishing.cog', 'cogs.shop']
+            
+            for cog_name in target_cogs:
+                try:
+                    await self.bot.reload_extension(cog_name)
+                    self.logger.info(f"✓ Reloaded {cog_name}")
+                except Exception as e:
+                    self.logger.error(f"Failed to reload {cog_name}: {e}")
+            
+            # Notify owner/log channel if configured (optional)
+            
+        except Exception as e:
+            self.logger.error(f"Hot Reload Failed: {e}")
+
+    @monitor_config_changes.before_loop
+    async def before_monitor(self):
+        await self.bot.wait_until_ready()
+
+async def setup(bot):
+    await bot.add_cog(SystemMonitor(bot))
