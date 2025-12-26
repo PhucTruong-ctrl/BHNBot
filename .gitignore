@@ -61,3 +61,7 @@ env/
 # Game Data Configs (Keep these in Git)
 # !data/*.json
 data/words_dict.json
+
+
+node_modules
+package-lock.json
