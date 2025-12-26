@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 import logging
 
 from .config import HOST, PORT, DEBUG, CORS_ORIGINS
-from .routers import stats, users, roles, config as config_router, export
+from .routers import stats, users, roles, config as config_router, export, system
 import logging
 import traceback
 from fastapi.responses import JSONResponse
@@ -54,6 +54,7 @@ app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(roles.router, prefix="/api/roles", tags=["Roles"])
 app.include_router(config_router.router, prefix="/api/config", tags=["Configuration"])
 app.include_router(export.router, prefix="/api/export", tags=["Export"])
+app.include_router(system.router, prefix="/api/system", tags=["System"])
 
 # Mount static files (for legacy role_manager UI if needed)
 # app.mount("/static", StaticFiles(directory="static"), name="static")

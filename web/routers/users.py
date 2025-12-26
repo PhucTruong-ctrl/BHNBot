@@ -29,8 +29,8 @@ async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = None,
-    sort_by: str = Query("seeds", regex="^(seeds|username|user_id)$"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$")
+    sort_by: str = Query("seeds", pattern="^(seeds|username|user_id)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$")
 ) -> Dict[str, Any]:
     """List users with pagination and search."""
     

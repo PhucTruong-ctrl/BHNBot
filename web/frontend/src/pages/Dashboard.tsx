@@ -4,9 +4,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid 
 } from 'recharts';
 import { FileSpreadsheet } from 'lucide-react';
+import ServerHealth from '../components/ServerHealth';
 import { statsApi, EconomyStats, ModuleStats } from '../api';
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#4f46e5', '#8b5cf6'];
+const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c5e', '#4f46e5', '#8b5cf6'];
 
 export default function Dashboard() {
 
@@ -98,6 +99,9 @@ export default function Dashboard() {
           </button>
       </div>
       
+      {/* SERVER HEALTH MONITOR DASHBOARD */}
+      <ServerHealth />
+
       {/* Economy Overview */}
       <div className="stats-grid">
         <div className="stat-card">
