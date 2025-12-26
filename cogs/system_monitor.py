@@ -21,15 +21,17 @@ class SystemMonitor(commands.Cog):
     @tasks.loop(seconds=10)
     async def monitor_config_changes(self):
         """Poll database for config changes."""
-        try:
             # Check last_config_update timestamp
-            # Check last_config_update timestamp
-            row = await self.db.fetchone("SELECT value FROM server_config WHERE key = 'last_config_update'")
+            # Using global_event_state table (key='last_config_update')
+            row = await self.db.fetchone("SELECT state_data FROM global_event_state WHERE event_key = 'last_config_update'")
                 
             if not row:
                 return
 
-            current_db_time = int(row[0])
+            try:
+                current_db_time = int(row[0])
+            except (ValueError, TypeError):
+                return
             
             # Initial run: just sync state
             if self.last_config_time == 0:

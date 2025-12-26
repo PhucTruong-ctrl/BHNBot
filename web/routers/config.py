@@ -68,18 +68,16 @@ async def update_config(config: GameConfig) -> Dict[str, Any]:
     if not updates:
         return {"status": "no_change"}
 
-    # 1. Update DB for Hot Reload Signal
-    for key, value in updates.items():
-        # Check if row exists
-        row = await fetchone("SELECT * FROM server_config WHERE key = ?", (key,))
-        if row:
-            await execute("UPDATE server_config SET value = ? WHERE key = ?", (str(value), key))
-        else:
-            await execute("INSERT INTO server_config (key, value) VALUES (?, ?)", (key, str(value)))
-            
-    # Trigger Hot Reload Signal (Update timestamp)
+    # 1. Update DB for Hot Reload Signal (Using global_event_state table)
+    # Note: Game settings are file-based (settings.py), so we don't store them in DB.
+    # We only update the timestamp to trigger bot reload.
+    
     timestamp = str(int(time.time()))
-    await execute("INSERT OR REPLACE INTO server_config (key, value) VALUES ('last_config_update', ?)", (timestamp,))
+    # Use global_event_state as a KV store for system signals
+    await execute(
+        "INSERT OR REPLACE INTO global_event_state (event_key, state_data, updated_at) VALUES ('last_config_update', ?, CURRENT_TIMESTAMP)", 
+        (timestamp,)
+    )
     
     # 2. Update settings.py file (for persistence)
     try:
