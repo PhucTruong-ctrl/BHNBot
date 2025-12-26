@@ -1,7 +1,8 @@
 """Random event system for fishing with Strategy Pattern."""
 
 import random
-from ..constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES
+from ..constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES, CRYPTO_LOSS_CAP, AUDIT_TAX_CAP
+
 from database_manager import increment_stat
 
 # ==================== EFFECT HANDLERS ====================
@@ -140,14 +141,19 @@ async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
     return result
 
 async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
-    """Handler: Crypto scam - lose 50% current balance."""
+    """Handler: Crypto scam - lose 50% current balance (Capped)."""
     # Get user balance from kwargs (passed by trigger_random_event)
     if "user_id" in kwargs:
         from database_manager import get_user_balance
         balance = await get_user_balance(kwargs["user_id"])
         lost = int(balance * 0.5)
+        
+        # Apply strict cap
+        if lost > CRYPTO_LOSS_CAP:
+            lost = CRYPTO_LOSS_CAP
+            
         result["lose_money"] = lost
-        print(f"[EVENT] handle_crypto_loss: user_id={kwargs['user_id']} balance={balance} lost={lost}")
+        print(f"[EVENT] handle_crypto_loss: user_id={kwargs['user_id']} balance={balance} lost={lost} (Capped at {CRYPTO_LOSS_CAP})")
     else:
         result["lose_money"] = 200
     return result
@@ -184,6 +190,10 @@ async def handle_audit_check(result: dict, event_data: dict, **kwargs) -> dict:
         
         if balance >= 5000:
             tax = int(balance * 0.1)
+            # Apply Cap
+            if tax > AUDIT_TAX_CAP:
+                tax = AUDIT_TAX_CAP
+                
             result["lose_money"] = tax
             result["message"] += f"\n📉 Bạn quá giàu nên bị thu thuế **{tax} Hạt**!"
         elif balance <= 100:

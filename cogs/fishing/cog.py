@@ -805,6 +805,38 @@ class FishingCog(commands.Cog):
                         durability_loss = 3
 
             
+
+                    # *** SIXTH SENSE PROTECTION LOGIC ***
+                    if was_protected:
+                        # Check if event is negative
+                        is_bad_event = (
+                            event_result.get("lose_money", 0) > 0 or 
+                            event_result.get("lose_worm", False) or 
+                            event_result.get("lose_catch", False) or 
+                            event_result.get("custom_effect") in ["snake_bite", "crypto_loss"] or
+                            event_durability_penalty > 0
+                        )
+                        
+                        if is_bad_event:
+                            # Suppress all negative effects
+                            event_result["lose_money"] = 0
+                            event_result["lose_worm"] = False
+                            event_result["lose_catch"] = False
+                            
+                            if event_result.get("custom_effect") in ["snake_bite", "crypto_loss"]:
+                                event_result["custom_effect"] = None
+                            
+                            # Reset durability penalty
+                            if event_durability_penalty > 0:
+                                durability_loss = 1  # Reset to default
+                            
+                            event_message += "\n🛡️ **Giác Quan Thứ 6** đã chặn đứng xui xẻo!"
+                            logger.info(f"[EVENT] {username} consumed Sixth Sense to avoid bad event.")
+                            
+                            # Consume Buff
+                            if hasattr(self, "avoid_event_users") and user_id in self.avoid_event_users:
+                                del self.avoid_event_users[user_id]
+
                     # Process event effects
                     if event_result.get("lose_worm", False) and has_worm:
                         await remove_item(user_id, "moi", 1)
@@ -858,7 +890,10 @@ class FishingCog(commands.Cog):
                     elif event_result.get("custom_effect") == "snake_bite":
                         # Water Snake: Minus 5% assets
                         balance = await get_user_balance(user_id)
-                        penalty = max(10, int(balance * SNAKE_BITE_PENALTY_PERCENT))  # Min 10 Seeds
+                        penalty = max(10, int(balance * SNAKE_BITE_PENALTY_PERCENT))
+                        # Cap at crypto loss cap (5000) for consistency
+                        if penalty > CRYPTO_LOSS_CAP:
+                            penalty = CRYPTO_LOSS_CAP
                         await add_seeds(user_id, -penalty)
                         event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
                         logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
