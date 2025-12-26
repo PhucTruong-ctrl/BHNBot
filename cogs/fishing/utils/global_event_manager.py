@@ -326,28 +326,28 @@ class GlobalEventManager:
                             
                             
                             if event_type != "mini_game":
-                            # event_data = full event config
-                            # mechanics is in: event_config["data"]["mechanics"]
-                            view_type = event_data.get("data", {}).get("mechanics", {}).get("view_type")
-                            logger.info(f"[DEBUG] view_type extracted: '{view_type}'")
-                            
-                            if view_type:
-                                logger.info(f"[DEBUG] Attaching view {view_type} to start message")
-                                ViewClass = get_view_class(view_type)
-                                logger.info(f"[DEBUG] ViewClass resolved: {ViewClass}")
+                                # event_data = full event config
+                                # mechanics is in: event_config["data"]["mechanics"]
+                                view_type = event_data.get("data", {}).get("mechanics", {}).get("view_type")
+                                logger.info(f"[DEBUG] view_type extracted: '{view_type}'")
                                 
-                                if ViewClass:
-                                    # Instantiate View
-                                    if view_type == "TrashSellView":
-                                        view = ViewClass(self)
-                                    elif view_type == "MeteorWishView":
-                                        view = ViewClass(self.bot.get_cog("FishingCog"))
-                                    else:
-                                        try:
+                                if view_type:
+                                    logger.info(f"[DEBUG] Attaching view {view_type} to start message")
+                                    ViewClass = get_view_class(view_type)
+                                    logger.info(f"[DEBUG] ViewClass resolved: {ViewClass}")
+                                    
+                                    if ViewClass:
+                                        # Instantiate View
+                                        if view_type == "TrashSellView":
                                             view = ViewClass(self)
-                                            logger.info(f"[DEBUG] View instantiated successfully: {view}")
-                                        except Exception as e:
-                                            logger.error(f"[DEBUG] Failed to instantiate view {view_type}: {e}", exc_info=True)
+                                        elif view_type == "MeteorWishView":
+                                            view = ViewClass(self.bot.get_cog("FishingCog"))
+                                        else:
+                                            try:
+                                                view = ViewClass(self)
+                                                logger.info(f"[DEBUG] View instantiated successfully: {view}")
+                                            except Exception as e:
+                                                logger.error(f"[DEBUG] Failed to instantiate view {view_type}: {e}", exc_info=True)
                                 else:
                                     logger.warning(f"[DEBUG] ViewClass is None for {view_type}")
                             else:

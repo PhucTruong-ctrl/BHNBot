@@ -4,7 +4,7 @@ from discord.ext import commands, tasks
 import importlib
 import sys
 import logging
-from core.database_manager import DatabaseManager
+from core.database import DatabaseManager
 import configs.settings as settings
 
 class SystemMonitor(commands.Cog):
@@ -23,8 +23,8 @@ class SystemMonitor(commands.Cog):
         """Poll database for config changes."""
         try:
             # Check last_config_update timestamp
-            async with self.db.execute("SELECT value FROM server_config WHERE key = 'last_config_update'") as cursor:
-                row = await cursor.fetchone()
+            # Check last_config_update timestamp
+            row = await self.db.fetchone("SELECT value FROM server_config WHERE key = 'last_config_update'")
                 
             if not row:
                 return
