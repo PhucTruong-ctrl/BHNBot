@@ -34,7 +34,19 @@ def get_cpu_info() -> Dict[str, Any]:
     except:
         pass
 
+    # Get CPU Model Name (Linux)
+    model = "Unknown CPU"
+    try:
+        with open("/proc/cpuinfo", "r") as f:
+            for line in f:
+                if "model name" in line:
+                    model = line.split(":")[1].strip()
+                    break
+    except:
+        pass
+
     return {
+        "model": model,
         "usage": cpu_percent,
         "frequency": cpu_freq.current if cpu_freq else 0,
         "temperature": temp,

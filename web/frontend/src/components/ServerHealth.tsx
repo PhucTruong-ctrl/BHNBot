@@ -12,6 +12,7 @@ import {
 
 interface SystemStats {
   cpu: {
+    model: string;
     usage: number;
     frequency: number;
     temperature: number;
@@ -151,7 +152,7 @@ const ServerHealth: React.FC = () => {
         <div className="stats-grid">
             
             {/* CPU STATUS */}
-            <StatCard title="CPU" icon={Cpu} colorVar="var(--accent-error)">
+            <StatCard title={stats.cpu.model} icon={Cpu} colorVar="var(--accent-error)">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
                     <div className="stat-value" style={{ color: 'var(--accent-error)', fontSize: '1.8rem' }}>
                         {stats.cpu.usage.toFixed(1)}%
