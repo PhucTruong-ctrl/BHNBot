@@ -106,7 +106,8 @@ async def load_cogs():
             skip_files = {'__init__.py', 'cog.py', 'constants.py', 'helpers.py', 'events.py', 
                          'legendary.py', 'models.py', 'rod_system.py', 'views.py', 'consumables.py', 
                          'glitch.py', 'legendary_quest_helper.py', 'detector.py', 'task.py',
-                         'statistics.py', 'game_logic.py', 'tree_manager.py', 'contributor_manager.py'}
+                         'statistics.py', 'game_logic.py', 'tree_manager.py', 'contributor_manager.py',
+                         'game.py', 'card_renderer.py'}
             
             # Load additional module files in subdirectory (for noi_tu: noitu.py, add_word.py)
             for filename in os.listdir(subdir_path):
