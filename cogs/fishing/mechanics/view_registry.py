@@ -1,12 +1,13 @@
 from .trash_sell_view import TrashSellView
-from .event_views import MeteorWishView
+from .event_views import MeteorWishView, GenericActionView
 
 # Registry Mapping
 # Key: String ID from JSON config
 # Value: View Class
 VIEW_REGISTRY = {
     "TrashSellView": TrashSellView,
-    "MeteorWishView": MeteorWishView
+    "MeteorWishView": MeteorWishView,
+    "GenericActionView": GenericActionView
 }
 
 def get_view_class(view_name: str):

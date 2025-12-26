@@ -1,132 +1,669 @@
 {
-  "meta_config": {
-    "check_interval_seconds": 60,
-    "announce_channel_id": null
-  },
-  "events": {
-  
-    "cthulhu_raid": {
-      "id": "cthulhu_raid",
-      "name": "🐙 Cthulhu: Cơn Đói Vĩnh Hằng",
-      "type": "raid_boss",
-      "priority": 100,
-      "schedule": {
-        "days": [5, 6],
-        "time_ranges": ["20:00-21:00"],
-        "frequency_chance": 1.0, 
-        "duration_minutes": 60,
-        "cooldown_minutes": 0
-      },
-      "mechanics": {
-        "hp_goal": 1000000,
-        "input_type": "fish_value",
-        "boss_state_key": "cthulhu_hp",
-        "update_interval": 60
-      },
-      "visuals": {
-        "title": "🦑 CTHULHU ĐÃ TỈNH GIÁC!",
-        "color": "#992D22",
-        "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023778536009778/cthulhu.png"
-      },
-      "effects": {
-        "money_multiplier": 0.0
-      },
-      "rewards": {
-        "success": {
-          "items": [{"key": "ruong_kho_bau", "min": 1, "max": 3}],
-          "mvp_bonus": [{"key": "ruong_kho_bau", "min": 5, "max": 10}, {"key": "vat_lieu_nang_cap", "min": 5, "max": 10}]
+    "meta_config": {
+        "check_interval_seconds": 60,
+        "active_data_expire_seconds": 600
+    },
+    "effects": {},
+    "events": {
+        "meteor_shower": {
+            "name": "🌠 Thiên Thạch Ngàn Năm",
+            "priority": 10,
+            "schedule": {
+                "days": [
+                    0,
+                    2,
+                    4
+                ],
+                "time_ranges": [
+                    "20:00-21:00"
+                ],
+                "frequency_chance": 1.0,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 30
+            },
+            "visuals": {
+                "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023778536009778/meteor.png",
+                "color": "#FFD700",
+                "title": "🌠 THIÊN THẠCH NGÀN NĂM ĐANG RƠI (T2-T4-T6)"
+            },
+            "messages": {
+                "start": "🌠 **CẢNH BÁO: MƯA THIÊN THẠCH TỪ VŨ TRỤ!**\n\nNhững mảnh vỡ tinh tú chứa sức mạnh cổ đại đang rơi xuống mặt biển! Kẻ nào nhanh tay sẽ nắm giữ sức mạnh của các vì sao.\n\n*Hãy ước nguyện trước khi chúng vụt tắt mãi mãi!*",
+                "end": "Cơn mưa sao băng đã tan biến vào hư không..."
+            },
+            "type": "mini_game",
+            "mechanics": {
+                "game_type": "button_spam",
+                "view_type": "MeteorWishView",
+                "spawn_interval": [
+                    15,
+                    30
+                ],
+                "min_stars": 5,
+                "max_stars": 15,
+                "star_lifetime": 10
+            },
+            "rewards": {
+                "catch": {
+                    "min_seeds": 200,
+                    "max_seeds": 500,
+                    "items": [
+                        {
+                            "key": "manh_sao_bang",
+                            "chance": 0.1
+                        }
+                    ]
+                }
+            }
         },
-        "fail": {
-          "global_debuff": "market_crash_50",
-          "debuff_duration_hours": 12
+        "cthulhu_raid": {
+            "name": "🐙 Đại Cổ Thần Cthulhu",
+            "priority": 20,
+            "schedule": {
+                "days": [
+                    5,
+                    6
+                ],
+                "time_ranges": [
+                    "20:00-21:00"
+                ],
+                "frequency_chance": 0.5,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023778536009778/cthulhu.png",
+                "color": "#8B0000",
+                "title": "🐙 ĐẠI CỔ THẦN CTHULHU TRỖI DẬY"
+            },
+            "messages": {
+                "start": "🐙 **THẢM HỌA: CTHULHU ĐÃ THỨC TỈNH TỪ VỰC THẲM!**\n\nTiếng gầm của hắn làm rung chuyển cả đại dương! Nếu không ai đứng lên ngăn chặn, thế giới này sẽ bị nhấn chìm trong bóng tối vĩnh hằng!\n\n**TRIỆU TẬP TOÀN BỘ CẦN THỦ! T.Ấ.N C.Ô.N.G NGAY! (`/cauca`)**",
+                "end": "Cthulhu đã bị đẩy lùi về giấc ngủ ngàn năm..."
+            },
+            "type": "raid_boss",
+            "mechanics": {
+                "hp_goal": 200000,
+                "damage_multiplier": 1.0
+            },
+            "rewards": {
+                "success": {
+                    "items": [
+                        {
+                            "key": "ngoc_trai",
+                            "min": 1,
+                            "max": 2
+                        },
+                        {
+                            "type": "random_category",
+                            "category": "rare",
+                            "min": 1,
+                            "max": 3
+                        },
+                        {
+                            "key": "seeds",
+                            "amount": 500
+                        }
+                    ],
+                    "mvp_bonus": [
+                        {
+                            "key": "thao_tac_tinh_vi",
+                            "min": 1,
+                            "max": 1
+                        },
+                        {
+                            "key": "ngoc_trai",
+                            "min": 5,
+                            "max": 10
+                        }
+                    ]
+                },
+                "fail": {
+                    "global_debuff": "market_crash_50"
+                }
+            }
+        },
+        "night_market": {
+            "name": "🌙 Chợ Đen Bóng Đêm",
+            "priority": 5,
+            "schedule": {
+                "days": [],
+                "time_ranges": [
+                    "22:00-02:00"
+                ],
+                "frequency_chance": 0.3,
+                "cooldown_minutes": 240,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023778536009778/market.png",
+                "color": "#4B0082",
+                "title": "🌙 CHỢ ĐEN BÓNG ĐÊM (Night Market)"
+            },
+            "messages": {
+                "start": "🌙 **CHỢ ĐEN ĐÃ XUẤT HIỆN TRONG BÓNG TỐI!**\n\nNhững thương nhân bí ẩn mang theo những vật phẩm cấm kỵ từ vùng đất chết. Giá rẻ đến mức đáng ngờ...\n\n*Giao dịch nhanh trước khi Hải Quân ập tới!*",
+                "end": "Chợ Đen đã biến mất vào màn sương..."
+            },
+            "type": "button_event",
+            "data": {
+                "mechanics": {
+                    "view_type": "GenericActionView",
+                    "bump_interval_seconds": 300,
+                    "buttons": [
+                        {
+                            "label": "📦 Gom Lô Mồi Cấm (500đ)",
+                            "style": "success",
+                            "emoji": "🐛",
+                            "cost": {
+                                "money": 500
+                            },
+                            "limit_per_user": 5,
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "moi",
+                                    "amount": 100
+                                }
+                            ],
+                            "message": "Đã lén lút giao dịch thành công 100 Mồi Câu!"
+                        },
+                        {
+                            "label": "🍷 Thần Dược Tỉnh Táo (2K)",
+                            "style": "secondary",
+                            "emoji": "🍷",
+                            "cost": {
+                                "money": 2000
+                            },
+                            "limit_per_user": 1,
+                            "rewards": [
+                                {
+                                    "type": "buff",
+                                    "key": "lucky",
+                                    "rate": 1.0,
+                                    "duration": 30
+                                }
+                            ],
+                            "message": "Đã uống Thần Dược! Cảm giác may mắn đang tuôn trào!",
+                            "public_message": "🔔 **{user}** vừa uống một ly Thần Dược tại Chợ Đen!"
+                        },
+                        {
+                            "label": "💘 Bùa Yêu Cấm Thuật (15K)",
+                            "style": "danger",
+                            "emoji": "❤️",
+                            "cost": {
+                                "money": 15000
+                            },
+                            "limit_per_user": 1,
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "tinh_yeu_ca",
+                                    "amount": 1
+                                }
+                            ],
+                            "message": "Bạn đã sở hữu Bùa Yêu Cấm Thuật. Lũ cá sẽ tự dâng hiến cho bạn!",
+                            "public_message": "🔔 **{user}** vừa mua 'Bùa Yêu Cấm Thuật' từ Chợ Đen! Biển cả sắp dậy sóng!"
+                        },
+                        {
+                            "label": "🔮 Tinh Thạch Đại Dương (50K)",
+                            "style": "primary",
+                            "emoji": "🔮",
+                            "cost": {
+                                "money": 50000
+                            },
+                            "limit_per_user": 3,
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "ngoc_trai",
+                                    "amount": 1
+                                }
+                            ],
+                            "message": "Đã sở hữu Tinh Thạch Đại Dương."
+                        },
+                        {
+                            "label": "🗺️ Mảnh Bản Đồ Bí Ẩn (20K)",
+                            "style": "secondary",
+                            "emoji": "🗺️",
+                            "cost": {
+                                "money": 20000
+                            },
+                            "limit_per_user": 10,
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "manh_ban_do_a",
+                                    "amount": 1,
+                                    "rate": 0.25
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "manh_ban_do_b",
+                                    "amount": 1,
+                                    "rate": 0.25
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "manh_ban_do_c",
+                                    "amount": 1,
+                                    "rate": 0.25
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "manh_ban_do_d",
+                                    "amount": 1,
+                                    "rate": 0.25
+                                }
+                            ],
+                            "message": "Bạn đã mua được một Mảnh Bản Đồ bí ẩn từ Chợ Đen!"
+                        },
+                        {
+                            "label": "🎯 Bí Kíp Thao Tác (10K)",
+                            "style": "secondary",
+                            "emoji": "🎯",
+                            "cost": {
+                                "money": 10000
+                            },
+                            "limit_per_user": 2,
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "thao_tac_tinh_vi",
+                                    "amount": 1
+                                }
+                            ],
+                            "message": "Đã học được Bí Kíp Thao Tác mới!"
+                        }
+                    ]
+                }
+            }
+        },
+        "pirate_casino": {
+            "name": "🎰 Ván Cược Tử Thần",
+            "priority": 88,
+            "schedule": {
+                "days": [],
+                "time_ranges": [
+                    "11:00-13:00",
+                    "22:00-23:00"
+                ],
+                "frequency_chance": 1.0,
+                "cooldown_minutes": 180,
+                "duration_minutes": 30
+            },
+            "visuals": {
+                "color": "#FF0000",
+                "title": "🎰 VÁN CƯỢC TỬ THẦN (High Risk)"
+            },
+            "messages": {
+                "start": "🎰 **LỜI MỜI CỦA QUỶ DỮ!**\n\nNơi này không dành cho kẻ yếu tim. Dám đặt 10K Hạt lên bàn cân định mệnh không?\n\n*Một bước lên Tiên hoặc một phút xuống Bùn!*",
+                "end": "Sòng bạc đã đóng cửa. Những kẻ thua cuộc đang khóc ròng."
+            },
+            "data": {
+                "mechanics": {
+                    "view_type": "GenericActionView",
+                    "bump_interval_seconds": 300,
+                    "buttons": [
+                        {
+                            "label": "🔥 Cược Mạng (10K)",
+                            "style": "danger",
+                            "emoji": "🎲",
+                            "cost": {
+                                "money": 10000
+                            },
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "seeds",
+                                    "amount": 30000,
+                                    "rate": 0.5,
+                                    "fail_msg": "Bạn đã mất sạch 10K cho Quỷ Dữ! 💸"
+                                }
+                            ],
+                            "message": "BẠN ĐÃ THẮNG LỚN 30.000 HẠT! 🤑",
+                            "public_message": "🔔 **{user}** ĐÃ CHIẾN THẮNG QUỶ DỮ VÀ ĂN 30.000 HẠT!"
+                        }
+                    ]
+                }
+            },
+            "type": "button_event"
+        },
+        "dragon_sacrifice": {
+            "name": "🐲 Long Thần Giáng Thế",
+            "priority": 15,
+            "schedule": {
+                "days": [
+                    5,
+                    6
+                ],
+                "time_ranges": [
+                    "20:00-21:00"
+                ],
+                "frequency_chance": 0.5,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#2E8B57",
+                "title": "🐲 LONG THẦN GIÁNG THẾ"
+            },
+            "messages": {
+                "start": "🐲 **THẦN TÍCH: LONG THẦN ĐÃ XUẤT HIỆN!**\nNgài đang tìm kiếm những sản vật tinh túy nhất của đại dương. Những kẻ dâng hiến thành tâm sẽ nhận được ân huệ to lớn!\n**HÃY DÂNG CÁ CHO THẦN (`10 Cá = 2000 Hạt`)**",
+                "end": "Long Thần đã hài lòng và bay về Thiên Cung."
+            },
+            "type": "fish_quest_raid",
+            "mechanics": {
+                "fish_pools": {
+                    "rare": [
+                        "ca_heo",
+                        "ca_map",
+                        "ca_thu",
+                        "ca_ngu",
+                        "ca_voi"
+                    ],
+                    "common": [
+                        "ca_chep",
+                        "ca_ro_dong",
+                        "ca_loc",
+                        "ca_tra",
+                        "ca_dong"
+                    ]
+                },
+                "quantity_ranges": {
+                    "rare": {
+                        "min": 10,
+                        "max": 30
+                    },
+                    "common": {
+                        "min": 40,
+                        "max": 70
+                    }
+                },
+                "bump_interval_seconds": 60
+            },
+            "rewards": {
+                "success": {
+                    "items": [
+                        {
+                            "key": "ngoc_trai",
+                            "min": 2,
+                            "max": 5
+                        },
+                        {
+                            "key": "seeds",
+                            "amount": 3000
+                        }
+                    ],
+                    "mvp_bonus": [
+                        {
+                            "key": "tinh_yeu_ca",
+                            "min": 1,
+                            "max": 1
+                        },
+                        {
+                            "key": "ngoc_trai",
+                            "min": 3,
+                            "max": 5
+                        },
+                        {
+                            "key": "seeds",
+                            "amount": 5000
+                        }
+                    ]
+                }
+            }
+        },
+        "vip_blind_box": {
+            "name": "📦 Bí Ẩn Pandora",
+            "priority": 66,
+            "schedule": {
+                "days": [],
+                "time_ranges": [
+                    "06:00-22:00"
+                ],
+                "frequency_chance": 1.0,
+                "cooldown_minutes": 120,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#FF69B4",
+                "title": "📦 HỘP BÍ ẨN PANDORA"
+            },
+            "messages": {
+                "start": "📦 **VẬT PHẨM KỲ BÍ XUẤT HIỆN!**\n\nMột chiếc hộp Pandora trôi dạt vào bờ. Truyền thuyết nói rằng nó chứa đựng kho báu hoặc lời nguyền...\n\n*Giá 10K để mở khóa định mệnh của bạn!*",
+                "end": "Chiếc hộp đã biến mất..."
+            },
+            "type": "button_event",
+            "data": {
+                "mechanics": {
+                    "view_type": "GenericActionView",
+                    "bump_interval_seconds": 300,
+                    "buttons": [
+                        {
+                            "label": "🗝️ Mở Khóa (10K)",
+                            "style": "primary",
+                            "emoji": "🎁",
+                            "cost": {
+                                "money": 10000
+                            },
+                            "limit_per_user": 1,
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "ngoc_trai",
+                                    "amount": 1,
+                                    "rate": 0.5
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "nuoc_tang_luc",
+                                    "amount": 1,
+                                    "rate": 0.25
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "manh_ban_do_a",
+                                    "amount": 1,
+                                    "rate": 0.15
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "moi",
+                                    "amount": 20,
+                                    "rate": 0.1
+                                },
+                                {
+                                    "type": "item",
+                                    "key": "long_vu_lua",
+                                    "amount": 1,
+                                    "rate": 0.0
+                                }
+                            ],
+                            "message": "Chiếc hộp mở ra... ánh sáng chói lòa!",
+                            "public_message": "🔔 **{user}** đã liều mình mở Hộp Pandora và nhận được {reward}!"
+                        }
+                    ]
+                }
+            }
+        },
+        "fortune_shrine": {
+            "name": "⛩️ Điện Thờ Thủy Thần",
+            "priority": 4,
+            "schedule": {
+                "days": [],
+                "time_ranges": [
+                    "06:00-09:00",
+                    "11:00-13:00"
+                ],
+                "frequency_chance": 0.3,
+                "cooldown_minutes": 180,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#FFFF00",
+                "title": "⛩️ ĐIỆN THỜ THỦY THẦN"
+            },
+            "messages": {
+                "start": "⛩️ **CỔNG ĐỀN ĐÃ MỞ!**\n\nHãy dâng hương cho Thủy Thần để cầu bình an và may mắn trước khi ra khơi.\n\n*\"Thành tâm sẽ linh ứng...\"*",
+                "end": "Điện thờ đã đóng cửa."
+            },
+            "data": {
+                "mechanics": {
+                    "view_type": "GenericActionView",
+                    "buttons": [
+                        {
+                            "label": "🙏 Dâng Hương (5K)",
+                            "style": "primary",
+                            "emoji": "🙏",
+                            "cost": {
+                                "money": 5000
+                            },
+                            "rewards": [
+                                {
+                                    "type": "buff",
+                                    "key": "lucky",
+                                    "rate": 1.0,
+                                    "duration": 30
+                                }
+                            ],
+                            "message": "Bạn cảm thấy một luồng năng lượng ấm áp bao quanh!",
+                            "public_message": "🔔 **{user}** vừa được Thủy Thần ban phước lành!"
+                        }
+                    ]
+                }
+            },
+            "type": "button_event"
+        },
+        "trash_recycle": {
+            "name": "♻️ Trạm Thanh Tẩy",
+            "priority": 3,
+            "schedule": {
+                "days": [
+                    1,
+                    3
+                ],
+                "time_ranges": [
+                    "20:00-21:00"
+                ],
+                "frequency_chance": 1.0,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#808080",
+                "title": "♻️ NGHI LỄ THANH TẨY (Thứ 3-5)"
+            },
+            "messages": {
+                "start": "♻️ **ĐẠI DƯƠNG ĐANG KÊU CỨU!**\n\nHãy mang những vật phẩm ô uế đến đây để thanh tẩy. Mẹ Biển Cả sẽ ban thưởng xứng đáng cho những người bảo vệ sự sống.\n\n**10 Rác = 1 Ngọc Trai**",
+                "end": "Trạm Thanh Tẩy đã đóng cửa."
+            },
+            "data": {
+                "mechanics": {
+                    "view_type": "GenericActionView",
+                    "buttons": [
+                        {
+                            "label": "🔥 Thanh Tẩy 10 Rác (Bất Kỳ)",
+                            "style": "secondary",
+                            "emoji": "✨",
+                            "cost": {
+                                "item_type": {
+                                    "type": "trash",
+                                    "amount": 10
+                                }
+                            },
+                            "rewards": [
+                                {
+                                    "type": "item",
+                                    "key": "ngoc_trai",
+                                    "amount": 1
+                                }
+                            ],
+                            "message": "Bạn đã thanh tẩy thành công 10 rác và nhận Ngọc Trai!"
+                        }
+                    ]
+                }
+            },
+            "type": "button_event"
+        },
+        "magnetic_storm": {
+            "name": "🌪️ Bão Từ Trường Vô Cực",
+            "priority": 7,
+            "schedule": {
+                "days": [
+                    1,
+                    3
+                ],
+                "time_ranges": [
+                    "20:00-21:00"
+                ],
+                "frequency_chance": 0.5,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 30
+            },
+            "visuals": {
+                "color": "#000000",
+                "title": "🌪️ THẢM HỌA: BÃO TỪ TRƯỜNG"
+            },
+            "messages": {
+                "start": "🌪️ **CẢNH BÁO CẤP ĐỘ 5: BÃO TỪ TRƯỜNG!**\n\nLa bàn bị vô hiệu hóa, cá đang hoảng loạn! Giá cá giảm một nửa do thương nhân không dám ra khơi thu mua.\n\n*Chỉ những kẻ điên rồ mới dám câu cá lúc này!*",
+                "end": "Bão từ trường đã tan. Biển cả trở lại bình yên."
+            },
+            "effects": {
+                "trash_chance_multiplier": 0.0,
+                "money_multiplier": 0.5
+            }
+        },
+        "breeding_season": {
+            "name": "🌸 Vũ Điệu Sinh Sôi",
+            "priority": 7,
+            "schedule": {
+                "days": [
+                    1,
+                    3
+                ],
+                "time_ranges": [
+                    "20:30-21:00"
+                ],
+                "frequency_chance": 0.5,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 20
+            },
+            "visuals": {
+                "color": "#FF69B4",
+                "title": "🌸 VŨ ĐIỆU SINH SÔI"
+            },
+            "messages": {
+                "start": "🌸 **SỰ KIỆN: VŨ ĐIỆU CỦA SỰ SỐNG!**\n\nĐại dương đang tràn trề sức sống mãnh liệt. Hàng ngàn sinh vật đang tụ tập sinh sản.\n\n**Hiệu ứng:** 50% Double Catch (Câu 1 được 2)!",
+                "end": "Mùa sinh sản đã kết thúc."
+            },
+            "effects": {
+                "double_catch_chance": 0.5
+            }
+        },
+        "dead_sea": {
+            "name": "☠️ Vùng Biển Chết Chóc",
+            "priority": 2,
+            "schedule": {
+                "days": [
+                    1,
+                    3
+                ],
+                "time_ranges": [
+                    "20:00-20:30"
+                ],
+                "frequency_chance": 0.5,
+                "cooldown_minutes": 1400,
+                "duration_minutes": 20
+            },
+            "visuals": {
+                "color": "#555555",
+                "title": "☠️ VÙNG BIỂN CHẾT CHÓC"
+            },
+            "messages": {
+                "start": "☠️ **HIỂM HỌA: VÙNG BIỂN TỬ THẦN!**\n\nTử khí bao trùm mặt nước... Sự sống đã bị tước đoạt, chỉ còn lại rác rưởi và sự hoang tàn.\n\n*Cẩn thận! Tỉ lệ câu phải rác tăng gấp 5 lần!*",
+                "end": "Bạn đã may mắn thoát khỏi vùng biển chết an toàn."
+            },
+            "effects": {
+                "trash_chance_multiplier": 5.0
+            }
         }
-      },
-      "messages": {
-        "start": "🌩️ TRỜI ĐẤT QUAY CUỒNG!\n\nTừ vực thẳm đen ngòm, thực thể Cthulhu Non đã trồi lên mặt nước! Tiếng gầm gừ đòi ăn của nó vang vọng khắp server.\n\n⚠️ **KHẨN CẤP:** Mọi nỗ lực bán cá (`!banca`) giờ đây sẽ trở thành Vật Phẩm Hiến Tế! Hãy chung tay cho nó ăn no trước khi nó nhấn chìm tất cả!\n\n🎁 **Thưởng:** Kho Báu & Vật Liệu (MVP nhận nhiều hơn!)\n💀 **Phạt:** Giá cá giảm 50% toàn server nếu thất bại!",
-        "end": "🌌 **SỰ TĨNH LẶNG TRỞ LẠI...**\nCthulhu Non đã no nê và chìm xuống đáy biển. Cảm ơn các Chiến Thần đã bảo vệ sự bình yên của server!"
-      }
-    },
-
-    "meteor_shower": {
-      "id": "meteor_shower",
-      "name": "🌠 Dạ Tiệc Ánh Sao",
-      "type": "mini_game",
-      "priority": 90,
-      "schedule": {
-        "time_ranges": ["21:00-21:30"],
-        "frequency_chance": 0.5,
-        "duration_minutes": 30
-      },
-      "mechanics": {
-        "view_class": "MeteorWishView",
-        "spawn_interval": [60, 120] 
-      },
-      "visuals": {
-        "title": "🌠 MƯA SAO BĂNG",
-        "color": "#F1C40F",
-        "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023915832770580/meteor.png"
-      },
-      "effects": {},
-      "messages": {
-        "start": "🌌 **DẠ TIỆC ÁNH SAO BẮT ĐẦU!**\n\nBầu trời đêm nay bỗng rực sáng những vệt sao băng. Truyền thuyết kể rằng, ai nhanh tay **Ước Nguyện** khi sao rơi sẽ nhận được phước lành từ vũ trụ.",
-        "end": "🌌 **Màn Đêm Buông Xuống.**\n\nCơn mưa sao băng đã kết thúc. Hy vọng điều ước của bạn sẽ thành hiện thực."
-      }
-    },
-
-    "high_tide": {
-      "id": "high_tide",
-      "name": "🌊 Triều Cường Đỏ",
-      "type": "environment",
-      "priority": 50,
-      "schedule": {
-        "time_ranges": ["08:00-23:00"],
-        "frequency_chance": 0.015,
-        "duration_minutes": 30,
-        "cooldown_minutes": 120
-      },
-      "mechanics": {},
-      "visuals": {
-        "title": "🌊 THỦY TRIỀU DÂNG CAO",
-        "color": "#1ABC9C"
-      },
-      "effects": {
-        "rare_chance_multiplier": 3.0,
-        "trash_chance_multiplier": 0.0
-      },
-      "messages": {
-        "start": "🌊 **TRIỀU CƯỜNG ĐỎ DÂNG CAO!**\n\nMực nước sông đang dâng lên dữ dội! Những con quái vật khổng lồ dưới đáy sâu đang trồi lên đi săn.\n✨ **Cơ hội vàng:** Tỉ lệ câu **Cá Khổng Lồ** tăng mạnh & Không có rác!",
-        "end": "🌊 **Nước Rút.**\n\nDòng sông trở lại vẻ hiền hòa vốn có."
-      }
-    },
-
-    "scrap_yard": {
-      "id": "scrap_yard",
-      "name": "🚛 Vựa Ve Chai Chú Ba",
-      "type": "npc_shop",
-      "priority": 40,
-      "schedule": {
-        "time_ranges": ["08:00-23:59"],
-        "frequency_chance": 0.03,
-        "duration_minutes": 15,
-        "cooldown_minutes": 180
-      },
-      "mechanics": {
-        "view_type": "TrashSellView",
-        "trash_price_min": 5,
-        "trash_price_max": 100
-      },
-      "visuals": {
-        "title": "🚛 VỰA VE CHAI CHÚ BA",
-        "color": "#2ECC71",
-        "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023847247089704/trash_truck.png"
-      },
-      "effects": {
-        "trash_chance_multiplier": 1.5
-      },
-      "messages": {
-        "start": "🚛 **VỰA VE CHAI ĐẾN RỒI!**\n\nTiếng loa phường vang lên: *'Ai chai bao, nhôm nhựa, sắt vụn bán hông...'* Chú Ba Ve Chai vừa lái xe tải tới bến cảng.\n👇 **Bấm nút bên dưới để dọn rác kiếm tiền nào!**",
-        "end": "🚛 **Xe Lăn Bánh.**\n\nChú Ba đã gom đủ hàng và lái xe đi mất. Hẹn gặp lại!"
-      }
     }
-  }
 }

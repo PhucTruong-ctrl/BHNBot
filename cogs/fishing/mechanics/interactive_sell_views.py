@@ -289,38 +289,38 @@ class InteractiveSellEventView(discord.ui.View):
             self.completed = False # Critical err, allow retry? Or maybe keep locked to be safe.
             logger.error(f"[INTERACTIVE_SELL_ERROR] {e}", exc_info=True)
     
-# Stat Mappings: (event_key, choice_id) -> global_stat_key
-STAT_MAPPINGS = {
-    # Black Market
-    ('black_market', 'accept'): 'risky_choices_made',
-    ('black_market', 'decline'): 'safe_choices_made',
-    # Haggle Master
-    ('haggle_master', 'haggle'): 'haggle_attempts',
-    ('haggle_master', 'accept'): 'safe_choices_made',
-    # Mystery Buyer (risky_buyer)
-    ('risky_buyer', 'accept'): 'risky_choices_made',
-    ('risky_buyer', 'decline'): 'safe_choices_made',
-    # Auction House
-    ('auction_house', 'enter_auction'): 'risky_choices_made',
-    ('auction_house', 'skip'): 'safe_choices_made',
-    # Double or Nothing
-    ('double_or_nothing', 'all_in'): 'risky_choices_made',
-    ('double_or_nothing', 'play_safe'): 'safe_choices_made',
-    # Quality Inspector
-    ('quality_inspector', 'reroll'): 'risky_choices_made',
-    ('quality_inspector', 'keep'): 'safe_choices_made',
-    # Charity Donation
-    ('charity_donation', 'donate'): 'charity_donations',
-    # Express Sale
-    ('express_sale', 'express'): 'risky_choices_made',
-    ('express_sale', 'normal'): 'safe_choices_made', 
-    # Investment Offer
-    ('investment_offer', 'invest'): 'risky_choices_made',
-    ('investment_offer', 'decline'): 'safe_choices_made',
-    # Fish Contest (Win is tracked separately, this is just participation choice)
-    ('fish_contest', 'enter_contest'): 'risky_choices_made',
-    ('fish_contest', 'sell_normal'): 'safe_choices_made',
-}
+    # Stat Mappings: (event_key, choice_id) -> global_stat_key
+    STAT_MAPPINGS = {
+        # Black Market
+        ('black_market', 'accept'): 'risky_choices_made',
+        ('black_market', 'decline'): 'safe_choices_made',
+        # Haggle Master
+        ('haggle_master', 'haggle'): 'haggle_attempts',
+        ('haggle_master', 'accept'): 'safe_choices_made',
+        # Mystery Buyer (risky_buyer)
+        ('risky_buyer', 'accept'): 'risky_choices_made',
+        ('risky_buyer', 'decline'): 'safe_choices_made',
+        # Auction House
+        ('auction_house', 'enter_auction'): 'risky_choices_made',
+        ('auction_house', 'skip'): 'safe_choices_made',
+        # Double or Nothing
+        ('double_or_nothing', 'all_in'): 'risky_choices_made',
+        ('double_or_nothing', 'play_safe'): 'safe_choices_made',
+        # Quality Inspector
+        ('quality_inspector', 'reroll'): 'risky_choices_made',
+        ('quality_inspector', 'keep'): 'safe_choices_made',
+        # Charity Donation
+        ('charity_donation', 'donate'): 'charity_donations',
+        # Express Sale
+        ('express_sale', 'express'): 'risky_choices_made',
+        ('express_sale', 'normal'): 'safe_choices_made', 
+        # Investment Offer
+        ('investment_offer', 'invest'): 'risky_choices_made',
+        ('investment_offer', 'decline'): 'safe_choices_made',
+        # Fish Contest (Win is tracked separately, this is just participation choice)
+        ('fish_contest', 'enter_contest'): 'risky_choices_made',
+        ('fish_contest', 'sell_normal'): 'safe_choices_made',
+    }
 
 
     async def _track_stats(self, event_key: str, choice_id: str, is_win: bool):
@@ -342,7 +342,7 @@ STAT_MAPPINGS = {
             
             # 3. Global Category Stat (Mapped)
             # e.g., risky_choices_made, charity_donations
-            global_stat = STAT_MAPPINGS.get((event_key, choice_id))
+            global_stat = self.STAT_MAPPINGS.get((event_key, choice_id))
             if global_stat:
                 await increment_stat(self.user_id, "fishing", global_stat, 1)
             

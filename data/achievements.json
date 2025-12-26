@@ -43,7 +43,7 @@
       "target_value": 1,
       "reward_seeds": 2000,
       "reward_role_key": "role_vua_cau_ca",
-      "emoji": "�"
+      "emoji": "🪣"
     },
     "child_of_sea": {
       "name": "Dứa Con Của Biển",
@@ -182,20 +182,20 @@
     },
     "traffic_nightmare": {
       "name": "Hung Thần Xa Lộ",
-      "description": "Tông trúng siêu xe (Maybach, Bugatti, Ferrari...) 5 lần khi bán cá",
+      "description": "Tông trúng siêu xe (Maybach, Bugatti...) 5 lần khi bán cá",
       "condition_stat": "luxury_car_crashes",
       "target_value": 5,
       "reward_seeds": 1000,
       "reward_role_key": "role_hung_than_xa_lo",
       "emoji": "💥"
     },
-    "crypto_whale": {
-      "name": "Chứng Thủ Đu Đỉnh",
-      "description": "Bị 'Thua Coin', 'Lùa Gà' hoặc 'Sập Sàn' 5 lần",
-      "condition_stat": "crypto_fails",
+    "gemstone_failure": {
+      "name": "Đen Bạc Đá Quý",
+      "description": "Thua cược khi chơi với Thương Nhân Đá Quý 5 lần",
+      "condition_stat": "gemstone_gambler_fails",
       "target_value": 5,
       "reward_seeds": 404,
-      "reward_role_key": "role_chung_thu_du_dinh",
+      "reward_role_key": "role_den_bac",
       "emoji": "📉"
     },
     "shark_tank_deal": {
@@ -234,18 +234,18 @@
       "reward_role_key": "role_ke_huy_diet_server",
       "emoji": "☢️"
     },
-    "ninja_survivor": {
-      "name": "Kẻ Sống Sót Ninja Lead",
-      "description": "Gặp NPC Ninja Lead 3 lần",
-      "condition_stat": "ninja_lead_encounter",
+    "river_pirates_survivor": {
+      "name": "Truy Nã: Cướp Sông Đà",
+      "description": "Gặp NPC Cướp Sông Đà 3 lần",
+      "condition_stat": "river_pirates_encounter",
       "target_value": 3,
       "reward_seeds": 500,
-      "reward_role_key": "role_ninja_survivor",
-      "emoji": "🥷"
+      "reward_role_key": "role_river_pirates_survivor",
+      "emoji": "🏴‍☠️"
     },
     "scam_victim": {
       "name": "Tấm Chiếu Mới",
-      "description": "Bị NPC lừa hoặc sự kiện mất tiền (Cân điêu, Tiền giả) 10 lần",
+      "description": "Bị NPC lừa hoặc sự kiện mất tiền (Rái cá, Hàng xóm...) 10 lần",
       "condition_stat": "scam_events",
       "target_value": 10,
       "reward_seeds": 300,
@@ -254,7 +254,7 @@
     },
     "time_traveler": {
       "name": "Kẻ Du Hành Thời Gian",
-      "description": "Kích hoạt sự kiện Global Reset (Đồng hồ vỡ, Cổng không gian...)",
+      "description": "Kích hoạt sự kiện Global Reset (Cổng không gian...)",
       "condition_stat": "global_reset_triggered",
       "target_value": 1,
       "reward_seeds": 3000,
@@ -367,7 +367,7 @@
       "target_value": 100,
       "reward_seeds": 1000,
       "reward_role_key": "role_y_chi_sat_da",
-      "emoji": "��️"
+      "emoji": "🗿"
     },
     "speedster_unlock": {
       "name": "Mở Khóa: Tốc Độ Ánh Sáng",
@@ -377,51 +377,6 @@
       "reward_seeds": 300,
       "reward_role_key": "role_toc_do_anh_sang",
       "emoji": "⚡"
-    },
-    "charity_king": {
-      "name": "Nhà Hảo Tâm",
-      "description": "Thực hiện 10 lần quyên góp từ thiện khi bán cá",
-      "condition_stat": "charity_donations",
-      "target_value": 10,
-      "reward_seeds": 1000,
-      "reward_role_key": "role_nha_hao_tam",
-      "emoji": "❤️"
-    },
-    "beauty_queen": {
-      "name": "Hoa Hậu Đại Dương",
-      "description": "Thắng giải nhất 'Thi Cá Đẹp' 5 lần",
-      "condition_stat": "contest_wins",
-      "target_value": 5,
-      "reward_seeds": 5000,
-      "reward_role_key": "role_hoa_hau_dai_duong",
-      "emoji": "👑"
-    },
-    "wall_street_wolf": {
-      "name": "Sói Già Phố Wall",
-      "description": "Thắng lớn khi đầu tư Startup cá 5 lần",
-      "condition_stat": "investment_wins",
-      "target_value": 5,
-      "reward_seeds": 10000,
-      "reward_role_key": "role_soi_gia_pho_wall",
-      "emoji": "📈"
-    },
-    "daredevil": {
-      "name": "Kẻ Liều Lĩnh",
-      "description": "Đưa ra 50 quyết định mạo hiểm trong các sự kiện",
-      "condition_stat": "risky_choices_made",
-      "target_value": 50,
-      "reward_seeds": 2000,
-      "reward_role_key": "role_lieu_an_nhieu",
-      "emoji": "🎲"
-    },
-    "auction_tycoon": {
-      "name": "Đấu Giá Sư",
-      "description": "Thắng lớn tại Sàn Đấu Giá (x3 tiền) 5 lần",
-      "condition_stat": "auction_house_wins",
-      "target_value": 5,
-      "reward_seeds": 3000,
-      "reward_role_key": "role_dau_gia_su",
-      "emoji": "🔨"
     },
     "charity_king": {
       "name": "Nhà Hảo Tâm",

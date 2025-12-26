@@ -254,6 +254,13 @@ def init_database():
                     FOREIGN KEY(user_id) REFERENCES users(user_id)
                 )''')
 
+    # 11. GLOBAL EVENTS (Persistence State)
+    c.execute('''CREATE TABLE IF NOT EXISTS global_event_state (
+                    event_key TEXT PRIMARY KEY,
+                    state_data TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )''')
+
     conn.commit()
     
     # ==================== INDEXES (Tối Ưu Hóa) ====================

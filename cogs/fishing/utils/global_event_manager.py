@@ -6,7 +6,7 @@ from datetime import datetime
 from discord.ext import tasks
 import discord
 from core.logger import setup_logger
-from database_manager import db_manager, add_item, add_seeds, get_stat, increment_stat
+from database_manager import db_manager, add_item, add_seeds, get_stat, increment_stat, set_global_state, get_global_state
 from ..mechanics.event_views import MeteorWishView
 
 logger = setup_logger("GlobalEvents", "cogs/fishing/global_events.log")
@@ -36,9 +36,25 @@ class GlobalEventManager:
             "message": None     # Discord Message object for editing
         }
 
+        # Dragon Quest State
+        self.dragon_state = {
+            "active": False,
+            "requested_fish_key": "",
+            "requested_fish_name": "",
+            "quantity_goal": 0,
+            "quantity_current": 0,
+            "contributors": {},  # { user_id: quantity }
+            "start_time": 0,
+            "message_ids": {}  # { channel_id: message_id }
+        }
+
         # Mini Game state
         self.last_minigame_spawn = 0
         self.next_minigame_spawn_delay = 0
+
+        # Message Bump State
+        self.last_bump_time = 0
+        self.bump_message_ids = {} # {channel_id: message_id}
         
         # Load initially
         self.load_config()
@@ -60,9 +76,23 @@ class GlobalEventManager:
                 if self._loop_task.seconds != new_interval:
                      self._loop_task.change_interval(seconds=new_interval)
                      logger.info(f"Global Event Loop interval updated to {new_interval}s")
+                     
+            # Load Persistent Cooldowns
+            asyncio.create_task(self._load_cooldowns())
+                     
         except Exception as e:
             logger.error(f"Failed to load Global Event Config: {e}")
             self.config = {"events": {}}
+
+    async def _load_cooldowns(self):
+        """Load last run times from DB to prevent spam after restart."""
+        try:
+            data = await get_global_state("system_cooldowns", {})
+            if data:
+                self.last_event_times = data
+                logger.info(f"Restored event cooldowns: {len(data)} events")
+        except Exception as e:
+            logger.warning(f"Failed to load system_cooldowns: {e}")
 
     def start(self):
         """Starts the event monitoring loop."""
@@ -97,6 +127,12 @@ class GlobalEventManager:
                     # Raid Status Updates
                     elif self.current_event["data"].get("type") == "raid_boss":
                         await self._update_raid_status()
+                    # Dragon Quest Status Updates
+                    elif self.current_event["data"].get("type") == "fish_quest_raid":
+                        await self._update_dragon_status()
+                    # Generic Event Bump
+                    elif self.current_event["data"].get("mechanics", {}).get("view_type") == "GenericActionView":
+                        await self._process_bump()
                 return # Don't start new event if one is running (System limitation for simplicity)
 
             # 2. Check for potential events
@@ -176,17 +212,28 @@ class GlobalEventManager:
             "start_time": time.time()
         }
         
+        # Reset bump
+        self.last_bump_time = time.time()
+        self.bump_message_ids = {}
+        
         # Cache active effects
         self.active_effects = data.get("effects", {})
         
         # Special Setup
         if data["type"] == "raid_boss":
             await self._setup_raid(data)
+        elif data["type"] == "fish_quest_raid":
+            await self._setup_dragon_quest(data)
         
         logger.info(f"[GLOBAL_EVENT] Started: {key} (Duration: {duration}s)")
         
-        # Announce
-        await self._broadcast_message(data.get("messages", {}).get("start"))
+        # Announce (customize message for dragon quest)
+        start_message = data.get("messages", {}).get("start")
+        if data["type"] == "fish_quest_raid" and self.dragon_state.get("active"):
+            # Replace placeholders with actual fish details
+            start_message = f"🐲 **THẦN TÍCH: LONG THẦN ĐÃ XUẤT HIỆN!**\nNgài đang tìm kiếm sản vật tinh túy của đại dương và yêu cầu:\n🎯 **{self.dragon_state['quantity_goal']} con {self.dragon_state['requested_fish_name']}**\n💡 **Cách Đóng Góp:** Bán cá bằng `!banca` như bình thường. Nếu có cá yêu cầu trong hóa đơn → Tự động đóng góp cho Long Thần!\n⚠️ **Lưu ý:** Cá đóng góp sẽ KHÔNG được tính tiền."
+        
+        await self._broadcast_message(start_message)
 
     async def end_current_event(self):
         """Ends the currently active event."""
@@ -199,19 +246,26 @@ class GlobalEventManager:
         # Special Cleanup
         if data["type"] == "raid_boss":
             await self._finalize_raid(data)
+        elif data["type"] == "fish_quest_raid":
+            await self._finalize_dragon_quest(data)
         
         # Announce End
         await self._broadcast_message(data.get("messages", {}).get("end"))
         
         # Reset State
         self.last_event_times[key] = time.time()
+        
+        # Save Cooldowns to DB
+        await set_global_state("system_cooldowns", self.last_event_times)
+        
         self.current_event = None
         self.active_effects = {}
         self.raid_state["active"] = False
+        self.dragon_state["active"] = False
         
         logger.info(f"[GLOBAL_EVENT] Ended: {key}")
 
-    async def _broadcast_message(self, content):
+    async def _broadcast_message(self, content, is_bump=False):
         """Sends announcement to all configured fishing channels (Rich Embed)."""
         if not content: return
         
@@ -238,18 +292,8 @@ class GlobalEventManager:
                     logger.warning(f"Invalid color {visuals.get('color')}: {e}")
 
             # Build Embed
-            # Content separation logic (if content has title line)
             lines = content.split("\n", 1)
-            # If the JSON already provides a specific title (like "MƯA SAO BĂNG"),
-            # we might want to prioritize it over the message content's first line if it's generic.
-            # But the current logic appends custom_title to base title.
-            # Let's keep the content clean - if visuals has title, we use it as Base.
-            
             description = content
-            # If content starts with a header, it might duplicate the Visual Title.
-            # The current content in JSON often repeats the title in the message. 
-            # e.g., "🌌 **DẠ TIỆC ÁNH SAO BẮT ĐẦU!**\n..."
-            # For now, let's trust the JSON content is formatted for the Description.
                 
             embed = discord.Embed(title=title, description=description, color=color)
             if image: embed.set_image(url=image)
@@ -269,43 +313,95 @@ class GlobalEventManager:
                     if channel:
                         # DYNAMIC VIEW LOADING
                         view = None
-                        view_type = self.current_event.get("data", {}).get("mechanics", {}).get("view_type")
-                        if view_type:
-                            ViewClass = get_view_class(view_type)
-                            if ViewClass:
-                                # Instantiate View
-                                # NOTE: Different views take different args. Ideally standardize this.
-                                # Current legacy support:
-                                if view_type == "TrashSellView":
-                                    view = ViewClass(self)
-                                elif view_type == "MeteorWishView":
-                                    view = ViewClass(self.bot.get_cog("FishingCog"))
-                                else:
-                                    # Try default instantiation (if supported in future)
-                                    try:
-                                        view = ViewClass(self)
-                                    except:
-                                        logger.warning(f"Could not instantiate view {view_type}")
                         
-                        await channel.send(embed=embed, view=view)
+                        # Fix: Don't attach view to Start Message for Mini-Games (they spawn separate views)
+                        # event_data contains the full event config (including type field)
+                        event_data = self.current_event.get("data", {})
+                        event_type = event_data.get("type")  # type is at root of event config
+                        logger.info(f"[DEBUG] Event type for {self.current_event.get('key')}: '{event_type}'")
+                        
+                        
+                        if event_type != "mini_game":
+                            # event_data = full event config
+                            # mechanics is in: event_config["data"]["mechanics"]
+                            view_type = event_data.get("data", {}).get("mechanics", {}).get("view_type")
+                            logger.info(f"[DEBUG] view_type extracted: '{view_type}'")
+                            
+                            if view_type:
+                                logger.info(f"[DEBUG] Attaching view {view_type} to start message")
+                                ViewClass = get_view_class(view_type)
+                                logger.info(f"[DEBUG] ViewClass resolved: {ViewClass}")
+                                
+                                if ViewClass:
+                                    # Instantiate View
+                                    if view_type == "TrashSellView":
+                                        view = ViewClass(self)
+                                    elif view_type == "MeteorWishView":
+                                        view = ViewClass(self.bot.get_cog("FishingCog"))
+                                    else:
+                                        try:
+                                            view = ViewClass(self)
+                                            logger.info(f"[DEBUG] View instantiated successfully: {view}")
+                                        except Exception as e:
+                                            logger.error(f"[DEBUG] Failed to instantiate view {view_type}: {e}", exc_info=True)
+                                else:
+                                    logger.warning(f"[DEBUG] ViewClass is None for {view_type}")
+                            else:
+                                logger.warning(f"[DEBUG] No view_type found in mechanics for {self.current_event.get('key')}")
+                        else:
+                            logger.info(f"[DEBUG] Skipping view attachment for mini_game event")
+                        
+                        # Handle Deletion for Bump
+                        if is_bump and channel_id in self.bump_message_ids:
+                             old_id = self.bump_message_ids[channel_id]
+                             try:
+                                 old_msg = await channel.fetch_message(old_id)
+                                 await old_msg.delete()
+                             except: pass
+
+                        new_msg = await channel.send(embed=embed, view=view)
+                        
+                        if is_bump:
+                            self.bump_message_ids[channel_id] = new_msg.id
+                            
                 except Exception as e:
                     logger.warning(f"Failed to send event msg to {channel_id}: {e}")
         except Exception as e:
             logger.error(f"Broadcast error: {e}")
 
+    async def _process_bump(self):
+        """Bumps the event message if configured."""
+        bump_interval = self.current_event["data"].get("mechanics", {}).get("bump_interval_seconds", 0)
+        if bump_interval <= 0: return
+
+        if time.time() - self.last_bump_time > bump_interval:
+            self.last_bump_time = time.time()
+            content = self.current_event["data"].get("messages", {}).get("start")
+            await self._broadcast_message(content, is_bump=True)
+            logger.info(f"[EVENT_BUMP] Bumped event {self.current_event['key']}")
+
     # ==================== RAID MECHANICS ====================
 
     async def _setup_raid(self, data):
-        # RAM-ONLY State
-        self.raid_state = {
-            "active": True,
-            "hp_current": data["mechanics"]["hp_goal"], 
-            "hp_max": data["mechanics"]["hp_goal"],
-            "contributors": {},
-            "start_time": time.time(),
-            "message": None
-        }
-        logger.info(f"Raid Setup: HP {self.raid_state['hp_max']} (RAM Mode)")
+        # 1. Try Load from DB
+        saved_state = await get_global_state("cthulhu_raid")
+        
+        if saved_state and saved_state.get("active"):
+             self.raid_state = saved_state
+             logger.info(f"Raid Resumed from DB: HP {self.raid_state['hp_current']}/{self.raid_state['hp_max']}")
+        else:
+            # 2. Init New Raid
+            self.raid_state = {
+                "active": True,
+                "hp_current": data["mechanics"]["hp_goal"], 
+                "hp_max": data["mechanics"]["hp_goal"],
+                "contributors": {},
+                "start_time": time.time(),
+                "message": None
+            }
+            # Save Initial State
+            await set_global_state("cthulhu_raid", self.raid_state)
+            logger.info(f"Raid Initialized: HP {self.raid_state['hp_max']}")
         
     async def process_raid_contribution(self, user_id, value):
         """Called when user sells fish during raid."""
@@ -319,6 +415,9 @@ class GlobalEventManager:
         self.raid_state["hp_current"] -= value
         if self.raid_state["hp_current"] < 0:
             self.raid_state["hp_current"] = 0
+            
+        # SAVE STATE TO DB (Atomic Persistence)
+        await set_global_state("cthulhu_raid", self.raid_state)
             
         logger.info(f"[RAID] User {user_id} dealt {value} dmg. Boss HP: {self.raid_state['hp_current']}")
         return value
@@ -351,13 +450,37 @@ class GlobalEventManager:
              # Helper to process item list config
              async def give_reward_items(uid, items_cfg, multiplier=1):
                  added_text = []
+                 from ..constants import RARE_FISH_KEYS, COMMON_FISH_KEYS
+                 
                  for item in items_cfg:
-                     key = item["key"]
-                     qty = random.randint(item["min"], item["max"]) * multiplier
+                     key = item.get("key")
+                     min_qty = item.get("min", 1)
+                     max_qty = item.get("max", 1)
+                     
+                     # Check for random category type
+                     if item.get("type") == "random_category":
+                         category = item.get("category")
+                         pool = []
+                         if category == "rare":
+                             pool = RARE_FISH_KEYS
+                         elif category == "common":
+                             pool = COMMON_FISH_KEYS
+                             
+                         if pool:
+                             key = random.choice(pool)
+                     
+                     if not key: continue
+
+                     qty = random.randint(min_qty, max_qty) * multiplier
                      if qty > 0:
                          await add_item(uid, key, qty)
-                         # Try to get emoji name if possible, else key
-                         added_text.append(f"{qty} {key}")
+                         # Try to resolve name from ALL_FISH/items if possible
+                         name = key
+                         from ..constants import ALL_FISH
+                         if key in ALL_FISH:
+                              name = ALL_FISH[key].get("name", key)
+                              
+                         added_text.append(f"{qty} {name}")
                  return ", ".join(added_text)
 
              # AWARD MVP (Top 1)
@@ -414,6 +537,9 @@ class GlobalEventManager:
              for user_id, _ in sorted_users:
                  await add_seeds(user_id, 100)
              summary_text += "\n🩹 **Quà an ủi:** 100 Hạt cho mỗi người tham gia."
+
+        # Clear DB Persistence regardless of outcome
+        await set_global_state("cthulhu_raid", {"active": False})
 
         # 3. Broadcast Result
         embed = discord.Embed(
@@ -496,20 +622,324 @@ class GlobalEventManager:
         except Exception as e:
             logger.error(f"Broadcast update error: {e}")
 
+    async def _update_dragon_status(self):
+        """Updates the dragon quest status embed in channels (throttled)."""
+        if not self.dragon_state.get("active"):
+            return
+        
+        # Throttle Updates (Max once every 60s)
+        now = time.time()
+        last_update = self.dragon_state.get("last_update", 0)
+        if now - last_update < 60:
+            return
+        self.dragon_state["last_update"] = now
+        
+        # Call broadcast method
+        await self._broadcast_dragon_status()
+
+
+    # ==================== DRAGON FISH QUEST MECHANICS ====================
+
+    async def _setup_dragon_quest(self, data):
+        """Initialize dragon fish collection quest with random fish selection."""
+        # 1. Try Load from DB
+        saved_state = await get_global_state("dragon_quest")
+        
+        # Validate saved state is not stale (older than 2 hours = likely from previous event)
+        is_stale = False
+        if saved_state and saved_state.get("active"):
+            saved_start_time = saved_state.get("start_time", 0)
+            time_diff = time.time() - saved_start_time
+            if time_diff > 7200:  # 2 hours
+                is_stale = True
+                logger.info(f"Dragon Quest saved state is stale (age: {time_diff/60:.1f} minutes). Creating new quest.")
+        
+        if saved_state and saved_state.get("active") and not is_stale:
+            self.dragon_state = saved_state
+            logger.info(f"Dragon Quest Resumed: {self.dragon_state['quantity_current']}/{self.dragon_state['quantity_goal']} {self.dragon_state['requested_fish_name']}")
+        else:
+            # 2. Init New Quest - Random Fish Selection
+            mechanics = data["mechanics"]
+            fish_pools = mechanics["fish_pools"]
+            quantity_ranges = mechanics["quantity_ranges"]
+            
+            # Randomly select fish category
+            category = random.choice(["rare", "common"])
+            pool = fish_pools[category]
+            selected_fish_key = random.choice(pool)
+            
+            # Determine quantity based on category
+            qty_range = quantity_ranges[category]
+            quantity_goal = random.randint(qty_range["min"], qty_range["max"])
+            
+            # Get fish display name
+            from ..constants import ALL_FISH
+            fish_name = ALL_FISH.get(selected_fish_key, {}).get("name", selected_fish_key)
+            
+            self.dragon_state = {
+                "active": True,
+                "requested_fish_key": selected_fish_key,
+                "requested_fish_name": fish_name,
+                "quantity_goal": quantity_goal,
+                "quantity_current": quantity_goal,  # Count down to 0
+                "contributors": {},
+                "start_time": time.time(),
+                "message_ids": {}
+            }
+            
+            await set_global_state("dragon_quest", self.dragon_state)
+            logger.info(f"Dragon Quest Initialized: Need {quantity_goal} x {fish_name} ({selected_fish_key})")
+    
+    async def process_dragon_contribution(self, user_id, fish_dict):
+        """Process fish contribution when user sells fish.
+        
+        Args:
+            user_id: Discord user ID
+            fish_dict: Dict of fish being sold {fish_key: quantity}
+            
+        Returns:
+            tuple: (contributed_quantity, fish_value_to_deduct)
+        """
+        if not self.dragon_state.get("active"):
+            return 0, 0
+        
+        requested_key = self.dragon_state["requested_fish_key"]
+        
+        # Check if user has the requested fish
+        if requested_key not in fish_dict:
+            return 0, 0
+        
+        available = fish_dict[requested_key]
+        needed = self.dragon_state["quantity_current"]
+        
+        # Calculate contribution (take min of available and needed)
+        contribution = min(available, needed)
+        
+        if contribution <= 0:
+            return 0, 0
+        
+        # Update state
+        current = self.dragon_state["contributors"].get(user_id, 0)
+        self.dragon_state["contributors"][user_id] = current + contribution
+        self.dragon_state["quantity_current"] -= contribution
+        
+        if self.dragon_state["quantity_current"] < 0:
+            self.dragon_state["quantity_current"] = 0
+        
+        # Save to DB
+        await set_global_state("dragon_quest", self.dragon_state)
+        
+        # Calculate money value to deduct (user doesn't get paid for contributed fish)
+        # Need fish sell prices from constants
+        from ..constants import ALL_FISH
+        fish_data = ALL_FISH.get(requested_key, {})
+        fish_price = fish_data.get("sell_price", 0)
+        value_to_deduct = contribution * fish_price
+        
+        logger.info(f"[DRAGON_QUEST] User {user_id} contributed {contribution} {requested_key}. Remaining: {self.dragon_state['quantity_current']}")
+        
+        return contribution, value_to_deduct
+    
+    async def _broadcast_dragon_status(self):
+        """Update dragon quest status in all channels."""
+        if not self.dragon_state.get("active"):
+            return
+        
+        # Calculate progress
+        goal = self.dragon_state["quantity_goal"]
+        current = self.dragon_state["quantity_current"]
+        collected = goal - current
+        percent = (collected / goal) * 100
+        
+        # Progress bar
+        bar_len = 20
+        filled = int((collected / goal) * bar_len)
+        bar = "█" * filled + "░" * (bar_len - filled)
+        
+        embed = discord.Embed(
+            title="🐲 NHIỆM VỤ LONG THẦN",
+            description=f"**Yêu Cầu:** {self.dragon_state['quantity_goal']} x {self.dragon_state['requested_fish_name']}",
+            color=discord.Color.green()
+        )
+        
+        embed.add_field(
+            name="📊 Tiến Độ",
+            value=f"`[{bar}]` {percent:.1f}%\n**{collected}/{goal}** đã thu thập",
+            inline=False
+        )
+        
+        # Top contributors
+        if self.dragon_state["contributors"]:
+            sorted_contrib = sorted(
+                self.dragon_state["contributors"].items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:3]
+            
+            leaderboard = ""
+            medals = ["🥇", "🥈", "🥉"]
+            for i, (uid, qty) in enumerate(sorted_contrib):
+                leaderboard += f"{medals[i]} <@{uid}>: **{qty}** cá\\n"
+            
+            embed.add_field(name="🏆 Top Đóng Góp", value=leaderboard, inline=False)
+        
+        embed.set_footer(text="💡 Bán cá bằng /banca để tự động đóng góp!")
+        
+        # Broadcast
+        try:
+            rows = await db_manager.execute(
+                "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
+            )
+            if not rows:
+                return
+            
+            for (cid,) in rows:
+                try:
+                    ch = self.bot.get_channel(cid)
+                    if not ch:
+                        continue
+                    
+                    # Delete old message
+                    old_msg_id = self.dragon_state["message_ids"].get(cid)
+                    if old_msg_id:
+                        try:
+                            old_msg = await ch.fetch_message(old_msg_id)
+                            await old_msg.delete()
+                        except:
+                            pass
+                    
+                    # Send new message
+                    new_msg = await ch.send(embed=embed)
+                    self.dragon_state["message_ids"][cid] = new_msg.id
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to update dragon status in {cid}: {e}")
+        except Exception as e:
+            logger.error(f"Dragon broadcast error: {e}")
+    
+    async def _finalize_dragon_quest(self, data):
+        """Reward contributors and announce results."""
+        if not self.dragon_state.get("active"):
+            return
+        
+        success = self.dragon_state["quantity_current"] == 0
+        contributors = self.dragon_state["contributors"]
+        
+        if not contributors:
+            logger.info("Dragon Quest ended with no contributors")
+            await set_global_state("dragon_quest", {"active": False})
+            return
+        
+        # Sort contributors
+        sorted_users = sorted(contributors.items(), key=lambda x: x[1], reverse=True)
+        top_users = sorted_users[:3]
+        
+        summary_text = ""
+        
+        if success:
+            # Success rewards
+            rewards_config = data.get("rewards", {}).get("success", {})
+            base_items = rewards_config.get("items", [])
+            mvp_items = rewards_config.get("mvp_bonus", [])
+            
+            summary_text = f"🎉 **THÀNH CÔNG!** Long Thần đã nhận đủ {self.dragon_state['quantity_goal']} {self.dragon_state['requested_fish_name']}!\\n\\n"
+            
+            # Helper to give rewards
+            async def give_quest_rewards(uid, items_cfg, multiplier=1):
+                added_text = []
+                for item in items_cfg:
+                    key = item.get("key")
+                    if not key:
+                        continue
+                    
+                    # Check if it's seeds or item
+                    if key == "seeds":
+                        amount = item.get("amount", 0)
+                        await add_seeds(uid, amount)
+                        added_text.append(f"{amount} Hạt")
+                    else:
+                        min_qty = item.get("min", 1)
+                        max_qty = item.get("max", 1)
+                        qty = random.randint(min_qty, max_qty) * multiplier
+                        await add_item(uid, key, qty)
+                        added_text.append(f"{qty} {key}")
+                
+                return ", ".join(added_text)
+            
+            # MVP (Top 1)
+            if len(top_users) >= 1:
+                user_id, qty = top_users[0]
+                base_txt = await give_quest_rewards(user_id, base_items)
+                mvp_txt = await give_quest_rewards(user_id, mvp_items)
+                summary_text += f"🥇 <@{user_id}>: **{qty} cá**\\n🎁 Nhận: {base_txt}, {mvp_txt}\\n"
+            
+            # Others get base rewards
+            count_others = 0
+            for user_id, qty in sorted_users:
+                if user_id not in [u[0] for u in top_users]:
+                    await give_quest_rewards(user_id, base_items)
+                    count_others += 1
+                elif any(u[0] == user_id for u in top_users[1:]):
+                    rank = "🥈" if user_id == top_users[1][0] else "🥉"
+                    base_txt = await give_quest_rewards(user_id, base_items)
+                    summary_text += f"{rank} <@{user_id}>: **{qty} cá** - Nhận: {base_txt}\\n"
+            
+            if count_others > 0:
+                summary_text += f"\\n✨ **Và {count_others} người khác** đã nhận quà tham gia!"
+        
+        else:
+            # No penalty for failure (user's choice: Option A)
+            collected = self.dragon_state["quantity_goal"] - self.dragon_state["quantity_current"]
+            summary_text = f"⏰ **Hết Giờ!** Long Thần đã bay đi...\\n\\n"
+            summary_text += f"📊 Đã thu thập: **{collected}/{self.dragon_state['quantity_goal']}** {self.dragon_state['requested_fish_name']}\\n"
+            summary_text += f"\\n💭 *Lần sau sẽ cố gắng hơn!*"
+        
+        # Clear DB
+        await set_global_state("dragon_quest", {"active": False})
+        
+        # Send summary
+        embed = discord.Embed(
+            title="🐲 KẾT QUẢ NHIỆM VỤ LONG THẦN",
+            description=summary_text,
+            color=discord.Color.gold() if success else discord.Color.light_grey()
+        )
+        
+        if success:
+            embed.set_footer(text="🎊 Cảm ơn tất cả mọi người đã đóng góp!")
+        
+        try:
+            rows = await db_manager.execute(
+                "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
+            )
+            for (cid,) in rows:
+                ch = self.bot.get_channel(cid)
+                if ch:
+                    await ch.send(embed=embed)
+        except Exception as e:
+            logger.error(f"Dragon finalize broadcast error: {e}")
+
+
     async def _process_mini_game(self):
         """Handles periodic spawning of mini-games (e.g. Meteor Shower)."""
         now = time.time()
         
         # Initialize delay if first run
         if self.next_minigame_spawn_delay == 0:
-            spawn_range = self.current_event.get("data", {}).get("mechanics", {}).get("spawn_interval", [60, 180])
-            self.next_minigame_spawn_delay = random.randint(spawn_range[0], spawn_range[1])
+            spawn_config = self.current_event.get("data", {}).get("mechanics", {}).get("spawn_interval", [60, 180])
+            
+            if isinstance(spawn_config, int):
+                self.next_minigame_spawn_delay = spawn_config
+            else:
+                self.next_minigame_spawn_delay = random.randint(spawn_config[0], spawn_config[1])
             self.last_minigame_spawn = now
             return
 
         if now >= self.last_minigame_spawn + self.next_minigame_spawn_delay:
             # SPAWN IT
-            view_class_name = self.current_event["data"].get("mechanics", {}).get("view_class")
+            view_class_name = self.current_event["data"].get("mechanics", {}).get("view_type")
+            if not view_class_name:
+                 view_class_name = self.current_event["data"].get("mechanics", {}).get("view_class")
+                 
             logger.info(f"[MINI_GAME] Spawning {view_class_name} now...")
             
             if view_class_name == "MeteorWishView":

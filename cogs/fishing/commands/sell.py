@@ -459,8 +459,30 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
                  # Generic Label: Contribution Points
                  embed.add_field(name="✨ Điểm Đóng Góp", value=f"# {damage:,} Điểm", inline=False)
                  embed.set_footer(text="Cảm ơn bạn đã chung tay bảo vệ server!")
+             elif event_type == "fish_quest_raid":
+                 # Dragon Quest contribution
+                 contribution_qty, fish_value_deducted = await cog.global_event_manager.process_dragon_contribution(
+                     user_id, fish_items
+                 )
+                 
+                 if contribution_qty > 0:
+                     # Deduct fish value from final payout
+                     final_value -= fish_value_deducted
+                     if final_value < 0:
+                         final_value = 0
+                     
+                     # Log contribution
+                     dragon_name = cog.global_event_manager.dragon_state.get("requested_fish_name", "cá")
+                     logger.info(f"[SELL] Dragon Quest contribution! User {user_id} contributed {contribution_qty} {dragon_name}, value deducted: {fish_value_deducted}")
+                     
+                     # Update Embed
+                     embed.add_field(
+                         name="🐲 Đóng Góp Long Thần",
+                         value=f"Bạn đã đóng góp **{contribution_qty} {dragon_name}** cho Long Thần!\\n_(Cá đóng góp không tính tiền: -{fish_value_deducted:,} Hạt)_",
+                         inline=False
+                     )
              else:
-                 logger.info(f"[SELL] Hijack skipped: Type {evt.get('type')} != raid_boss")
+                 logger.info(f"[SELL] Hijack skipped: Type {evt.get('type')} != raid_boss/fish_quest_raid")
         
         await add_seeds(user_id, final_value)
         
