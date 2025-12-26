@@ -147,6 +147,9 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         # Get username
         username = ctx.user.name if is_slash else ctx.author.name
         
+        # ENTRY LOG
+        logger.info(f"[SELL] Processing sell command for {username} (user_id={user_id})")
+        
         # Get inventory
         inventory = await get_inventory(user_id)
         
@@ -200,66 +203,66 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             return
         
         # ==================== TRIGGER SELL RANDOM EVENT ====================
-        # Check for pending sell event first
-        event_result = {}
-        if user_id in cog.pending_sell_event:
-            event_key = cog.pending_sell_event.pop(user_id)
-            # Load event data
+        
+        # 1. TRIGGER INTERACTIVE EVENT (Priority)
+        # Check for interactive events (Black Market, Haggle, etc.)
+        # If triggered, we stop here and let the View handle the rest.
+        try:
+            from ..mechanics.interactive_sell_events import (
+                check_interactive_event, 
+                create_interactive_view, 
+                create_interactive_embed
+            )
+            # Load sell events data
             import json
             from ..constants import SELL_EVENTS_PATH
-            try:
-                with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
-                    sell_events = json.load(f).get("events", {})
-                    event_data = sell_events.get(event_key)
-                    if event_data:
-                        event_result = {"triggered": True, "type": event_key, "message": event_data["name"]} # Use name as title
-                        # Message is in "messages" dict usually, but let's assume we handle it later
-                        event_result.update(event_data) # Load mul, flat, special
-                        logger.info(f"[SELL] Forced event {event_key} for {username}")
-            except Exception as e:
-                logger.error(f"[SELL] Error loading forced sell event: {e}")
-        
-        # If no forced event, roll for random event
-        if not event_result:
-            # Roll for sell event (15% chance for more fun)
-            if random.random() < 0.15:
-                import json
-                from ..constants import SELL_EVENTS_PATH
-                try:
-                    with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        sell_events = data.get("events", {})
-                        sell_messages = data.get("messages", {})
-                        
-                        if sell_events:
-                            # Weighted random choice? 
-                            # Currently just random.choice of keys based on chance
-                            keys = list(sell_events.keys())
-                            weights = [val["chance"] for val in sell_events.values()]
-                            
-                            event_key = random.choices(keys, weights=weights, k=1)[0]
-                            event_data = sell_events[event_key]
-                            
-                            event_result = {" triggered": True, "type": event_key}
-                            event_result["message"] = sell_messages.get(event_key, event_data["name"])
-                            event_result.update(event_data)
-                            logger.info(f"[SELL] Random event {event_key} triggered for {username}")
-                            
-                            # Track sell event achievement
-                            from ..constants import SELL_EVENT_STAT_MAPPING
-                            if event_key in SELL_EVENT_STAT_MAPPING:
-                                stat_key = SELL_EVENT_STAT_MAPPING[event_key]
-                                try:
-                                    await increment_stat(user_id, "fishing", stat_key, 1)
-                                    current_value = await get_stat(user_id, "fishing", stat_key)
-                                    await cog.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, ctx.channel)
-                                    logger.info(f"[SELL] Tracked {stat_key} for user {user_id} on sell event {event_key}")
-                                except Exception as e:
-                                    logger.error(f"[SELL] Error tracking {stat_key}: {e}")
-                except Exception as e:
-                    logger.error(f"[SELL] Error loading sell events: {e}")
-        
-        # Calculate total sell value
+            with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
+                sell_events_data = json.load(f)
+            
+            # Check if interactive event triggers
+            # Calculate base value for condition checking
+            temp_base_value = 0
+            for fish_key, quantity in fish_items.items():
+                if fish_key in ALL_FISH:
+                    temp_base_value += ALL_FISH[fish_key].get("sell_price", 0) * quantity
+                    
+            interactive_event = await check_interactive_event(
+                user_id, fish_items, temp_base_value, sell_events_data
+            )
+            
+            # Force trigger from pending_sell_event if set (for testing/admin)
+            if user_id in cog.pending_sell_event:
+                forced_key = cog.pending_sell_event.pop(user_id)
+                events_map = sell_events_data.get('events', {})
+                if forced_key in events_map and events_map[forced_key].get('type') == 'interactive':
+                    interactive_event = events_map[forced_key]
+                    interactive_event['key'] = forced_key
+                    logger.info(f"[SELL] Forced interactive event {forced_key} for {username}")
+
+            if interactive_event:
+                # Create View and Embed
+                view = create_interactive_view(
+                    interactive_event, cog, user_id, fish_items, temp_base_value, ctx
+                )
+                embed = create_interactive_embed(
+                    interactive_event, temp_base_value, fish_items
+                )
+                
+                # Send interactive message
+                if is_slash:
+                    await ctx.followup.send(embed=embed, view=view)
+                else:
+                    await ctx.reply(embed=embed, view=view)
+                
+                logger.info(f"[SELL] Interactive event {interactive_event.get('key')} started for {username}")
+                return # STOP execution here, View handles the rest
+                
+        except Exception as e:
+            logger.error(f"[SELL] Error checking interactive events: {e}", exc_info=True)
+
+        # 2. TRIGGER PASSIVE EVENT (Legacy/Standard)
+        # Check for pending sell event first (Legacy support or passive events)
+        event_result = {}
         total_value = 0
         fish_sold = {}
         
@@ -278,6 +281,17 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         if await cog.check_emotional_state(user_id, "keo_ly"):
             price_multiplier = 2.0
             logger.info(f"[SELL] {username} has keo_ly buff active! 2x sell price")
+        elif await cog.check_emotional_state(user_id, "charity_buff"):
+            price_multiplier = 1.5
+            logger.info(f"[SELL] {username} has charity_buff active! 1.5x sell price")
+        
+        # HOOK: Global Event Sell Multiplier
+        # This replaces manually triggering events inside sell.py
+        # The manager handles the event state, we just ask for the multiplier.
+        global_sell_mul = cog.global_event_manager.get_public_effect("sell_multiplier", 1.0)
+        if global_sell_mul != 1.0:
+            price_multiplier *= global_sell_mul
+            logger.info(f"[SELL] {username} Global Event Sell Multiplier: x{global_sell_mul}")
         
         # Apply sell event modifiers
         flat_bonus = 0
@@ -326,8 +340,8 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         # ==================== BUILD EMBED (REDESIGN) ====================
         # Receipt Style Design
         embed = discord.Embed(
-            title=f"🧾 HÓA ĐƠN BÁN CÁ - {username}",
-            description=f"Thời gian: {datetime.now().strftime('%H:%M %d/%m/%Y')}",
+            title=f"🏪 SẠP CÁ {username.upper()} - HÓA ĐƠN",
+            description=f"📍 **Địa điểm:** Chợ Cá Bên Hiên Nhà\n⏰ **Thời gian:** {datetime.now().strftime('%H:%M %d/%m/%Y')}",
             color=discord.Color.gold()
         )
         
@@ -386,7 +400,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             inline=False
         )
         
-        embed.set_footer(text="Cảm ơn đã ủng hộ vựa cá Bà Năm! 🐟")
+        embed.set_footer(text="Cảm ơn quý khách đã ủng hộ sạp cá! 🐟💸")
         if is_boosted:
             embed.set_thumbnail(url="https://media.discordapp.net/attachments/1253945310690934835/1265842340535308369/tree_buff.png") # Optional visual flair
         
@@ -416,23 +430,98 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         # Actually remove fish from inventory and add money
         for fish_key in fish_items.keys():
             await remove_item(user_id, fish_key, fish_items[fish_key])
+            
+        # HOOK: Cthulhu Raid Hijack
+        if hasattr(cog, "global_event_manager") and cog.global_event_manager.current_event:
+             evt = cog.global_event_manager.current_event
+             evt_data = evt.get("data", {})
+             event_type = evt_data.get("type")
+             logger.info(f"[SELL] Check Hijack: Event={evt.get('key')} Type={event_type}")
+             
+             if event_type == "raid_boss":
+                 # Convert Money to Damage
+                 damage = final_value
+                 # Perform contribution
+                 await cog.global_event_manager.process_raid_contribution(user_id, damage)
+                 logger.info(f"[SELL] HIJACKED! User {user_id} dealt {damage} damage instead of earning money.")
+                 
+                 final_value = 0 # No money
+                 
+                 # UPDATE EMBED
+                 embed.title = f"⚔️ ĐÃ ĐÓNG GÓP CHO {evt.get('key').upper().replace('_', ' ')}!"
+                 embed.color = discord.Color.dark_red()
+                 
+                 for i, field in enumerate(embed.fields):
+                     if "TỔNG NHẬN" in field.name or "Sát Thương" in field.name in field.name:
+                         embed.remove_field(i)
+                         break
+                         
+                 # Generic Label: Contribution Points
+                 embed.add_field(name="✨ Điểm Đóng Góp", value=f"# {damage:,} Điểm", inline=False)
+                 embed.set_footer(text="Cảm ơn bạn đã chung tay bảo vệ server!")
+             elif event_type == "fish_quest_raid":
+                 # Dragon Quest contribution
+                 contribution_qty, fish_value_deducted = await cog.global_event_manager.process_dragon_contribution(
+                     user_id, fish_items
+                 )
+                 
+                 if contribution_qty > 0:
+                     # Deduct fish value from final payout
+                     final_value -= fish_value_deducted
+                     if final_value < 0:
+                         final_value = 0
+                     
+                     # Log contribution
+                     dragon_name = cog.global_event_manager.dragon_state.get("requested_fish_name", "cá")
+                     logger.info(f"[SELL] Dragon Quest contribution! User {user_id} contributed {contribution_qty} {dragon_name}, value deducted: {fish_value_deducted}")
+                     
+                     # Update Embed
+                     embed.add_field(
+                         name="🐲 Đóng Góp Long Thần",
+                         value=f"Bạn đã đóng góp **{contribution_qty} {dragon_name}** cho Long Thần!\\n_(Cá đóng góp không tính tiền: -{fish_value_deducted:,} Hạt)_",
+                         inline=False
+                     )
+             else:
+                 logger.info(f"[SELL] Hijack skipped: Type {evt.get('type')} != raid_boss/fish_quest_raid")
         
         await add_seeds(user_id, final_value)
         
         # Track stats
+        logger.info(f"[SELL] ========== BEFORE STATS TRACKING for user {user_id} ==========")
         try:
+            logger.info(f"[SELL] ========== INSIDE TRY BLOCK ==========")
             total_fish_sold = sum(fish_items.values())
             await increment_stat(user_id, "fishing", "fish_sold", total_fish_sold)
             await increment_stat(user_id, "fishing", "total_money_earned", final_value)
+            await increment_stat(user_id, "fishing", "sell_count", 1)
+            logger.info(f"[SELL] Incremented sell_count for user {user_id}")
             
-            # Check millionaire achievement
+            # Check unlock notifications
+            # Use local check_sell_conditional_unlocks function
+            current_sell_count = await get_stat(user_id, "fishing", "sell_count")
+            logger.info(f"[SELL] Checking conditional unlocks: sell_count={current_sell_count}")
+            
+            # Check sell_count achievement
+            await cog.bot.achievement_manager.check_unlock(
+                user_id, "fishing", "sell_count", current_sell_count, ctx.channel
+            )
+            
+            # Check achievements
             current_money = await get_stat(user_id, "fishing", "total_money_earned")
             await cog.bot.achievement_manager.check_unlock(
-                user_id=user_id,
-                game_category="fishing",
-                stat_key="total_money_earned",
-                current_value=current_money,
-                channel=ctx.channel
+                user_id, "fishing", "total_money_earned", current_money, ctx.channel
+            )
+            
+            # Check fish_sold achievement  
+            current_fish_sold = await get_stat(user_id, "fishing", "fish_sold")
+            await cog.bot.achievement_manager.check_unlock(
+                user_id, "fishing", "fish_sold", current_fish_sold, ctx.channel
+            )
+            
+            # Check rare_fish_sold achievement
+            current_rare = await get_stat(user_id, "fishing", "rare_fish_sold")
+            await cog.bot.achievement_manager.check_unlock(
+                user_id, "fishing", "rare_fish_sold", current_rare, ctx.channel
             )
         except Exception as e:
             logger.error(f"[SELL] Error updating stats: {e}")
@@ -443,7 +532,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         else:
             await ctx.reply(embed=embed)
         
-        logger.info(f"[SELL] {username} sold {len(fish_sold)} types, {sum(fish_items.values())} fish for {final_value} seeds (Boost: {server_boost_mul})")
+        logger.info(f"[SELL] {username} sold {len(fish_items)} types, {sum(fish_items.values())} fish for {final_value} seeds (Boost: {server_boost_mul})")
     
     finally:
         # Always cleanup sell processing lock

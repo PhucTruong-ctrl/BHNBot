@@ -397,15 +397,52 @@ async def get_all_stats(user_id: int, game_id: str = None) -> Dict[str, int]:
             cache_key=f"all_stats_{user_id}_{game_id}",
             cache_ttl=600
         )
-    else:
-        result = await db_manager.execute(
-            "SELECT stat_key, value FROM user_stats WHERE user_id = ?",
-            (user_id,),
-            use_cache=True,
-            cache_key=f"all_stats_{user_id}",
-            cache_ttl=600
+
+# ==================== GLOBAL EVENT PERSISTENCE ====================
+
+async def get_global_state(event_key: str, default: dict = None) -> dict:
+    """Retrieve persistent state for a global event.
+    
+    Args:
+        event_key: Unique key for the event (e.g., 'cthulhu_raid')
+        default: Default dict if not found
+        
+    Returns:
+        Dict containing state data (parsed from JSON)
+    """
+    import json
+    if default is None: default = {}
+    
+    result = await db_manager.fetchone(
+        "SELECT state_data FROM global_event_state WHERE event_key = ?",
+        (event_key,)
+    )
+    
+    if result:
+        try:
+            return json.loads(result[0])
+        except Exception as e:
+            logger.error(f"[DB] Failed to parse global state for {event_key}: {e}")
+            return default
+    return default
+
+async def set_global_state(event_key: str, state_data: dict):
+    """Save persistent state for a global event.
+    
+    Args:
+        event_key: Unique key
+        state_data: Dict to serialize and save
+    """
+    import json
+    try:
+        json_str = json.dumps(state_data)
+        await db_manager.modify(
+            "INSERT OR REPLACE INTO global_event_state (event_key, state_data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+            (event_key, json_str)
         )
-    return {row[0]: row[1] for row in result}
+    except Exception as e:
+        logger.error(f"[DB] Failed to save global state for {event_key}: {e}")
+
 
 
 async def get_stat_leaderboard(game_id: str, stat_key: str, limit: int = 10) -> List[tuple]:

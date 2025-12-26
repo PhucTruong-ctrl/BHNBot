@@ -229,7 +229,24 @@ FISHING_EVENT_STAT_MAPPING = {
 }
 
 NPC_EVENT_STAT_MAPPING = {
-    "ninja_lead": "ninja_lead_encounter",
+    "stray_cat": "npc_encounter_stray_cat",
+    "beggar": "npc_encounter_beggar",
+    "otter_trader": "npc_encounter_otter",
+    "eccentric_collector": "npc_encounter_collector",
+    "drowned_ghost": "npc_encounter_ghost",
+    "ninja_lead": "npc_encounter_ninja_lead",
+    "crypto_master": "npc_encounter_crypto",
+    "gym_bro": "npc_encounter_gym_bro",
+    "tiktok_idol": "npc_encounter_idol",
+    "shipper_pro": "npc_encounter_shipper",
+    "neighbor_aunt": "npc_encounter_neighbor",
+    "rich_kid": "npc_encounter_rich_kid",
+    "gangster_boss": "npc_encounter_gangster",
+    "skibidi_boss": "npc_encounter_skibidi",
+    "ai_cat_therapist": "npc_encounter_ai_cat",
+    "pookie_sponsor": "npc_encounter_pookie",
+    "nano_photographer": "npc_encounter_nano",
+    "gorilla_judge": "npc_encounter_gorilla",
 }
 
 DISASTER_STAT_MAPPING = {

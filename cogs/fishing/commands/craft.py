@@ -46,7 +46,7 @@ async def hiente_action(cog, ctx_or_interaction, fish_key: str, is_slash: bool):
     guild_id = ctx_or_interaction.guild.id
     
     # Check lag debuff
-    if cog.check_emotional_state(user_id, "lag"):
+    if await cog.check_emotional_state(user_id, "lag"):
         await asyncio.sleep(3)
         username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
         logger.info(f"[EVENT] {username} experienced lag delay (3s) - sacrifice fish")

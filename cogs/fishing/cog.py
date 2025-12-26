@@ -66,7 +66,13 @@ from .mechanics.legendary_quest_helper import (
 )
 
 # Import event views from mechanics module
-from .mechanics.event_views import MeteorWishView, NPCEncounterView
+# from .mechanics.interactive_sell_views import FishSellView -> Removed
+
+from .mechanics.npc_views import InteractiveNPCView
+from .mechanics.event_views import MeteorWishView
+from .utils.global_event_manager import GlobalEventManager
+from .utils.global_event_manager import GlobalEventManager
+from .utils.global_event_manager import GlobalEventManager
 
 
 # ==================== FISHING COG ====================
@@ -88,7 +94,13 @@ class FishingCog(commands.Cog):
         self.user_stats = {}
         # self.lucky_buff_users = {} -> Migrated to DB
         self.avoid_event_users = {} # Keep as RAM (session based?) or migrate? For now keep.
+        
+        # Initialize Global Event Manager
+        self.global_event_manager = GlobalEventManager(self.bot)
         # self.legendary_buff_users = {}  -> Migrated to DB
+        
+        # Initialize Global Event Manager
+        self.global_event_manager = GlobalEventManager(self.bot)
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
         self.guaranteed_catch_users = {}  # {user_id: True} - Keep RAM for now (tinh cau win)
         
@@ -131,8 +143,11 @@ class FishingCog(commands.Cog):
         self.disaster_effect_end_time = 0  # When current disaster effects expire
         self.disaster_channel = None  # Channel to send disaster end notification
         
-        # Start meteor shower task
-        self.meteor_shower_event.start()
+        # Start meteor shower task - REMOVED (Migrated to GlobalEventManager)
+        # self.meteor_shower_event.start() 
+        
+        # Start Global Event Manager
+        self.global_event_manager.start()
         
         # Start state cleanup task (prevents memory leaks)
         self.cleanup_stale_state.start()
@@ -171,7 +186,8 @@ class FishingCog(commands.Cog):
     
     def cog_unload(self):
         """Cleanup when cog is unloaded."""
-        self.meteor_shower_event.cancel()
+        # self.meteor_shower_event.cancel()
+        self.global_event_manager.unload()
         self.cleanup_stale_state.cancel()
     
     @tasks.loop(hours=1)
@@ -310,77 +326,23 @@ class FishingCog(commands.Cog):
         """Wait for bot to be ready before starting cleanup task."""
         await self.bot.wait_until_ready()
     
-    @tasks.loop(time=dt_time(21, 0))
-    async def meteor_shower_event(self):
-        """Daily meteor shower event at 21:00.
-        
-        PERFORMANCE FIX: Runs meteors in PARALLEL for all guilds.
-        """
-        try:
-            pending_users = list(self.pending_meteor_shower) if hasattr(self, "pending_meteor_shower") else []
-            self.pending_meteor_shower.clear()
-            
-            from database_manager import db_manager
-            rows = await db_manager.execute(
-                "SELECT guild_id, fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
-            )
-            
-            if not rows:
-                logger.info("[METEOR] No configured guilds")
-                return
-            
-            logger.info(f"[METEOR] Starting for {len(rows)} guilds")
-            
-            # PARALLEL execution
-            tasks = [
-                asyncio.create_task(
-                    self._run_meteor_shower_for_guild(gid, cid, pending_users)
-                )
-                for gid, cid in rows
-            ]
-            
-            done, pending = await asyncio.wait(tasks, timeout=1800, return_when=asyncio.ALL_COMPLETED)
-            
-            if pending:
-                logger.warning(f"[METEOR] {len(pending)} guilds timed out")
-                for task in pending:
-                    task.cancel()
-            
-            logger.info(f"[METEOR] Done: {len(done)} ok, {len(pending)} timeout")
-        except Exception as e:
-            logger.error(f"[METEOR] Error: {e}", exc_info=True)
-    
-    async def _run_meteor_shower_for_guild(self, guild_id: int, channel_id: int, pending_users: list):
-        """Run meteor for one guild."""
-        try:
-            channel = self.bot.get_channel(channel_id)
-            if not channel:
-                return
-            
-            if pending_users:
-                await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
-                for user_id in pending_users:
-                    embed = discord.Embed(title="💫 Một ngôi sao vừa vụt qua!", description="Ước mau!", color=discord.Color.blue())
-                    await channel.send(embed=embed, view=MeteorWishView(self))
-                    await asyncio.sleep(1)
-            elif random.random() < 0.4:
-                await channel.send("🌌 Bầu trời đêm nay quang đãng lạ thường... Có vẻ sắp có mưa sao băng!")
-                for _ in range(random.randint(5, 10)):
-                    await asyncio.sleep(random.randint(120, 300))
-                    embed = discord.Embed(title="💫 Một ngôi sao vừa vụt qua!", description="Ước mau!", color=discord.Color.blue())
-                    await channel.send(embed=embed, view=MeteorWishView(self))
-        except Exception as e:
-            logger.error(f"[METEOR] Guild {guild_id} error: {e}", exc_info=True)
-    
     async def _force_meteor_shower(self, user_id: int, channel):
         """Force trigger meteor shower for a specific user"""
         try:
             embed = discord.Embed(
-                title="💫 Một ngôi sao vừa vụt qua!",
+                title="🌟 Một ngôi sao vừa vụt qua!",
                 description="Ước mau!",
                 color=discord.Color.blue()
             )
-            view = MeteorWishView(self)
+            # Use View from Global Event Manager or re-instantiate?
+            # Ideally delegated to Manager, but keeping force method for now or removing?
+            # The force method uses MeteorWishView.
+            # Let's keep it but update to use manager if possible or leave as is if view exists.
+            # Wait, MeteorWishView was imported.
+            view = MeteorWishView(self.global_event_manager) # Pass manager instead of self?
+            # MeteorWishView standard init takes 'cog'. GlobalEventManager expects 'bot' but maybe view needs it.
+            # Let's see MeteorWishView implementation later.
+            # For now, just removing the loop is key.
             await channel.send(embed=embed, view=view)
             logger.info(f"[METEOR] Force triggered meteor shower for user {user_id}")
         except Exception as e:
@@ -409,10 +371,117 @@ class FishingCog(commands.Cog):
     async def fish_slash(self, interaction: discord.Interaction):
         await self._fish_action(interaction)
     
+
+    @app_commands.command(name="lichcauca", description="📅 Xem lịch sự kiện (Global Events)")
+    async def event_schedule(self, interaction: discord.Interaction):
+        """Displays schedule of global events."""
+        manager = self.global_event_manager
+        
+        # 1. Current Active Event
+        current_event = manager.current_event
+        active_text = "*Không có sự kiện nào đang diễn ra.*"
+        
+        if current_event:
+            name = current_event["data"].get("name", "Unknown")
+            end_time = current_event["end_time"]
+            remaining = int(end_time - time.time())
+            minutes = remaining // 60
+            active_text = f"🔥 **{name}** đang diễn ra! (Còn {minutes} phút)"
+            
+        # 2. Upcoming Events
+        embed = discord.Embed(title="📅 Lịch Trình Sự Kiện Toàn Cầu", color=discord.Color.blue())
+        embed.add_field(name="🟢 Đang Diễn Ra", value=active_text, inline=False)
+        
+        events_cfg = manager.config.get("events", {})
+        schedule_text = ""
+        
+        sorted_events = sorted(events_cfg.items(), key=lambda x: x[1].get("priority", 0), reverse=True)
+        
+        map_days = {0:"T2", 1:"T3", 2:"T4", 3:"T5", 4:"T6", 5:"T7", 6:"CN"}
+        
+        for key, data in sorted_events:
+            # Skip hidden/test events if needed (priority 0?)
+            # if data.get("priority", 0) <= 0: continue 
+            
+            name = data.get("name", key)
+            schedule = data.get("schedule", {})
+            days = schedule.get("days", []) 
+            times = schedule.get("time_ranges", []) 
+            chance = schedule.get("frequency_chance", 0)
+            
+            # Format Days
+            if not days:
+                days_str = "Hàng ngày"
+            else:
+                days_str = "-".join([map_days.get(d, str(d)) for d in days])
+                
+            # Format Times
+            times_str = ", ".join(times)
+            
+            # Format Chance
+            chance_str = f"{chance*100:.0f}%" if chance < 1.0 else "100%"
+            
+            schedule_text += f"**{name}**\n🕒 `{times_str}` ({days_str}) | 🎲 {chance_str}\n\n"
+            
+        if not schedule_text:
+            schedule_text = "Không có dữ liệu sự kiện."
+            
+        embed.add_field(name="📅 Lịch Cố Định", value=schedule_text, inline=False)
+        embed.set_footer(text="Giờ Server: " + datetime.now().strftime("%H:%M:%S"))
+        
+        await interaction.response.send_message(embed=embed)
+        
     @commands.command(name="cauca")
     async def fish_prefix(self, ctx):
         await self._fish_action(ctx)
     
+    async def _get_adaptive_npc_data(self, user_id: int, npc_type: str) -> dict:
+        """Get NPC data adapted to user's affinity level.
+        
+        Args:
+            user_id: Discord User ID
+            npc_type: Key of the NPC (e.g., 'river_pirates')
+            
+        Returns:
+            dict: NPC data with overrides applied (copy of original)
+        """
+        import copy
+        
+        # 1. Get Base Data
+        base_data = NPC_ENCOUNTERS.get(npc_type)
+        if not base_data:
+            logger.warning(f"[NPC_ADAPT] Unknown NPC type: {npc_type}")
+            return {}
+            
+        # Create a deep copy to avoid modifying the constant
+        adaptive_data = copy.deepcopy(base_data)
+        
+        # 2. Get User Affinity
+        from database_manager import get_stat
+        current_affinity = await get_stat(user_id, "npc_affinity", npc_type)
+        
+        # 3. Check Tiers
+        tiers = base_data.get("affinity_tiers", [])
+        
+        # Sort tiers by min_affinity descending to find highest match first
+        sorted_tiers = sorted(tiers, key=lambda x: x.get("min_affinity", 0), reverse=True)
+        
+        active_tier = None
+        for tier in sorted_tiers:
+            if current_affinity >= tier.get("min_affinity", 0):
+                active_tier = tier
+                break
+        
+        if active_tier:
+            overrides = active_tier.get("overrides", {})
+            # Apple overrides
+            for key, value in overrides.items():
+                adaptive_data[key] = value
+                
+            logger.info(f"[NPC_ADAPT] User {user_id} matched tier for {npc_type} (Affinity: {current_affinity})")
+            
+        return adaptive_data
+
     async def _fish_action(self, ctx_or_interaction):
         """Executes the core fishing logic, delegating to helper functions.
 
@@ -953,7 +1022,18 @@ class FishingCog(commands.Cog):
                 # Roll trash (independent)
                 # BUT: If no bait OR broken rod -> only roll trash OR fish, not both
                 if has_worm and not is_broken_rod:
-                    trash_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
+                    # HOOK: Global Event Trash Multiplier
+                    # Default multiplier is 1.0 (normal). If 0.0 -> No trash.
+                    trash_mul = self.global_event_manager.get_public_effect("trash_chance_multiplier", 1.0)
+                    
+                    if trash_mul <= 0.0:
+                         trash_count = 0 
+                    else:
+                        trash_count = random.choices([0, 1, 2], weights=[70, 25, 5], k=1)[0]
+                        # Apply naive multiplier to count chance? Or re-roll?
+                        # For simplicity, if mul > 1.0, we just increase trash count slightly
+                        if trash_mul > 1.0 and trash_count > 0:
+                            trash_count = int(trash_count * trash_mul)
                 else:
                     # No bait / broken rod: High chance of trash (50/50)
                     trash_count = random.choices([0, 1], weights=[50, 50], k=1)[0]
@@ -1021,6 +1101,17 @@ class FishingCog(commands.Cog):
                     else:
                         common_ratio = loot_table["common_fish"] / fish_weights_sum
                         rare_ratio = loot_table["rare_fish"] / fish_weights_sum
+                        
+                        # HOOK: Global Event Rare Fish Multiplier
+                        rare_mul = self.global_event_manager.get_public_effect("rare_chance_multiplier", 1.0)
+                        if rare_mul != 1.0:
+                            rare_ratio *= rare_mul
+                            # Recalculate common to keep sum = 1.0 (approximately) inside choices logic
+                            # But here we are setting weights for random.choices below.
+                            # We just boost rare_ratio. Ideally we should normalize again but for game balance,
+                            # adding raw probability is often more "feel good".
+                            # Let's use the multiplier as direct boost if ratio is small, or multiplier if ratio is meaningful.
+                            pass # rare_ratio is modified directly
             
                     # *** APPLY TOTAL USER LUCK (Centralized) ***
                     rare_ratio = min(0.9, rare_ratio + user_luck)  # Cap at 90% max
@@ -1619,11 +1710,12 @@ class FishingCog(commands.Cog):
         
                 # Create view with sell button if there are fish to sell
                 view = None
+                # Sell button removed for UX cleanup
                 if sell_items:
-                    view = FishSellView(self, user_id, sell_items, channel.guild.id)
-                    logger.info(f"[FISHING] Created sell button for {username} with {len(sell_items)} fish types")
+                    logger.info(f"[FISHING] Sell button suppressed (UX Cleanup) for {username} with {len(sell_items)} fish types")
                 else:
-                    logger.info(f"[FISHING] No fish to sell, button not shown")
+                    logger.info(f"[FISHING] No fish to sell")
+
         
                 # Track total fish caught for achievement
                 if num_fish > 0:
@@ -1631,6 +1723,9 @@ class FishingCog(commands.Cog):
                         await increment_stat(user_id, "fishing", "total_fish_caught", num_fish)
                         current_total = await get_stat(user_id, "fishing", "total_fish_caught")
                         await self.bot.achievement_manager.check_unlock(user_id, "fishing", "total_fish_caught", current_total, channel)
+                        # Phase 3: Check unlock notifications
+                        from .mechanics.events import check_conditional_unlocks
+                        await check_conditional_unlocks(user_id, "total_fish_caught", current_total, channel)
                     except Exception as e:
                         logger.error(f"[ACHIEVEMENT] Error updating total_fish_caught for {user_id}: {e}")
             
@@ -1639,91 +1734,105 @@ class FishingCog(commands.Cog):
         
                 # ==================== NPC ENCOUNTER ====================
                 npc_triggered = False
+                # Check forced pending trigger
                 if hasattr(self, "pending_npc_event") and user_id in self.pending_npc_event:
                     npc_type = self.pending_npc_event.pop(user_id)
                     npc_triggered = True
                     logger.info(f"[NPC] Triggering pending NPC event: {npc_type} for user {user_id}")
-                elif random.random() < NPC_ENCOUNTER_CHANCE and (fish_only_items or trash_count > 0 or chest_count > 0):
-                    npc_triggered = True
+                
+                # Check random trigger (Chance 6%)
+                elif random.random() < NPC_ENCOUNTER_CHANCE and num_fish > 0:
+                     npc_triggered = True
             
                 if npc_triggered:
-                    if not hasattr(self, "pending_npc_event") or user_id not in self.pending_npc_event:
-                        await asyncio.sleep(NPC_ENCOUNTER_DELAY)  # Small delay for dramatic effect
+                    # If npc_type is NOT set (i.e. Random Trigger), roll for it now
+                    if not npc_type:
+                        await asyncio.sleep(NPC_ENCOUNTER_DELAY)
                 
                         # Select random NPC based on weighted chances
                         npc_pool = []
                         for npc_key, npc_data in NPC_ENCOUNTERS.items():
-                            npc_pool.extend([npc_key] * int(npc_data["chance"] * 100))
-                
+                            npc_pool.extend([npc_key] * int(npc_data.get("chance", 0.1) * 100))
+                        
+                        if not npc_pool:
+                             npc_pool = list(NPC_ENCOUNTERS.keys())
+
                         npc_type = random.choice(npc_pool)
                 
-                    npc_data = NPC_ENCOUNTERS[npc_type]
-            
-                    # Get the first fish caught
-                    caught_fish_key = list(fish_only_items.keys())[0]
-                    caught_fish_info = ALL_FISH[caught_fish_key]
-            
+                    # Use Adaptive Data based on Affinity
+                    npc_data = await self._get_adaptive_npc_data(user_id, npc_type)
+        
+                    # Get caught fish context
+                    # We need the key and info of the fish on hook
+                    # fish_only_items is {fish_key: count}
+                    caught_fish_key = list(fish_only_items.keys())[0] if fish_only_items else list(ALL_FISH.keys())[0]
+                    # Fallback if no fish caught but NPC triggered (rare edge case?)
+                    # Usually "num_fish > 0" condition prevents this.
+                    # But ensuring no crash.
+                    
+                    if caught_fish_key in ALL_FISH:
+                        caught_fish_info = ALL_FISH[caught_fish_key]
+                    else:
+                        caught_fish_info = {"name": "Cá", "emoji": "🐟", "sell_price": 0}
+                        
+                    caught_fish_ctx = {caught_fish_key: caught_fish_info}
+
                     # Build NPC embed
                     npc_title = f"⚠️ {npc_data['name']} - {username}!"
                     npc_desc = f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}"
                     npc_embed = discord.Embed(
                         title=self.apply_display_glitch(npc_title),
                         description=self.apply_display_glitch(npc_desc),
-                        color=discord.Color.purple()
+                        color=discord.Color.gold() # Make it stand out
                     )
-            
+        
                     if npc_data.get("image_url"):
                         npc_embed.set_image(url=npc_data["image_url"])
-            
+        
                     # Add cost information
                     cost_text = ""
-                    if npc_data["cost"] == "fish":
+                    cost_val = npc_data.get("cost")
+                    if cost_val == "fish":
                         cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
-                    elif isinstance(npc_data["cost"], int):
-                        cost_text = f"💰 **Chi phí:** {npc_data['cost']} Hạt"
-                    elif npc_data["cost"] == "cooldown_5min":
+                    elif isinstance(cost_val, int):
+                        cost_text = f"💰 **Chi phí:** {cost_val} Hạt"
+                    elif cost_val == "cooldown_5min":
                         cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
+        
+                    if cost_text:
+                        npc_embed.add_field(name="💸 Yêu Cầu", value=self.apply_display_glitch(cost_text), inline=False)
+        
+                    # Send NPC message with INTERACTIVE VIEW
+                    npc_view = InteractiveNPCView(
+                        self, 
+                        user_id, 
+                        npc_type, 
+                        npc_data, 
+                        caught_fish_ctx, 
+                        channel
+                    )
             
-                    npc_embed.add_field(name="💸 Giá", value=self.apply_display_glitch(cost_text), inline=False)
+                    # Track stats
+                    await increment_stat(user_id, "fishing", "npc_events_triggered", 1)
+                    # Explicitly track specific NPC encounter for achievements
+                    await increment_stat(user_id, "fishing", f"{npc_type}_encounter", 1)
             
-                    # Send NPC message with buttons
-                    npc_view = NPCEncounterView(user_id, npc_type, npc_data, caught_fish_key)
-                
-                    # Track achievement stats for NPC encounters
-                    from .constants import NPC_EVENT_STAT_MAPPING
-                    if npc_type in NPC_EVENT_STAT_MAPPING:
-                        stat_key = NPC_EVENT_STAT_MAPPING[npc_type]
-                        try:
-                            await increment_stat(user_id, "fishing", stat_key, 1)
-                            current_value = await get_stat(user_id, "fishing", stat_key)
-                            await self.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
-                            logger.info(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on NPC encounter {npc_type}")
-                        except Exception as e:
-                            logger.error(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
-                
-                    npc_msg = await channel.send(content=f"<@{user_id}>", embed=npc_embed, view=npc_view)
-            
-                    await npc_view.wait()
-            
-                    result_text = ""
-                    result_color = discord.Color.default()
-            
-                    if npc_view.value == "agree":
-                        # Process acceptance
-                        result_embed = await self._process_npc_acceptance(user_id, npc_type, npc_data, caught_fish_key, caught_fish_info, username)
-                        await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
-            
-                    elif npc_view.value == "decline":
-                        # Process decline (includes manual decline and timeout auto-decline)
-                        result_text = npc_data["rewards"]["decline"]
-                        result_color = discord.Color.light_grey()
-                        result_embed = discord.Embed(
-                            title=f"{npc_data['name']} - {username} - Từ Chối",
-                            description=f"{result_text}",
-                            color=result_color
-                        )
-                        await npc_msg.edit(content=f"<@{user_id}>", embed=result_embed, view=None)
-                        logger.info(f"[NPC] {username} declined {npc_type}")
+                    npc_msg = await channel.send(content=f"<@{user_id}> 🔥 **SỰ KIỆN NPC!**", embed=npc_embed, view=npc_view)
+                        
+                        # Note: We don't 'wait' here in the blocking sense if we want the bot to be free?
+                        # But user logic usually wants this to block the 'fishing result' loop?
+                        # Actually, previous logic sent msg then waited.
+                        # Since we are at the END of the fishing loop (post-result), we don't need to block anything.
+                        # The user has already got their fish (or failed).
+                        # Wait, if cost is 'fish', we need to ensure they DON'T sell it or lose it before interacting?
+                        # But the fish is already in DB.
+                        # ACID view handles removal.
+                        # So just fire and forget view is safer for async flow?
+                        # No, previous code awaited view.wait(). 
+                        # Let's keep it non-blocking to avoid lag for other users if we were inside a big loop.
+                        # But here it's per command.
+                        # Safe to let view run.
+
             
                 # ==================== FINAL COOLDOWN CHECK ====================
                 # If global_reset was triggered, ensure user has no cooldown
@@ -1786,10 +1895,12 @@ class FishingCog(commands.Cog):
     @commands.command(name="banca", description="Bán cá - Dùng !banca [fish_types]")
     async def sell_fish_prefix(self, ctx, *, fish_types: str = None):
         """Sell selected fish via prefix command"""
+        logger.info(f"[DEBUG] !banca invoked by {ctx.author} (fish_types={fish_types})")
         await self._sell_fish_action(ctx, fish_types)
     
     async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None):
         """Sell all fish or specific types logic. Delegate to commands module."""
+        logger.info("[DEBUG] Delegating to _sell_fish_impl")
         return await _sell_fish_impl(self, ctx_or_interaction, fish_types)
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")

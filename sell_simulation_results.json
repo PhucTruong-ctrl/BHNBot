@@ -1,0 +1,414 @@
+{
+  "total_sells": 1000,
+  "events_triggered": 43,
+  "tier_counts": {
+    "common": 12,
+    "very_common": 22,
+    "rare": 7,
+    "epic": 1,
+    "legendary": 1
+  },
+  "event_counts": {
+    "lucky_money": 1,
+    "ngoc_trai_in_fish": 1,
+    "old_rod_gift": 3,
+    "gift_received": 2,
+    "good_weather": 4,
+    "bad_smell": 1,
+    "tourist_group": 1,
+    "aggressive_haggler": 1,
+    "startup_invest": 3,
+    "green_recycle": 1,
+    "skinny_fish": 1,
+    "oversupply": 1,
+    "plastic_bag_fee": 2,
+    "double_joy": 1,
+    "free_breakfast": 2,
+    "motorbike_crash": 1,
+    "parking_fee": 4,
+    "gorilla_debate": 2,
+    "tiktok_drama": 1,
+    "rare_mutation": 1,
+    "tax_collector": 1,
+    "dropped_money": 1,
+    "fan_donate": 1,
+    "flies_swarm": 1,
+    "tip_money": 1,
+    "broken_scale": 1,
+    "found_bait": 1,
+    "market_boom": 1,
+    "export_contract": 1
+  },
+  "tier_percentages": {
+    "legendary": {
+      "count": 1,
+      "percentage": 0.1,
+      "expected": 0.05
+    },
+    "epic": {
+      "count": 1,
+      "percentage": 0.1,
+      "expected": 0.25
+    },
+    "rare": {
+      "count": 7,
+      "percentage": 0.7000000000000001,
+      "expected": 0.6
+    },
+    "common": {
+      "count": 12,
+      "percentage": 1.2,
+      "expected": 1.25
+    },
+    "very_common": {
+      "count": 22,
+      "percentage": 2.1999999999999997,
+      "expected": 2.5
+    }
+  },
+  "top_events": [
+    [
+      "good_weather",
+      4
+    ],
+    [
+      "parking_fee",
+      4
+    ],
+    [
+      "old_rod_gift",
+      3
+    ],
+    [
+      "startup_invest",
+      3
+    ],
+    [
+      "gift_received",
+      2
+    ],
+    [
+      "plastic_bag_fee",
+      2
+    ],
+    [
+      "free_breakfast",
+      2
+    ],
+    [
+      "gorilla_debate",
+      2
+    ],
+    [
+      "lucky_money",
+      1
+    ],
+    [
+      "ngoc_trai_in_fish",
+      1
+    ]
+  ],
+  "event_details": [
+    {
+      "iteration": 12,
+      "tier": "common",
+      "event": "May Mắn!",
+      "mul": 1.0,
+      "flat": 100
+    },
+    {
+      "iteration": 79,
+      "tier": "very_common",
+      "event": "Ngọc Trai!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 84,
+      "tier": "very_common",
+      "event": "Tặng Cần!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 109,
+      "tier": "very_common",
+      "event": "Quà Tặng!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 121,
+      "tier": "common",
+      "event": "Trời Đẹp!",
+      "mul": 1.1,
+      "flat": 0
+    },
+    {
+      "iteration": 126,
+      "tier": "common",
+      "event": "Trời Đẹp!",
+      "mul": 1.1,
+      "flat": 0
+    },
+    {
+      "iteration": 128,
+      "tier": "common",
+      "event": "Mùi Hôi!",
+      "mul": 0.9,
+      "flat": 0
+    },
+    {
+      "iteration": 181,
+      "tier": "common",
+      "event": "Khách Du!",
+      "mul": 1.15,
+      "flat": 0
+    },
+    {
+      "iteration": 207,
+      "tier": "rare",
+      "event": "Trả Giá!",
+      "mul": 0.85,
+      "flat": 0
+    },
+    {
+      "iteration": 238,
+      "tier": "very_common",
+      "event": "Start-up!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 241,
+      "tier": "very_common",
+      "event": "Tái Chế Xanh!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 271,
+      "tier": "very_common",
+      "event": "Quà Tặng!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 302,
+      "tier": "rare",
+      "event": "Cá Còi!",
+      "mul": 0.85,
+      "flat": 0
+    },
+    {
+      "iteration": 308,
+      "tier": "rare",
+      "event": "Dư Thừa!",
+      "mul": 0.85,
+      "flat": 0
+    },
+    {
+      "iteration": 317,
+      "tier": "very_common",
+      "event": "Tiền Túi!",
+      "mul": 1.0,
+      "flat": -5
+    },
+    {
+      "iteration": 339,
+      "tier": "rare",
+      "event": "Niềm Vui!",
+      "mul": 1.3,
+      "flat": 100
+    },
+    {
+      "iteration": 345,
+      "tier": "very_common",
+      "event": "Ăn Sáng!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 367,
+      "tier": "rare",
+      "event": "Tông Xe Máy!",
+      "mul": 1.0,
+      "flat": -300
+    },
+    {
+      "iteration": 386,
+      "tier": "very_common",
+      "event": "Gửi Xe!",
+      "mul": 1.0,
+      "flat": -10
+    },
+    {
+      "iteration": 393,
+      "tier": "very_common",
+      "event": "Tặng Cần!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 413,
+      "tier": "very_common",
+      "event": "🦍 Gorilla Debate!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 423,
+      "tier": "epic",
+      "event": "Bị Phốt!",
+      "mul": 0.5,
+      "flat": 0
+    },
+    {
+      "iteration": 447,
+      "tier": "very_common",
+      "event": "Start-up!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 469,
+      "tier": "legendary",
+      "event": "Đột Biến!",
+      "mul": 3.0,
+      "flat": 0
+    },
+    {
+      "iteration": 482,
+      "tier": "common",
+      "event": "Trời Đẹp!",
+      "mul": 1.1,
+      "flat": 0
+    },
+    {
+      "iteration": 547,
+      "tier": "very_common",
+      "event": "Ăn Sáng!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 628,
+      "tier": "very_common",
+      "event": "🦍 Gorilla Debate!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 638,
+      "tier": "rare",
+      "event": "Thuế Chợ!",
+      "mul": 0.85,
+      "flat": 0
+    },
+    {
+      "iteration": 653,
+      "tier": "common",
+      "event": "Rớt Tiền!",
+      "mul": 1.0,
+      "flat": -50
+    },
+    {
+      "iteration": 660,
+      "tier": "very_common",
+      "event": "Fan Donate!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 736,
+      "tier": "common",
+      "event": "Ruồi Bu!",
+      "mul": 0.95,
+      "flat": -20
+    },
+    {
+      "iteration": 748,
+      "tier": "common",
+      "event": "Tiền Tip!",
+      "mul": 1.0,
+      "flat": 50
+    },
+    {
+      "iteration": 776,
+      "tier": "very_common",
+      "event": "Gửi Xe!",
+      "mul": 1.0,
+      "flat": -10
+    },
+    {
+      "iteration": 805,
+      "tier": "common",
+      "event": "Cân Điêu!",
+      "mul": 0.9,
+      "flat": 0
+    },
+    {
+      "iteration": 832,
+      "tier": "very_common",
+      "event": "Gửi Xe!",
+      "mul": 1.0,
+      "flat": -10
+    },
+    {
+      "iteration": 855,
+      "tier": "very_common",
+      "event": "Tặng Cần!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 879,
+      "tier": "very_common",
+      "event": "Gửi Xe!",
+      "mul": 1.0,
+      "flat": -10
+    },
+    {
+      "iteration": 880,
+      "tier": "very_common",
+      "event": "Tìm Mồi!",
+      "mul": 1.0,
+      "flat": 0
+    },
+    {
+      "iteration": 924,
+      "tier": "common",
+      "event": "Trời Đẹp!",
+      "mul": 1.1,
+      "flat": 0
+    },
+    {
+      "iteration": 936,
+      "tier": "common",
+      "event": "Chợ Sôi!",
+      "mul": 1.2,
+      "flat": 0
+    },
+    {
+      "iteration": 942,
+      "tier": "very_common",
+      "event": "Tiền Túi!",
+      "mul": 1.0,
+      "flat": -5
+    },
+    {
+      "iteration": 943,
+      "tier": "rare",
+      "event": "Xuất Khẩu!",
+      "mul": 1.5,
+      "flat": 0
+    },
+    {
+      "iteration": 975,
+      "tier": "very_common",
+      "event": "Start-up!",
+      "mul": 1.0,
+      "flat": 0
+    }
+  ]
+}

@@ -239,12 +239,24 @@ class ConfigCog(commands.Cog):
                     new_tree = None
                 
                 # Save
-                await db.execute("UPDATE server_config SET logs_channel_id = ?, noitu_channel_id = ?, fishing_channel_id = ? WHERE guild_id = ?", 
-                                 (new_logs, new_noitu, new_fishing, guild_id))
+                # Save using UPSERT
+                await db.execute("""
+                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) 
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id) DO UPDATE SET
+                        logs_channel_id = excluded.logs_channel_id,
+                        noitu_channel_id = excluded.noitu_channel_id,
+                        fishing_channel_id = excluded.fishing_channel_id
+                """, (guild_id, new_logs, new_noitu, new_fishing))
                 
                 if kenh_cay:
-                    await db.execute("UPDATE server_tree SET tree_channel_id = ? WHERE guild_id = ?",
-                                     (kenh_cay.id, guild_id))
+                    # UPSERT for server_tree
+                    await db.execute("""
+                        INSERT INTO server_tree (guild_id, tree_channel_id)
+                        VALUES (?, ?)
+                        ON CONFLICT(guild_id) DO UPDATE SET
+                            tree_channel_id = excluded.tree_channel_id
+                    """, (guild_id, kenh_cay.id))
                 
                 await db.commit()
                 print(f"CONFIG_SAVED [Guild {guild_id}]")

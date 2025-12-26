@@ -25,7 +25,7 @@ DISASTER_EVENTS_PATH = os.path.join(DATA_DIR, "disaster_events.json")
 # Game constants (static values that don't change per server)
 WORM_COST = 5
 FISH_BUCKET_LIMIT = 15
-NPC_ENCOUNTER_CHANCE = 0.05
+NPC_ENCOUNTER_CHANCE = 0.06
 NPC_ENCOUNTER_DELAY = 2
 SNAKE_BITE_PENALTY_PERCENT = 0.05
 GLOBAL_DISASTER_COOLDOWN = 3600

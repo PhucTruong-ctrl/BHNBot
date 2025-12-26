@@ -1,84 +1,84 @@
 {
   "disasters": [
     {
-      "key": "ninja_lead_crash",
-      "name": "Tai Nạn Ninja Lead",
-      "emoji": "🚨",
-      "chance": 0.0005,
-      "duration": 300,
-      "description": "Một chị Ninja Lead đi cano xi-nhan trái nhưng rẽ phải, tông vào một người đang câu. Domino effect: cả server ngã xuống nước ướt nhẹp.",
-      "effects": {
-        "freeze_server": true,
-        "freeze_duration": 300,
-        "message_template": "🚨 **BÁO ĐỘNG KHẨN CẤP!** {player} lái cano tông chìm thuyền của Admin! Cả server bị cấm câu 5 phút để vớt người! 🚤💥",
-        "loss_type": "none"
-      },
-      "reward_message": "Bạn đã trở thành **Tên Chủ Mưu Thảm Họa**! Mọi người sẽ nhớ bạn mãi mãi. 😭"
-    },
-    {
-      "key": "shark_bite_cable",
-      "name": "Cá Mập Cắn Cáp",
-      "emoji": "🦈",
-      "chance": 0.0005,
-      "duration": 600,
-      "description": "Cá Mập chán ăn thịt, chuyển sang gặm cáp quang internet dưới đáy hồ. Server lag kinh hoàng!",
-      "effects": {
-        "cooldown_penalty": 5,
-        "penalty_duration": 600,
-        "catch_rate_penalty": 0.2,
-        "message_template": "🦈 **CÁ MẬP CẮN CÁP!** Do {player} thả mồi bậy bạ dụ cá mập tới. Server mất kết nối 10 phút! 📶❌\n\n⚠️ Tất cả cooldown +5s, tỉ lệ cắn giảm 20%",
-        "loss_type": "none"
-      },
-      "reward_message": "Bạn đã gây ra **Thảm Họa Mạng Toàn Cầu**! Cảm ơn bạn đã làm cho Internet Việt Nam thêm chậm. 🐢"
-    },
-    {
-      "key": "police_raid",
-      "name": "Chuyên Đề CSGT",
-      "emoji": "👮",
+      "key": "river_pirates_raid",
+      "name": "Cướp Sông Đà",
+      "emoji": "🏴‍☠️",
       "chance": 0.0005,
       "duration": 180,
-      "description": "Cảnh sát đường thủy ập vào kiểm tra nồng độ cồn và giấy phép câu cá của toàn bộ server. Sợ lắm!",
+      "description": "Một băng cướp sông hung hãn ập tới quấy phá làng chài! Mọi người phải trốn ngay!",
+      "effects": {
+        "freeze_server": true,
+        "freeze_duration": 180,
+        "message_template": "🏴‍☠️ **CƯỚP SÔNG ĐÀ TẤN CÔNG!** Do {player} để lộ kho báu! Cả làng chài phải đóng cửa 3 phút để trốn! 🚫🎣",
+        "loss_type": "none"
+      },
+      "reward_message": "Bạn đã trở thành **Kẻ Dẫn Đường Cho Cướp**! Cả làng chài sẽ nhớ mặt bạn. 💀"
+    },
+    {
+      "key": "dragon_king_wrath",
+      "name": "Long Vương Nổi Giận",
+      "emoji": "🐉",
+      "chance": 0.0005,
+      "duration": 300,
+      "description": "Long Vương phật ý vì tiếng ồn và rác thải. Ngài quấy nước dữ dội khiến cá hoảng sợ!",
+      "effects": {
+        "cooldown_penalty": 2,
+        "penalty_duration": 300,
+        "catch_rate_penalty": 0.2,
+        "message_template": "🐉 **LONG VƯƠNG NỔI GIẬN!** {player} đã chọc giận Thủy Thần! Nước biển động dữ dội trong 5 phút! 🌊\n\n⚠️ Tất cả cooldown +2s, tỉ lệ cắn giảm 20%",
+        "loss_type": "none"
+      },
+      "reward_message": "Bạn đã chọc giận **Thủy Thần**! Hãy cẩn thận khi đi đêm. 🌊"
+    },
+    {
+      "key": "royal_inspection",
+      "name": "Quan Triều Đình Tuần Tra",
+      "emoji": "📜",
+      "chance": 0.0005,
+      "duration": 180,
+      "description": "Quan Khâm Sai đại diện Triều Đình xuống kiểm tra thuế và giấy phép câu cá của toàn bộ ngư dân.",
       "effects": {
         "freeze_server": true,
         "freeze_duration": 180,
         "fine_amount": 100,
         "fine_applies_to": "all_online",
-        "message_template": "👮 **CSGT ẬP TỚI!** Yêu cầu toàn bộ cần thủ dừng tay, xuất trình giấy tờ! Do {player} câu cá trộm!\n\n💰 Mỗi người bị phạt 100 Hạt tiền \"bôi trơn\" hoặc phí làm thủ tục!",
+        "message_template": "📜 **QUAN KHÂM SAI GIÁ LÂM!** Yêu cầu toàn bộ ngư dân dừng tay tiếp đón! Do {player} trốn thuế!\n\n💰 Mỗi người bị phạt 100 Hạt tiền \"lệ phí\" kiểm tra!",
         "loss_type": "money"
       },
-      "reward_message": "Bạn đã trở thành **Nạn Nhân Số 1 Được Truy Nã**! Cảnh sát sẽ nhớ mặt bạn 👤"
+      "reward_message": "Bạn đã trở thành **Tội Phạm Trốn Thuế**! Quan phủ đang truy nã bạn. 👮"
     },
     {
-      "key": "bubble_tea_spill",
-      "name": "Trà Sữa Đổ Xuống Hồ",
-      "emoji": "🧋",
+      "key": "algae_bloom",
+      "name": "Tảo Nở Hoa",
+      "emoji": "🌿",
       "chance": 0.0005,
       "duration": 300,
-      "description": "Một xe bồn chở Trà Sữa Trân Châu Đường Đen bị lật xuống hồ. Nước hồ ngọt lịm, cá lười câu.",
+      "description": "Tảo độc nở rộ nhuộm xanh mặt hồ. Nước thiếu oxy khiến cá lờ đờ, chán ăn.",
       "effects": {
-        "catch_rate_penalty": 0.8,
+        "catch_rate_penalty": 0.5,
         "penalty_duration": 300,
-        "message_template": "🧋 **BÁO ĐỘNG ĐỎ!** Hồ nước đã biến thành Trà Sữa vì {player} kéo lềnh tềnh mặt nước!\n\n Lũ cá đang bận hút trân châu, không thèm ăn mồi. Tỉ lệ cắn giảm 80% trong 5 phút!",
+        "message_template": "🌿 **TẢO ĐỘC NỞ HOA!** Do {player} đổ chất thải xuống hồ! Nước hồ xanh lè, cá không thở được!\n\n⚠️ Tỉ lệ cá cắn câu giảm 50% trong 5 phút!",
         "loss_type": "none"
       },
-      "reward_message": "Bạn đã trở thành **Kẻ Phá Hoại Môi Trường**! Hồ nước giờ mùi trà sữa vì bạn. ☕"
+      "reward_message": "Bạn đã gây ra **Thảm Họa Môi Trường**! Cá trong hồ ghét bạn. 🤢"
     },
     {
-      "key": "hacker_attack",
-      "name": "Hacker Tấn Công",
-      "emoji": "👾",
+      "key": "mirage_fog",
+      "name": "Sương Mù Ảo Ảnh",
+      "emoji": "🌫️",
       "chance": 0.0005,
       "duration": 180,
-      "description": "Một Hacker lỏ (script kiddie) tấn công server làm loạn dữ liệu hiển thị. Game bị chaotic toàn server!",
+      "description": "Một màn sương mù dày đặc và quỷ dị bao phủ mặt hồ. Không ai biết mình đang câu cái gì.",
       "effects": {
         "display_glitch": true,
         "glitch_duration": 180,
-        "message_template": "👾 **HACKER LỎ ĐÃ TẤN CÔNG!** Do {player} đăng link spam độc hại!\n\n🎮 Hệ thống hiển thị bị lỗi font 3 phút. Chúc may mắn đoán xem mình câu được con gì!",
+        "message_template": "🌫️ **SƯƠNG MÙ ẢO ẢNH!** {player} đã lạc vào vùng cấm địa!\n\n🎮 Màn hình hiển thị bị nhiễu loạn 3 phút. Chúc may mắn đoán xem mình câu được gì!",
         "loss_type": "none"
       },
-      "reward_message": "Bạn đã trở thành **Người Ngoài Không Gian Lỏ**! Bot chỉ biết nói \"xin lỗi\". 🤖"
+      "reward_message": "Bạn đã mở ra **Cánh Cổng Hư Không**! Mọi thứ trở nên mơ hồ... 👻"
     }
   ],
   "global_cooldown": 3600,
-  "global_cooldown_description": "Sau mỗi thảm họa, server sẽ bình yên trong 1 tiếng. Trong thời gian đó, dù ai quay trúng 0.05% cũng KHÔNG kích hoạt disaster (chỉ xảy ra sự kiện cá nhân bình thường)."
+  "global_cooldown_description": "Sau mỗi thảm họa, vùng nước sẽ bình yên trong 1 tiếng. (Safe Zone)"
 }

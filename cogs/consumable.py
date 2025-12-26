@@ -222,7 +222,7 @@ class ConsumableCog(commands.Cog):
     @app_commands.describe(item="Item key: nuoc_tang_luc, gang_tay_xin, thao_tac_tinh_vi, hoặc tinh_yeu_ca (để trống xem danh sách)")
     async def use_consumable_slash(self, interaction: discord.Interaction, item: str = None):
         """Use a consumable item - slash version"""
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         await self._use_consumable(interaction, item, is_slash=True)
 
     @commands.command(name="sudung", description="Sử dụng vật phẩm tiêu thụ - Dùng !sudung [item_key]")
