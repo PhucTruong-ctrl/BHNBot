@@ -249,8 +249,8 @@ class GlobalEventManager:
         elif data["type"] == "fish_quest_raid":
             await self._finalize_dragon_quest(data)
         
-        # Announce End
-        await self._broadcast_message(data.get("messages", {}).get("end"))
+        # Announce End (No Buttons)
+        await self._broadcast_message(data.get("messages", {}).get("end"), attach_view=False)
         
         # Reset State
         self.last_event_times[key] = time.time()
@@ -265,13 +265,15 @@ class GlobalEventManager:
         
         logger.info(f"[GLOBAL_EVENT] Ended: {key}")
 
-    async def _broadcast_message(self, content, is_bump=False):
+    async def _broadcast_message(self, content, is_bump=False, attach_view=True):
         """Sends announcement to all configured fishing channels (Rich Embed)."""
         if not content: return
         
         try:
             # Detect Event Config for Styling
-            visuals = self.current_event.get("data", {}).get("visuals", {})
+            visuals = {}
+            if self.current_event:
+                visuals = self.current_event.get("data", {}).get("visuals", {})
             
             # Default Style
             color = discord.Color.blue()
@@ -314,14 +316,16 @@ class GlobalEventManager:
                         # DYNAMIC VIEW LOADING
                         view = None
                         
-                        # Fix: Don't attach view to Start Message for Mini-Games (they spawn separate views)
-                        # event_data contains the full event config (including type field)
-                        event_data = self.current_event.get("data", {})
-                        event_type = event_data.get("type")  # type is at root of event config
-                        logger.info(f"[DEBUG] Event type for {self.current_event.get('key')}: '{event_type}'")
-                        
-                        
-                        if event_type != "mini_game":
+                        # Only attach view if explicitly requested AND event is active
+                        if attach_view and self.current_event:
+                            # Fix: Don't attach view to Start Message for Mini-Games (they spawn separate views)
+                            # event_data contains the full event config (including type field)
+                            event_data = self.current_event.get("data", {})
+                            event_type = event_data.get("type")  # type is at root of event config
+                            logger.info(f"[DEBUG] Event type for {self.current_event.get('key')}: '{event_type}'")
+                            
+                            
+                            if event_type != "mini_game":
                             # event_data = full event config
                             # mechanics is in: event_config["data"]["mechanics"]
                             view_type = event_data.get("data", {}).get("mechanics", {}).get("view_type")
