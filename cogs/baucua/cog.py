@@ -209,7 +209,7 @@ class BauCuaCog(commands.Cog):
         
         # Find and update rolling message, send summary
         async for message in channel.history(limit=5):
-            if message.author == self.bot.user and "🎃" in message.content:
+            if message.author == self.bot.user:
                 await asyncio.gather(
                     message.edit(content=result_display),
                     channel.send(f"**TỔNG KẾT:**\n{summary_text}")

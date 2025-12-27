@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 logger = setup_logger("XiDachMulti", "cogs/xidach_multi.log")
 
 # Constants
-LOBBY_DURATION = 45  # seconds
+LOBBY_DURATION = 30  # seconds (betting time)
 TURN_TIMEOUT = 30  # seconds
 
 async def _safe_send(channel, **kwargs):
@@ -131,7 +131,7 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
 async def _run_lobby(cog: "XiDachCog", ctx_or_interaction, table: Table) -> None:
     """Run the lobby countdown and start game when ready."""
     embed = create_lobby_embed(table, LOBBY_DURATION)
-    view = LobbyView(cog, table, timeout=LOBBY_DURATION + 10)
+    view = LobbyView(cog, table, timeout=LOBBY_DURATION + 5)
 
     # Send lobby message
     if isinstance(ctx_or_interaction, discord.Interaction):
@@ -170,6 +170,7 @@ async def _run_lobby(cog: "XiDachCog", ctx_or_interaction, table: Table) -> None
 
     channel = ctx_or_interaction.channel if hasattr(ctx_or_interaction, 'channel') else cog.bot.get_channel(table.channel_id)
     if channel:
+        # Auto-start without button requirement
         await channel.send("⌛ **Hết thời gian chờ! Tự động bắt đầu...**")
         await _start_game(cog, channel, table)
 
@@ -274,6 +275,7 @@ async def _update_lobby_message(cog: "XiDachCog", table: Table) -> None:
         await msg.edit(embed=embed)
     except Exception as e:
         logger.error(f"[UPDATE_LOBBY] Error: {e}")
+
 
 
 # ==================== PHASE 1: INITIAL CHECK ====================
@@ -609,9 +611,6 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
         score, hand_type = determine_hand_type(player.hand)
         player.status = PlayerStatus.BUST if hand_type == HandType.BUST else PlayerStatus.STAND
 
-        if not player.is_doubled: # Logic doubled check
-             pass
-
         logger.info(f"[DOUBLE] Player {player.user_id} doubled. New bet: {player.bet}, drew {card}")
 
     # Update display to show the doubled card
@@ -622,17 +621,28 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
 
 
 async def force_stand_multi(cog: "XiDachCog", table: Table, player: Player) -> None:
-    """Force stand on timeout."""
+    """Force stand/bust on timeout based on hand value."""
     async with table.lock:
         if not player or player.status != PlayerStatus.PLAYING:
             return
 
-        logger.info(f"[TIMEOUT] Force standing player {player.user_id}")
-        player.status = PlayerStatus.STAND
+        # Check if player has enough points
+        score, _ = determine_hand_type(player.hand)
+        
+        if score < 16:
+            # Under 16 points = Auto-lose
+            logger.info(f"[TIMEOUT] Player {player.user_id} timed out with {score} points - AUTO-BUST")
+            player.status = PlayerStatus.BUST
+            timeout_msg = f"⏰ **{player.username}** hết thời gian với **{score} điểm** (Chưa đủ tuổi)! Thua luôn. 💀"
+        else:
+            # 16+ points = Auto-stand
+            logger.info(f"[TIMEOUT] Player {player.user_id} timed out with {score} points - AUTO-STAND")
+            player.status = PlayerStatus.STAND
+            timeout_msg = f"⏰ **{player.username}** hết thời gian! Tự động dằn với **{score} điểm**."
 
     channel = cog.bot.get_channel(table.channel_id)
     if channel:
-        await channel.send(f"⏰ **{player.username}** hết thời gian! Tự động dằn.")
+        await channel.send(timeout_msg)
         await _advance_to_next(cog, channel, table)
 
 

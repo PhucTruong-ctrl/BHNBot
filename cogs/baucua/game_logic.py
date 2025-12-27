@@ -131,7 +131,8 @@ class GameManager:
         
         # Track balance before/after
         balance_before = await get_user_balance(user_id)
-        await add_seeds(user_id, amount)
+        reason = 'baucua_bet' if amount < 0 else 'baucua_win'
+        await add_seeds(user_id, amount, reason, 'minigame')
         balance_after = balance_before + amount
         
         logger.info(
@@ -411,7 +412,7 @@ class GameManager:
             return
         
         try:
-            await batch_update_seeds(payouts)
+            await batch_update_seeds(payouts, reason='baucua_payout', category='minigame')
             logger.info(f"[RESULTS] Batch updated seeds for {len(payouts)} users")
         except Exception as e:
             logger.error(f"Error batch updating seeds: {e}", exc_info=True)
