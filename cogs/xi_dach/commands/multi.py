@@ -175,6 +175,35 @@ async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table:
     await _update_lobby_message(cog, table)
 
 
+async def cancel_bet(cog: "XiDachCog", interaction: discord.Interaction, table: Table, user_id: int) -> None:
+    """Cancel bet and refund player."""
+    async with table.lock:
+        if table.status != TableStatus.LOBBY:
+            await interaction.response.send_message("⚠️ Game đã bắt đầu!", ephemeral=True)
+            return
+
+        player = table.players.get(user_id)
+        if not player or player.bet <= 0:
+            await interaction.response.send_message("❌ Bạn chưa đặt cược!", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        # Refund the bet
+        refund_amount = player.bet
+        await db_manager.modify(
+            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+            (refund_amount, user_id)
+        )
+
+        # Remove player from table
+        table.remove_player(user_id)
+        logger.info(f"[CANCEL_BET] User {user_id} cancelled bet, refunded {refund_amount}")
+        await interaction.followup.send(f"✅ Đã hoàn lại **{refund_amount:,}** hạt!", ephemeral=True)
+
+    # Update lobby message
+    await _update_lobby_message(cog, table)
+
 async def request_start_game(cog: "XiDachCog", interaction: discord.Interaction, table: Table) -> None:
     """Host requests to start game immediately."""
     async with table.lock:
@@ -557,7 +586,9 @@ async def _advance_to_next(cog: "XiDachCog", channel, table: Table) -> None:
 # ==================== PHASE 3: DEALER ====================
 
 async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
-    """Run dealer's AI turn."""
+    """Run dealer's AI turn with visual updates."""
+    import random
+    
     async with table.lock:
         if table.status in (TableStatus.DEALER_TURN, TableStatus.FINISHED):
             logger.warning(f"[DEALER] Table {table.table_id} already in dealer phase!")
@@ -570,14 +601,30 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
     # Get survivors (not bust)
     survivors = [p for p in table.players.values() if p.status not in (PlayerStatus.BUST, PlayerStatus.BLACKJACK)]
 
-    # Send initial dealer message
-    embed = discord.Embed(title="🎲 NHÀ CÁI ĐANG RÚT BÀI...", color=discord.Color.gold())
-    embed.add_field(name="🤖 Nhà Cái", value=format_hand(table.dealer_hand), inline=False)
-    msg = await channel.send(embed=embed)
+    # Send initial dealer message with image
+    d_score, d_type = determine_hand_type(table.dealer_hand)
+    embed = discord.Embed(
+        title="🎲 LƯỢT CỦA NHÀ CÁI",
+        description=f"**Điểm: {d_score}**",
+        color=discord.Color.gold()
+    )
+    embed.add_field(name="🃏 Bài Nhà Cái", value=format_hand(table.dealer_hand), inline=False)
+    
+    # Render dealer's hand image
+    try:
+        img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
+        file = discord.File(io.BytesIO(img_bytes), filename="dealer.png")
+        embed.set_image(url="attachment://dealer.png")
+        dealer_msg = await channel.send(embed=embed, file=file)
+    except Exception as e:
+        logger.error(f"[DEALER_RENDER] Error: {e}")
+        dealer_msg = await channel.send(embed=embed)
 
-    # Dealer AI loop
+    # Dealer AI loop - each draw with visual update
     while True:
-        await asyncio.sleep(get_smart_think_time())
+        # Longer thinking time: 2-10 seconds
+        think_time = random.uniform(2.0, 10.0)
+        await asyncio.sleep(think_time)
 
         action, reason = get_dealer_decision(table.dealer_hand, survivors)
         logger.info(f"[DEALER_AI] {action}: {reason}")
@@ -589,25 +636,41 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
         card = table.deck.draw_one()
         table.dealer_hand.append(card)
 
-        # Update display
-        score, hand_type = determine_hand_type(table.dealer_hand)
+        d_score, d_type = determine_hand_type(table.dealer_hand)
+        
+        # Create updated embed with new hand
         embed = discord.Embed(
-            title=f"🎲 Nhà Cái: {score} điểm",
-            description=reason,
-            color=discord.Color.red() if hand_type == HandType.BUST else discord.Color.gold()
+            title=f"🎲 NHÀ CÁI: {d_score} điểm",
+            description=f"🃏 *{reason}*",
+            color=discord.Color.red() if d_type == HandType.BUST else discord.Color.gold()
         )
         embed.add_field(name="🃏 Bài", value=format_hand(table.dealer_hand), inline=False)
-        await msg.edit(embed=embed)
+        
+        # Render updated hand - delete old, send new (Discord can't edit attachments properly)
+        try:
+            img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
+            file = discord.File(io.BytesIO(img_bytes), filename="dealer.png")
+            embed.set_image(url="attachment://dealer.png")
+            
+            # Delete old message and send new one (to update image)
+            try:
+                await dealer_msg.delete()
+            except:
+                pass
+            dealer_msg = await channel.send(embed=embed, file=file)
+        except Exception as e:
+            logger.error(f"[DEALER_RENDER] Error: {e}")
+            # Fallback: just edit embed text
+            await dealer_msg.edit(embed=embed)
 
         # Check Ngu Linh or Bust
-        if len(table.dealer_hand) >= 5 or hand_type == HandType.BUST:
+        if len(table.dealer_hand) >= 5 or d_type == HandType.BUST:
             break
 
-    # Final dealer result
+    # Final dealer result announcement
     d_score, d_type = determine_hand_type(table.dealer_hand)
     logger.info(f"[DEALER_RESULT] Score: {d_score}, Type: {d_type.name}")
     
-    # Announce dealer final action
     d_desc = get_hand_description(d_type)
     if d_type == HandType.BUST:
         await channel.send(f"💥 **NHÀ CÁI QUẮC!** ({d_score} điểm)")
@@ -616,12 +679,12 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
     else:
         await channel.send(f"✋ **Nhà Cái DẰN: {d_score} điểm** {d_desc}")
 
-    await _finish_game(cog, channel, table, msg)
+    await _finish_game(cog, channel, table)
 
 
 # ==================== PHASE 4: RESULTS ====================
 
-async def _finish_game(cog: "XiDachCog", channel, table: Table, dealer_msg) -> None:
+async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
     """Calculate final results and pay out."""
     async with table.lock:
         table.status = TableStatus.FINISHED
@@ -660,7 +723,7 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table, dealer_msg) -> N
     if seed_updates:
         await batch_update_seeds(seed_updates)
 
-    # Build result embed
+    # Build result embed (no image - send separately)
     embed = discord.Embed(title="📊 KẾT QUẢ XÌ DÁCH", color=discord.Color.gold())
 
     # Dealer info
@@ -683,7 +746,8 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table, dealer_msg) -> N
             inline=True
         )
 
-    await dealer_msg.edit(embed=embed)
+    # Send as NEW message (not edit)
+    await channel.send(embed=embed)
     game_manager.remove_table(table.channel_id)
 
 

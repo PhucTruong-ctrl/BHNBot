@@ -106,7 +106,7 @@ class LobbyView(ui.View):
         self._setup_buttons()
 
     def _setup_buttons(self):
-        # Bet Buttons
+        # Bet Buttons (Row 0 & 1)
         for amount in self.BET_AMOUNTS:
             btn = ui.Button(
                 label=f"{amount:,}", 
@@ -122,7 +122,17 @@ class LobbyView(ui.View):
         custom_btn.callback = self._custom_bet_callback
         self.add_item(custom_btn)
         
-        # Start Game (Host Only)
+        # All-In Button (Row 1)
+        allin_btn = ui.Button(label="💰 ALL IN", style=discord.ButtonStyle.danger, custom_id="btn_allin", row=1)
+        allin_btn.callback = self._allin_callback
+        self.add_item(allin_btn)
+        
+        # Cancel Bet Button (Row 2)
+        cancel_btn = ui.Button(label="❌ Bỏ Cược", style=discord.ButtonStyle.secondary, custom_id="btn_cancel_bet", row=2)
+        cancel_btn.callback = self._cancel_bet_callback
+        self.add_item(cancel_btn)
+        
+        # Start Game (Host Only) (Row 2)
         start_btn = ui.Button(label="🎲 Bắt Đầu", style=discord.ButtonStyle.success, custom_id="btn_start_game", row=2)
         start_btn.callback = self._start_game_callback
         self.add_item(start_btn)
@@ -135,6 +145,20 @@ class LobbyView(ui.View):
     async def _custom_bet_callback(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(BetAmountModal(self.cog, self.table, interaction.user.id))
 
+    async def _allin_callback(self, interaction: discord.Interaction) -> None:
+        """Bet entire balance."""
+        from database_manager import get_user_balance
+        balance = await get_user_balance(interaction.user.id)
+        if balance <= 0:
+            await interaction.response.send_message("❌ Bạn không có hạt để All-In!", ephemeral=True)
+            return
+        await self.cog.process_bet(interaction, self.table, interaction.user.id, balance)
+
+    async def _cancel_bet_callback(self, interaction: discord.Interaction) -> None:
+        """Cancel bet and get refund."""
+        from ..commands.multi import cancel_bet
+        await cancel_bet(self.cog, interaction, self.table, interaction.user.id)
+
     async def _start_game_callback(self, interaction: discord.Interaction) -> None:
         await self.cog.request_start_game(interaction, self.table)
 
@@ -142,6 +166,7 @@ class LobbyView(ui.View):
         for item in self.children:
             if isinstance(item, ui.Button):
                 item.disabled = True
+
 class MultiGameView(ui.View):
     """View for multiplayer game."""
 

@@ -9,11 +9,11 @@ import io
 from typing import List, Optional, Tuple, Dict
 from PIL import Image, ImageDraw, ImageFont
 
-# Card dimensions
-CARD_WIDTH = 60
-CARD_HEIGHT = 84
-CARD_SPACING = 8
-CARD_RADIUS = 6
+# Card dimensions - LARGER for better visibility
+CARD_WIDTH = 100
+CARD_HEIGHT = 140
+CARD_SPACING = 12
+CARD_RADIUS = 10
 
 # Layout
 SECTION_PADDING = 15
@@ -70,10 +70,10 @@ def _draw_card(
     # Get suit color
     suit_symbol, color = SUIT_INFO.get(suit, ("?", BLACK_SUIT))
     
-    # Rank top-left
-    draw.text((x + 4, y + 2), rank, font=font_small, fill=color)
+    # Rank top-left (larger for bigger cards)
+    draw.text((x + 8, y + 4), rank, font=font_small, fill=color)
     # Small suit below rank
-    draw.text((x + 4, y + 14), suit_symbol, font=font_small, fill=color)
+    draw.text((x + 8, y + 24), suit_symbol, font=font_small, fill=color)
     
     # Large suit in center
     try:
@@ -81,14 +81,15 @@ def _draw_card(
         tw = bbox[2] - bbox[0]
         th = bbox[3] - bbox[1]
     except:
-        tw, th = 24, 24
+        tw, th = 40, 40
     cx = x + (CARD_WIDTH - tw) // 2
     cy = y + (CARD_HEIGHT - th) // 2
     draw.text((cx, cy), suit_symbol, font=font_large, fill=color)
     
-    # Rank bottom-right (rotated look)
-    draw.text((x + CARD_WIDTH - 16, y + CARD_HEIGHT - 28), rank, font=font_small, fill=color)
-    draw.text((x + CARD_WIDTH - 16, y + CARD_HEIGHT - 16), suit_symbol, font=font_small, fill=color)
+    # Rank bottom-right (mirrored)
+    draw.text((x + CARD_WIDTH - 28, y + CARD_HEIGHT - 48), rank, font=font_small, fill=color)
+    draw.text((x + CARD_WIDTH - 28, y + CARD_HEIGHT - 28), suit_symbol, font=font_small, fill=color)
+
 
 
 def _draw_hidden_card(draw: ImageDraw.Draw, x: int, y: int) -> None:
@@ -99,15 +100,16 @@ def _draw_hidden_card(draw: ImageDraw.Draw, x: int, y: int) -> None:
         fill=HIDDEN_BG,
         outline=CARD_BORDER
     )
-    # Pattern
-    for i in range(4, CARD_WIDTH - 4, 6):
-        for j in range(4, CARD_HEIGHT - 4, 6):
-            if (i + j) % 12 == 0:
-                draw.ellipse((x+i, y+j, x+i+3, y+j+3), fill=HIDDEN_PATTERN)
+    # Pattern (scaled for bigger cards)
+    for i in range(6, CARD_WIDTH - 6, 10):
+        for j in range(6, CARD_HEIGHT - 6, 10):
+            if (i + j) % 20 == 0:
+                draw.ellipse((x+i, y+j, x+i+5, y+j+5), fill=HIDDEN_PATTERN)
     
-    # Question mark
-    font = _get_font(28)
-    draw.text((x + CARD_WIDTH//2 - 8, y + CARD_HEIGHT//2 - 14), "?", font=font, fill=(255,255,255))
+    # Question mark (larger)
+    font = _get_font(48)
+    draw.text((x + CARD_WIDTH//2 - 14, y + CARD_HEIGHT//2 - 24), "?", font=font, fill=(255,255,255))
+
 
 
 def render_game_state_sync(
