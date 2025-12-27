@@ -708,5 +708,61 @@
       "reward_role_key": "role_ban_tay_vang",
       "emoji": "🔥"
     }
+  },
+  "xidach": {
+    "xidach_novice": {
+      "name": "Tập Sự Xì Dách",
+      "description": "Tham gia chơi Xì Dách lần đầu tiên",
+      "condition_stat": "xidach_played",
+      "target_value": 1,
+      "reward_seeds": 100,
+      "reward_role_key": "role_tap_su_xidach",
+      "emoji": "🃏"
+    },
+    "xidach_expert": {
+      "name": "Cao Thủ Xì Dách",
+      "description": "Thắng 50 ván Xì Dách",
+      "condition_stat": "xidach_wins",
+      "target_value": 50,
+      "reward_seeds": 2000,
+      "reward_role_key": "role_cao_thu_xidach",
+      "emoji": "🎩"
+    },
+    "ngu_linh_master": {
+      "name": "Ngũ Linh Tựu",
+      "description": "Thắng với bài Ngũ Linh 5 lần",
+      "condition_stat": "xidach_ngu_linh_wins",
+      "target_value": 5,
+      "reward_seeds": 5000,
+      "reward_role_key": "role_ngu_linh_tuu",
+      "emoji": "🐉"
+    },
+    "xi_ban_destiny": {
+      "name": "Xì Bàn Định Mệnh",
+      "description": "Bốc được Xì Bàn (2 lá A)",
+      "condition_stat": "xidach_xi_ban_count",
+      "target_value": 1,
+      "reward_seeds": 8888,
+      "reward_role_key": "role_xi_ban_dinh_menh",
+      "emoji": "✨"
+    },
+    "bust_master": {
+      "name": "Thánh Quắc",
+      "description": "Bị Quắc (Bù) 50 lần (Nhân phẩm...)",
+      "condition_stat": "xidach_bust_count",
+      "target_value": 50,
+      "reward_seeds": 500,
+      "reward_role_key": "role_thanh_quac",
+      "emoji": "💥"
+    },
+    "xidach_tycoon": {
+      "name": "Vua Sòng Bài",
+      "description": "Thắng tổng cộng 1,000,000 Hạt từ Xì Dách",
+      "condition_stat": "xidach_total_won",
+      "target_value": 1000000,
+      "reward_seeds": 10000,
+      "reward_role_key": "role_vua_song_bai",
+      "emoji": "💰"
+    }
   }
 }

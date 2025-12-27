@@ -146,14 +146,21 @@ class DatabaseManager:
         return result
 
     @retry_on_db_lock()
-    async def modify(self, query: str, params: tuple = ()):
-        """Execute INSERT/UPDATE/DELETE query with automatic retry on lock"""
+    async def modify(self, query: str, params: tuple = ()) -> int:
+        """Execute INSERT/UPDATE/DELETE query with automatic retry on lock.
+        
+        Returns:
+            int: Number of rows affected (rowcount).
+        """
         db = await self._get_db()
-        await db.execute(query, params)
-        await db.commit()
+        async with db.execute(query, params) as cursor:
+            await db.commit()
+            rowcount = cursor.rowcount
 
         # Invalidate relevant caches
         self._invalidate_cache_pattern(query)
+        
+        return rowcount
 
     def _invalidate_cache_pattern(self, query: str):
         """Invalidate cache entries based on query type"""

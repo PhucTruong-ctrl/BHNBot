@@ -74,6 +74,12 @@
     "role_tho_san_huyen_thoai_event": null,
     "role_tui_tien_vo_tan": null,
     "role_y_chi_sat_da": null,
-    "role_toc_do_anh_sang": null
+    "role_toc_do_anh_sang": null,
+    "role_tap_su_xidach": null,
+    "role_cao_thu_xidach": null,
+    "role_ngu_linh_tuu": null,
+    "role_xi_ban_dinh_menh": null,
+    "role_thanh_quac": null,
+    "role_vua_song_bai": null
   }
 }
