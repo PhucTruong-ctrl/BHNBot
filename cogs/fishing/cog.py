@@ -1447,7 +1447,7 @@ class FishingCog(commands.Cog):
             
                 # Check if bucket is full after fishing, if so, sell all fish instead of just caught
                 updated_inventory = await get_inventory(user_id)
-                current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS)
+                current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != "ca_isekai")
                 if current_fish_count >= FISH_BUCKET_LIMIT:
                     all_fish_items = {k: v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS}
                     # Exclude ca_isekai from sellable items
@@ -2283,7 +2283,7 @@ class FishingCog(commands.Cog):
         Returns:
             bool: True if bucket is full (fishing blocked), False if can fish
         """
-        fish_count = sum(v for k, v in inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS)
+        fish_count = sum(v for k, v in inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != "ca_isekai")
         
         if fish_count >= FISH_BUCKET_LIMIT:
             embed = discord.Embed(

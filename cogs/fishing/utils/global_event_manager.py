@@ -727,7 +727,13 @@ class GlobalEventManager:
         else:
             embed.add_field(name="🏆 Chiến Thần", value="*Chưa có ai tham chiến...*", inline=False)
             
-        embed.set_footer(text=f"Cập nhật lúc {datetime.now().strftime('%H:%M:%S')}")
+        if self.current_event and self.current_event.get("end_time"):
+            end_ts = int(self.current_event["end_time"])
+            embed.description += f"\n⏳ **Kết thúc:** <t:{end_ts}:R>"
+
+        # Use native Discord timestamp for footer
+        embed.timestamp = datetime.now()
+        embed.set_footer(text="Cập nhật trạng thái")
             
         # 3. Broadcast with Delete-Old-And-Send-New pattern
         await self._broadcast_raid_update(embed)

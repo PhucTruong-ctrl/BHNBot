@@ -168,8 +168,8 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         fish_items = sellable_items
         
         # ==================== CHECK FOR LEGENDARY FISH ====================
-        # Remove legendary fish from sellable items (exclude ca_isekai as it's from consumables)
-        legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS and k != "ca_isekai"}
+        # Remove legendary fish from sellable items
+        legendary_fish_in_inventory = {k: v for k, v in fish_items.items() if k in LEGENDARY_FISH_KEYS}
         if legendary_fish_in_inventory:
             # Show warning that legendary fish cannot be sold
             legend_names = ", ".join([_glitch(ALL_FISH[k]['name']) for k in legendary_fish_in_inventory.keys()])
