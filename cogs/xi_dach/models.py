@@ -136,6 +136,8 @@ class Table:
     # Shared state for turn management (used by countdown loop and views)
     turn_action_timestamp: float = 0.0  # Timestamp of last player action
     current_turn_msg: Optional[object] = None  # Reference to current turn message
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
 
     @property
     def dealer_value(self) -> int:
@@ -266,101 +268,7 @@ class Table:
             if p.bet > 0
         )
 
-    def get_dealer_decision(self) -> tuple[str, str]:
-        """Decide Dealer's next move based on competitive logic.
-        
-        Returns:
-            tuple[str, str]: (action, reason)
-                action: 'hit' or 'stand'
-                reason: string key for trash talk or logging
-        """
-        value = self.dealer_value
-        hand_size = len(self.dealer_hand)
 
-        # 0. HARD STOP: 5 Cards (Ngũ Linh) or 21 Points
-        # If we have 5 cards and are not busted, we MUST stand. It's the highest hand type (usually).
-        if hand_size == 5 and value <= 21:
-            return "stand", "ngu_linh_achieved"
-        
-        # 0.5 HARD STOP: >= 21 Points (Normal)
-        if value >= 21:
-             return "stand", "max_point"
-
-        # 1. BASE RULE: Under 16 MUST hit
-        if value < 16:
-            return "hit", "under_16"
-
-        # 2. ANALYZE BOARD
-        winning_count = 0
-        losing_count = 0
-        push_count = 0
-        
-        active_players = [
-            p for p in self.players.values() 
-            if p.bet > 0 and p.status in (PlayerStatus.STAND, PlayerStatus.BLACKJACK, PlayerStatus.PLAYING)
-        ]
-        
-        if not active_players:
-            return "stand", "safe"
-
-        for p in active_players:
-            # Player Bust/Low (<16) = Dealer Wins automatically
-            if p.status == PlayerStatus.BUST or (p.hand_value < 16 and p.hand_type == HandType.NORMAL):
-                winning_count += 1
-                continue
-                
-            p_val = p.hand_value
-            # Special hands
-            if p.hand_type in (HandType.XI_BAN, HandType.XI_DACH):
-                losing_count += 1
-            elif p.hand_type == HandType.NGU_LINH:
-                if self.dealer_type == HandType.NGU_LINH:
-                    if value > p_val: winning_count += 1
-                    elif value < p_val: losing_count += 1
-                    else: push_count += 1
-                else: 
-                    losing_count += 1
-            else:
-                # Normal vs Normal
-                if value > p_val:
-                    winning_count += 1
-                elif value < p_val:
-                    losing_count += 1
-                else:
-                    push_count += 1
-        
-        # 3. MAJORITY RULE LOGIC (User Request)
-        # "If we beat >= 50% of players, STAND. Else, HIT (unless too risky)."
-        total_opponents = winning_count + losing_count + push_count
-        
-        if total_opponents > 0:
-            # If we are winning/pushing against at least half the table -> PLAY SAFE
-            if (winning_count + push_count) >= (total_opponents / 2.0):
-                return "stand", "safe_majority"
-                
-            # If we are losing to the majority -> CONSIDER RISK
-            else:
-                # User Rule: "If losing, risk it... UNLESS risk is too high."
-                # Risk Assessment: 
-                # If Score >= 18: Risk of busting is very high. 
-                # User guidance: "If opponent has 21, don't try to beat them if risky."
-                if value >= 18:
-                     return "stand", "cut_losses"
-                
-                # Check Ngu Linh Potential (Specific commentary)
-                # Min points needed to stay under 21
-                cards_needed = 5 - hand_size
-                min_points_needed = cards_needed * 1
-                is_ngu_linh_possible = (value + min_points_needed) <= 21
-
-                if hand_size == 4 and is_ngu_linh_possible:
-                     return "hit", "ngu_linh_attempt"
-                
-                # Desperation Hit (Since we are losing and score < 18)
-                return "hit", "desperate_hit"
-
-        # Default fallback
-        return "stand", "safe"
 
 
 class GameManager:

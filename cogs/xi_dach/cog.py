@@ -29,6 +29,8 @@ from .game import (
     render_hand_image,
     render_game_state_image,
     calculate_hand_value,
+    calculate_hand_value,
+    get_dealer_decision,
     HandType,
 )
 from .models import (
@@ -78,6 +80,31 @@ class XiDachCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.cleanup_task = None
+
+    async def cog_load(self):
+        """Start background tasks."""
+        self.cleanup_task = self.bot.loop.create_task(self.cleanup_loop())
+        logger.info("[XIDACH] Cleanup task started")
+
+    async def cog_unload(self):
+        """Cancel background tasks."""
+        if self.cleanup_task:
+            self.cleanup_task.cancel()
+
+    async def cleanup_loop(self):
+        """Periodically clean up stale tables."""
+        while True:
+            try:
+                await asyncio.sleep(300)  # 5 minutes
+                count = game_manager.cleanup_old_tables(max_age_seconds=600)  # 10 mins
+                if count > 0:
+                    logger.info(f"[XIDACH] [CLEANUP] Removed {count} stale tables")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[XIDACH] [CLEANUP_ERROR] {e}")
+
 
     # ==================== HELPER FUNCTIONS ====================
 
@@ -212,8 +239,20 @@ class XiDachCog(commands.Cog):
                     await ctx.send(msg)
                 return
 
-            # Deduct bet
-            await self.update_seeds(user.id, -bet_amount)
+            # Deduct bet (Atomic)
+            success = await db_manager.modify(
+                "UPDATE users SET seeds = seeds - ? WHERE user_id = ? AND seeds >= ?",
+                (bet_amount, user.id, bet_amount)
+            )
+            
+            if not success:
+                msg = f"❌ Giao dịch thất bại! Bạn không đủ hạt (hoặc lỗi hệ thống)."
+                if is_slash:
+                    await interaction.followup.send(msg, ephemeral=True)
+                else:
+                    await ctx.send(msg)
+                return
+
 
             # Add player
             player = table.add_player(user.id, user.display_name, bet_amount)
@@ -402,37 +441,36 @@ class XiDachCog(commands.Cog):
         table: Table,
         player: Player
     ) -> None:
-        """Handle player hit action.
-        
-        Args:
-            interaction: Discord interaction.
-            table: Game table.
-            player: The player.
-        """
+        """Handle player hit action."""
         await interaction.response.defer()
 
-        # Draw card
-        card = table.deck.draw_one()
-        player.add_card(card)
+        async with table.lock:
+            # Re-check status inside lock to prevent race
+            if player.status != PlayerStatus.PLAYING:
+                 return
 
-        logger.info(
-            f"[XIDACH] [HIT] user_id={player.user_id} card={card} "
-            f"total={player.hand_value}"
-        )
+            # Draw card
+            card = table.deck.draw_one()
+            player.add_card(card)
 
-        # Check for bust
-        if player.is_bust:
-            player.status = PlayerStatus.BUST
-            await self._finish_solo_game(interaction, table, player)
-            return
+            logger.info(
+                f"[XIDACH] [HIT] user_id={player.user_id} card={card} "
+                f"total={player.hand_value}"
+            )
 
-        # Check for Ngu Linh (5 cards <= 21)
-        if len(player.hand) >= 5:
-            player.status = PlayerStatus.STAND
-            await self._finish_solo_game(interaction, table, player)
-            return
+            # Check for bust
+            if player.is_bust:
+                player.status = PlayerStatus.BUST
+                await self._finish_solo_game(interaction, table, player)
+                return
 
-        # Update display
+            # Check for Ngu Linh (5 cards <= 21)
+            if len(player.hand) >= 5:
+                player.status = PlayerStatus.STAND
+                await self._finish_solo_game(interaction, table, player)
+                return
+
+        # Update display (Outside lock is fine for View update, but table state was locked)
         view = SoloGameView(self, table, player)
         await self._update_solo_display(interaction, table, player, view, hide_dealer=True)
 
@@ -444,8 +482,12 @@ class XiDachCog(commands.Cog):
     ) -> None:
         """Handle player stand action."""
         await interaction.response.defer()
-        player.status = PlayerStatus.STAND
-        await self._finish_solo_game(interaction, table, player)
+        
+        async with table.lock:
+            if player.status != PlayerStatus.PLAYING:
+                return
+            player.status = PlayerStatus.STAND
+            await self._finish_solo_game(interaction, table, player)
 
     async def player_double(
         self,
@@ -454,45 +496,44 @@ class XiDachCog(commands.Cog):
         player: Player
     ) -> None:
         """Handle player double down action."""
-        # Check balance for doubling
-        user_balance = await self.get_user_seeds(player.user_id)
-        if user_balance < player.bet:
-            await interaction.response.send_message(
-                f"❌ Bạn không đủ hạt để gấp đôi!\nCần: **{player.bet:,}** | Có: **{user_balance:,}**",
-                ephemeral=True
-            )
-            return
-
         await interaction.response.defer()
-
-        # Deduct additional bet
-        await self.update_seeds(player.user_id, -player.bet)
-        player.bet *= 2
-        player.is_doubled = True
-
-        # Draw one card and stand
-        card = table.deck.draw_one()
-        player.add_card(card)
         
-        # Determine status
-        if player.is_bust:
-            player.status = PlayerStatus.BUST
-        else:
-            player.status = PlayerStatus.STAND
-            
-        # Finish game
-        await self._finish_solo_game(interaction, table, player)
+        async with table.lock:
+             if player.is_doubled or player.status != PlayerStatus.PLAYING:
+                 return
 
-        logger.info(
-            f"[XIDACH] [DOUBLE] user_id={player.user_id} new_bet={player.bet} "
-            f"card={card} total={player.hand_value}"
-        )
+             # Atomic Deduct
+             success = await db_manager.modify(
+                "UPDATE users SET seeds = seeds - ? WHERE user_id = ? AND seeds >= ?",
+                (player.bet, player.user_id, player.bet)
+             )
+             
+             if not success:
+                 await interaction.followup.send(
+                     f"❌ Giao dịch thất bại! Bạn không đủ hạt.", ephemeral=True
+                 )
+                 return
 
-        # Auto stand after double
-        if not player.is_bust:
-            player.status = PlayerStatus.STAND
+             player.bet *= 2
+             player.is_doubled = True
 
-        await self._finish_solo_game(interaction, table, player)
+             # Draw one card
+             card = table.deck.draw_one()
+             player.add_card(card)
+             
+             # Determine status
+             if player.is_bust:
+                 player.status = PlayerStatus.BUST
+             else:
+                 player.status = PlayerStatus.STAND
+             
+             # Finish game
+             await self._finish_solo_game(interaction, table, player)
+
+             logger.info(
+                f"[XIDACH] [DOUBLE] user_id={player.user_id} new_bet={player.bet} "
+                f"card={card} total={player.hand_value}"
+             )
 
     # ==================== MULTI-PLAYER ACTION HANDLERS ====================
     # These methods handle actions in multiplayer and resend message with new card image
@@ -556,47 +597,52 @@ class XiDachCog(commands.Cog):
         view: "MultiGameView"
     ) -> None:
         """Handle player double in multiplayer - resends message with new card image."""
-        try:
-            # Check balance for doubling
-            user_balance = await self.get_user_seeds(player.user_id)
-            if user_balance < player.bet:
-                await interaction.response.send_message(
-                    f"❌ Bạn không đủ hạt để gấp đôi!\nCần: **{player.bet:,}** | Có: **{user_balance:,}**",
-                    ephemeral=True
-                )
+        await interaction.response.defer()
+        
+        async with table.lock:
+            if player.is_doubled or player.status != PlayerStatus.PLAYING:
                 return
 
-            await interaction.response.defer()
+            # Atomic Deduct
+            success = await db_manager.modify(
+                "UPDATE users SET seeds = seeds - ? WHERE user_id = ? AND seeds >= ?",
+                (player.bet, player.user_id, player.bet)
+            )
+            
+            if not success:
+                 await interaction.followup.send("❌ Giao dịch thất bại! Không đủ hạt.", ephemeral=True)
+                 return
 
-            # Deduct additional bet
-            await self.update_seeds(player.user_id, -player.bet)
             player.bet *= 2
             player.is_doubled = True
 
-            # Draw one card and stand
+            # Draw one card
             card = table.deck.draw_one()
             player.add_card(card)
+            
+            # Update status inside lock
+            if player.status == PlayerStatus.PLAYING:
+                 player.status = PlayerStatus.STAND
+            if player.is_bust:
+                 player.status = PlayerStatus.BUST
 
             logger.info(
                 f"[XIDACH] [DOUBLE] user_id={player.user_id} new_bet={player.bet} "
                 f"card={card} total={player.hand_value}"
             )
 
-            # Auto stand after double (if not bust)
-            # Even if bust, we want to finish turn logic.
-            # But add_card sets BUST status automatically if > 21.
-            # So we only set STAND if playing.
-            if player.status == PlayerStatus.PLAYING:
-                 player.status = PlayerStatus.STAND
-
-            # Delete old message and send new one with updated card image
-            await self._resend_turn_message(interaction, table, player, view)
-            
+        # Resend message (view update) outside lock
+        # Note: _resend_turn_message accesses table state, but it mostly reads or updates UI references.
+        # Ideally should be safe, or we can keep inside lock if fast enough. 
+        # Rendering image is SLOW. Must be outside lock if possible?
+        # But table.current_turn_msg is shared state.
+        # Let's keep it outside lock as Rendering is CPU bound (async executor).
+        # The main risk is user double clicking? But we checked player.status/is_doubled inside lock.
+        # So it is safe.
+        try:
+             await self._resend_turn_message(interaction, table, player, view)
         except Exception as e:
-            logger.error(f"[XIDACH] [DOUBLE_ERROR] {e}", exc_info=True)
-            try:
-                 await interaction.followup.send("❌ Có lỗi xảy ra khi gấp đôi.", ephemeral=True)
-            except: pass
+             logger.error(f"[XIDACH] Double render error: {e}")
 
     async def _resend_turn_message(
         self,
@@ -728,7 +774,7 @@ class XiDachCog(commands.Cog):
             # Dealer Smart Loop
             while True:
                 # Decide next move
-                action, reason = table.get_dealer_decision()
+                action, reason = get_dealer_decision(table.dealer_hand)
                 
                 if action == "stand":
                     break
@@ -1161,29 +1207,27 @@ class XiDachCog(commands.Cog):
             await interaction.response.send_message("❌ Sòng đã đóng!", ephemeral=True)
             return
 
-        player = table.players.get(user_id)
         if not player:
             await interaction.response.send_message(
                 "❌ Bạn chưa tham gia sòng!", ephemeral=True
             )
             return
 
-        # Check balance
-        user_balance = await self.get_user_seeds(user_id)
-        new_total = player.bet + amount
+        async with table.lock:
+             # Check balance
+            user_balance = await self.get_user_seeds(user_id)
+            new_total = player.bet + amount
 
-        if new_total > user_balance:
-            await interaction.response.send_message(
-                f"❌ Không đủ hạt!\n"
-                f"Đang cược: {player.bet:,} | Thêm: {amount:,} | Có: {user_balance:,}",
-                ephemeral=True
-            )
-            return
+            if new_total > user_balance:
+                await interaction.response.send_message(
+                    f"❌ Không đủ hạt!\n"
+                    f"Đang cược: {player.bet:,} | Thêm: {amount:,} | Có: {user_balance:,}",
+                    ephemeral=True
+                )
+                return
 
-
-
-        # Add bet
-        player.bet = new_total
+            # Add bet
+            player.bet = new_total
 
         # EDIT the betting message with updated bet amount instead of sending new message
         view = MultiBetView(self, table, player)
@@ -1271,8 +1315,22 @@ class XiDachCog(commands.Cog):
             )
             return
 
-        # Deduct bet
-        await self.update_seeds(player.user_id, -player.bet)
+        # Deduct bet (Atomic)
+        success = await db_manager.modify(
+            "UPDATE users SET seeds = seeds - ? WHERE user_id = ? AND seeds >= ?",
+            (player.bet, player.user_id, player.bet)
+        )
+        
+        if not success:
+             await interaction.response.send_message(
+                f"❌ Giao dịch thất bại! Bạn không đủ hạt.",
+                ephemeral=True
+            )
+             return
+
+        # Deduct bet done
+        # await self.update_seeds(player.user_id, -player.bet)
+
         player.is_ready = True
         player.status = PlayerStatus.WAITING
 
@@ -1569,7 +1627,7 @@ class XiDachCog(commands.Cog):
             # 2. Dealer Smart Loop
             while True:
                 # Decide next move
-                action, reason = table.get_dealer_decision()
+                action, reason = get_dealer_decision(table.dealer_hand)
                 
                 if action == "stand":
                     break
