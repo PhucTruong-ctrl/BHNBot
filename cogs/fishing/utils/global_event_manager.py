@@ -222,10 +222,19 @@ class GlobalEventManager:
                     # Dragon Quest Status Updates
                     elif self.current_event["data"].get("type") == "fish_quest_raid":
                         await self._update_dragon_status()
-                    # Generic Event Bump
-                    elif self.current_event["data"].get("mechanics", {}).get("view_type") == "GenericActionView":
-                        await self._process_bump()
-                return # Don't start new event if one is running (System limitation for simplicity)
+                    
+                    # Generic Event Bump (Check BOTH locations for mechanics)
+                    else:
+                        event_data = self.current_event["data"]
+                        mechanics = event_data.get("mechanics", {})
+                        # Fallback for nested data (GenericActionView style)
+                        if not mechanics:
+                            mechanics = event_data.get("data", {}).get("mechanics", {})
+                            
+                        if mechanics.get("view_type") == "GenericActionView" or mechanics.get("bump_interval_seconds", 0) > 0:
+                            await self._process_bump()
+
+                return # Don't start new event if one is running
 
             # 2. Check for potential events
             events_cfg = self.config.get("events", {})
@@ -487,7 +496,12 @@ class GlobalEventManager:
 
     async def _process_bump(self):
         """Bumps the event message if configured."""
-        bump_interval = self.current_event["data"].get("mechanics", {}).get("bump_interval_seconds", 0)
+        event_data = self.current_event["data"]
+        mechanics = event_data.get("mechanics", {})
+        if not mechanics:
+            mechanics = event_data.get("data", {}).get("mechanics", {})
+            
+        bump_interval = mechanics.get("bump_interval_seconds", 0)
         if bump_interval <= 0: return
 
         if time.time() - self.last_bump_time > bump_interval:

@@ -105,7 +105,7 @@ class AchievementManager:
             # 2. Give reward
             reward_seeds = achievement_data.get("reward_seeds", 0)
             if reward_seeds > 0:
-                await add_seeds(user_id, reward_seeds)
+                await add_seeds(user_id, reward_seeds, 'achievement_reward', 'system')
 
             # 3. Give role reward if configured
             role_assigned = False

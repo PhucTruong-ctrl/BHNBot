@@ -221,6 +221,12 @@ class InteractiveSellEventView(discord.ui.View):
                             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (final_value, self.user_id)
                         )
+                        # Manual Log for ACID Transaction
+                        event_key = self.event_data.get('key', 'unknown')
+                        await db_manager.db.execute(
+                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                            (final_value, self.user_id, f"interactive_sell_{event_key}", "fishing")
+                        )
                     
                     # 3. COMMIT
                     await db_manager.db.commit()
@@ -571,6 +577,12 @@ class InteractiveSellEventView(discord.ui.View):
                         await db_manager.db.execute(
                             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                             (final_value, self.user_id)
+                        )
+                        # Manual Log for ACID Transaction
+                        event_key = self.event_data.get('key', 'unknown')
+                        await db_manager.db.execute(
+                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                            (final_value, self.user_id, f"interactive_sell_timeout_{event_key}", "fishing")
                         )
                     
                     await db_manager.db.commit()

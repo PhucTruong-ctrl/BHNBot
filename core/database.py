@@ -273,24 +273,80 @@ async def get_user_full(user_id: int) -> Optional[tuple]:
     return result
 
 
-async def add_seeds(user_id: int, amount: int):
-    """Add seeds and invalidate cache (with balance logging)"""
-    # Get balance before
-    balance_before = await get_user_balance(user_id)
+async def add_seeds(user_id: int, amount: int, reason: str, category: str):
+    """Add seeds and log transaction atomically.
+    
+    CRITICAL: This function enforces financial logging.
+    Do NOT use raw SQL updates for 'seeds' anywhere else.
+    
+    Args:
+        user_id: Discord User ID
+        amount: Amount to add (negative to subtract)
+        reason: Specific reason key (e.g., 'daily_reward', 'buy_shop')
+        category: High-level category (e.g., 'social', 'maintenance')
+    """
+    if not reason or not category:
+        raise ValueError("ZERO LEAKAGE POLICY: 'reason' and 'category' are mandatory for financial transactions.")
 
-    # Update seeds
-    await db_manager.modify(
-        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-        (amount, user_id)
-    )
+    # 1. Prepare Operations
+    operations = [
+        # Update Balance
+        (
+            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+            (amount, user_id)
+        ),
+        # Log Transaction
+        (
+            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+            (user_id, amount, reason, category)
+        )
+    ]
 
-    # Log the change
-    balance_after = balance_before + amount
-    logger.info(f"[ADD_SEEDS] user_id={user_id} amount={amount:+d} balance_before={balance_before} balance_after={balance_after}")
+    # 2. Execute Atomically
+    await db_manager.batch_modify(operations)
 
-    # Clear cache
+    # 3. Side Effects (Logging & Cache) calls
+    # Note: batch_modify invalidates cache patterns, but we can be specific here if needed.
+    logger.info(f"[TRANSACTION] {user_id}: {amount:+d} | {category}:{reason}")
+    
+    # Invalidate both cache keys explicitly to be safe
     db_manager.clear_cache_by_prefix(f"balance_{user_id}")
     db_manager.clear_cache_by_prefix(f"user_full_{user_id}")
+
+
+async def batch_update_seeds(updates: Dict[int, int], reason: str, category: str):
+    """Update multiple user balances and log transactions atomically.
+    
+    Args:
+        updates: Dict {user_id: amount}
+        reason: Reason key for ALL updates in this batch
+        category: Category for ALL updates in this batch
+    """
+    if not updates:
+        return
+        
+    if not reason or not category:
+        raise ValueError("ZERO LEAKAGE POLICY: 'reason' and 'category' are mandatory.")
+
+    operations = []
+    
+    for user_id, amount in updates.items():
+        # Update Balance
+        operations.append((
+            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+            (amount, user_id)
+        ))
+        # Log Transaction
+        operations.append((
+            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+            (amount, user_id, reason, category)
+        ))
+
+    await db_manager.batch_modify(operations)
+    
+    # Clear caches
+    for uid in updates.keys():
+        db_manager.clear_cache_by_prefix(f"balance_{uid}")
 
 
 async def get_leaderboard(limit: int = 10) -> List[tuple]:

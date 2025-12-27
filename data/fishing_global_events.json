@@ -28,6 +28,7 @@
             "mechanics": {
                 "game_type": "button_spam",
                 "view_type": "MeteorWishView",
+                "bump_interval_seconds": 300,
                 "spawn_interval": [10, 25],
                 "min_stars": 8,
                 "max_stars": 20,
@@ -286,6 +287,7 @@
             "data": {
                 "mechanics": {
                     "view_type": "GenericActionView",
+                    "bump_interval_seconds": 300,
                     "buttons": [
                         {
                             "label": "🙏 Dâng Hương (2K)",
@@ -321,6 +323,7 @@
             "data": {
                 "mechanics": {
                     "view_type": "GenericActionView",
+                    "bump_interval_seconds": 300,
                     "buttons": [
                         {
                             "label": "✨ Thanh Tẩy 10 Rác",

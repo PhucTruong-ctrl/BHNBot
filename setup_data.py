@@ -270,6 +270,44 @@ def init_database():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )''')
 
+    # 12. TRANSACTION LOGS (Cash Flow Tracking)
+    # New table for comprehensive cash flow analysis
+    c.execute('''CREATE TABLE IF NOT EXISTS transaction_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    amount INTEGER NOT NULL,
+                    currency TEXT DEFAULT 'seeds',
+                    reason TEXT NOT NULL,          -- e.g., 'daily_reward', 'buy_item'
+                    category TEXT DEFAULT 'uncategorized', -- e.g., 'social', 'fishing'
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )''')
+    
+    # Create indexes for transaction_logs
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_trans_created ON transaction_logs(created_at)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_trans_cat ON transaction_logs(category)")
+        print("✓ Created indexes for transaction_logs")
+    except:
+        pass
+
+    # 13. LEGACY SNAPSHOT MIGRATION (One-time)
+    # Check if transaction_logs is empty but users have money
+    t_count = c.execute("SELECT COUNT(*) FROM transaction_logs").fetchone()[0]
+    if t_count == 0:
+        # Check total money in circulation
+        users_money = c.execute("SELECT user_id, seeds FROM users WHERE seeds > 0").fetchall()
+        if users_money:
+            print(f"Creating Legacy Snapshot for {len(users_money)} users...")
+            legacy_entries = []
+            for uid, amount in users_money:
+                legacy_entries.append((uid, amount, 'seeds', 'legacy_balance', 'system'))
+            
+            c.executemany('''
+                INSERT INTO transaction_logs (user_id, amount, currency, reason, category)
+                VALUES (?, ?, ?, ?, ?)
+            ''', legacy_entries)
+            print(f"✓ Created {len(legacy_entries)} legacy transaction logs.")
+    
     conn.commit()
     
     # ==================== INDEXES (Tối Ưu Hóa) ====================

@@ -219,6 +219,80 @@ async def get_advanced_stats() -> Dict[str, Any]:
     }
 
 
+@router.get("/cashflow")
+async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
+    """Get cash flow statistics grouped by category and reason.
+    
+    Args:
+        days: Number of days to look back (default 30)
+    """
+    # 1. Fetch Aggregated Data
+    query = """
+        SELECT 
+            category,
+            reason,
+            SUM(amount) as net_amount,
+            COUNT(*) as count,
+            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as total_in,
+            SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END) as total_out
+        FROM transaction_logs
+        WHERE created_at >= datetime('now', ?)
+        GROUP BY category, reason
+        ORDER BY category, net_amount DESC
+    """
+    
+    # Calculate time parameter string properly
+    time_param = f"-{days} days"
+    
+    rows = await fetchall(query, (time_param,))
+    
+    # 2. Process Data structure
+    categories = {}
+    summary = {"total_in": 0, "total_out": 0, "net": 0, "transaction_count": 0}
+    
+    for row in rows:
+        cat = row["category"] or "unknown"
+        reason = row["reason"] or "unknown"
+        
+        # summary updates
+        summary["total_in"] += row["total_in"]
+        summary["total_out"] += row["total_out"]
+        summary["net"] += row["net_amount"]
+        summary["transaction_count"] += row["count"]
+        
+        # category init
+        if cat not in categories:
+            categories[cat] = {
+                "net": 0,
+                "in": 0,
+                "out": 0,
+                "count": 0,
+                "reasons": []
+            }
+            
+        # category updates
+        c = categories[cat]
+        c["net"] += row["net_amount"]
+        c["in"] += row["total_in"]
+        c["out"] += row["total_out"]
+        c["count"] += row["count"]
+        
+        # append reason detail
+        c["reasons"].append({
+            "reason": reason,
+            "net": row["net_amount"],
+            "in": row["total_in"],
+            "out": row["total_out"],
+            "count": row["count"]
+        })
+        
+    return {
+        "period": f"Last {days} days",
+        "summary": summary,
+        "categories": categories
+    }
+
+
 @router.get("/export")
 async def export_dashboard_data() -> Any:
     """Export all dashboard data to Excel."""

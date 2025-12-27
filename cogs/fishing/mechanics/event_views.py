@@ -52,7 +52,7 @@ class MeteorWishView(discord.ui.View):
             logger.info(f"[METEOR] User {interaction.user.name} ({user_id}) got SHARD")
         else:
             seeds = random.randint(10, 50)
-            await add_seeds(user_id, seeds)
+            await add_seeds(user_id, seeds, 'meteor_wish', 'social')
             await increment_stat(user_id, 'fishing', stat_key, 1)
             
             message = (
@@ -161,6 +161,11 @@ class GenericActionView(discord.ui.View):
                             "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
                             (money_cost, user_id)
                         )
+                        # Manual Log for ACID Transaction
+                        await db_manager.db.execute(
+                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                            (-money_cost, user_id, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
+                        )
                     
                     # B. Item Cost (Barter)
                     item_input = cost.get("item") # { "key": "trash_01", "amount": 1 }
@@ -254,6 +259,11 @@ class GenericActionView(discord.ui.View):
                             await db_manager.db.execute(
                                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                                 (ramount, user_id)
+                            )
+                            # Manual Log for ACID Transaction
+                            await db_manager.db.execute(
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                (ramount, user_id, f"event_reward_{rkey}", "fishing")
                             )
                             acquired_txt.append(f"{ramount:,} Hạt 💰")
                             logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event")

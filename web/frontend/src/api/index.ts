@@ -47,6 +47,7 @@ export const statsApi = {
   getModules: () => api.get<ModuleStats>('/stats/modules').then(r => r.data),
   getDistribution: () => api.get('/stats/distribution').then(r => r.data),
   getAdvanced: () => api.get('/stats/advanced').then(r => r.data),
+  getCashflow: (days = 30) => api.get('/stats/cashflow', { params: { days } }).then(r => r.data),
 };
 
 export const usersApi = {

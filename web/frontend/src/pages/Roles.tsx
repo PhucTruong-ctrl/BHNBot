@@ -188,13 +188,11 @@ export default function Roles() {
     if (!editingId) return;
 
     // Determine if it's a category or role
-    let isCat = false;
     let found = false;
 
     // Update Local State
     const newCats = categories.map(c => {
         if (c.id === editingId) {
-            isCat = true;
             found = true;
             return { ...c, name: editValue };
         }

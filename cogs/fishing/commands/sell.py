@@ -484,7 +484,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
              else:
                  logger.info(f"[SELL] Hijack skipped: Type {evt.get('type')} != raid_boss/fish_quest_raid")
         
-        await add_seeds(user_id, final_value)
+        await add_seeds(user_id, final_value, 'sell_fish', 'fishing')
         
         # Track stats
         logger.info(f"[SELL] ========== BEFORE STATS TRACKING for user {user_id} ==========")

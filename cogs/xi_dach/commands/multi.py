@@ -76,10 +76,8 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
         return
 
     # Deduct bet immediately
-    await db_manager.modify(
-        "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-        (initial_bet, user.id)
-    )
+    # Deduct bet immediately
+    await db_manager.add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'minigame')
 
     host = table.add_player(user.id, user.display_name, initial_bet)
     host.is_ready = True
@@ -156,10 +154,8 @@ async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table:
             return
 
         # Deduct the clicked amount
-        await db_manager.modify(
-            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-            (additional_needed, user_id)
-        )
+        # Deduct the clicked amount
+        await db_manager.add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'minigame')
 
         if current_player:
             current_player.bet = new_total  # Additive
@@ -191,10 +187,9 @@ async def cancel_bet(cog: "XiDachCog", interaction: discord.Interaction, table: 
 
         # Refund the bet
         refund_amount = player.bet
-        await db_manager.modify(
-            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-            (refund_amount, user_id)
-        )
+        # Refund the bet
+        refund_amount = player.bet
+        await db_manager.add_seeds(user_id, refund_amount, 'xi_dach_refund', 'minigame')
 
         # Remove player from table
         table.remove_player(user_id)
@@ -301,7 +296,7 @@ async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
 
         # Pay winners
         if seed_updates:
-            await batch_update_seeds(seed_updates)
+            await batch_update_seeds(seed_updates, reason='xi_dach_payout', category='minigame')
 
         # Send result
         embed = discord.Embed(
@@ -340,7 +335,7 @@ async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
             payout = int(player.bet * mul)
             profit = payout - player.bet
 
-            await batch_update_seeds({uid: payout})
+            await batch_update_seeds({uid: payout}, reason='xi_dach_instant_win', category='minigame')
             player.status = PlayerStatus.BLACKJACK
             player.payout = payout  # Store for result embed
 
@@ -545,10 +540,8 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
         await interaction.response.defer()
 
         # Deduct additional bet
-        await db_manager.modify(
-            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-            (player.bet, player.user_id)
-        )
+        # Deduct additional bet
+        await db_manager.add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'minigame')
 
         player.bet *= 2
         player.is_doubled = True

@@ -156,6 +156,11 @@ class InteractiveNPCView(discord.ui.View):
                             "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
                             (cost_type, self.user_id)
                         )
+                        # Manual Log for ACID Transaction
+                        await db_manager.db.execute(
+                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                            (-cost_type, self.user_id, f"npc_cost_{self.npc_key}", "fishing")
+                        )
 
                     # 2. ROLL REWARDS
                     reward_pool = self.npc_data.get("rewards", {}).get("accept", [])
@@ -205,6 +210,11 @@ class InteractiveNPCView(discord.ui.View):
                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                 (amt, self.user_id)
             )
+            # Manual Log
+            await db_manager.db.execute(
+                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                (amt, self.user_id, f"npc_reward_{self.npc_key}_money", "fishing")
+            )
         
         elif reward_type == "triple_money":
             # Calculate value of CURRENT caught fish x 3
@@ -221,6 +231,11 @@ class InteractiveNPCView(discord.ui.View):
             await db_manager.db.execute(
                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                 (total_val, self.user_id)
+            )
+            # Manual Log
+            await db_manager.db.execute(
+                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                (total_val, self.user_id, f"npc_reward_{self.npc_key}_triple", "fishing")
             )
         
         elif reward_type == "ngoc_trai":

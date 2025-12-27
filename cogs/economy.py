@@ -86,14 +86,15 @@ class EconomyCog(commands.Cog):
         except Exception as e:
             return False
 
-    async def add_seeds_local(self, user_id: int, amount: int):
+    async def add_seeds_local(self, user_id: int, amount: int, reason: str = 'generic_reward', category: str = 'system'):
         """Add seeds to user"""
         balance_before = await get_user_balance(user_id)
-        await add_seeds(user_id, amount)
+        # Ensure reasons are consistent
+        await add_seeds(user_id, amount, reason, category)
         balance_after = balance_before + amount
         logger.info(
             f"[ECONOMY] [SEED_UPDATE] user_id={user_id} seed_change={amount} "
-            f"balance_before={balance_before} balance_after={balance_after}"
+            f"balance_before={balance_before} balance_after={balance_after} reason={reason}"
         )
 
     async def get_user_balance_local(self, user_id: int) -> int:
@@ -201,7 +202,7 @@ class EconomyCog(commands.Cog):
                 return
         
         # Award seeds
-        await self.add_seeds_local(user.id, DAILY_BONUS)
+        await self.add_seeds_local(user.id, DAILY_BONUS, 'daily_reward', 'social')
         await self.update_last_daily(user.id)
         
         # Get new balance
@@ -444,7 +445,7 @@ class EconomyCog(commands.Cog):
         await self.get_or_create_user_local(user.id, user.name)
         
         # Add seeds
-        await self.add_seeds_local(user.id, amount)
+        await self.add_seeds_local(user.id, amount, 'admin_adjustment', 'system')
         
         # Get new balance
         new_balance = await self.get_user_balance_local(user.id)
@@ -483,7 +484,7 @@ class EconomyCog(commands.Cog):
         await self.get_or_create_user_local(user.id, user.name)
         
         # Add seeds
-        await self.add_seeds_local(user.id, amount)
+        await self.add_seeds_local(user.id, amount, 'admin_adjustment', 'system')
         
         # Get new balance
         new_balance = await self.get_user_balance_local(user.id)
@@ -551,7 +552,7 @@ class EconomyCog(commands.Cog):
             f"reward={reward} buff_active={is_buff_active}"
         )
         
-        await self.add_seeds_local(user_id, reward)
+        await self.add_seeds_local(user_id, reward, 'chat_reward', 'social')
         await self.update_last_chat_reward(user_id)
         
         # Update cooldown
@@ -617,7 +618,7 @@ class EconomyCog(commands.Cog):
             f"reward={reward} buff_active={is_buff_active} location={location}"
         )
         
-        await self.add_seeds_local(author_id, reward)
+        await self.add_seeds_local(author_id, reward, 'reaction_reward', 'social')
         self.reaction_cooldowns[cooldown_key] = now
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
@@ -658,7 +659,7 @@ class EconomyCog(commands.Cog):
                             f"[ECONOMY] [VOICE_REWARD] user_id={member.id} username={member.name} "
                             f"reward={reward} buff_active={is_buff_active}"
                         )
-                        await self.add_seeds_local(member.id, reward)
+                        await self.add_seeds_local(member.id, reward, 'voice_reward', 'social')
         
         except Exception as e:
             logger.error(f"[ECONOMY] Voice reward error: {e}", exc_info=True)
@@ -711,7 +712,7 @@ class EconomyCog(commands.Cog):
             recipients = []
             
             for user_id, balance, username in poor_users:
-                await add_seeds(user_id, welfare_amount)
+                await add_seeds(user_id, welfare_amount, 'weekly_welfare', 'system')
                 total_distributed += welfare_amount
                 recipients.append((username or f"User#{user_id}", balance, balance + welfare_amount))
                 logger.info(f"[WELFARE] Gave {welfare_amount} to {username} (balance: {balance} -> {balance + welfare_amount})")

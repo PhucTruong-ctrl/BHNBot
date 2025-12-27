@@ -129,7 +129,7 @@ async def nangcap_action(ctx_or_interaction):
 
         # Process Upgrade (Transaction)
         # 1. Deduct Money
-        await add_seeds(user_id, -cost)
+        await add_seeds(user_id, -cost, 'rod_upgrade', 'maintenance')
         
         # 2. Deduct Materials (if required)
         if material_cost > 0:

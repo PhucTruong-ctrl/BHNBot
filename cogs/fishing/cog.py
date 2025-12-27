@@ -606,7 +606,7 @@ class FishingCog(commands.Cog):
                     balance = await get_user_balance(user_id)
                     if balance >= WORM_COST:
                         # Tự động trừ tiền coi như mua mồi dùng ngay
-                        await add_seeds(user_id, -WORM_COST)
+                        await add_seeds(user_id, -WORM_COST, 'auto_buy_worm', 'fishing')
                         has_worm = True
                         auto_bought = True
                         logger.info(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} balance_before={balance} balance_after={balance - WORM_COST}")
@@ -649,7 +649,7 @@ class FishingCog(commands.Cog):
                 if self.disaster_fine_amount > 0 and time.time() < self.disaster_effect_end_time:
                     current_balance = await get_user_balance(user_id)
                     if current_balance >= self.disaster_fine_amount:
-                        await add_seeds(user_id, -self.disaster_fine_amount)
+                        await add_seeds(user_id, -self.disaster_fine_amount, 'disaster_fine', 'fishing')
                         disaster_fine_msg = f"\n💰 **PHẠT HÀNH CHÍNH:** -{ self.disaster_fine_amount} Hạt do {self.current_disaster.get('name', 'sự kiện')}"
                         logger.info(f"[DISASTER_FINE] {username} fined {self.disaster_fine_amount} seeds due to {self.current_disaster.get('key')} balance_before={current_balance} balance_after={current_balance - self.disaster_fine_amount}")
                     else:
@@ -848,7 +848,7 @@ class FishingCog(commands.Cog):
                         penalty_amount = min(event_result["lose_money"], current_balance)
                     
                         if penalty_amount > 0:
-                            await add_seeds(user_id, -penalty_amount)
+                            await add_seeds(user_id, -penalty_amount, 'fishing_event_penalty', 'fishing')
                             event_message += f" (-{penalty_amount} Hạt)"
                         
                             # Log if penalty was capped
@@ -858,7 +858,7 @@ class FishingCog(commands.Cog):
                             event_message += f" (Không đủ tiền để bị phạt!)"
             
                     if event_result.get("gain_money", 0) > 0:
-                        await add_seeds(user_id, event_result["gain_money"])
+                        await add_seeds(user_id, event_result["gain_money"], 'fishing_event_money', 'fishing')
                         event_message += f" (+{event_result['gain_money']} Hạt)"
             
                     # Process gain_items (ngoc_trais, worms, chests, etc.)
@@ -894,7 +894,7 @@ class FishingCog(commands.Cog):
                         # Cap at crypto loss cap (5000) for consistency
                         if penalty > CRYPTO_LOSS_CAP:
                             penalty = CRYPTO_LOSS_CAP
-                        await add_seeds(user_id, -penalty)
+                        await add_seeds(user_id, -penalty, 'fishing_event_penalty', 'fishing')
                         event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
                         logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
             
@@ -1374,7 +1374,7 @@ class FishingCog(commands.Cog):
             
                     # Track trash caught for achievement
                     try:
-                        await add_seeds(user_id, trash_count)
+                        await add_seeds(user_id, trash_count, 'recycle_trash', 'fishing')
                         # Track achievement: trash_master
                         try:
                             await increment_stat(user_id, "fishing", "trash_recycled", trash_count)
@@ -2325,7 +2325,7 @@ class FishingCog(commands.Cog):
             
             if balance >= repair_cost:
                 # Auto repair
-                await add_seeds(user_id, -repair_cost)
+                await add_seeds(user_id, -repair_cost, 'rod_repair', 'fishing')
                 rod_durability = rod_config["durability"]
                 await self.update_rod_data(user_id, rod_durability, rod_lvl)
                 repair_msg = f"\n🛠️ **Cần câu đã gãy!** Tự động sửa chữa: **-{repair_cost} Hạt** (Độ bền phục hồi: {rod_durability}/{rod_config['durability']})"
@@ -2482,7 +2482,7 @@ class FishingCog(commands.Cog):
                 )
                 return result_embed
             
-            await add_seeds(user_id, -cost)
+            await add_seeds(user_id, -cost, 'npc_interaction_cost', 'fishing')
             logger.info(f"[NPC] User {user_id} paid {cost} seeds to {npc_type}")
         
         elif cost == "cooldown_5min":
@@ -2543,7 +2543,7 @@ class FishingCog(commands.Cog):
         
         elif reward_type == "money":
             amount = selected_reward.get("amount", 150)
-            await add_seeds(user_id, amount)
+            await add_seeds(user_id, amount, 'npc_reward_money', 'fishing')
             result_text = selected_reward["message"]
             # Add amount to message if not already included
             if "{amount}" in result_text:
@@ -2577,7 +2577,7 @@ class FishingCog(commands.Cog):
         elif reward_type == "triple_money":
             # Calculate 3x fish price
             price = fish_info["sell_price"] * 3
-            await add_seeds(user_id, price)
+            await add_seeds(user_id, price, 'npc_reward_triple_money', 'fishing')
             # Replace placeholder in message with actual amount
             result_text = selected_reward["message"]
             if "{amount}" in result_text:

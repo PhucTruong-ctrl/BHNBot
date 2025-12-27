@@ -150,7 +150,7 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     
     # A. Add Seeds
     if total_seeds > 0:
-        await add_seeds(user_id, total_seeds)
+        await add_seeds(user_id, total_seeds, 'chest_open', 'item_usage')
         loot_messages.append(f"💰 **+{total_seeds:,} Hạt**")
         
     # B. Add Items (Batch Optimization)
@@ -221,7 +221,7 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             await remove_item(user_id, "puzzle_b", sets_can_make)
             await remove_item(user_id, "puzzle_c", sets_can_make)
             await remove_item(user_id, "puzzle_d", sets_can_make)
-            await add_seeds(user_id, reward_total)
+            await add_seeds(user_id, reward_total, 'puzzle_reward', 'item_usage')
                 
             loot_messages.append(f"\n🎉 **TỰ ĐỘNG GHÉP {sets_can_make} BỘ!**")
             loot_messages.append(f"➖ Đã dùng: {sets_can_make}x (Mảnh A, B, C, D)")

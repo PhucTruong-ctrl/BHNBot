@@ -67,15 +67,17 @@ class ShopCog(commands.Cog):
         """
         return await get_user_balance(user_id)
 
-    async def reduce_seeds(self, user_id: int, amount: int):
+    async def reduce_seeds(self, user_id: int, amount: int, reason: str, category: str):
         """Deducts seeds from user's balance.
 
         Args:
             user_id (int): The Discord user ID.
             amount (int): The amount to deduct.
+            reason (str): Reason for deduction.
+            category (str): Category of transaction.
         """
         balance_before = await get_user_balance(user_id)
-        await add_seeds(user_id, -amount)
+        await add_seeds(user_id, -amount, reason, category)
         balance_after = balance_before - amount
         logger.info(
             f"[SHOP] [SEED_UPDATE] user_id={user_id} seed_change=-{amount} "
@@ -176,7 +178,7 @@ class ShopCog(commands.Cog):
             return
         
         # Process purchase
-        await self.reduce_seeds(user_id, total_cost)
+        await self.reduce_seeds(user_id, total_cost, f'buy_{item_key}', 'maintenance')
         await self.add_item_local(user_id, item_key, soluong)
         
         quantity_text = f" x{soluong}" if soluong > 1 else ""
@@ -251,7 +253,7 @@ class ShopCog(commands.Cog):
             return
         
         # Process purchase
-        await self.reduce_seeds(user_id, total_cost)
+        await self.reduce_seeds(user_id, total_cost, f'buy_{item_key}', 'maintenance')
         await self.add_item_local(user_id, item_key, soluong)
         
         quantity_text = f" x{soluong}" if soluong > 1 else ""

@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [modules, setModules] = useState<ModuleStats | null>(null);
   const [distribution, setDistribution] = useState<any>(null);
   const [advanced, setAdvanced] = useState<any>(null);
+  const [cashflow, setCashflow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -23,12 +24,14 @@ export default function Dashboard() {
       statsApi.getEconomy(),
       statsApi.getModules(),
       statsApi.getDistribution(),
-      statsApi.getAdvanced()
-    ]).then(([ecoResult, modResult, distResult, advResult]) => {
+      statsApi.getAdvanced(),
+      statsApi.getCashflow(30)
+    ]).then(([ecoResult, modResult, distResult, advResult, flowResult]) => {
       if (ecoResult.status === 'fulfilled') setEconomy(ecoResult.value);
       if (modResult.status === 'fulfilled') setModules(modResult.value);
       if (distResult.status === 'fulfilled') setDistribution(distResult.value);
       if (advResult.status === 'fulfilled') setAdvanced(advResult.value);
+      if (flowResult.status === 'fulfilled') setCashflow(flowResult.value);
       
       if (advResult.status === 'rejected') console.error("Advanced stats failed:", advResult.reason);
       
@@ -124,25 +127,53 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Advanced Charts Area */}
-      <h3 style={{margin: '30px 0 15px', color: 'var(--text-secondary)'}}>Money Flow Analysis</h3>
+      {/* Cashflow Analysis (Real-time from Transaction Logs) */}
+      <h3 style={{margin: '30px 0 15px', color: 'var(--text-secondary)'}}>Cash Flow Analysis (30 Days)</h3>
+      
+      {/* Summary Cards */}
+      <div className="stats-grid" style={{marginBottom: '20px'}}>
+        <div className="stat-card">
+           <div className="stat-value" style={{color: 'var(--accent-success)'}}>
+             +{cashflow?.summary?.total_in?.toLocaleString() || 0}
+           </div>
+           <div className="stat-label">Total Inflow</div>
+        </div>
+        <div className="stat-card">
+           <div className="stat-value" style={{color: 'var(--accent-error)'}}>
+             {cashflow?.summary?.total_out?.toLocaleString() || 0}
+           </div>
+           <div className="stat-label">Total Outflow</div>
+        </div>
+        <div className="stat-card">
+           <div className="stat-value" style={{color: (cashflow?.summary?.net_flow || 0) >= 0 ? 'var(--accent-success)' : 'var(--accent-error)'}}>
+             {(cashflow?.summary?.net_flow || 0) > 0 ? '+' : ''}{cashflow?.summary?.net_flow?.toLocaleString() || 0}
+           </div>
+           <div className="stat-label">Net Profit/Loss</div>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
         
-        {/* Sink/Faucet Breakdown */}
+        {/* Money Inflow Breakdown */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Money Inflow (Faucet)</span>
+            <span className="card-title">Money Inflow (Sources)</span>
           </div>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={advanced?.flow?.in || []}
+                data={Object.entries(cashflow?.categories || {})
+                    .map(([key, data]: any) => ({ name: key, value: data.total_in }))
+                    .filter((item: any) => item.value > 0)
+                }
                 cx="50%" cy="50%"
                 innerRadius={60} outerRadius={80}
                 fill="#82ca9d" paddingAngle={5}
                 dataKey="value"
               >
-                {advanced?.flow?.in?.map((_: any, index: number) => (
+                {Object.keys(cashflow?.categories || {})
+                    .filter((key) => (cashflow?.categories[key]?.total_in || 0) > 0)
+                    .map((_: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -152,20 +183,26 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
+        {/* Money Outflow Breakdown */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Money Outflow (Sink)</span>
+            <span className="card-title">Money Outflow (Sinks)</span>
           </div>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={advanced?.flow?.out || []}
+                data={Object.entries(cashflow?.categories || {})
+                    .map(([key, data]: any) => ({ name: key, value: Math.abs(data.total_out) }))
+                    .filter((item: any) => item.value > 0)
+                }
                 cx="50%" cy="50%"
                 innerRadius={60} outerRadius={80}
                 fill="#ef4444" paddingAngle={5}
                 dataKey="value"
               >
-                {advanced?.flow?.out?.map((_: any, index: number) => (
+                {Object.keys(cashflow?.categories || {})
+                     .filter((key) => (cashflow?.categories[key]?.total_out || 0) < 0)
+                     .map((_: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>

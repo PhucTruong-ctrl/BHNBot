@@ -88,6 +88,12 @@ class HagglingView(discord.ui.View):
                 (self.base_total, self.user_id)
             ))
             
+            # Manual Log for ACID Transaction
+            operations.append((
+                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                (self.base_total, self.user_id, 'haggle_accept', 'fishing')
+            ))
+            
             # Execute transaction
             await db_manager.batch_modify(operations)
             
@@ -164,6 +170,12 @@ class HagglingView(discord.ui.View):
             operations.append((
                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                 (final_total, self.user_id)
+            ))
+            
+            # Manual Log for ACID Transaction
+            operations.append((
+                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                (final_total, self.user_id, 'haggle_result', 'fishing')
             ))
             
             # Execute transaction
