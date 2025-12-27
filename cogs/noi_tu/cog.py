@@ -265,7 +265,12 @@ class GameNoiTu(commands.Cog):
             logger.error(f"ERROR saving game state: {e}")
     
     async def restore_game_state(self, guild_id, channel):
-        """Restore NoiTu game state from database after bot restart"""
+        """Restore NoiTu game state from database after bot restart.
+        
+        Uses smart message handling:
+        - If old message is the LATEST in channel -> EDIT it (no notification spam)
+        - If other messages came after -> Delete old, send new
+        """
         try:
             row = await db_manager.fetchone(
                 "SELECT game_state FROM game_sessions WHERE guild_id = ? AND game_type = ?",
@@ -277,22 +282,10 @@ class GameNoiTu(commands.Cog):
                 return False
             
             game_state = json.loads(row[0])
-            
-            # Delete old resume message if exists
             old_message_id = game_state.get("start_message_id")
-            if old_message_id:
-                try:
-                    old_msg = await channel.fetch_message(old_message_id)
-                    await old_msg.delete()
-                    logger.info(f"DELETED_OLD_RESUME_MSG [Guild {guild_id}] Message ID: {old_message_id}")
-                except discord.NotFound:
-                    # Message already deleted or doesn't exist
-                    logger.info(f"OLD_RESUME_MSG_ALREADY_DELETED [Guild {guild_id}] Message ID: {old_message_id}")
-                except Exception as e:
-                    logger.info(f"COULD_NOT_DELETE_OLD_MSG [Guild {guild_id}] Message ID: {old_message_id}, Error: {e}")
+            resume_content = f"Từ hiện tại: **{game_state.get('current_word')}**\n[Game được resume từ lần restart trước]"
             
-            # Restore game state
-            # Convert old players format (just usernames) to new format (with word counts)
+            # Restore game state first
             old_players = game_state.get("players", {})
             new_players = {}
             for user_id, username in old_players.items():
@@ -311,13 +304,52 @@ class GameNoiTu(commands.Cog):
                 "player_count": len(new_players),
                 "last_message_time": None,
                 "start_message": None,
-                "start_message_content": f"Từ hiện tại: **{game_state.get('current_word')}**\n[Game được resume từ lần restart trước]",
+                "start_message_content": resume_content,
                 "players": new_players
             }
             
-            # Send resume message
-            msg = await channel.send(self.games[guild_id]["start_message_content"])
-            self.games[guild_id]["start_message"] = msg
+            # Smart message handling
+            resume_msg = None
+            
+            if old_message_id:
+                try:
+                    # Check if old message is the latest in channel
+                    last_messages = [msg async for msg in channel.history(limit=1)]
+                    
+                    if last_messages and last_messages[0].id == old_message_id:
+                        # Old message IS the latest -> just EDIT it
+                        old_msg = await channel.fetch_message(old_message_id)
+                        await old_msg.edit(content=resume_content)
+                        resume_msg = old_msg
+                        logger.info(f"RESUME_EDIT [Guild {guild_id}] Edited existing message {old_message_id}")
+                    else:
+                        # Other messages came after -> delete old, send new
+                        try:
+                            old_msg = await channel.fetch_message(old_message_id)
+                            await old_msg.delete()
+                            logger.info(f"DELETED_OLD_MSG [Guild {guild_id}] Message {old_message_id} (not latest)")
+                        except discord.NotFound:
+                            logger.info(f"OLD_MSG_NOT_FOUND [Guild {guild_id}] Message {old_message_id}")
+                        except Exception as e:
+                            logger.warning(f"COULD_NOT_DELETE [Guild {guild_id}] {old_message_id}: {e}")
+                        
+                        # Send new message
+                        resume_msg = await channel.send(resume_content)
+                        logger.info(f"SENT_NEW_RESUME_MSG [Guild {guild_id}] Message {resume_msg.id}")
+                        
+                except discord.NotFound:
+                    # Old message doesn't exist -> send new
+                    resume_msg = await channel.send(resume_content)
+                    logger.info(f"OLD_MSG_DELETED_SEND_NEW [Guild {guild_id}]")
+                except Exception as e:
+                    logger.error(f"ERROR checking message: {e}")
+                    resume_msg = await channel.send(resume_content)
+            else:
+                # No old message ID -> send new
+                resume_msg = await channel.send(resume_content)
+                logger.info(f"NO_OLD_MSG_SEND_NEW [Guild {guild_id}]")
+            
+            self.games[guild_id]["start_message"] = resume_msg
             
             # Save updated game state with new message ID
             await self.save_game_state(guild_id, channel.id)
@@ -327,6 +359,7 @@ class GameNoiTu(commands.Cog):
         except Exception as e:
             logger.error(f"ERROR restoring game state: {e}")
             return False
+
     
     async def update_player_stats(self, user_id, username, is_winner=False):
         """Update player stats: wins and correct words count"""

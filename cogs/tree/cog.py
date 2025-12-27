@@ -41,7 +41,11 @@ class TreeCog(commands.Cog):
         logger.info("[TREE_COG] Cog initialized")
     
     async def cog_load(self):
-        """Update all tree messages on bot startup."""
+        """Update all tree messages on bot startup.
+        
+        Uses skip_if_latest=True to avoid unnecessary delete+resend
+        if tree message is already the latest in its channel.
+        """
         await super().cog_load()
         logger.info("[TREE] Cog loaded, updating tree messages for all guilds...")
         
@@ -51,13 +55,15 @@ class TreeCog(commands.Cog):
                 if tree_data.tree_channel_id:
                     await self.tree_manager.update_tree_message(
                         guild.id,
-                        tree_data.tree_channel_id
+                        tree_data.tree_channel_id,
+                        skip_if_latest=True  # Avoid spam on restart
                     )
             except Exception as e:
                 logger.error(
                     f"[TREE] Error updating tree on load for guild {guild.id}: {e}",
                     exc_info=True
                 )
+
     
     #==================== EXTERNAL_API ====================
     

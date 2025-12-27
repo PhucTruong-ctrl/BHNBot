@@ -249,6 +249,15 @@ class GenericActionView(discord.ui.View):
                             name = self._get_item_name(rkey)
                             acquired_txt.append(f"{ramount} {name}")
                             
+                        elif rtype == "money":
+                            # ADD MONEY REWARD SUPPORT
+                            await db_manager.db.execute(
+                                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                (ramount, user_id)
+                            )
+                            acquired_txt.append(f"{ramount:,} Hạt 💰")
+                            logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event")
+                            
                         elif rtype == "buff":
                             duration = r.get("duration", 10)
                             cog = self.manager.bot.get_cog("FishingCog")
@@ -265,6 +274,7 @@ class GenericActionView(discord.ui.View):
                         msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
                     else:
                         msg += "\n⚠️ Bạn không nhận được gì cả... (Xui quá!)"
+
                     
                     if limit > 0:
                          await db_manager.db.execute(

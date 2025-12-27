@@ -338,7 +338,8 @@ class TreeManager:
     async def update_tree_message(
         self,
         guild_id: int,
-        tree_channel_id: int
+        tree_channel_id: int,
+        skip_if_latest: bool = False
     ) -> None:
         """Update tree message (delete old + create new).
         
@@ -347,6 +348,8 @@ class TreeManager:
         Args:
             guild_id: Discord guild ID
             tree_channel_id: Channel ID where tree message is displayed
+            skip_if_latest: If True, skip update if old message is already the latest
+                            (useful for startup to avoid unnecessary notification spam)
         """
         # Check debounce
         if not await self.should_update_message(guild_id):
@@ -368,6 +371,25 @@ class TreeManager:
                 
                 # Load tree data
                 tree_data = await TreeData.load(guild_id)
+                
+                # Get existing message ID
+                tree_message_id = tree_data.tree_message_id
+                
+                # Skip-if-latest check (for startup)
+                # If skipped, we still need to EDIT the message to re-register the View (buttons)
+                if skip_if_latest and tree_message_id:
+                    try:
+                        last_messages = [msg async for msg in channel.history(limit=1)]
+                        if last_messages and last_messages[0].id == tree_message_id:
+                            # Re-register View by editing the message
+                            old_message = last_messages[0]
+                            view = TreeContributeView(self)
+                            await old_message.edit(view=view)
+                            logger.info(f"[TREE] Skipped full update, re-registered View for message {tree_message_id}")
+                            return
+                    except Exception as e:
+                        logger.warning(f"[TREE] Could not check/edit last message: {e}")
+
                 
                 # Create embed
                 embed = await create_tree_embed(tree_data)
@@ -416,9 +438,6 @@ class TreeManager:
                 
                 view = TreeContributeView(self)
                 
-                # Get existing message ID
-                tree_message_id = tree_data.tree_message_id
-                
                 # Delete old message
                 if tree_message_id:
                     try:
@@ -441,6 +460,7 @@ class TreeManager:
                 
             except Exception as e:
                 logger.error(f"[TREE] Error updating tree message: {e}", exc_info=True)
+
     
     async def should_update_message(self, guild_id: int) -> bool:
         """Check if enough time has passed since last update (debounce).
