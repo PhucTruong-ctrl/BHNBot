@@ -51,6 +51,15 @@ async def on_ready():
     bot.achievement_manager = AchievementManager(bot)
     logger.info("✓ Achievement Manager initialized")
     
+    # Preload Xi Dach Assets (to prevent render timeouts)
+    try:
+        from cogs.xi_dach.ui.render import assets as card_assets
+        logger.info("Loading Xi Dach assets...")
+        card_assets.load_assets()
+        logger.info("✓ Xi Dach assets loaded")
+    except Exception as e:
+        logger.error(f"Failed to load Xi Dach assets: {e}")
+
     # Load cogs on first ready only
     if not bot.cogs_loaded:
         await load_cogs()

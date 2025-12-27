@@ -1,206 +1,304 @@
 """
-Xi Dach Card Renderer - Generates card images using Pillow
-
-Renders complete game state as a single image showing dealer and all players.
-Uses asyncio.run_in_executor for non-blocking image generation.
+Xi Dach Card Renderer - Optimized with Asset Manager & Pillow
 """
 import asyncio
 import io
-from typing import List, Optional, Tuple, Dict
-from PIL import Image, ImageDraw, ImageFont
+import os
+from typing import List, Tuple, Dict, Union, Optional
+from PIL import Image
 
-# Card dimensions - LARGER for better visibility
-CARD_WIDTH = 100
-CARD_HEIGHT = 140
-CARD_SPACING = 12
-CARD_RADIUS = 10
+from core.logger import setup_logger
 
-# Layout
-SECTION_PADDING = 15
-HAND_ROW_HEIGHT = CARD_HEIGHT + 40  # Cards + label
+logger = setup_logger("CardRenderer", "cogs/card_renderer.log")
 
-# Colors
-BG_COLOR = (54, 57, 63)  # Discord dark theme
-CARD_BG = (255, 255, 255)
-CARD_BORDER = (50, 50, 50)
-RED_SUIT = (220, 53, 69)
-BLACK_SUIT = (33, 37, 41)
-HIDDEN_BG = (70, 100, 140)
-HIDDEN_PATTERN = (90, 120, 160)
-TEXT_COLOR = (255, 255, 255)
-LABEL_COLOR = (185, 187, 190)
+# ==================== CONFIGURATION ====================
 
-# Suits
-SUIT_INFO = {
-    "♠️": ("♠", BLACK_SUIT),
-    "♥️": ("♥", RED_SUIT),
-    "♦️": ("♦", RED_SUIT),
-    "♣️": ("♣", BLACK_SUIT),
+# Asset Paths
+ASSETS_DIR = "assets"
+CARDS_DIR = os.path.join(ASSETS_DIR, "cards")
+BG_PATH = os.path.join(ASSETS_DIR, "table_bg.jpg")  # Prefer JPG as per context
+
+# Card Dimensions (Resize target)
+CARD_WIDTH = 120
+CARD_HEIGHT = 168  # 5:7 aspect ratio roughly
+CARD_SPACING = 15  # Spacing between cards
+
+# Layout for Game State (Table View)
+SECTION_PADDING = 20
+ROW_HEIGHT = CARD_HEIGHT + 40
+
+# Suit Mapping for Filenames (Symbol -> Filename Suffix)
+SUIT_MAP = {
+    "♠️": "Spades",
+    "♠": "Spades",
+    "♥️": "Hearts",
+    "♥": "Hearts",
+    "♦️": "Diamonds",
+    "♦": "Diamonds",
+    "♣️": "Clubs",
+    "♣": "Clubs",
 }
 
+# Rank Mapping (Symbol -> Filename Suffix)
+RANK_MAP = {
+    "10": "10",
+    "A": "A",
+    "J": "J",
+    "Q": "Q",
+    "K": "K"
+}
+# Add 2-9 mapping
+for i in range(2, 10):
+    RANK_MAP[str(i)] = str(i)
 
 
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    """Get font with fallback."""
-    # Prioritize Bold/Clear fonts
-    for name in ["segoeuib.ttf", "verdanab.ttf", "arialbd.ttf", "seguiemj.ttf", "arial.ttf", "DejaVuSans.ttf"]:
+class AssetManager:
+    """Singleton Asset Manager for Caching Images in RAM."""
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(AssetManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        self.cards: Dict[str, Image.Image] = {}
+        self.back: Optional[Image.Image] = None
+        self.bg: Optional[Image.Image] = None
+        self._initialized = True
+        self.loaded = False
+
+    def load_assets(self):
+        """Loads all assets from disk and resizes them once."""
+        if self.loaded:
+            return
+
+        logger.info("Loading Xi Dach assets into RAM...")
+        
         try:
-            return ImageFont.truetype(name, size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
+            # 1. Load Background
+            bg_path_final = BG_PATH
+            if not os.path.exists(bg_path_final):
+                bg_path_final = bg_path_final.replace(".jpg", ".png")
+            
+            if os.path.exists(bg_path_final):
+                self.bg = Image.open(bg_path_final).convert("RGB")
+                logger.info(f"Loaded background: {bg_path_final}")
+            else:
+                logger.warning(f"Background not found at {bg_path_final}, using plain color.")
+                self.bg = Image.new("RGB", (800, 600), (35, 39, 42))
+
+            # 2. Load Card Back
+            back_path = os.path.join(CARDS_DIR, "cardBack.png")
+            if os.path.exists(back_path):
+                img = Image.open(back_path).convert("RGBA")
+                self.back = img.resize((CARD_WIDTH, CARD_HEIGHT), Image.Resampling.LANCZOS)
+            else:
+                logger.error(f"Card back not found: {back_path}")
+                self.back = Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), (150, 0, 0))
+
+            # 3. Load 52 Cards
+            count = 0
+            for suit_sym, suit_name in [("♠️", "Spades"), ("♥️", "Hearts"), ("♦️", "Diamonds"), ("♣️", "Clubs")]:
+                # Ranks: 2-10, J, Q, K, A
+                ranks = [str(i) for i in range(2, 11)] + ["J", "Q", "K", "A"]
+                for rank in ranks:
+                    filename = f"card{suit_name}{rank}.png"
+                    path = os.path.join(CARDS_DIR, filename)
+                    
+                    key = f"{rank}{suit_sym}" # Key used by renderer lookup
+                    
+                    if os.path.exists(path):
+                        img = Image.open(path).convert("RGBA")
+                        # Resize NOW to save RAM and CPU later
+                        img_resized = img.resize((CARD_WIDTH, CARD_HEIGHT), Image.Resampling.LANCZOS)
+                        self.cards[key] = img_resized
+                        count += 1
+                        
+                        # Also map single char variants just in case
+                        self.cards[f"{rank}{suit_sym[0]}"] = img_resized
+                    else:
+                        logger.warning(f"Missing card asset: {filename}")
+
+            self.loaded = True
+            logger.info(f"Asset loading complete. Loaded {count} cards.")
+
+        except Exception as e:
+            logger.error(f"Failed to load assets: {e}", exc_info=True)
+
+    def get_card(self, rank: str, suit: str) -> Image.Image:
+        """Get cached card image."""
+        key = f"{rank}{suit}"
+        if key in self.cards:
+            return self.cards[key]
+        return self.back if self.back else Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), (255, 0, 255))
+
+    def get_back(self) -> Image.Image:
+        return self.back
+
+    def get_bg(self, width: int, height: int) -> Image.Image:
+        """Get background crop or resized version."""
+        if not self.bg:
+             return Image.new("RGB", (width, height), (54, 57, 63))
+        bg_w, bg_h = self.bg.size
+        if width > bg_w or height > bg_h:
+             return self.bg.resize((max(width, bg_w), max(height, bg_h)))
+        left = (bg_w - width) // 2
+        top = (bg_h - height) // 2
+        return self.bg.crop((left, top, left + width, top + height))
+
+# Global Instance
+assets = AssetManager()
 
 
-def _draw_card(
-    draw: ImageDraw.Draw,
-    x: int, y: int,
-    rank: str, suit: str,
-    font_large: ImageFont.FreeTypeFont,
-    font_small: ImageFont.FreeTypeFont
-) -> None:
-    """Draw a single playing card."""
-    # Background
-    draw.rounded_rectangle(
-        (x, y, x + CARD_WIDTH, y + CARD_HEIGHT),
-        radius=CARD_RADIUS,
-        fill=CARD_BG,
-        outline=CARD_BORDER
-    )
-    
-    # Get suit color
-    suit_symbol, color = SUIT_INFO.get(suit, ("?", BLACK_SUIT))
-    
-    # Rank top-left (larger for bigger cards)
-    draw.text((x + 8, y + 4), rank, font=font_small, fill=color)
-    # Small suit below rank
-    draw.text((x + 8, y + 24), suit_symbol, font=font_small, fill=color)
-    
-    # Large suit in center
+def _get_card_key(card_obj) -> Tuple[str, str]:
+    """Helper to extract rank/suit from Discord objects or tuples."""
+    if hasattr(card_obj, 'rank') and hasattr(card_obj, 'suit'):
+        rank = card_obj.rank.symbol
+        suit = card_obj.suit.value
+    else:
+        rank, suit = card_obj # Fallback tuple ("A", "♠️")
+    return rank, suit
+
+
+def render_player_hand_sync(
+    cards: List[Union[Tuple[str, str], object]],
+    player_name: str = "Player"
+) -> bytes:
+    """Render a single player's hand using cached assets."""
     try:
-        bbox = draw.textbbox((0, 0), suit_symbol, font=font_large)
-        tw = bbox[2] - bbox[0]
-        th = bbox[3] - bbox[1]
-    except:
-        tw, th = 40, 40
-    cx = x + (CARD_WIDTH - tw) // 2
-    cy = y + (CARD_HEIGHT - th) // 2
-    draw.text((cx, cy), suit_symbol, font=font_large, fill=color)
-    
-    # Rank bottom-right (mirrored)
-    draw.text((x + CARD_WIDTH - 28, y + CARD_HEIGHT - 48), rank, font=font_small, fill=color)
-    draw.text((x + CARD_WIDTH - 28, y + CARD_HEIGHT - 28), suit_symbol, font=font_small, fill=color)
+        # Lazy load check
+        if not assets.loaded:
+            assets.load_assets()
+
+        num_cards = len(cards)
+        if num_cards == 0:
+            return io.BytesIO().getvalue()
+
+        # Calculate Canvas Size
+        padding_x = 20
+        padding_y = 20
+        
+        total_width = padding_x * 2 + (num_cards * CARD_WIDTH) + ((num_cards - 1) * CARD_SPACING)
+        total_height = padding_y * 2 + CARD_HEIGHT
+        
+        # Prepare Background
+        img = assets.get_bg(total_width, total_height).copy()
+        
+        # Paste Cards
+        current_x = padding_x
+        y = padding_y
+        
+        for card_obj in cards:
+            rank, suit = _get_card_key(card_obj)
+            card_img = assets.get_card(rank, suit)
+            img.paste(card_img, (current_x, y), card_img)
+            current_x += CARD_WIDTH + CARD_SPACING
+            
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG", optimize=False)
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    except Exception as e:
+        logger.error(f"[RENDER_ERROR] {e}", exc_info=True)
+        return io.BytesIO().getvalue()
 
 
-
-def _draw_hidden_card(draw: ImageDraw.Draw, x: int, y: int) -> None:
-    """Draw a face-down card."""
-    draw.rounded_rectangle(
-        (x, y, x + CARD_WIDTH, y + CARD_HEIGHT),
-        radius=CARD_RADIUS,
-        fill=HIDDEN_BG,
-        outline=CARD_BORDER
-    )
-    # Pattern (scaled for bigger cards)
-    for i in range(6, CARD_WIDTH - 6, 10):
-        for j in range(6, CARD_HEIGHT - 6, 10):
-            if (i + j) % 20 == 0:
-                draw.ellipse((x+i, y+j, x+i+5, y+j+5), fill=HIDDEN_PATTERN)
-    
-    # Question mark (larger)
-    font = _get_font(48)
-    draw.text((x + CARD_WIDTH//2 - 14, y + CARD_HEIGHT//2 - 24), "?", font=font, fill=(255,255,255))
+async def render_player_hand(
+    cards: List[Union[Tuple[str, str], object]],
+    player_name: str = "Player"
+) -> bytes:
+    """Async wrapper used by multi.py"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, render_player_hand_sync, cards, player_name)
 
 
+# Backwards compatibility
+async def render_hand(cards: List[Tuple[str, str]], hide_first: bool = False) -> bytes:
+    """Async render single hand."""
+    return await render_player_hand(cards, "Bài của bạn")
+
+
+# ==================== TABLE RENDERER (Restored for Compatibility) ====================
 
 def render_game_state_sync(
-    dealer_cards: List[Tuple[str, str]],
+    dealer_cards: List[Union[Tuple[str, str], object]],
     players: List[Dict],
     hide_dealer: bool = True
 ) -> bytes:
-    """Render complete game state to PNG.
-    
-    Args:
-        dealer_cards: List of (rank, suit) for dealer
-        players: List of dicts with 'name', 'cards', 'score', 'bet'
-        hide_dealer: Hide dealer's first card
-        
-    Returns:
-        PNG bytes
     """
-    # Calculate dimensions
-    max_cards = max(
-        len(dealer_cards),
-        max((len(p.get('cards', [])) for p in players), default=2)
-    )
-    img_width = max(SECTION_PADDING * 2 + max_cards * (CARD_WIDTH + CARD_SPACING), 350)
-    img_height = SECTION_PADDING + HAND_ROW_HEIGHT * (1 + len(players)) + SECTION_PADDING
-    
-    # Create image
-    img = Image.new("RGB", (img_width, img_height), BG_COLOR)
-    draw = ImageDraw.Draw(img)
-    
-    # Try to load a nice bold font
-    font_large = _get_font(32)
-    font_small = _get_font(14)
-    font_label = _get_font(20)
-    
-    y_offset = SECTION_PADDING
-    
-    # === DEALER SECTION ===
-    # draw.text((SECTION_PADDING, y_offset), "Nhà Cái", font=font_label, fill=TEXT_COLOR)
-    # y_offset += 30
-    
-    x = SECTION_PADDING
-    for i, card in enumerate(dealer_cards):
-        # Handle both Card objects and legacy tuples
-        if hasattr(card, 'rank') and hasattr(card, 'suit'):
-            rank = card.rank.symbol
-            suit = card.suit.value
-        else:
-            rank, suit = card # Fallback tuple ("A", "♠️")
+    Render complete game state (Dealer + Players) using AssetManager.
+    Restored to fix ImportError in cog.py.
+    """
+    try:
+        if not assets.loaded:
+            assets.load_assets()
 
-        if i == 0 and hide_dealer:
-            _draw_hidden_card(draw, x, y_offset)
-        else:
-            _draw_card(draw, x, y_offset, rank, suit, font_large, font_small)
-        x += CARD_WIDTH + CARD_SPACING
-    
-    y_offset += CARD_HEIGHT + 20
-    
-    # === PLAYER SECTIONS ===
-    for player in players:
-        name = player.get('name', 'Player')
-        cards = player.get('cards', [])
+        # 1. Calc Dimensions
+        # Dealer row + 1 Row per player (simple vertical layout)
+        num_players = len(players)
         
-        # Label
-        # label = name
-        # draw.text((SECTION_PADDING, y_offset), label, font=font_label, fill=TEXT_COLOR)
+        # Assume max width based on max cards (e.g. 5)
+        # 5 cards width = 20 + 5*120 + 4*15 + 20 = ~680
+        # Let's verify max width required
+        max_cards = 5
+        row_width = 40 + (max_cards * CARD_WIDTH) + ((max_cards-1) * CARD_SPACING)
+        row_width = max(row_width, 600) # Min width
         
-        # y_offset += 30
+        total_height = SECTION_PADDING + ROW_HEIGHT # Dealer row
+        total_height += num_players * ROW_HEIGHT
+        total_height += SECTION_PADDING
         
-        # Cards
-        x = SECTION_PADDING
-        for card_obj in cards:
-            if hasattr(card_obj, 'rank') and hasattr(card_obj, 'suit'):
-                rank = card_obj.rank.symbol
-                suit = card_obj.suit.value
+        # 2. Create BG
+        img = assets.get_bg(row_width, total_height).copy()
+        
+        # 3. Draw Dealer
+        dealer_y = SECTION_PADDING
+        current_x = SECTION_PADDING
+        
+        for i, card_obj in enumerate(dealer_cards):
+            if i == 0 and hide_dealer:
+                card_img = assets.get_back()
             else:
-                rank, suit = card_obj # Fallback tuple
-
-            _draw_card(draw, x, y_offset, rank, suit, font_large, font_small)
-            x += CARD_WIDTH + CARD_SPACING
+                rank, suit = _get_card_key(card_obj)
+                card_img = assets.get_card(rank, suit)
+            
+            img.paste(card_img, (current_x, dealer_y), card_img)
+            current_x += CARD_WIDTH + CARD_SPACING
+            
+        # 4. Draw Players
+        current_y = dealer_y + ROW_HEIGHT
         
-        y_offset += CARD_HEIGHT + 20
-    
-    # Save
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG", optimize=True)
-    buffer.seek(0)
-    return buffer.getvalue()
+        for player in players:
+            p_cards = player.get('cards', [])
+            current_x = SECTION_PADDING
+            
+            for card_obj in p_cards:
+                rank, suit = _get_card_key(card_obj)
+                card_img = assets.get_card(rank, suit)
+                
+                img.paste(card_img, (current_x, current_y), card_img)
+                current_x += CARD_WIDTH + CARD_SPACING
+            
+            current_y += ROW_HEIGHT
+            
+        # 5. Save
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG", optimize=False)
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    except Exception as e:
+        logger.error(f"[RENDER_TABLE_ERROR] {e}", exc_info=True)
+        return io.BytesIO().getvalue()
 
 
 async def render_game_state(
-    dealer_cards: List[Tuple[str, str]],
+    dealer_cards: List[Union[Tuple[str, str], object]],
     players: List[Dict],
     hide_dealer: bool = True
 ) -> bytes:
@@ -209,100 +307,3 @@ async def render_game_state(
     return await loop.run_in_executor(
         None, render_game_state_sync, dealer_cards, players, hide_dealer
     )
-
-
-from core.logger import setup_logger
-
-logger = setup_logger("CardRenderer", "cogs/card_renderer.log")
-
-def render_player_hand_sync(
-    cards: List[Tuple[str, str]],
-    player_name: str = "Người chơi"
-) -> bytes:
-    """Render a single player's hand with their name label.
-    
-    Args:
-        cards: List of (rank, suit) tuples
-        player_name: Name to display as label
-        
-    Returns:
-        PNG bytes
-    """
-    try:
-        logger.info(f"[RENDER_START] player={player_name} cards={len(cards)}")
-        
-        if not cards:
-            img = Image.new("RGBA", (100, 50), (0, 0, 0, 0))
-            buffer = io.BytesIO()
-            img.save(buffer, format="PNG")
-            return buffer.getvalue()
-        
-        # Calculate dimensions
-        total_width = SECTION_PADDING * 2 + len(cards) * (CARD_WIDTH + CARD_SPACING)
-        total_height = SECTION_PADDING + 20 + CARD_HEIGHT + SECTION_PADDING
-        
-        # Create image with Discord dark theme background
-        img = Image.new("RGB", (total_width, total_height), BG_COLOR)
-        draw = ImageDraw.Draw(img)
-        
-        font_large = _get_font(28)
-        font_small = _get_font(12)
-        font_label = _get_font(14)
-        
-        y_offset = SECTION_PADDING
-        
-        # Player name label
-        label = player_name
-        draw.text((SECTION_PADDING, y_offset), label, font=font_label, fill=TEXT_COLOR)
-        y_offset += 20
-        
-        # Draw cards
-        x = SECTION_PADDING
-        for card_obj in cards:
-            if hasattr(card_obj, 'rank') and hasattr(card_obj, 'suit'):
-                rank = card_obj.rank.symbol
-                suit = card_obj.suit.value
-            else:
-                rank, suit = card_obj # Fallback tuple
-            
-            _draw_card(draw, x, y_offset, rank, suit, font_large, font_small)
-            x += CARD_WIDTH + CARD_SPACING
-        
-        # Save
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG", optimize=True)
-        buffer.seek(0)
-        
-        result = buffer.getvalue()
-        logger.info(f"[RENDER_SUCCESS] player={player_name} size={len(result)} bytes")
-        return result
-        
-    except Exception as e:
-        logger.error(f"[RENDER_ERROR] Failed to render hand for {player_name}: {e}", exc_info=True)
-        # Return empty image on error to prevent crash
-        img = Image.new("RGB", (200, 100), (255, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.text((10, 40), "RENDER ERROR", fill=(255, 255, 255))
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        return buffer.getvalue()
-
-
-async def render_player_hand(
-    cards: List[Tuple[str, str]],
-    player_name: str = "Người chơi"
-) -> bytes:
-    """Async render player hand with their name."""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, render_player_hand_sync, cards, player_name)
-
-
-# Backwards compatibility - these now just render cards without label
-def render_hand_sync(cards: List[Tuple[str, str]], hide_first: bool = False) -> bytes:
-    """Render single hand (backward compatibility)."""
-    return render_player_hand_sync(cards, "Bài của bạn")
-
-
-async def render_hand(cards: List[Tuple[str, str]], hide_first: bool = False) -> bytes:
-    """Async render single hand (backward compatibility)."""
-    return await render_player_hand(cards, "Bài của bạn")

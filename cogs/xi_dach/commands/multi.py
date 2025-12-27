@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
 from core.logger import setup_logger
-from database_manager import db_manager, get_user_balance, batch_update_seeds
+from database_manager import db_manager, get_user_balance, batch_update_seeds, add_seeds
 
 from ..core.game_manager import game_manager
 from ..core.table import Table, TableStatus
@@ -44,6 +44,40 @@ logger = setup_logger("XiDachMulti", "cogs/xidach_multi.log")
 # Constants
 LOBBY_DURATION = 45  # seconds
 TURN_TIMEOUT = 30  # seconds
+
+async def _safe_send(channel, **kwargs):
+    """Retries sending a message up to 3 times."""
+    retries = 3
+    for i in range(retries):
+        try:
+            return await channel.send(**kwargs)
+        except discord.HTTPException as e:
+            if i == retries - 1:
+                logger.error(f"[SAFE_SEND] Failed after {retries} retries: {e}")
+                return None
+            logger.warning(f"[SAFE_SEND] Retry {i+1}/{retries} due to error: {e}")
+            await asyncio.sleep(1 * (i + 1))
+        except Exception as e:
+            logger.error(f"[SAFE_SEND] Critical error: {e}")
+            return None
+
+async def _safe_edit(message, **kwargs):
+    """Retries editing a message up to 3 times."""
+    retries = 3
+    if not message: return None
+    for i in range(retries):
+        try:
+            return await message.edit(**kwargs)
+        except discord.HTTPException as e:
+            if i == retries - 1:
+                logger.error(f"[SAFE_EDIT] Failed after {retries} retries: {e}")
+                return None
+            logger.warning(f"[SAFE_EDIT] Retry {i+1}/{retries} due to error: {e}")
+            await asyncio.sleep(1 * (i + 1))
+        except Exception as e:
+            # Message might be deleted
+            logger.error(f"[SAFE_EDIT] Critical error (msg likely deleted): {e}")
+            return None
 
 
 # ==================== PHASE 0: LOBBY ====================
@@ -85,7 +119,7 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
 
     # Deduct bet immediately
     # Deduct bet immediately
-    await db_manager.add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'minigame')
+    await add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'minigame')
 
     host = table.add_player(user.id, user.display_name, initial_bet)
     host.is_ready = True
@@ -163,7 +197,7 @@ async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table:
 
         # Deduct the clicked amount
         # Deduct the clicked amount
-        await db_manager.add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'minigame')
+        await add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'minigame')
 
         if current_player:
             current_player.bet = new_total  # Additive
@@ -197,7 +231,7 @@ async def cancel_bet(cog: "XiDachCog", interaction: discord.Interaction, table: 
         refund_amount = player.bet
         # Refund the bet
         refund_amount = player.bet
-        await db_manager.add_seeds(user_id, refund_amount, 'xi_dach_refund', 'minigame')
+        await add_seeds(user_id, refund_amount, 'xi_dach_refund', 'minigame')
 
         # Remove player from table
         table.remove_player(user_id)
@@ -443,9 +477,11 @@ async def _next_turn(cog: "XiDachCog", channel, table: Table) -> None:
 
     # Render image
     try:
+        ts = int(time.time() * 1000)
         img_bytes = await render_player_hand(current.hand, current.username)
-        file = discord.File(io.BytesIO(img_bytes), filename="hand.png")
-        embed.set_image(url="attachment://hand.png")
+        filename = f"hand_{ts}.png"
+        file = discord.File(io.BytesIO(img_bytes), filename=filename)
+        embed.set_image(url=f"attachment://{filename}")
     except Exception as e:
         logger.error(f"[RENDER] Error: {e}")
         file = None
@@ -453,18 +489,30 @@ async def _next_turn(cog: "XiDachCog", channel, table: Table) -> None:
     view = MultiGameView(cog, table, channel=channel, timeout=TURN_TIMEOUT)
 
     if file:
-        msg = await channel.send(
+        msg = await _safe_send(
+            channel,
             content=f"👉 <@{current.user_id}>",
             embed=embed,
             view=view,
             file=file
         )
     else:
-        msg = await channel.send(
+        msg = await _safe_send(
+            channel,
             content=f"👉 <@{current.user_id}>",
             embed=embed,
             view=view
         )
+    
+    # If explicit send failed, try text only fallback
+    if not msg:
+         logger.warning(f"[NEXT_TURN] Send failed (likely image), retrying text only")
+         msg = await _safe_send(
+            channel,
+            content=f"👉 <@{current.user_id}> (Lỗi hiển thị ảnh)",
+            embed=embed,
+            view=view
+         )
 
     table.current_turn_msg = msg
     table.turn_action_timestamp = time.time()
@@ -549,7 +597,7 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
 
         # Deduct additional bet
         # Deduct additional bet
-        await db_manager.add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'minigame')
+        await add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'minigame')
 
         player.bet *= 2
         player.is_doubled = True
@@ -561,8 +609,15 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
         score, hand_type = determine_hand_type(player.hand)
         player.status = PlayerStatus.BUST if hand_type == HandType.BUST else PlayerStatus.STAND
 
+        if not player.is_doubled: # Logic doubled check
+             pass
+
         logger.info(f"[DOUBLE] Player {player.user_id} doubled. New bet: {player.bet}, drew {card}")
 
+    # Update display to show the doubled card
+    await _refresh_turn_display(cog, interaction.channel, table, player)
+    
+    # Double Down = Limit 1 card -> End Turn
     await _advance_to_next(cog, interaction.channel, table)
 
 
@@ -596,16 +651,18 @@ async def _refresh_turn_display(cog: "XiDachCog", channel, table: Table, player:
     embed.add_field(name="🤖 Nhà Cái", value=format_hand(table.dealer_hand, hide_first=True), inline=False)
 
     try:
+        ts = int(time.time() * 1000)
         img_bytes = await render_player_hand(player.hand, player.username)
-        file = discord.File(io.BytesIO(img_bytes), filename="hand.png")
-        embed.set_image(url="attachment://hand.png")
+        filename = f"hand_{ts}.png"
+        file = discord.File(io.BytesIO(img_bytes), filename=filename)
+        embed.set_image(url=f"attachment://{filename}")
 
         if table.current_turn_msg:
-            await table.current_turn_msg.edit(embed=embed, attachments=[file])
+            await _safe_edit(table.current_turn_msg, embed=embed, attachments=[file])
     except Exception as e:
         logger.error(f"[REFRESH] Error: {e}")
         if table.current_turn_msg:
-            await table.current_turn_msg.edit(embed=embed)
+            await _safe_edit(table.current_turn_msg, embed=embed)
 
 
 async def _advance_to_next(cog: "XiDachCog", channel, table: Table) -> None:
@@ -647,13 +704,15 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
     
     # Render dealer's hand image
     try:
+        ts = int(time.time() * 1000)
         img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
-        file = discord.File(io.BytesIO(img_bytes), filename="dealer.png")
-        embed.set_image(url="attachment://dealer.png")
-        dealer_msg = await channel.send(embed=embed, file=file)
+        filename = f"dealer_{ts}.png"
+        file = discord.File(io.BytesIO(img_bytes), filename=filename)
+        embed.set_image(url=f"attachment://{filename}")
+        dealer_msg = await _safe_send(channel, embed=embed, file=file)
     except Exception as e:
         logger.error(f"[DEALER_RENDER] Error: {e}")
-        dealer_msg = await channel.send(embed=embed)
+        dealer_msg = await _safe_send(channel, embed=embed)
 
     # Dealer AI loop - each draw with visual update
     while True:
@@ -683,20 +742,22 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
         
         # Render updated hand - delete old, send new (Discord can't edit attachments properly)
         try:
+            ts = int(time.time() * 1000)
             img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
-            file = discord.File(io.BytesIO(img_bytes), filename="dealer.png")
-            embed.set_image(url="attachment://dealer.png")
+            filename = f"dealer_{ts}.png"
+            file = discord.File(io.BytesIO(img_bytes), filename=filename)
+            embed.set_image(url=f"attachment://{filename}")
             
             # Delete old message and send new one (to update image)
             try:
                 await dealer_msg.delete()
             except:
                 pass
-            dealer_msg = await channel.send(embed=embed, file=file)
+            dealer_msg = await _safe_send(channel, embed=embed, file=file)
         except Exception as e:
             logger.error(f"[DEALER_RENDER] Error: {e}")
             # Fallback: just edit embed text
-            await dealer_msg.edit(embed=embed)
+            await _safe_edit(dealer_msg, embed=embed)
 
         # Check Ngu Linh or Bust
         if len(table.dealer_hand) >= 5 or d_type == HandType.BUST:
@@ -731,15 +792,32 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
     final_embed.add_field(name="🎰 Điểm", value=f"**{d_score}**", inline=True)
     final_embed.add_field(name="📊 Trạng thái", value=status_str, inline=True)
     
-    # Render final dealer image
-    try:
-        img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
-        file = discord.File(io.BytesIO(img_bytes), filename="dealer_final.png")
-        final_embed.set_image(url="attachment://dealer_final.png")
-        await channel.send(embed=final_embed, file=file)
-    except Exception as e:
-        logger.error(f"[DEALER_FINAL] Render error: {e}")
-        await channel.send(embed=final_embed)
+    # Consolidate message: Edit the last dealer message instead of sending new one
+    edited = False
+    if dealer_msg:
+        try:
+            # Reuse the image from the existing message
+            if dealer_msg.embeds and dealer_msg.embeds[0].image:
+                final_embed.set_image(url=dealer_msg.embeds[0].image.url)
+            
+            # Edit the message
+            if await _safe_edit(dealer_msg, embed=final_embed):
+                edited = True
+        except Exception as e:
+            logger.warning(f"[DEALER_FINAL] Edit failed, falling back to send: {e}")
+
+    if not edited:
+        # Fallback: Render and Send New (only if edit failed)
+        try:
+            ts = int(time.time() * 1000)
+            img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
+            filename = f"dealer_final_{ts}.png"
+            file = discord.File(io.BytesIO(img_bytes), filename=filename)
+            final_embed.set_image(url=f"attachment://{filename}")
+            await _safe_send(channel, embed=final_embed, file=file)
+        except Exception as e:
+            logger.error(f"[DEALER_FINAL] Render error: {e}")
+            await _safe_send(channel, embed=final_embed)
 
     await _finish_game(cog, channel, table)
 
