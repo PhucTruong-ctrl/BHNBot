@@ -68,7 +68,8 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
             "ca_phuong_hoang": ("Phượng Hoàng", "🔥"),
             "cthulhu_con": ("Cthulhu Non", "🐙"),
             "ca_voi_52hz": ("Cá Voi 52Hz", "🐋"),
-            "ca_galaxy": ("Cá Galaxy", "🌠")
+            "ca_galaxy": ("Cá Galaxy", "🌠"),
+            "ca_isekai": ("Cá Isekai", "🌌🐟")
         }
         
         caught_legendary = [key for key in legendary_fish_caught if key in legendary_map]

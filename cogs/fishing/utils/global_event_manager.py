@@ -108,6 +108,15 @@ class GlobalEventManager:
                     key = active_state.get("key")
                     logger.info(f"[RESTORE] Restored ACTIVE event: {key}")
                     
+                    # Restore Raid/Dragon State logic into memory
+                    event_data = active_state.get("data", {})
+                    event_type = event_data.get("type", "passive")
+                    
+                    if event_type == "raid_boss":
+                         await self._setup_raid(event_data)
+                    elif event_type == "fish_quest_raid":
+                         await self._setup_dragon_quest(event_data)
+                    
                     # 3. Restore bump_message_ids from DB
                     stored_msg_ids = await get_global_state("event_bump_message_ids", {})
                     if stored_msg_ids:
@@ -518,6 +527,11 @@ class GlobalEventManager:
         
         if saved_state and saved_state.get("active"):
              self.raid_state = saved_state
+             # Fix: Convert String keys to Int for contributors (JSON Load artifact)
+             if "contributors" in self.raid_state:
+                 self.raid_state["contributors"] = {
+                     int(k): v for k, v in self.raid_state["contributors"].items()
+                 }
              logger.info(f"Raid Resumed from DB: HP {self.raid_state['hp_current']}/{self.raid_state['hp_max']}")
         else:
             # 2. Init New Raid
@@ -665,7 +679,7 @@ class GlobalEventManager:
                   
              # Consolation (not in JSON but kept for UX)
              for user_id, _ in sorted_users:
-                 await add_seeds(user_id, 100)
+                 await add_seeds(user_id, 100, reason="raid_consolation", category="raid")
              summary_text += "\n🩹 **Quà an ủi:** 100 Hạt cho mỗi người tham gia."
 
         # Clear DB Persistence regardless of outcome
@@ -985,7 +999,7 @@ class GlobalEventManager:
                     # Check if it's seeds or item
                     if key == "seeds":
                         amount = item.get("amount", 0)
-                        await add_seeds(uid, amount)
+                        await add_seeds(uid, amount, reason="dragon_quest_reward", category="event")
                         added_text.append(f"{amount} Hạt")
                     else:
                         min_qty = item.get("min", 1)

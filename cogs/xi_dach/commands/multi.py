@@ -62,6 +62,14 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
 
     # Create table
     table = game_manager.create_table(channel_id, user.id, is_solo=False)
+    if not table:
+        msg = "⚠️ Đang có game diễn ra ở kênh này! Hãy đợi kết thúc hoặc qua kênh khác."
+        if isinstance(ctx_or_interaction, discord.Interaction):
+            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
+        else:
+            await ctx_or_interaction.send(msg)
+        return
+
     table.channel_id = channel_id
 
     # Add host as first player with bet

@@ -159,7 +159,7 @@ class InteractiveNPCView(discord.ui.View):
                         # Manual Log for ACID Transaction
                         await db_manager.db.execute(
                             "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (-cost_type, self.user_id, f"npc_cost_{self.npc_key}", "fishing")
+                            (self.user_id, -cost_type, f"npc_cost_{self.npc_key}", "fishing")
                         )
 
                     # 2. ROLL REWARDS
@@ -213,7 +213,7 @@ class InteractiveNPCView(discord.ui.View):
             # Manual Log
             await db_manager.db.execute(
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (amt, self.user_id, f"npc_reward_{self.npc_key}_money", "fishing")
+                (self.user_id, amt, f"npc_reward_{self.npc_key}_money", "fishing")
             )
         
         elif reward_type == "triple_money":
@@ -235,7 +235,7 @@ class InteractiveNPCView(discord.ui.View):
             # Manual Log
             await db_manager.db.execute(
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (total_val, self.user_id, f"npc_reward_{self.npc_key}_triple", "fishing")
+                (self.user_id, total_val, f"npc_reward_{self.npc_key}_triple", "fishing")
             )
         
         elif reward_type == "ngoc_trai":

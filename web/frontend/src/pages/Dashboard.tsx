@@ -7,7 +7,7 @@ import { FileSpreadsheet } from 'lucide-react';
 import ServerHealth from '../components/ServerHealth';
 import { statsApi, EconomyStats, ModuleStats } from '../api';
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c5e', '#4f46e5', '#8b5cf6'];
+const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#4f46e5', '#8b5cf6'];
 
 export default function Dashboard() {
 
@@ -145,8 +145,8 @@ export default function Dashboard() {
            <div className="stat-label">Total Outflow</div>
         </div>
         <div className="stat-card">
-           <div className="stat-value" style={{color: (cashflow?.summary?.net_flow || 0) >= 0 ? 'var(--accent-success)' : 'var(--accent-error)'}}>
-             {(cashflow?.summary?.net_flow || 0) > 0 ? '+' : ''}{cashflow?.summary?.net_flow?.toLocaleString() || 0}
+           <div className="stat-value" style={{color: (cashflow?.summary?.net || 0) >= 0 ? 'var(--accent-success)' : 'var(--accent-error)'}}>
+             {(cashflow?.summary?.net || 0) > 0 ? '+' : ''}{cashflow?.summary?.net?.toLocaleString() || 0}
            </div>
            <div className="stat-label">Net Profit/Loss</div>
         </div>
@@ -163,7 +163,7 @@ export default function Dashboard() {
             <PieChart>
               <Pie
                 data={Object.entries(cashflow?.categories || {})
-                    .map(([key, data]: any) => ({ name: key, value: data.total_in }))
+                    .map(([key, data]: any) => ({ name: key, value: data.in }))
                     .filter((item: any) => item.value > 0)
                 }
                 cx="50%" cy="50%"
@@ -172,7 +172,7 @@ export default function Dashboard() {
                 dataKey="value"
               >
                 {Object.keys(cashflow?.categories || {})
-                    .filter((key) => (cashflow?.categories[key]?.total_in || 0) > 0)
+                    .filter((key) => (cashflow?.categories[key]?.in || 0) > 0)
                     .map((_: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -192,7 +192,7 @@ export default function Dashboard() {
             <PieChart>
               <Pie
                 data={Object.entries(cashflow?.categories || {})
-                    .map(([key, data]: any) => ({ name: key, value: Math.abs(data.total_out) }))
+                    .map(([key, data]: any) => ({ name: key, value: Math.abs(data.out) }))
                     .filter((item: any) => item.value > 0)
                 }
                 cx="50%" cy="50%"

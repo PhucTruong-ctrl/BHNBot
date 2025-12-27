@@ -225,7 +225,7 @@ class InteractiveSellEventView(discord.ui.View):
                         event_key = self.event_data.get('key', 'unknown')
                         await db_manager.db.execute(
                             "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (final_value, self.user_id, f"interactive_sell_{event_key}", "fishing")
+                            (self.user_id, final_value, f"interactive_sell_{event_key}", "fishing")
                         )
                     
                     # 3. COMMIT
@@ -236,6 +236,11 @@ class InteractiveSellEventView(discord.ui.View):
                     await db_manager.db.rollback()
                     raise e
             
+            # --- RAID BOSS CONTRIBUTION ---
+            # Any money earned from sell events damages the boss
+            if final_value > 0:
+                 await self.cog.global_event_manager.process_raid_contribution(self.user_id, final_value)
+
             # --- HANDLE SIDE EFFECTS (Non-Transactional or Separate) ---
             
             # 1. Durability Change
@@ -329,13 +334,14 @@ class InteractiveSellEventView(discord.ui.View):
     }
 
 
-    async def _track_stats(self, event_key: str, choice_id: str, is_win: bool):
+    async def _track_stats(self, event_key: str, choice_id: str, is_win: bool, final_value: int = 0):
         """Track stats for achievements.
         
         Args:
             event_key: Event identifier
             choice_id: Choice selected
             is_win: Whether outcome was better than base
+            final_value: Final money amount earned
         """
         try:
             # 1. Generic stat: total interactive events
@@ -582,7 +588,7 @@ class InteractiveSellEventView(discord.ui.View):
                         event_key = self.event_data.get('key', 'unknown')
                         await db_manager.db.execute(
                             "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (final_value, self.user_id, f"interactive_sell_timeout_{event_key}", "fishing")
+                            (self.user_id, final_value, f"interactive_sell_timeout_{event_key}", "fishing")
                         )
                     
                     await db_manager.db.commit()
