@@ -145,11 +145,18 @@ def render_game_state_sync(
     y_offset = SECTION_PADDING
     
     # === DEALER SECTION ===
-    draw.text((SECTION_PADDING, y_offset), "Nhà Cái", font=font_label, fill=TEXT_COLOR)
-    y_offset += 30
+    # draw.text((SECTION_PADDING, y_offset), "Nhà Cái", font=font_label, fill=TEXT_COLOR)
+    # y_offset += 30
     
     x = SECTION_PADDING
-    for i, (rank, suit) in enumerate(dealer_cards):
+    for i, card in enumerate(dealer_cards):
+        # Handle both Card objects and legacy tuples
+        if hasattr(card, 'rank') and hasattr(card, 'suit'):
+            rank = card.rank.symbol
+            suit = card.suit.value
+        else:
+            rank, suit = card # Fallback tuple ("A", "♠️")
+
         if i == 0 and hide_dealer:
             _draw_hidden_card(draw, x, y_offset)
         else:
@@ -164,14 +171,20 @@ def render_game_state_sync(
         cards = player.get('cards', [])
         
         # Label
-        label = name
-        draw.text((SECTION_PADDING, y_offset), label, font=font_label, fill=TEXT_COLOR)
+        # label = name
+        # draw.text((SECTION_PADDING, y_offset), label, font=font_label, fill=TEXT_COLOR)
         
-        y_offset += 30
+        # y_offset += 30
         
         # Cards
         x = SECTION_PADDING
-        for rank, suit in cards:
+        for card_obj in cards:
+            if hasattr(card_obj, 'rank') and hasattr(card_obj, 'suit'):
+                rank = card_obj.rank.symbol
+                suit = card_obj.suit.value
+            else:
+                rank, suit = card_obj # Fallback tuple
+
             _draw_card(draw, x, y_offset, rank, suit, font_large, font_small)
             x += CARD_WIDTH + CARD_SPACING
         
@@ -243,7 +256,13 @@ def render_player_hand_sync(
         
         # Draw cards
         x = SECTION_PADDING
-        for rank, suit in cards:
+        for card_obj in cards:
+            if hasattr(card_obj, 'rank') and hasattr(card_obj, 'suit'):
+                rank = card_obj.rank.symbol
+                suit = card_obj.suit.value
+            else:
+                rank, suit = card_obj # Fallback tuple
+            
             _draw_card(draw, x, y_offset, rank, suit, font_large, font_small)
             x += CARD_WIDTH + CARD_SPACING
         

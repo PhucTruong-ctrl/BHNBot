@@ -2,6 +2,7 @@
 
 import discord
 import time
+import asyncio
 from discord import ui
 from typing import TYPE_CHECKING, Optional
 
@@ -94,125 +95,53 @@ class SoloGameView(ui.View):
             self.player.status = PlayerStatus.STAND
 
 class LobbyView(ui.View):
-    """View for multiplayer lobby."""
+    """View for multiplayer lobby with integrated betting."""
+    
+    BET_AMOUNTS = [50, 100, 500, 1000, 5000]
 
-    def __init__(self, cog: "XiDachCog", table: Table, timeout: float = 35.0):
+    def __init__(self, cog: "XiDachCog", table: Table, timeout: float = 60.0):
         super().__init__(timeout=timeout)
         self.cog = cog
         self.table = table
+        self._setup_buttons()
 
-    @ui.button(label="🎮 Tham Gia", style=discord.ButtonStyle.success, custom_id="btn_join_lobby")
-    async def join_button(self, interaction: discord.Interaction, button: ui.Button) -> None:
-        await self.cog.player_join_lobby(interaction, self.table)
-
-    async def on_timeout(self) -> None:
-        for item in self.children:
-            if isinstance(item, ui.Button):
-                item.disabled = True
-
-class MultiBetView(ui.View):
-    """View for multiplayer betting phase."""
-
-    BET_AMOUNTS = [50, 100, 500, 1000, 10000]
-
-    def __init__(
-        self,
-        cog: "XiDachCog",
-        table: Table,
-        player: Player,
-        timeout: float = 300.0
-    ):
-        super().__init__(timeout=timeout)
-        self.cog = cog
-        self.table = table
-        self.player = player
-        self._create_bet_buttons()
-
-    def _create_bet_buttons(self) -> None:
-        uid = self.player.user_id
-        
-        # Presets
+    def _setup_buttons(self):
+        # Bet Buttons
         for amount in self.BET_AMOUNTS:
-            button = ui.Button(label=f"+{amount:,}", style=discord.ButtonStyle.primary, custom_id=f"btn_bet_{amount}_{uid}", row=0)
-            button.callback = self._make_bet_callback(amount)
-            self.add_item(button)
-
-        # Actions
-        clear_btn = ui.Button(label="🔄 Xoá Cược", style=discord.ButtonStyle.secondary, custom_id=f"btn_bet_clear_{uid}", row=1)
-        clear_btn.callback = self._clear_bet_callback
-        self.add_item(clear_btn)
-
-        custom_btn = ui.Button(label="✏️ Nhập Số", style=discord.ButtonStyle.secondary, custom_id=f"btn_bet_custom_{uid}", row=1)
+            btn = ui.Button(
+                label=f"{amount:,}", 
+                style=discord.ButtonStyle.secondary, 
+                custom_id=f"btn_bet_{amount}",
+                row=0 if amount < 1000 else 1
+            )
+            btn.callback = self._make_bet_callback(amount)
+            self.add_item(btn)
+            
+        # Custom Bet
+        custom_btn = ui.Button(label="✏️ Khác", style=discord.ButtonStyle.secondary, custom_id="btn_bet_custom", row=1)
         custom_btn.callback = self._custom_bet_callback
         self.add_item(custom_btn)
-
-        all_in_btn = ui.Button(label="🔥 Tất Tay", style=discord.ButtonStyle.danger, custom_id=f"btn_bet_allin_{uid}", row=1)
-        all_in_btn.callback = self._all_in_callback
-        self.add_item(all_in_btn)
-
-        # Ready
-        ready_btn = ui.Button(label="✅ Sẵn Sàng", style=discord.ButtonStyle.success, custom_id=f"btn_ready_{uid}", row=2)
-        ready_btn.callback = self._ready_callback
-        self.add_item(ready_btn)
+        
+        # Start Game (Host Only)
+        start_btn = ui.Button(label="🎲 Bắt Đầu", style=discord.ButtonStyle.success, custom_id="btn_start_game", row=2)
+        start_btn.callback = self._start_game_callback
+        self.add_item(start_btn)
 
     def _make_bet_callback(self, amount: int):
         async def callback(interaction: discord.Interaction) -> None:
-            if interaction.user.id != self.player.user_id:
-                await interaction.response.send_message("❌ Sai giao diện!", ephemeral=True)
-                return
-            await self.cog.process_bet(interaction, self.table, self.player.user_id, amount)
+            await self.cog.process_bet(interaction, self.table, interaction.user.id, amount)
         return callback
 
     async def _custom_bet_callback(self, interaction: discord.Interaction) -> None:
-        if interaction.user.id != self.player.user_id:
-            await interaction.response.send_message("❌ Sai giao diện!", ephemeral=True)
-            return
-        await interaction.response.send_modal(BetAmountModal(self.cog, self.table, self.player.user_id))
+        await interaction.response.send_modal(BetAmountModal(self.cog, self.table, interaction.user.id))
 
-    async def _all_in_callback(self, interaction: discord.Interaction) -> None:
-        if interaction.user.id != self.player.user_id:
-            await interaction.response.send_message("❌ Sai giao diện!", ephemeral=True)
-            return
-        
-        try:
-            balance = await self.cog.get_user_seeds(self.player.user_id)
-            if balance <= 0:
-                await interaction.response.send_message("❌ Hết hạt rồi!", ephemeral=True)
-                return
-            await self.cog.process_bet(interaction, self.table, self.player.user_id, balance)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Lỗi: {e}", ephemeral=True)
-
-    async def _clear_bet_callback(self, interaction: discord.Interaction) -> None:
-        if interaction.user.id != self.player.user_id:
-            await interaction.response.send_message("❌ Sai giao diện!", ephemeral=True)
-            return
-
-        self.player.bet = 0
-        view = MultiBetView(self.cog, self.table, self.player)
-        await interaction.response.edit_message(content=f"💰 **Đặt cược:**\n✅ Đã xoá cược!", view=view)
-
-        try:
-             elapsed = time.time() - self.table.created_at
-             remaining = max(0, 30 - int(elapsed))
-             if self.table.message_id and interaction.channel:
-                 lobby_msg = await interaction.channel.fetch_message(self.table.message_id)
-                 embed = create_lobby_embed(self.table, remaining)
-                 await lobby_msg.edit(embed=embed)
-        except:
-             pass
-
-    async def _ready_callback(self, interaction: discord.Interaction) -> None:
-        if interaction.user.id != self.player.user_id:
-            await interaction.response.send_message("❌ Sai giao diện!", ephemeral=True)
-            return
-        await self.cog.player_ready(interaction, self.table, self.player)
+    async def _start_game_callback(self, interaction: discord.Interaction) -> None:
+        await self.cog.request_start_game(interaction, self.table)
 
     async def on_timeout(self) -> None:
         for item in self.children:
             if isinstance(item, ui.Button):
                 item.disabled = True
-
 class MultiGameView(ui.View):
     """View for multiplayer game."""
 
@@ -232,9 +161,20 @@ class MultiGameView(ui.View):
         self.action_timestamp = 0.0
 
     def _is_active_and_turn(self, interaction: discord.Interaction) -> bool:
-        if self.table.status != TableStatus.PLAYING or not self.table.current_player:
+        if self.table.status != TableStatus.PLAYING:
+            print(f"[DEBUG] Not Playing. Status: {self.table.status}")
             return False
-        return self.table.current_player.user_id == interaction.user.id
+            
+        current = self.table.current_player
+        if not current:
+            print(f"[DEBUG] No current player. Index: {self.table.current_player_idx}, Order: {self.table._turn_order}")
+            return False
+            
+        if current.user_id != interaction.user.id:
+            print(f"[DEBUG] Wrong Turn. Expected: {current.user_id}, Got: {interaction.user.id}")
+            return False
+            
+        return True
 
     @ui.button(label="🃏 Rút", style=discord.ButtonStyle.primary, custom_id="btn_hit_multi")
     async def hit_button(self, interaction: discord.Interaction, button: ui.Button) -> None:
@@ -272,20 +212,3 @@ class MultiGameView(ui.View):
         # Avoid circular import
         from ..commands.multi import force_stand_multi
         asyncio.create_task(force_stand_multi(self.cog, self.table, self.table.current_player))
-class BettingEntryView(ui.View):
-    """View to enter betting phase (Public)."""
-    def __init__(self, cog: "XiDachCog", table: Table, timeout: float = 60.0):
-        super().__init__(timeout=timeout)
-        self.cog = cog
-        self.table = table
-
-    @ui.button(label="💸 Đặt Cược", style=discord.ButtonStyle.primary, custom_id="btn_open_bet")
-    async def open_bet_button(self, interaction: discord.Interaction, button: ui.Button) -> None:
-        if interaction.user.id not in self.table.players:
-            await interaction.response.send_message("❌ Bạn chưa tham gia bàn chơi!", ephemeral=True)
-            return
-            
-        # Send Ephemeral Betting Dashboard
-        player = self.table.players[interaction.user.id]
-        view = MultiBetView(self.cog, self.table, player)
-        await interaction.response.send_message("💰 **BẢNG ĐẶT CƯỢC**", view=view, ephemeral=True)

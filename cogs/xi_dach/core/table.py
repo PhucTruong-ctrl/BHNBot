@@ -91,7 +91,7 @@ class Table:
         
         self._turn_order = [
             uid for uid, p in self.players.items() 
-            if p.is_ready and p.bet > 0
+            if p.bet > 0
         ]
         random.shuffle(self._turn_order)
         self.current_player_idx = 0

@@ -1,496 +1,721 @@
-"""Multiplayer Game Implementation."""
+"""
+Xi Dach Multiplayer Controller.
 
-import discord
-import time
+Handles the complete game flow:
+- Phase 0: Lobby (Join/Bet)
+- Phase 1: Initial Check (Xi Ban/Xi Dach)
+- Phase 2: Player Turns (Draw/Stand)
+- Phase 3: Dealer AI
+- Phase 4: Results
+"""
+
 import asyncio
 import io
-from typing import TYPE_CHECKING, List, Dict, Optional
+import time
+from typing import TYPE_CHECKING, Optional, List, Dict
 
-from database_manager import db_manager, get_or_create_user, batch_update_seeds
+import discord
 from core.logger import setup_logger
+from database_manager import db_manager, get_user_balance, batch_update_seeds
 
-from ..constants import (
-    MIN_BET, LOBBY_DURATION, BETTING_DURATION, TURN_TIMEOUT,
-    MAX_PLAYERS
-)
 from ..core.game_manager import game_manager
 from ..core.table import Table, TableStatus
 from ..core.player import Player, PlayerStatus
-from ..core.deck import Deck
-from ..services.hand_service import HandType, compare_hands, calculate_hand_value
-from ..services.ai_service import get_dealer_decision
+from ..services.hand_service import (
+    HandType,
+    calculate_hand_value,
+    determine_hand_type,
+    is_du_tuoi,
+    get_hand_description,
+    format_hand,
+    compare_hands,
+    check_phase1_winner,
+)
+from ..services.ai_service import get_dealer_decision, get_smart_think_time
+from ..ui.views import LobbyView, MultiGameView
 from ..ui.embeds import create_lobby_embed, create_multi_game_embed
-from ..ui.views import LobbyView, MultiBetView, MultiGameView, BettingEntryView
-from ..ui.render import render_game_state
+from ..ui.render import render_game_state, render_player_hand
 
 if TYPE_CHECKING:
     from ..cog import XiDachCog
 
-logger = setup_logger("XiDachMulti", "cogs/xidach.log")
+logger = setup_logger("XiDachMulti", "cogs/xidach_multi.log")
 
-async def start_multiplayer(cog: "XiDachCog", interaction: discord.Interaction) -> None:
-    """Start a multiplayer lobby."""
-    user = interaction.user
-    channel_id = interaction.channel.id
-
-    if game_manager.get_table(channel_id):
-        await interaction.response.send_message(
-            "❌ Đã có sòng bài đang chạy tại kênh này!", ephemeral=True
-        )
-        return
-
-    # Create Table
-    table = game_manager.create_table(channel_id, host_id=user.id, is_multiplayer=True)
-    
-    # Auto-add host
-    # Host needs to join explicitly or auto? Existing logic: Host must join via button or auto-added?
-    # Original logic: _start_lobby just showed embed. Players join via button.
-    # Let's keep it consistent: Host must click Join too, OR auto-join.
-    # Original: `await self._start_lobby(interaction, table)`
-    
-    await _start_lobby(cog, interaction, table)
+# Constants
+LOBBY_DURATION = 45  # seconds
+TURN_TIMEOUT = 30  # seconds
 
 
-async def _start_lobby(cog: "XiDachCog", interaction: discord.Interaction, table: Table) -> None:
-    """Run the lobby phase."""
-    # await interaction.response.defer() # Might be deferred already?
-    
-    embed = create_lobby_embed(table, LOBBY_DURATION)
-    view = LobbyView(cog, table, timeout=LOBBY_DURATION)
-    
-    msg = await interaction.response.send_message(embed=embed, view=view)
-    table.message_id = msg.id if not isinstance(msg, discord.Interaction) else (await interaction.original_response()).id
-    
-    # Countdown Loop
-    end_time = time.time() + LOBBY_DURATION
-    try:
-        while time.time() < end_time:
-            if table.status != TableStatus.WAITING: 
-                break # Force started
-            
-            # Check if Full
-            if len(table.players) >= MAX_PLAYERS:
-                break
-                
-            await asyncio.sleep(2) # Refresh rate (low to avoid ratelimit)
-            # We don't need to edit message constantly unless timer is text-based.
-            # Timestamp <t:R> handles visual countdown.
-            
-    except Exception as e:
-        logger.error(f"Lobby error: {e}")
-        
-    # Check players
-    if len(table.players) == 0:
-        await interaction.channel.send("❌ Không có ai tham gia. Hủy sòng.")
-        game_manager.remove_table(table.table_id)
-        return
+# ==================== PHASE 0: LOBBY ====================
 
-    await _start_betting_phase(cog, interaction.channel, table)
+async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: int) -> None:
+    """Start or join a multiplayer Xi Dach game."""
+    # Normalize ctx/interaction
+    if isinstance(ctx_or_interaction, discord.Interaction):
+        user = ctx_or_interaction.user
+        channel_id = ctx_or_interaction.channel_id
+    else:
+        user = ctx_or_interaction.author
+        channel_id = ctx_or_interaction.channel.id
 
+    logger.info(f"[MULTI_START] User: {user.id} | Channel: {channel_id} | Bet: {initial_bet}")
 
-async def player_join_lobby(cog: "XiDachCog", interaction: discord.Interaction, table: Table) -> None:
-    """Handle join request."""
-    user = interaction.user
-    
-    async with table.lock:
-        if user.id in table.players:
-            await interaction.response.send_message("❌ Bạn đã tham gia rồi!", ephemeral=True)
-            return
-            
-        if len(table.players) >= MAX_PLAYERS:
-            await interaction.response.send_message("❌ Sòng đã đầy!", ephemeral=True)
-            return
+    # Create table
+    table = game_manager.create_table(channel_id, user.id, is_solo=False)
+    table.channel_id = channel_id
 
-        # Check balance
-        await get_or_create_user(user.id, user.display_name)
-        # Note: We don't deduct money yet. Just check exists.
-
-        player = Player(user_id=user.id, username=user.display_name, status=PlayerStatus.WAITING)
-        table.add_player(player)
-
-        # Update Embed
-        try:
-             elapsed = time.time() - table.created_at
-             remaining = max(0, LOBBY_DURATION - int(elapsed))
-             embed = create_lobby_embed(table, remaining)
-             await interaction.response.edit_message(embed=embed)
-        except Exception as e:
-             logger.error(f"Join update error: {e}")
-
-
-async def _start_betting_phase(cog: "XiDachCog", channel, table: Table) -> None:
-    """Transition to betting phase."""
-    table.status = TableStatus.BETTING
-    
-    # Send Betting Interface (One msg per player? Or one shared msg?)
-    # Original logic: Send a shared Embed saying "Check DM/Ephemeral"? 
-    # Actually original sent a View with Bet Buttons in the channel. 
-    # But buttons are global. 
-    # View was `MultiBetView`. It had buttons +100 etc. but callback checked user_id.
-    # The issue: ONE view for ALL players is chaotic if it's ephemeral.
-    # Use: Generic View in Channel. When clicked -> Ephemeral Controller or just direct action.
-    # Original used `MultiBetView(cog, table, player)` which implies PER PLAYER?
-    # "for uid, player in table.players.items(): send ephemeral?"
-    # No, usually Discord bots use one public message with buttons that act ephemerally.
-    
-    # Let's verify `views.py`. `MultiBetView` takes `player`. This suggests Per-Player View.
-    # But we can't send per-player View easily in a channel without spamming.
-    # The clean way: Send 1 "Master Betting" Embed. Buttons: "Đặt Cược".
-    # Click "Đặt Cược" -> Sends Ephemeral `MultiBetView`.
-    # BUT `MultiBetView` in my `views.py` has buttons for amounts.
-    # Let's assume we send ONE Public Menu, and players click "Open Bet Interface"?
-    # OR we send individual DMs? (Bad UX).
-    # OR we just loop and ping everyone?
-    
-    # Wait for ready or timeout
-    end_time = time.time() + BETTING_DURATION
-    
-    # Generic "Open Betting" View just in case? 
-    # Actually we just wait. Players click buttons on the PREVIOUS generic message (if we sent one).
-    # MultiBetView logic above was tricky.
-    
-    # Send generic betting dashboard
-    # We need a View that allows users to open their betting panel?
-    # For now, let's assume we proceed when all ready OR timeout.
-    
-    start_msg = await channel.send(
-        content=f"⏳ **GIAI ĐOẠN ĐẶT CƯỢC** ({BETTING_DURATION}s)\nVui lòng mở Bảng Đặt Cược bên dưới:",
-        view=BettingEntryView(cog, table, timeout=BETTING_DURATION)
-    )
-    # To fix "WIP": We need a public view that spawns personal betting views.
-    # But implementing a new View class now might be overkill.
-    # Let's rely on the fact that `_start_lobby` had players join.
-    # We can ping each player individually with a DM? Or ephemeral?
-    # Valid solution: Loop.
-    
-    while time.time() < end_time:
-        await asyncio.sleep(2)
-        
-        # Check if table killed
-        if table.status != TableStatus.BETTING:
-            break
-            
-        # Check if all ready
-        # Only count players with bet > 0?
-        # Standard: ready_players_count == active_players_count
-        if table.ready_players_count > 0 and table.ready_players_count == len(table.players):
-             break
-             
-    # End of loop
-    if table.status == TableStatus.BETTING:
-        # Auto-start with ready players
-        ready_p = [p for p in table.players.values() if p.is_ready and p.bet > 0]
-        if not ready_p:
-            await channel.send("❌ Hết giờ đặt cược và không ai sẵn sàng. Hủy sòng.")
-            game_manager.remove_table(table.table_id)
+    # Add host as first player with bet
+    balance = await get_user_balance(user.id)
+    if balance < initial_bet:
+        msg = f"❌ Bạn không đủ hạt! (Cần {initial_bet:,}, có {balance:,})"
+        if isinstance(ctx_or_interaction, discord.Interaction):
+            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
         else:
-            await channel.send("⏳ Hết giờ đặt cược! Bắt đầu với những người đã sẵn sàng...")
-            await _start_multi_game(cog, channel, table)
+            await ctx_or_interaction.send(msg)
+        game_manager.remove_table(table.channel_id)
+        return
+
+    # Deduct bet immediately
+    await db_manager.modify(
+        "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+        (initial_bet, user.id)
+    )
+
+    host = table.add_player(user.id, user.display_name, initial_bet)
+    host.is_ready = True
+    logger.info(f"[LOBBY] Host {user.id} joined with bet {initial_bet}")
+
+    await _run_lobby(cog, ctx_or_interaction, table)
+
+
+async def _run_lobby(cog: "XiDachCog", ctx_or_interaction, table: Table) -> None:
+    """Run the lobby countdown and start game when ready."""
+    embed = create_lobby_embed(table, LOBBY_DURATION)
+    view = LobbyView(cog, table, timeout=LOBBY_DURATION + 10)
+
+    # Send lobby message
+    if isinstance(ctx_or_interaction, discord.Interaction):
+        if not ctx_or_interaction.response.is_done():
+            await ctx_or_interaction.response.send_message(embed=embed, view=view)
+            msg = await ctx_or_interaction.original_response()
+        else:
+            msg = await ctx_or_interaction.followup.send(embed=embed, view=view)
+    else:
+        msg = await ctx_or_interaction.send(embed=embed, view=view)
+
+    table.message_id = msg.id
+
+    # Countdown loop
+    end_time = time.time() + LOBBY_DURATION
+    while time.time() < end_time:
+        async with table.lock:
+            if table.status == TableStatus.PLAYING:
+                # Game started by host
+                return
+
+        await asyncio.sleep(2)
+
+    # Timeout - auto start if players exist
+    async with table.lock:
+        if table.status != TableStatus.LOBBY:
+            return
+
+        valid_players = [p for p in table.players.values() if p.bet > 0]
+        if not valid_players:
+            channel = ctx_or_interaction.channel if hasattr(ctx_or_interaction, 'channel') else cog.bot.get_channel(table.channel_id)
+            if channel:
+                await channel.send("❌ Hết giờ, không có ai tham gia. Hủy sòng.")
+            game_manager.remove_table(table.channel_id)
+            return
+
+    channel = ctx_or_interaction.channel if hasattr(ctx_or_interaction, 'channel') else cog.bot.get_channel(table.channel_id)
+    if channel:
+        await channel.send("⌛ **Hết thời gian chờ! Tự động bắt đầu...**")
+        await _start_game(cog, channel, table)
 
 
 async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table: Table, user_id: int, amount: int) -> None:
-    """Handle bet placement."""
+    """Process a bet from a player. Amounts are ADDITIVE."""
     async with table.lock:
-        player = table.players.get(user_id)
-        if not player: return
-
-        # Validate
-        if amount < MIN_BET:
-            await interaction.response.send_message(f"❌ Cược tối thiểu {MIN_BET}!", ephemeral=True)
+        if table.status != TableStatus.LOBBY:
+            await interaction.response.send_message("⚠️ Game đã bắt đầu!", ephemeral=True)
             return
 
-        # Check Balance (Atomic)
-        # We don't deduct yet? Or deduct specific amount?
-        # Original: Checked balance, didn't deduct until `player_ready`? Or deduct immediately?
-        # Original Audit said "Check-then-Act".
-        # Safe way: Deduct on Ready? Or Deduct on Bet?
-        # If we support "Change Bet", Deducting immediately is messy (refunds needed).
-        # Best: Just validate balance > amount.
-        # Deduct ONLY when confirming READY.
+        await interaction.response.defer(ephemeral=True)
+
+        balance = await get_user_balance(user_id)
+        current_player = table.players.get(user_id)
+        current_bet = current_player.bet if current_player else 0
         
-        # Check if user VALID has enough
-        current_bal = await db_manager.get_user_balance(user_id)
-        if current_bal < amount:
-            await interaction.response.send_message("❌ Không đủ hạt!", ephemeral=True)
+        # ADDITIVE: New total = current + amount clicked
+        new_total = current_bet + amount
+        additional_needed = amount  # Always add the clicked amount
+
+        if balance < additional_needed:
+            await interaction.followup.send(f"❌ Không đủ hạt! (Cần {additional_needed:,}, bạn có {balance:,})", ephemeral=True)
             return
 
-        player.bet = amount
-        await interaction.response.send_message(f"✅ Đã chọn cược: **{amount:,}**", ephemeral=True)
-        # Note: Embed update needed?
-
-
-async def player_ready(cog: "XiDachCog", interaction: discord.Interaction, table: Table, player: Player) -> None:
-    """Commit bet and set ready."""
-    async with table.lock:
-        if player.bet <= 0:
-            await interaction.response.send_message("❌ Vui lòng đặt cược trước!", ephemeral=True)
-            return
-
-        # Atomic Deduct
-        success = await db_manager.modify(
-            "UPDATE users SET seeds = seeds - ? WHERE user_id = ? AND seeds >= ?",
-            (player.bet, player.user_id, player.bet)
+        # Deduct the clicked amount
+        await db_manager.modify(
+            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+            (additional_needed, user_id)
         )
-        if not success:
-            await interaction.response.send_message("❌ Giao dịch thất bại! Có người đã nhanh tay hơn (hoặc hết tiền).", ephemeral=True)
+
+        if current_player:
+            current_player.bet = new_total  # Additive
+            current_player.is_ready = True
+        else:
+            player = table.add_player(user_id, interaction.user.display_name, amount)
+            player.is_ready = True
+
+        logger.info(f"[BET] User {user_id} bet +{amount} (Total: {new_total})")
+        await interaction.followup.send(f"✅ Cược thêm **{amount:,}** hạt! Tổng: **{new_total:,}**", ephemeral=True)
+
+    # Update lobby message
+    await _update_lobby_message(cog, table)
+
+
+async def request_start_game(cog: "XiDachCog", interaction: discord.Interaction, table: Table) -> None:
+    """Host requests to start game immediately."""
+    async with table.lock:
+        if interaction.user.id != table.host_id:
+            await interaction.response.send_message("❌ Chỉ chủ phòng mới được bắt đầu!", ephemeral=True)
             return
 
-        player.is_ready = True
-        await interaction.response.send_message(f"✅ **{player.username}** đã sẵn sàng!", ephemeral=False)
-        
-        # Check if all ready
-        if all(p.is_ready for p in table.players.values()):
-            # Start Game
-            asyncio.create_task(_start_multi_game(cog, interaction.channel, table))
+        if table.status != TableStatus.LOBBY:
+            await interaction.response.send_message("⚠️ Game đã bắt đầu hoặc kết thúc!", ephemeral=True)
+            return
+
+        valid_players = [p for p in table.players.values() if p.bet > 0]
+        if not valid_players:
+            await interaction.response.send_message("❌ Chưa có ai đặt cược!", ephemeral=True)
+            return
+
+        await interaction.response.send_message("🎲 **Chủ phòng bắt đầu game!**")
+
+    await _start_game(cog, interaction.channel, table)
 
 
-async def _start_multi_game(cog: "XiDachCog", channel, table: Table) -> None:
-    """Initialize game loop."""
-    table.status = TableStatus.PLAYING
-    
-    # Deal Cards
-    for p in table.players.values():
-        p.hand = table.deck.draw(2)
-        p.status = PlayerStatus.PLAYING
-        p.hand_value = calculate_hand_value(p.hand)
-        # Check instant win
-        if p.hand_type in (HandType.XI_DACH, HandType.XI_BAN):
-             p.status = PlayerStatus.BLACKJACK
+async def _update_lobby_message(cog: "XiDachCog", table: Table) -> None:
+    """Update the lobby embed with current players."""
+    try:
+        channel = cog.bot.get_channel(table.channel_id)
+        if not channel or not table.message_id:
+            return
 
-    table.dealer_hand = table.deck.draw(2)
-    
-    # Sort turns (Position based? or Join order?)
-    # Using existing dict order.
-    table.turn_order = [p for p in table.players.values() if p.status == PlayerStatus.PLAYING] # Exclude failed bets?
-    if not table.turn_order:
-        await channel.send("❌ Không có người chơi hợp lệ. Hủy.")
+        msg = await channel.fetch_message(table.message_id)
+        embed = create_lobby_embed(table)
+        await msg.edit(embed=embed)
+    except Exception as e:
+        logger.error(f"[UPDATE_LOBBY] Error: {e}")
+
+
+# ==================== PHASE 1: INITIAL CHECK ====================
+
+async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
+    """Start the game and run Phase 1 checks."""
+    async with table.lock:
+        if table.status == TableStatus.PLAYING:
+            logger.warning(f"[START_GAME] Table {table.table_id} already playing!")
+            return
+
+        table.status = TableStatus.PLAYING
+        table.deck.reset()
+        table.dealer_hand = []
+
+        # Build turn order
+        table._turn_order = [uid for uid, p in table.players.items() if p.bet > 0]
+        table.current_player_idx = 0
+
+        # Deal 2 cards to everyone
+        for uid in table._turn_order:
+            player = table.players[uid]
+            player.hand = []
+            player.status = PlayerStatus.WAITING
+            player.add_card(table.deck.draw_one())
+            player.add_card(table.deck.draw_one())
+
+        table.dealer_hand = table.deck.draw(2)
+
+    logger.info(f"[PHASE_1] Table {table.table_id} - Dealing cards")
+
+    # Phase 1: Check for instant wins/losses
+    _, dealer_type = determine_hand_type(table.dealer_hand)
+    phase1_ended = False
+
+    if dealer_type in (HandType.XI_BAN, HandType.XI_DACH):
+        # Dealer has special hand - immediate resolution
+        logger.info(f"[PHASE_1] Dealer has {dealer_type.name}!")
+        phase1_ended = True
+
+        results = []
+        seed_updates = {}
+
+        for uid, player in table.players.items():
+            if player.bet <= 0:
+                continue
+
+            result, mul = check_phase1_winner(player.hand, table.dealer_hand)
+            payout = int(player.bet * mul)
+
+            if payout > 0:
+                seed_updates[uid] = payout
+
+            _, p_type = determine_hand_type(player.hand)
+            results.append({
+                "username": player.username,
+                "hand_type": p_type.name,
+                "result": result,
+                "payout": payout - player.bet
+            })
+            player.status = PlayerStatus.BLACKJACK if p_type in (HandType.XI_BAN, HandType.XI_DACH) else PlayerStatus.STAND
+
+        # Pay winners
+        if seed_updates:
+            await batch_update_seeds(seed_updates)
+
+        # Send result
+        embed = discord.Embed(
+            title=f"🎰 NHÀ CÁI CÓ {get_hand_description(dealer_type)}!",
+            color=discord.Color.red()
+        )
+        embed.add_field(
+            name="🤖 Nhà Cái",
+            value=f"{format_hand(table.dealer_hand)}\n{get_hand_description(dealer_type)}",
+            inline=False
+        )
+
+        for r in results:
+            emoji = "🏆" if r["result"] == "win" else ("🤝" if r["result"] == "push" else "💀")
+            net_str = f"+{r['payout']:,}" if r["payout"] >= 0 else f"{r['payout']:,}"
+            embed.add_field(
+                name=f"{emoji} {r['username']}",
+                value=f"{r['hand_type']} | {net_str} Hạt",
+                inline=True
+            )
+
+        await channel.send(embed=embed)
+        game_manager.remove_table(table.channel_id)
         return
-        
-    table.turn_index = 0
-    await _next_turn(cog, channel, table)
 
+    # Check for player instant wins
+    for uid, player in list(table.players.items()):
+        if player.bet <= 0:
+            continue
+
+        _, p_type = determine_hand_type(player.hand)
+
+        if p_type in (HandType.XI_BAN, HandType.XI_DACH):
+            # Player instant win
+            mul = 2.0 if p_type == HandType.XI_BAN else 1.5
+            payout = int(player.bet * mul)
+
+            await batch_update_seeds({uid: payout})
+            player.status = PlayerStatus.BLACKJACK
+
+            # Remove from turn order
+            if uid in table._turn_order:
+                table._turn_order.remove(uid)
+
+            await channel.send(
+                f"🎉 **{player.username}** có {get_hand_description(p_type)}! "
+                f"Thắng ngay **+{payout - player.bet:,}** hạt! (Ngồi chơi xơi nước)"
+            )
+            logger.info(f"[PHASE_1] Player {uid} instant win: {p_type.name}")
+
+    # Continue to Phase 2
+    if table._turn_order:
+        table.players[table._turn_order[0]].status = PlayerStatus.PLAYING
+        await _next_turn(cog, channel, table)
+    else:
+        # All players won instantly - go to dealer
+        await _run_dealer(cog, channel, table)
+
+
+# ==================== PHASE 2: PLAYER TURNS ====================
 
 async def _next_turn(cog: "XiDachCog", channel, table: Table) -> None:
-    """Process next turn."""
-    if table.turn_index >= len(table.turn_order):
-        await _finish_multi_game(cog, channel, table)
-        return
-        
-    player = table.turn_order[table.turn_index]
-    table.current_player = player
-    
-    # Skip if finished (Blackjack)
-    if player.status != PlayerStatus.PLAYING:
-        table.turn_index += 1
-        await _next_turn(cog, channel, table)
+    """Process the next player's turn."""
+    async with table.lock:
+        if table.status != TableStatus.PLAYING:
+            logger.warning(f"[NEXT_TURN] Table {table.table_id} not playing!")
+            return
+
+        current = table.current_player
+        if not current:
+            # All players done - dealer's turn
+            pass
+        else:
+            # Skip finished players
+            while current and current.status != PlayerStatus.PLAYING:
+                table.next_turn()
+                current = table.current_player
+
+    if not current:
+        await _run_dealer(cog, channel, table)
         return
 
-    # Send Generic Game Embed (With buttons enabled for current player)
-    # Note: MultiGameView checks `_is_active_and_turn`.
-    
-    embed = create_multi_game_embed(table)
-    
-    # Render
-    img_bytes = await render_game_state(
-        table.dealer_hand, 
-        _get_players_data(table), 
-        hide_dealer=True
+    # Render current player's view
+    score, hand_type = determine_hand_type(current.hand)
+    tuoi_str = "✅ Đủ tuổi" if is_du_tuoi(current.hand) else "❌ Chưa đủ tuổi"
+
+    embed = discord.Embed(
+        title=f"🎮 Lượt của {current.username}",
+        description=f"**Điểm: {score}** ({tuoi_str})",
+        color=discord.Color.blue()
     )
-    file = discord.File(io.BytesIO(img_bytes), filename="multi_game.png")
-    embed.set_image(url="attachment://multi_game.png")
-    
+    embed.add_field(
+        name="🃏 Bài của bạn",
+        value=format_hand(current.hand),
+        inline=False
+    )
+    embed.add_field(
+        name="🤖 Nhà Cái",
+        value=format_hand(table.dealer_hand, hide_first=True),
+        inline=False
+    )
+
+    # Render image (optional - just player's cards for now)
+    try:
+        img_bytes = await render_player_hand(current.hand, current.username)
+        file = discord.File(io.BytesIO(img_bytes), filename="hand.png")
+        embed.set_image(url="attachment://hand.png")
+    except Exception as e:
+        logger.error(f"[RENDER] Error: {e}")
+        file = None
+
     view = MultiGameView(cog, table, channel=channel, timeout=TURN_TIMEOUT)
-    
-    msg = await channel.send(
-        content=f"👉 Lượt của **<@{player.user_id}>**",
-        embed=embed,
-        view=view,
-        file=file
-    )
+
+    if file:
+        msg = await channel.send(
+            content=f"👉 <@{current.user_id}>",
+            embed=embed,
+            view=view,
+            file=file
+        )
+    else:
+        msg = await channel.send(
+            content=f"👉 <@{current.user_id}>",
+            embed=embed,
+            view=view
+        )
+
     table.current_turn_msg = msg
     table.turn_action_timestamp = time.time()
-    
-    # Timer Task? 
-    # relying on view timeout or global loop? 
-    # Cog usually has `cleanup_loop`.
-    # We leave timeout to View `on_timeout`?
-    # View timeout disables buttons only. Need `auto-stand`.
-    # View will call `player_stand` on timeout maybe? 
-    # In `views.py`, on_timeout just disables.
-    # Ideally should auto-stand.
 
 
-async def player_hit_multi(cog: "XiDachCog", interaction, table: Table, player: Player, view: MultiGameView) -> None:
-    """Handle Draw for Multiplayer."""
+async def player_hit_multi(cog: "XiDachCog", interaction: discord.Interaction, table: Table, player: Player, view) -> None:
+    """Handle player drawing a card."""
     async with table.lock:
+        if table.status != TableStatus.PLAYING:
+            await interaction.response.send_message("⚠️ Game chưa bắt đầu hoặc đã kết thúc!", ephemeral=True)
+            return
+
+        if table.current_player != player:
+            await interaction.response.send_message("❌ Không phải lượt của bạn!", ephemeral=True)
+            return
+
         await interaction.response.defer()
-        
+
         card = table.deck.draw_one()
         player.add_card(card)
-        
-        if player.is_bust or len(player.hand) >= 5:
-            player.status = PlayerStatus.BUST if player.is_bust else PlayerStatus.STAND
-            await _advance_turn(cog, interaction, table)
-        else:
-            # Update View (Same Turn)
-            await _refresh_game_view(interaction, table, view, player.user_id)
+        logger.info(f"[HIT] Player {player.user_id} drew {card}")
+
+        score, hand_type = determine_hand_type(player.hand)
+
+        # Check for end conditions
+        if hand_type == HandType.BUST:
+            player.status = PlayerStatus.BUST
+            logger.info(f"[BUST] Player {player.user_id} busted with {score}")
+
+        elif hand_type == HandType.NGU_LINH:
+            player.status = PlayerStatus.STAND  # Ngu Linh auto-stands
+            logger.info(f"[NGU_LINH] Player {player.user_id} achieved Ngu Linh!")
+
+    # Update display
+    await _refresh_turn_display(cog, interaction.channel, table, player)
+
+    # Check if turn should end
+    if player.status in (PlayerStatus.BUST, PlayerStatus.STAND):
+        await _advance_to_next(cog, interaction.channel, table)
 
 
-async def player_stand_multi(cog: "XiDachCog", interaction, table: Table, player: Player, view: MultiGameView) -> None:
-    """Handle Stand for Multiplayer."""
+async def player_stand_multi(cog: "XiDachCog", interaction: discord.Interaction, table: Table, player: Player, view) -> None:
+    """Handle player standing."""
     async with table.lock:
-        if interaction:
-            await interaction.response.defer()
+        if table.status != TableStatus.PLAYING:
+            await interaction.response.send_message("⚠️ Game chưa bắt đầu!", ephemeral=True)
+            return
+
+        if table.current_player != player:
+            await interaction.response.send_message("❌ Không phải lượt của bạn!", ephemeral=True)
+            return
+
+        # Check "Đủ tuổi" rule
+        if not is_du_tuoi(player.hand):
+            score = calculate_hand_value(player.hand)
+            await interaction.response.send_message(
+                f"❌ Bạn chỉ có **{score} điểm** - Chưa đủ tuổi (cần ≥16)! Phải rút thêm.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
         player.status = PlayerStatus.STAND
-        await _advance_turn(cog, interaction, table)
+        logger.info(f"[STAND] Player {player.user_id} stood with {calculate_hand_value(player.hand)}")
+
+    await _advance_to_next(cog, interaction.channel, table)
+
+
+async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction, table: Table, player: Player, view) -> None:
+    """Handle double down."""
+    async with table.lock:
+        if not player.can_double:
+            await interaction.response.send_message("❌ Không thể gấp đôi lúc này!", ephemeral=True)
+            return
+
+        balance = await get_user_balance(player.user_id)
+        if balance < player.bet:
+            await interaction.response.send_message(f"❌ Không đủ hạt để gấp đôi!", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        # Deduct additional bet
+        await db_manager.modify(
+            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+            (player.bet, player.user_id)
+        )
+
+        player.bet *= 2
+        player.is_doubled = True
+
+        # Draw one card and end turn
+        card = table.deck.draw_one()
+        player.add_card(card)
+
+        score, hand_type = determine_hand_type(player.hand)
+        player.status = PlayerStatus.BUST if hand_type == HandType.BUST else PlayerStatus.STAND
+
+        logger.info(f"[DOUBLE] Player {player.user_id} doubled. New bet: {player.bet}, drew {card}")
+
+    await _advance_to_next(cog, interaction.channel, table)
 
 
 async def force_stand_multi(cog: "XiDachCog", table: Table, player: Player) -> None:
-    """Force stand a player (Timeout)."""
+    """Force stand on timeout."""
     async with table.lock:
-        if player.status != PlayerStatus.PLAYING:
+        if not player or player.status != PlayerStatus.PLAYING:
             return
+
         logger.info(f"[TIMEOUT] Force standing player {player.user_id}")
         player.status = PlayerStatus.STAND
-        
-        # We need a channel context to advance turn
-        channel = cog.bot.get_channel(table.channel_id)
-        if not channel: return
 
-        # Need to simulate interaction-like object or refactor `_advance_turn`
-        # `_advance_turn` uses `interaction.channel` usually.
-        # Let's mock a simple object or refactor `_advance_turn` to accept channel explicitly.
-        
-        # Refactoring _advance_turn signature first is better.
-        await _advance_turn(cog, None, table, channel_override=channel)
-
-
-async def player_double_multi(cog: "XiDachCog", interaction, table: Table, player: Player, view: MultiGameView) -> None:
-    """Handle Double Multi."""
-    async with table.lock:
-        await interaction.response.defer()
-
-        # Atomic Deduct
-        success = await db_manager.modify(
-            "UPDATE users SET seeds = seeds - ? WHERE user_id = ? AND seeds >= ?",
-            (player.bet, player.user_id, player.bet)
-        )
-        if not success:
-             await interaction.followup.send("❌ Không đủ hạt để X2!", ephemeral=True)
-             return
-             
-        player.bet *= 2
-        player.is_doubled = True
-        
-        card = table.deck.draw_one()
-        player.add_card(card)
-        
-        player.status = PlayerStatus.BUST if player.is_bust else PlayerStatus.STAND
-        await _advance_turn(cog, interaction, table)
-
-
-async def _advance_turn(cog: "XiDachCog", interaction, table: Table, channel_override=None):
-    """Move to next player."""
-    table.turn_index += 1
-    channel = channel_override or (interaction.channel if interaction else None)
-    
-    # Clean up old message?
-    try:
-        if table.current_turn_msg:
-             # Just try to delete, don't wait/check too much
-             asyncio.create_task(table.current_turn_msg.delete())
-    except:
-        pass
-        
+    channel = cog.bot.get_channel(table.channel_id)
     if channel:
-        await _next_turn(cog, channel, table)
-    else:
-        logger.error("[MULTI] No channel found to advance turn!")
+        await channel.send(f"⏰ **{player.username}** hết thời gian! Tự động dằn.")
+        await _advance_to_next(cog, channel, table)
 
 
-async def _refresh_game_view(interaction, table, view, user_id):
-    """Refreshes the current turn message with new card state."""
-    embed = create_multi_game_embed(table)
-    img_bytes = await render_game_state(
-        table.dealer_hand, _get_players_data(table), hide_dealer=True
+async def _refresh_turn_display(cog: "XiDachCog", channel, table: Table, player: Player) -> None:
+    """Refresh the current turn display."""
+    score, hand_type = determine_hand_type(player.hand)
+    tuoi_str = "✅ Đủ tuổi" if is_du_tuoi(player.hand) else "❌ Chưa đủ tuổi"
+    type_str = get_hand_description(hand_type)
+
+    embed = discord.Embed(
+        title=f"🎮 Lượt của {player.username}",
+        description=f"**Điểm: {score}** {type_str} ({tuoi_str})",
+        color=discord.Color.red() if hand_type == HandType.BUST else discord.Color.blue()
     )
-    file = discord.File(io.BytesIO(img_bytes), filename="multi_game.png")
-    embed.set_image(url="attachment://multi_game.png")
-    
-    await interaction.edit_original_response(embed=embed, file=file, view=view)
+    embed.add_field(name="🃏 Bài của bạn", value=format_hand(player.hand), inline=False)
+    embed.add_field(name="🤖 Nhà Cái", value=format_hand(table.dealer_hand, hide_first=True), inline=False)
+
+    try:
+        img_bytes = await render_player_hand(player.hand, player.username)
+        file = discord.File(io.BytesIO(img_bytes), filename="hand.png")
+        embed.set_image(url="attachment://hand.png")
+
+        if table.current_turn_msg:
+            await table.current_turn_msg.edit(embed=embed, attachments=[file])
+    except Exception as e:
+        logger.error(f"[REFRESH] Error: {e}")
+        if table.current_turn_msg:
+            await table.current_turn_msg.edit(embed=embed)
 
 
-async def _finish_multi_game(cog: "XiDachCog", channel, table: Table) -> None:
-    """Dealer turn and results."""
-    table.status = TableStatus.DEALER_TURN
-    # Dealer AI Loop
-    # (Simplified for brevity, similar to Solo but updating one message)
-    
-    # Reveal
-    msg = await channel.send("🎲 **LƯỢT NHÀ CÁI**")
-    
+async def _advance_to_next(cog: "XiDachCog", channel, table: Table) -> None:
+    """Advance to next player."""
+    async with table.lock:
+        # Keep old message for history (do NOT delete)
+        table.current_turn_msg = None
+        table.next_turn()
+
+    await _next_turn(cog, channel, table)
+
+
+# ==================== PHASE 3: DEALER ====================
+
+async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
+    """Run dealer's AI turn."""
+    async with table.lock:
+        if table.status in (TableStatus.DEALER_TURN, TableStatus.FINISHED):
+            logger.warning(f"[DEALER] Table {table.table_id} already in dealer phase!")
+            return
+
+        table.status = TableStatus.DEALER_TURN
+
+    logger.info(f"[PHASE_3] Table {table.table_id} - Dealer's turn")
+
+    # Get survivors (not bust)
+    survivors = [p for p in table.players.values() if p.status not in (PlayerStatus.BUST, PlayerStatus.BLACKJACK)]
+
+    # Send initial dealer message
+    embed = discord.Embed(title="🎲 NHÀ CÁI ĐANG RÚT BÀI...", color=discord.Color.gold())
+    embed.add_field(name="🤖 Nhà Cái", value=format_hand(table.dealer_hand), inline=False)
+    msg = await channel.send(embed=embed)
+
+    # Dealer AI loop
     while True:
-        players_data = _get_players_data(table)
-        img_bytes = await render_game_state(table.dealer_hand, players_data, hide_dealer=False)
-        file = discord.File(io.BytesIO(img_bytes), filename="multi_end.png")
-        
-        embed = create_multi_game_embed(table)
-        embed.set_image(url="attachment://multi_end.png")
-        
-        await msg.edit(embed=embed, attachments=[file])
-        
-        await asyncio.sleep(1.5)
-        
-        action, _ = get_dealer_decision(table.dealer_hand)
+        await asyncio.sleep(get_smart_think_time())
+
+        action, reason = get_dealer_decision(table.dealer_hand, survivors)
+        logger.info(f"[DEALER_AI] {action}: {reason}")
+
         if action == "stand":
             break
-            
-        table.dealer_hand.append(table.deck.draw_one())
+
+        # Draw card
+        card = table.deck.draw_one()
+        table.dealer_hand.append(card)
+
+        # Update display
+        score, hand_type = determine_hand_type(table.dealer_hand)
+        embed = discord.Embed(
+            title=f"🎲 Nhà Cái: {score} điểm",
+            description=reason,
+            color=discord.Color.red() if hand_type == HandType.BUST else discord.Color.gold()
+        )
+        embed.add_field(name="🃏 Bài", value=format_hand(table.dealer_hand), inline=False)
+        await msg.edit(embed=embed)
+
+        # Check Ngu Linh or Bust
+        if len(table.dealer_hand) >= 5 or hand_type == HandType.BUST:
+            break
+
+    # Final dealer result
+    d_score, d_type = determine_hand_type(table.dealer_hand)
+    logger.info(f"[DEALER_RESULT] Score: {d_score}, Type: {d_type.name}")
     
-    # Calculate Results
-    table.status = TableStatus.FINISHED
-    stats_data = []
+    # Announce dealer final action
+    d_desc = get_hand_description(d_type)
+    if d_type == HandType.BUST:
+        await channel.send(f"💥 **NHÀ CÁI QUẮC!** ({d_score} điểm)")
+    elif d_type == HandType.NGU_LINH:
+        await channel.send(f"🏆 **NHÀ CÁI NGŨ LINH!** ({d_score} điểm - 5 lá)")
+    else:
+        await channel.send(f"✋ **Nhà Cái DẰN: {d_score} điểm** {d_desc}")
+
+    await _finish_game(cog, channel, table, msg)
+
+
+# ==================== PHASE 4: RESULTS ====================
+
+async def _finish_game(cog: "XiDachCog", channel, table: Table, dealer_msg) -> None:
+    """Calculate final results and pay out."""
+    async with table.lock:
+        table.status = TableStatus.FINISHED
+
+    d_score, d_type = determine_hand_type(table.dealer_hand)
     seed_updates = {}
-    
-    embed = discord.Embed(title="📊 KẾT QUẢ", color=discord.Color.gold())
-    
+    results = []
+
     for uid, player in table.players.items():
-        if player.bet <= 0: continue
-        
+        if player.bet <= 0:
+            continue
+
+        # Skip players who already won in Phase 1
+        if player.status == PlayerStatus.BLACKJACK:
+            continue
+
+        p_score, p_type = determine_hand_type(player.hand)
         result, mul = compare_hands(player.hand, table.dealer_hand)
         payout = int(player.bet * mul)
-        
-        stats_data.append({
-            'user_id': uid, 'result': result, 'payout': payout, 
-            'hand_type': player.hand_type, 'is_bust': player.is_bust
-        })
-        
+
         if payout > 0:
             seed_updates[uid] = payout
-            
-        res_emoji = "🏆" if result == "win" else ("💀" if result == "lose" else "🤝")
-        net = getattr(player, 'net_change', payout - player.bet) # Simplified
-        net_str = f"+{payout - player.bet}" if result == "win" else f"-{player.bet}" if result == "lose" else "0"
-        
+
+        net = payout - player.bet
+        results.append({
+            "username": player.username,
+            "score": p_score,
+            "hand_type": p_type,
+            "result": result,
+            "net": net
+        })
+
+        logger.info(f"[RESULT] Player {uid}: {result}, net {net:+}")
+
+    # Pay winners
+    if seed_updates:
+        await batch_update_seeds(seed_updates)
+
+    # Build result embed
+    embed = discord.Embed(title="📊 KẾT QUẢ XÌ DÁCH", color=discord.Color.gold())
+
+    # Dealer info
+    d_desc = get_hand_description(d_type)
+    embed.add_field(
+        name="🤖 Nhà Cái",
+        value=f"{format_hand(table.dealer_hand)}\n**{d_score} điểm** {d_desc}",
+        inline=False
+    )
+
+    # Player results
+    for r in results:
+        emoji = "🏆" if r["result"] == "win" else ("🤝" if r["result"] == "push" else "💀")
+        net_str = f"+{r['net']:,}" if r["net"] >= 0 else f"{r['net']:,}"
+        type_str = get_hand_description(r["hand_type"])
+
         embed.add_field(
-            name=f"{res_emoji} {player.username}",
-            value=f"{get_hand_description(player.hand_type)}\nKL: **{net_str}** hạt",
+            name=f"{emoji} {r['username']}",
+            value=f"**{r['score']}đ** {type_str}\n{net_str} Hạt",
             inline=True
         )
 
-    # Batch Update DB
-    if seed_updates:
-        await batch_update_seeds(seed_updates)
-        
-    # Batch Stats
-    await cog.stats.update_game_stats(channel.id, stats_data)
-    
-    await channel.send(embed=embed)
-    game_manager.remove_table(table.table_id)
+    await dealer_msg.edit(embed=embed)
+    game_manager.remove_table(table.channel_id)
 
 
-def _get_players_data(table: Table) -> list:
-    """Helper to format player data for renderer."""
-    return [{
-        'name': p.username, 'cards': p.hand, 'score': p.hand_value, 'bet': p.bet
-    } for p in table.players.values()]
+# ==================== LOBBY HELPERS ====================
+
+async def player_join_lobby(cog: "XiDachCog", interaction: discord.Interaction, table: Table) -> None:
+    """Player joins lobby without betting yet."""
+    async with table.lock:
+        if table.status != TableStatus.LOBBY:
+            await interaction.response.send_message("⚠️ Game đã bắt đầu!", ephemeral=True)
+            return
+
+        user_id = interaction.user.id
+        if user_id in table.players:
+            await interaction.response.send_message("Bạn đã tham gia rồi!", ephemeral=True)
+            return
+
+        table.add_player(user_id, interaction.user.display_name, 0)
+        logger.info(f"[JOIN] User {user_id} joined lobby")
+        await interaction.response.send_message("✅ Đã tham gia! Hãy chọn mức cược.", ephemeral=True)
+
+    await _update_lobby_message(cog, table)
+
+
+async def player_ready(cog: "XiDachCog", interaction: discord.Interaction, table: Table, player: Player) -> None:
+    """Mark player as ready."""
+    async with table.lock:
+        if player.bet <= 0:
+            await interaction.response.send_message("❌ Bạn chưa đặt cược!", ephemeral=True)
+            return
+
+        player.is_ready = True
+        await interaction.response.send_message("✅ Sẵn sàng!", ephemeral=True)
+
+    await _update_lobby_message(cog, table)

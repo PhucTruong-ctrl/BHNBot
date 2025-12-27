@@ -1769,6 +1769,7 @@ class FishingCog(commands.Cog):
         
                 # ==================== NPC ENCOUNTER ====================
                 npc_triggered = False
+                npc_type = None
                 # Check forced pending trigger
                 if hasattr(self, "pending_npc_event") and user_id in self.pending_npc_event:
                     npc_type = self.pending_npc_event.pop(user_id)

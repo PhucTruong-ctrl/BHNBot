@@ -56,6 +56,9 @@ class GlobalEventManager:
         self.last_bump_time = 0
         self.bump_message_ids = {} # {channel_id: message_id}
         
+        # Initialization State
+        self.ready = False
+        
         # Load initially
         self.load_config()
         
@@ -78,21 +81,41 @@ class GlobalEventManager:
                      logger.info(f"Global Event Loop interval updated to {new_interval}s")
                      
             # Load Persistent Cooldowns
+            # Use asyncio.create_task but ensure we set ready=True when done
             asyncio.create_task(self._load_cooldowns())
                      
         except Exception as e:
             logger.error(f"Failed to load Global Event Config: {e}")
             self.config = {"events": {}}
+            # If config fails, we should still allow ready=True eventually or it blocks forever?
+            # Likely minimal config loaded.
 
     async def _load_cooldowns(self):
-        """Load last run times from DB to prevent spam after restart."""
+        """Load last run times and ACTIVE STATE from DB to prevent spam."""
         try:
+            # 1. Load Last Run Times
             data = await get_global_state("system_cooldowns", {})
             if data:
                 self.last_event_times = data
                 logger.info(f"Restored event cooldowns: {len(data)} events")
+            
+            # 2. Load Active Event State
+            active_state = await get_global_state("active_global_event", None)
+            
+            if active_state:
+                if time.time() < active_state.get("end_time", 0):
+                    self.current_event = active_state
+                    key = active_state.get("key")
+                    logger.info(f"[RESTORE] Restored ACTIVE event: {key}")
+                else:
+                    logger.info("[RESTORE] Found stale active event in DB, clearing...")
+                    await set_global_state("active_global_event", None)
+                    
         except Exception as e:
-            logger.warning(f"Failed to load system_cooldowns: {e}")
+            logger.warning(f"Failed to load global state: {e}")
+        finally:
+            self.ready = True
+            logger.info("Global Event Manager is READY.")
 
     def start(self):
         """Starts the event monitoring loop."""
@@ -108,6 +131,10 @@ class GlobalEventManager:
     async def _event_check_loop(self):
         """Main loop checking for event triggers every minute."""
         try:
+            if not self.ready:
+                logger.info("[EVENT_LOOP] Manager not ready (DB loading), skipping tick.")
+                return
+
             now = datetime.now()
             current_hhmm = now.strftime("%H:%M")
             weekday = now.weekday() # 0=Mon, 6=Sun
@@ -220,20 +247,29 @@ class GlobalEventManager:
         self.active_effects = data.get("effects", {})
         
         # Special Setup
-        if data["type"] == "raid_boss":
+        # Special Setup
+        event_type = data.get("type", "passive")
+        
+        if event_type == "raid_boss":
             await self._setup_raid(data)
-        elif data["type"] == "fish_quest_raid":
+        elif event_type == "fish_quest_raid":
             await self._setup_dragon_quest(data)
         
         logger.info(f"[GLOBAL_EVENT] Started: {key} (Duration: {duration}s)")
         
         # Announce (customize message for dragon quest)
         start_message = data.get("messages", {}).get("start")
-        if data["type"] == "fish_quest_raid" and self.dragon_state.get("active"):
+        if event_type == "fish_quest_raid" and self.dragon_state.get("active"):
             # Replace placeholders with actual fish details
             start_message = f"🐲 **THẦN TÍCH: LONG THẦN ĐÃ XUẤT HIỆN!**\nNgài đang tìm kiếm sản vật tinh túy của đại dương và yêu cầu:\n🎯 **{self.dragon_state['quantity_goal']} con {self.dragon_state['requested_fish_name']}**\n💡 **Cách Đóng Góp:** Bán cá bằng `!banca` như bình thường. Nếu có cá yêu cầu trong hóa đơn → Tự động đóng góp cho Long Thần!\n⚠️ **Lưu ý:** Cá đóng góp sẽ KHÔNG được tính tiền."
         
-        await self._broadcast_message(start_message)
+        # Broadcast and Save Message ID
+        message = await self._broadcast_message(start_message)
+        if message:
+            self.current_event["message_id"] = message.id
+            
+        # PERSIST STATE
+        await set_global_state("active_global_event", self.current_event)
 
     async def end_current_event(self):
         """Ends the currently active event."""
@@ -244,9 +280,11 @@ class GlobalEventManager:
         data = self.current_event["data"]
         
         # Special Cleanup
-        if data["type"] == "raid_boss":
+        event_type = data.get("type", "passive")
+        
+        if event_type == "raid_boss":
             await self._finalize_raid(data)
-        elif data["type"] == "fish_quest_raid":
+        elif event_type == "fish_quest_raid":
             await self._finalize_dragon_quest(data)
         
         # Announce End (No Buttons)
@@ -255,8 +293,9 @@ class GlobalEventManager:
         # Reset State
         self.last_event_times[key] = time.time()
         
-        # Save Cooldowns to DB
+        # Save Cooldowns to DB & CLEAR Active State
         await set_global_state("system_cooldowns", self.last_event_times)
+        await set_global_state("active_global_event", None)
         
         self.current_event = None
         self.active_effects = {}
@@ -531,7 +570,7 @@ class GlobalEventManager:
              debuff = fail_config.get("global_debuff")
              
              if debuff == "market_crash_50":
-                  summary_text += "📉 **THỊ TRƯỜNG SỤP ĐỔ!** Giá cá giảm 50% trong 12h tới."
+                  summary_text += "📉 **THỊ TRƯỜNG SỤP ĐỔ!** Giá cá giảm 50% trong 1h tới."
                   # Logic to apply global debuff state? 
                   # Currently system relies on active events. 
                   # Ideally we set a "lingering_effect" flag in DB or Manager.

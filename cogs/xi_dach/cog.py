@@ -13,7 +13,7 @@ from core.logger import setup_logger
 from database_manager import db_manager, get_user_balance
 
 from .constants import MIN_BET, TURN_TIMEOUT
-from .models import game_manager, Table, Player # Kept for backcompat but will fix now
+# from .models import game_manager, Table, Player # REMOVED
 # Should be:
 from .core.game_manager import game_manager
 from .core.table import Table
@@ -21,7 +21,7 @@ from .core.player import Player
 from .statistics import StatisticsTracker
 
 # Import Implementations
-from .commands import solo as solo_cmd
+# from .commands import solo as solo_cmd  # REMOVED
 from .commands import multi as multi_cmd
 
 logger = setup_logger("XiDachCog", "cogs/xidach.log")
@@ -59,30 +59,15 @@ class XiDachCog(commands.Cog):
 
     # ==================== PUBLIC COMMANDS ====================
 
-    @commands.hybrid_command(name="xidach", description="Chơi Xì Dách (Solo với Bot)")
-    @app_commands.describe(bet="Số hạt muốn cược (Mặc định: 50)")
+    @commands.hybrid_command(name="xidach", description="Chơi Xì Dách (Tạo phòng hoặc tham gia)")
+    @app_commands.describe(bet="Số hạt muốn cược")
     async def xidach(self, ctx: commands.Context, bet: int = 50):
-        """Play Solo Xi Dach."""
-        await solo_cmd.start_solo_game(self, ctx, bet)
+        """Start or Join Xi Dach Lobby."""
+        logger.info(f"[XIDACH] Command triggered by {ctx.author.id} (bet={bet})")
+        # Unified Multiplayer Flow
+        await multi_cmd.start_multiplayer(self, ctx.interaction if ctx.interaction else ctx, bet)
 
-    @commands.hybrid_command(name="xidach_multi", description="Tạo phòng Xì Dách nhiều người chơi")
-    async def xidach_multi(self, ctx: commands.Context):
-        """Start Multiplayer Lobby."""
-        await multi_cmd.start_multiplayer(self, ctx.interaction if ctx.interaction else ctx)
-
-    # ==================== SOLO CALLBACKS (Called by View) ====================
-
-    async def player_hit(self, interaction: discord.Interaction, table: Table, player: Player):
-        """Delegate Hit action (Solo)."""
-        await solo_cmd.player_hit(self, interaction, table, player)
-
-    async def player_stand(self, interaction: discord.Interaction, table: Table, player: Player):
-        """Delegate Stand action (Solo)."""
-        await solo_cmd.player_stand(self, interaction, table, player)
-
-    async def player_double(self, interaction: discord.Interaction, table: Table, player: Player):
-        """Delegate Double action (Solo)."""
-        await solo_cmd.player_double(self, interaction, table, player)
+    # ==================== SOLO CALLBACKS REMOVED ====================
 
     # ==================== MULTI CALLBACKS (Called by View) ====================
 
@@ -103,6 +88,9 @@ class XiDachCog(commands.Cog):
 
     async def player_double_multi(self, interaction: discord.Interaction, table: Table, player: Player, view):
         await multi_cmd.player_double_multi(self, interaction, table, player, view)
+
+    async def request_start_game(self, interaction: discord.Interaction, table: Table):
+        await multi_cmd.request_start_game(self, interaction, table)
 
     # ==================== HELPERS ====================
     
