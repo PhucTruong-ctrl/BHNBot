@@ -19,13 +19,13 @@ CARDS_DIR = os.path.join(ASSETS_DIR, "cards")
 BG_PATH = os.path.join(ASSETS_DIR, "table_bg.jpg")  # Prefer JPG as per context
 
 # Card Dimensions (Resize target)
-CARD_WIDTH = 120
-CARD_HEIGHT = 168  # 5:7 aspect ratio roughly
-CARD_SPACING = 15  # Spacing between cards
+CARD_WIDTH = 80
+CARD_HEIGHT = 112  # 5:7 aspect ratio roughly (Compact Mobile)
+CARD_SPACING = 10  # Spacing between cards
 
 # Layout for Game State (Table View)
-SECTION_PADDING = 20
-ROW_HEIGHT = CARD_HEIGHT + 40
+SECTION_PADDING = 10
+ROW_HEIGHT = CARD_HEIGHT + 25
 
 # Suit Mapping for Filenames (Symbol -> Filename Suffix)
 SUIT_MAP = {
