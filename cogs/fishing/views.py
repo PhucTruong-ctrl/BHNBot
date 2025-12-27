@@ -91,7 +91,7 @@ class HagglingView(discord.ui.View):
             # Manual Log for ACID Transaction
             operations.append((
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (self.base_total, self.user_id, 'haggle_accept', 'fishing')
+                (self.user_id, self.base_total, 'haggle_accept', 'fishing')
             ))
             
             # Execute transaction
@@ -175,7 +175,7 @@ class HagglingView(discord.ui.View):
             # Manual Log for ACID Transaction
             operations.append((
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (final_total, self.user_id, 'haggle_result', 'fishing')
+                (self.user_id, final_total, 'haggle_result', 'fishing')
             ))
             
             # Execute transaction

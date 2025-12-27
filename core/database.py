@@ -339,7 +339,7 @@ async def batch_update_seeds(updates: Dict[int, int], reason: str, category: str
         # Log Transaction
         operations.append((
             "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-            (amount, user_id, reason, category)
+            (user_id, amount, reason, category)
         ))
 
     await db_manager.batch_modify(operations)

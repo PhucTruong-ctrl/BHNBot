@@ -164,7 +164,7 @@ class GenericActionView(discord.ui.View):
                         # Manual Log for ACID Transaction
                         await db_manager.db.execute(
                             "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (-money_cost, user_id, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
+                            (user_id, -money_cost, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
                         )
                     
                     # B. Item Cost (Barter)
@@ -263,7 +263,7 @@ class GenericActionView(discord.ui.View):
                             # Manual Log for ACID Transaction
                             await db_manager.db.execute(
                                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                                (ramount, user_id, f"event_reward_{rkey}", "fishing")
+                                (user_id, ramount, f"event_reward_{rkey}", "fishing")
                             )
                             acquired_txt.append(f"{ramount:,} Hạt 💰")
                             logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event")
@@ -274,7 +274,7 @@ class GenericActionView(discord.ui.View):
                             name = rkey
                             if cog:
                                 await cog.emotional_state_manager.apply_emotional_state(user_id, rkey, duration)
-                                name = cog.emotional_state_manager.states.get(rkey, {}).get("name", rkey)
+                                # Note: No .states dict anymore after DB refactor - use rkey as name
                                 
                             acquired_txt.append(f"Buff {name} ({duration}p)")
                             

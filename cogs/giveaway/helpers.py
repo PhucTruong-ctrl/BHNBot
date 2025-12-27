@@ -48,7 +48,7 @@ async def join_giveaway_transaction(giveaway_id: int, user_id: int, cost: int) -
             # Manual Log for ACID Transaction
             await db.execute(
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (-cost, user_id, f"join_giveaway_{giveaway_id}", "giveaway")
+                (user_id, -cost, f"join_giveaway_{giveaway_id}", "giveaway")
             )
 
         # 3. Insert Participant
