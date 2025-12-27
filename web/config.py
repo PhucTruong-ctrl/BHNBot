@@ -22,12 +22,8 @@ DISCORD_API_BASE = "https://discord.com/api/v10"
 DEFAULT_GUILD_ID = os.getenv("DEFAULT_GUILD_ID", "1424116735782682778")
 
 # Role Category IDs (roles that act as category headers)
-CATEGORY_ROLE_IDS = [
-    "1447197290686058596",  # Thành tựu
-    "1447198817014255757",  # Cảnh giới (Level)
-    "1447266358000750702",  # Thông tin
-    "1447203449744785408",  # Ping/Thông báo
-]
+# Now managed dynamically via database server_config table
+# See web/routers/roles.py for implementation
 
 # Server settings
 HOST = "0.0.0.0"

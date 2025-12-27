@@ -22,7 +22,7 @@ intents.message_content = True # Bắt buộc để đọc tin nhắn nối từ
 intents.members = True         # Bắt buộc để check Invite/Welcome
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
-bot.owner_id = 598046112959430657  # Your Discord User ID
+bot.owner_id = int(os.getenv("OWNER_ID", "0"))  # Load from .env
 bot.cogs_loaded = False  # Flag to track if cogs are already loaded
 
 # Command error handler with timeout monitoring

@@ -128,6 +128,7 @@ async def legendary_hall_of_fame_action(cog, ctx_or_interaction, is_slash: bool)
     # Fetch all legendary catches
     legendary_catches = {}
     try:
+        # 1. Fetch standard legislative fish from fish_collection
         rows = await db_manager.execute(
             "SELECT user_id, fish_id FROM fish_collection WHERE fish_id IN (?, ?, ?, ?, ?)",
             ('thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz')
@@ -150,12 +151,43 @@ async def legendary_hall_of_fame_action(cog, ctx_or_interaction, is_slash: bool)
                     "username": f"User {user_id}",
                     "avatar_url": None
                 })
+        
+        # 2. Fetch "Cá Isekai" from inventory (it's an item, not in fish_collection)
+        isekai_rows = await db_manager.execute(
+            "SELECT user_id FROM inventory WHERE item_id = 'ca_isekai' AND quantity > 0"
+        )
+        
+        if isekai_rows:
+            legendary_catches['ca_isekai'] = []
+            for (user_id,) in isekai_rows:
+                try:
+                    user = await client.fetch_user(user_id)
+                    legendary_catches['ca_isekai'].append({
+                        "user_id": user_id,
+                        "username": user.name,
+                        "avatar_url": user.avatar.url if user.avatar else None
+                    })
+                except:
+                    legendary_catches['ca_isekai'].append({
+                        "user_id": user_id,
+                        "username": f"User {user_id}",
+                        "avatar_url": None
+                    })
+
     except Exception as e:
         logger.error(f"[LEGENDARY] Error fetching hall of fame: {e}")
     
-    # Create list of ALL legendary fish with their catchers (or empty list if uncaught)
-    # Exclude ca_isekai from hall of fame as it's event-only
-    visible_legendaries = [fish for fish in LEGENDARY_FISH if fish['key'] != 'ca_isekai']
+    # Create list of ALL legendary fish
+    # CONDITION: Show 'ca_isekai' ONLY if at least one person has caught it (is in legendary_catches)
+    visible_legendaries = []
+    for fish in LEGENDARY_FISH:
+        if fish['key'] == 'ca_isekai':
+            # Only show if discovered
+            if 'ca_isekai' in legendary_catches and legendary_catches['ca_isekai']:
+                visible_legendaries.append(fish)
+        else:
+            visible_legendaries.append(fish)
+
     all_legendaries = [(fish, legendary_catches.get(fish['key'], []))
                        for fish in visible_legendaries]
     

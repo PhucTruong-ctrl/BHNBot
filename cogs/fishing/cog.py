@@ -52,7 +52,7 @@ from .commands.admin import trigger_event_action as _trigger_event_impl
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds, 
     get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats, get_fish_count, get_fish_collection,
-    save_user_buff, get_user_buffs, remove_user_buff
+    save_user_buff, get_user_buffs, remove_user_buff, get_server_config
 )
 from .mechanics.legendary_quest_helper import (
     increment_sacrifice_count, get_sacrifice_count, reset_sacrifice_count,
@@ -1596,8 +1596,10 @@ class FishingCog(commands.Cog):
                         try:
                             guild = channel.guild
                             member = guild.get_member(user_id)
-                            role_id = 1450409414111658024  # Vua Câu Cá role ID
-                            role = guild.get_role(role_id)
+                            role_id = await get_server_config(guild.id, "role_vua_cau_ca")
+                            if not role_id:
+                                return
+                            role = guild.get_role(int(role_id))
                             if member and role and role not in member.roles:
                                 await member.add_roles(role)
                                 title_earned = True
@@ -1854,6 +1856,9 @@ class FishingCog(commands.Cog):
                     await increment_stat(user_id, "fishing", f"{npc_type}_encounter", 1)
             
                     npc_msg = await channel.send(content=f"<@{user_id}> 🔥 **SỰ KIỆN NPC!**", embed=npc_embed, view=npc_view)
+                    
+                    # Store message reference for timeout handling
+                    npc_view.message = npc_msg
                         
                         # Note: We don't 'wait' here in the blocking sense if we want the bot to be free?
                         # But user logic usually wants this to block the 'fishing result' loop?
@@ -2431,8 +2436,8 @@ class FishingCog(commands.Cog):
             if guild:
                 user = guild.get_member(user_id)
                 if user:
-                    role_id = 1450409414111658024
-                    role = guild.get_role(role_id)
+                    role_id = await get_server_config(guild.id, "role_vua_cau_ca")
+                    role = guild.get_role(int(role_id)) if role_id else None
                     if role and role in user.roles:
                         title = "👑 Vua Câu Cá 👑"
                         self.user_titles[user_id] = title

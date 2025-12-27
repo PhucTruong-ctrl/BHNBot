@@ -12,8 +12,10 @@ import asyncio
 import uuid
 import time
 import logging
+import json
 
-from ..config import DISCORD_TOKEN, DISCORD_API_BASE, DEFAULT_GUILD_ID, CATEGORY_ROLE_IDS
+from ..config import DISCORD_TOKEN, DISCORD_API_BASE, DEFAULT_GUILD_ID
+from database_manager import get_server_config, db_manager
 
 router = APIRouter()
 logger = logging.getLogger("AdminPanel.Roles")
@@ -63,7 +65,35 @@ async def discord_request(method: str, endpoint: str, json_data: Dict = None) ->
             return None
 
 
-def process_roles_into_categories(roles: List[Dict]) -> List[Dict]:
+async def get_category_role_ids(guild_id: str) -> List[str]:
+    """Fetch category role IDs from database."""
+    try:
+        data = await get_server_config(int(guild_id), "category_roles")
+        if data:
+            return json.loads(data)
+    except Exception as e:
+        logger.error(f"Failed to fetch category roles: {e}")
+    return []
+
+
+async def add_category_role_id(guild_id: str, role_id: str):
+    """Add a new category role ID to database."""
+    try:
+        current_ids = await get_category_role_ids(guild_id)
+        if role_id not in current_ids:
+            current_ids.append(role_id)
+            # Use raw SQL update via db_manager since set_server_config isn't imported/explicit
+            await db_manager.modify(
+                "UPDATE server_config SET category_roles = ? WHERE guild_id = ?",
+                (json.dumps(current_ids), int(guild_id))
+            )
+            # CRITICAL: Invalidate cache so subsequent fetches see the new category
+            db_manager.clear_cache_by_prefix(f"config_{guild_id}")
+    except Exception as e:
+        logger.error(f"Failed to save category role: {e}")
+
+
+def process_roles_into_categories(roles: List[Dict], category_ids: List[str]) -> List[Dict]:
     """Group roles by category headers."""
     roles.sort(key=lambda x: x['position'], reverse=True)
     
@@ -79,7 +109,7 @@ def process_roles_into_categories(roles: List[Dict]) -> List[Dict]:
     
     for role in roles:
         role_id = role['id']
-        if role_id in CATEGORY_ROLE_IDS:
+        if role_id in category_ids:
             new_cat = {
                 "id": role_id,
                 "name": role['name'],
@@ -100,9 +130,14 @@ def process_roles_into_categories(roles: List[Dict]) -> List[Dict]:
 @router.get("/")
 async def list_roles(guild_id: str = DEFAULT_GUILD_ID) -> Dict[str, Any]:
     """Get all roles grouped by category."""
-    roles = await discord_request("GET", f"/guilds/{guild_id}/roles")
+    # Parallel fetch: Roles from Discord + Categories from DB
+    roles_task = discord_request("GET", f"/guilds/{guild_id}/roles")
+    cats_task = get_category_role_ids(guild_id)
+    
+    roles, category_ids = await asyncio.gather(roles_task, cats_task)
+    
     if roles:
-        data = process_roles_into_categories(roles)
+        data = process_roles_into_categories(roles, category_ids)
         logger.info(f"Fetched {len(roles)} roles from guild {guild_id}")
         return {"categories": data, "total": len(roles)}
     raise HTTPException(status_code=500, detail="Failed to fetch roles from Discord")
@@ -148,7 +183,7 @@ async def create_role(role: RoleCreate, guild_id: str = DEFAULT_GUILD_ID) -> Dic
     
     if result:
         if role.is_category:
-            CATEGORY_ROLE_IDS.append(result['id'])
+            await add_category_role_id(guild_id, result['id'])
         logger.info(f"Created role: {result['id']} - {result['name']}")
         return result
     raise HTTPException(status_code=500, detail="Failed to create role")
@@ -157,12 +192,17 @@ async def create_role(role: RoleCreate, guild_id: str = DEFAULT_GUILD_ID) -> Dic
 @router.delete("/{role_id}")
 async def delete_role(role_id: str, guild_id: str = DEFAULT_GUILD_ID) -> Dict[str, Any]:
     """Delete a role."""
+    # Check if category first to remove from DB? 
+    # Actually safe to keep ID in DB or we can remove it. For now let's just delete from Discord.
+    
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.delete(
             f"{DISCORD_API_BASE}/guilds/{guild_id}/roles/{role_id}",
             headers=HEADERS
         )
         if response.status_code == 204:
+            # Cleanup DB if it was a category
+            # (Optional improvement: remove from category_roles list)
             return {"status": "deleted", "role_id": role_id}
         raise HTTPException(status_code=500, detail="Failed to delete role")
 

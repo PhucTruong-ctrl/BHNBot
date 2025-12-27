@@ -371,17 +371,37 @@ class InteractiveNPCView(discord.ui.View):
         return random.choices(pool, weights=weights)[0]
 
     async def on_timeout(self):
-        """Auto-decline on timeout."""
-        if self.completed: return
+        """Auto-decline on timeout - Edit message to show timeout state."""
+        if self.completed:
+            return
         self.completed = True
         
-        # Disable buttons
+        # Disable all buttons
         for item in self.children:
             item.disabled = True
         
-        # Edit message if possible? 
-        # View doesn't store message ref by default unless assigned.
-        # But we can't edit without interaction or message obj.
-        # Usually we just let it rot or user sees "Interaction failed".
-        # But for state safety, completed=True is enough.
-        pass
+        # Try to edit the message to show timeout state
+        try:
+            # Create timeout embed
+            timeout_embed = discord.Embed(
+                title=f"⏰ {self.npc_data.get('name', 'NPC')} - Hết Thời Gian",
+                description=(
+                    f"Bạn đã không phản hồi trong **30 giây**.\n"
+                    f"{self.npc_data.get('name', 'NPC')} đã bỏ đi..."
+                ),
+                color=discord.Color.dark_grey()
+            )
+            timeout_embed.set_footer(text="Sự kiện đã hết hạn")
+            
+            # Edit the original message
+            if hasattr(self, 'message') and self.message:
+                await self.message.edit(embed=timeout_embed, view=self)
+                logger.info(f"[NPC_TIMEOUT] User {self.user_id} timed out on {self.npc_key}")
+            else:
+                logger.warning(f"[NPC_TIMEOUT] No message ref for user {self.user_id}, cannot edit")
+        except discord.NotFound:
+            logger.warning(f"[NPC_TIMEOUT] Message deleted for user {self.user_id}")
+        except discord.HTTPException as e:
+            logger.error(f"[NPC_TIMEOUT] Failed to edit message: {e}")
+        except Exception as e:
+            logger.error(f"[NPC_TIMEOUT] Unexpected error: {e}")

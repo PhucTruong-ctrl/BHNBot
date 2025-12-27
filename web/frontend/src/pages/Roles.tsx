@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   DndContext, 
@@ -8,10 +8,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragOverlay,
-  defaultDropAnimationSideEffects,
-  DragStartEvent,
-  DragOverEvent,
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -35,6 +31,7 @@ interface Role {
 interface Category {
   id: string;
   name: string;
+  color: number;
   roles: Role[];
   is_real_category: boolean;
   position: number;
@@ -85,6 +82,16 @@ export default function Roles() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, PendingUpdate>>({});
+
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState<{
+    type: 'role' | 'category';
+    id: string;
+    name: string;
+    roleIds?: string[];
+  } | null>(null);
+  const [dontAskAgain, setDontAskAgain] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -246,46 +253,86 @@ export default function Roles() {
     }
   };
 
+  // --- Create Category Handler ---
+  const handleCreateCategory = async () => {
+    const catName = prompt("Enter new category name:");
+    if (!catName) return;
+
+    try {
+        setLoading(true);
+        // Call API with is_category=true
+        const res = await axios.post('/api/roles/create', { name: catName, is_category: true });
+        const newRole = res.data; 
+        
+        // Add new category to local state
+        const newCat: Category = {
+            id: newRole.id,
+            name: newRole.name,
+            color: newRole.color,
+            roles: [],
+            is_real_category: true,
+            position: 999 // New cats typically go to bottom or top depending on Discord defaults
+        };
+
+        setCategories(prev => [newCat, ...prev]); 
+        setDirty(true);
+        setStatusMsg('Category created! Click Save to sync position.');
+    } catch (err) {
+        alert('Failed to create category');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  // --- Delete Handlers ---
+  const confirmDelete = (
+    type: 'role' | 'category', 
+    id: string, 
+    name: string, 
+    e: React.MouseEvent,
+    roleIds?: string[]
+  ) => {
+    e.stopPropagation();
+    if (dontAskAgain) {
+      executeDeleteNow(type, id, roleIds);
+    } else {
+      setDeleteModal({ type, id, name, roleIds });
+    }
+  };
+
+  const executeDelete = async () => {
+    if (!deleteModal) return;
+    await executeDeleteNow(deleteModal.type, deleteModal.id, deleteModal.roleIds);
+    setDeleteModal(null);
+  };
+
+  const executeDeleteNow = async (type: 'role' | 'category', id: string, roleIds?: string[]) => {
+    setDeleting(true);
+    try {
+      if (type === 'category') {
+        // Delete all roles in category first
+        for (const roleId of (roleIds || [])) {
+          await axios.delete(`/api/roles/${roleId}`);
+          await new Promise(r => setTimeout(r, 200)); // Rate limit
+        }
+        // Delete category itself (it's also a role)
+        await axios.delete(`/api/roles/${id}`);
+      } else {
+        await axios.delete(`/api/roles/${id}`);
+      }
+      setStatusMsg('Deleted successfully!');
+      fetchRoles(); // Refresh
+    } catch (err) {
+      alert('Failed to delete');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // --- Drag Handlers ---
   function findContainer(id: string) {
     if (categories.find(c => c.id === id)) return id;
     return categories.find(c => c.roles.find(r => r.id === id))?.id;
-  }
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-    
-    const activeId = String(active.id);
-    const overId = String(over.id);
-    const activeContainer = findContainer(activeId);
-    const overContainer = findContainer(overId);
-    
-    if (!activeContainer || !overContainer || activeContainer === overContainer) {
-      return;
-    }
-
-    setCategories(prev => {
-        const activeItems = prev.find(c => c.id === activeContainer)?.roles || [];
-        const overItems = prev.find(c => c.id === overContainer)?.roles || [];
-        const activeIndex = activeItems.findIndex(r => r.id === activeId);
-        const overIndex = overItems.findIndex(r => r.id === overId);
-        
-        let newIndex;
-        if (overId in prev.find(c => c.id === overContainer)!) { 
-             newIndex = overItems.length + 1;
-        } else {
-             const isBelowOverItem =
-              over &&
-              active.rect.current.translated &&
-              active.rect.current.translated.top >
-                over.rect.top + over.rect.height;
-    
-            const modifier = isBelowOverItem ? 1 : 0;
-            newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
-        }
-        return prev; 
-    });
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -331,9 +378,14 @@ export default function Roles() {
       
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h2>Role Management</h2>
-        <button className="btn btn-secondary" onClick={fetchRoles} disabled={loading}>
-            <RefreshCw size={16}/> Refresh
-        </button>
+        <div style={{display: 'flex', gap: '10px'}}>
+             <button className="btn btn-primary" onClick={handleCreateCategory} disabled={loading}>
+                <Plus size={16}/> New Category
+            </button>
+            <button className="btn btn-secondary" onClick={fetchRoles} disabled={loading}>
+                <RefreshCw size={16}/> Refresh
+            </button>
+        </div>
       </div>
 
       {/* Sticky Header - Only show if dirty or saving */}
@@ -434,6 +486,17 @@ export default function Roles() {
                         >
                             <Plus size={16}/>
                         </button>
+                        {category.is_real_category && (
+                          <button 
+                            className="btn-icon" 
+                            title="Delete Category & All Roles"
+                            style={{background: 'transparent', border:'none', cursor:'pointer', color:'var(--accent-danger)', opacity: 0.6}}
+                            onClick={(e) => confirmDelete('category', category.id, category.name, e, category.roles.map(r => r.id))}
+                            onPointerDown={e => e.stopPropagation()}
+                          >
+                            <Trash2 size={16}/>
+                          </button>
+                        )}
                     </div>
                 </div>
 
@@ -489,6 +552,15 @@ export default function Roles() {
                                                 >
                                                     <Edit2 size={12}/>
                                                 </button>
+                                                <button 
+                                                    className="btn-icon" 
+                                                    style={{background: 'transparent', border:'none', cursor:'pointer', color:'var(--accent-danger)', opacity: 0.4}}
+                                                    onClick={(e) => confirmDelete('role', role.id, role.name, e)}
+                                                    onPointerDown={e => e.stopPropagation()}
+                                                    title="Delete Role"
+                                                >
+                                                    <Trash2 size={12}/>
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -501,6 +573,67 @@ export default function Roles() {
           ))}
         </SortableContext>
       </DndContext>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '420px',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{margin: '0 0 16px 0', color: 'var(--accent-warning)'}}>
+              ⚠️ Xác nhận xóa
+            </h3>
+            <p style={{margin: '0 0 12px 0'}}>
+              Bạn có chắc muốn xóa {deleteModal.type === 'category' ? 'danh mục' : 'role'}{' '}
+              <strong style={{color: 'var(--accent-primary)'}}>{deleteModal.name}</strong>?
+            </p>
+            {deleteModal.type === 'category' && deleteModal.roleIds && deleteModal.roleIds.length > 0 && (
+              <p style={{color: 'var(--accent-danger)', fontSize: '0.9em', margin: '0 0 16px 0'}}>
+                ⚠️ Điều này sẽ xóa <strong>{deleteModal.roleIds.length}</strong> role bên trong!
+              </p>
+            )}
+            <label style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', cursor: 'pointer'}}>
+              <input 
+                type="checkbox" 
+                checked={dontAskAgain} 
+                onChange={(e) => setDontAskAgain(e.target.checked)}
+                style={{width: '16px', height: '16px'}}
+              />
+              <span style={{fontSize: '0.85em', color: 'var(--text-dim)'}}>Không hỏi lại</span>
+            </label>
+            <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setDeleteModal(null)}
+                disabled={deleting}
+              >
+                Hủy
+              </button>
+              <button 
+                className="btn" 
+                style={{background: 'var(--accent-danger)', border: 'none', color: 'white'}}
+                onClick={executeDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

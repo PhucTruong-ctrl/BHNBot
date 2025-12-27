@@ -9,7 +9,7 @@ import time
 import os
 import traceback
 from datetime import datetime
-from database_manager import db_manager, get_stat, get_or_create_user
+from database_manager import db_manager, get_stat, get_or_create_user, get_server_config
 from core.logger import setup_logger
 
 logger = setup_logger("NoiTu", "cogs/noitu.log")
@@ -536,9 +536,9 @@ class GameNoiTu(commands.Cog):
     async def update_ranking_roles(self, guild):
         """Update ranking roles based on current standings"""
         # Role IDs for top 3
-        TOP_1_ROLE_ID = 1448605926067273831
-        TOP_2_ROLE_ID = 1448605983289905244
-        TOP_3_ROLE_ID = 1448606089447866478
+        TOP_1_ROLE_ID = await get_server_config(guild.id, "role_top1_noitu")
+        TOP_2_ROLE_ID = await get_server_config(guild.id, "role_top2_noitu")
+        TOP_3_ROLE_ID = await get_server_config(guild.id, "role_top3_noitu")
         
         try:
             # Get bot member and check permissions

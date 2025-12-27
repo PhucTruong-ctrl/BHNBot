@@ -131,8 +131,17 @@ def init_database():
                     harvest_buff_until DATETIME,
                     bump_channel_id INTEGER,
                     bump_start_time TEXT,
-                    last_reminder_sent TEXT
+                    last_reminder_sent TEXT,
+                    category_roles TEXT DEFAULT '[]' -- JSON list of role IDs
                 )''')
+
+    # Add category_roles column if not exists
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN category_roles TEXT DEFAULT '[]'")
+        print("✓ Added category_roles column to server_config table")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
     
     c.execute('''CREATE TABLE IF NOT EXISTS server_tree (
                     guild_id INTEGER PRIMARY KEY,

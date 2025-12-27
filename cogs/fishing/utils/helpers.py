@@ -7,7 +7,7 @@ import time
 from typing import Optional, Dict, Any, Union
 import discord
 
-from database_manager import db_manager, add_item
+from database_manager import db_manager, add_item, get_server_config
 from ..mechanics.rod_system import ROD_LEVELS
 from ..mechanics.glitch import apply_glitch_lite, apply_glitch_moderate, apply_glitch_aggressive, DISPLAY_GLITCH_ACTIVE
 
@@ -348,8 +348,8 @@ async def get_title(self, user_id: int, guild_id: int) -> str:
         if guild:
             user = guild.get_member(user_id)
             if user:
-                role_id = 1450409414111658024
-                role = guild.get_role(role_id)
+                role_id = await get_server_config(guild_id, "role_vua_cau_ca")
+                role = guild.get_role(int(role_id)) if role_id else None
                 if role and role in user.roles:
                     title = "👑 Vua Câu Cá 👑"
                     self.user_titles[user_id] = title

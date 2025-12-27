@@ -107,15 +107,80 @@ class GlobalEventManager:
                     self.current_event = active_state
                     key = active_state.get("key")
                     logger.info(f"[RESTORE] Restored ACTIVE event: {key}")
+                    
+                    # 3. Restore bump_message_ids from DB
+                    stored_msg_ids = await get_global_state("event_bump_message_ids", {})
+                    if stored_msg_ids:
+                        # Convert string keys back to int (JSON serialization issue)
+                        self.bump_message_ids = {int(k): v for k, v in stored_msg_ids.items()}
+                        logger.info(f"[RESTORE] Restored {len(self.bump_message_ids)} message IDs")
+                    
+                    # 4. Re-register Views for existing messages
+                    await self._reregister_event_views()
+                    
                 else:
                     logger.info("[RESTORE] Found stale active event in DB, clearing...")
                     await set_global_state("active_global_event", None)
+                    await set_global_state("event_bump_message_ids", {})
                     
         except Exception as e:
             logger.warning(f"Failed to load global state: {e}")
         finally:
             self.ready = True
             logger.info("Global Event Manager is READY.")
+
+    async def _reregister_event_views(self):
+        """Re-register Views for existing event messages after bot restart."""
+        if not self.current_event or not self.bump_message_ids:
+            return
+            
+        event_data = self.current_event.get("data", {})
+        view_type = event_data.get("data", {}).get("mechanics", {}).get("view_type")
+        
+        if not view_type:
+            logger.info("[REREGISTER] No view_type for current event, skipping")
+            return
+            
+        from ..mechanics.view_registry import get_view_class
+        ViewClass = get_view_class(view_type)
+        
+        if not ViewClass:
+            logger.warning(f"[REREGISTER] ViewClass not found for {view_type}")
+            return
+            
+        success_count = 0
+        for channel_id, message_id in list(self.bump_message_ids.items()):
+            try:
+                channel = self.bot.get_channel(channel_id)
+                if not channel:
+                    channel = await self.bot.fetch_channel(channel_id)
+                    
+                if not channel:
+                    logger.warning(f"[REREGISTER] Channel {channel_id} not found")
+                    continue
+                    
+                message = await channel.fetch_message(message_id)
+                
+                # Create fresh View instance
+                if view_type == "MeteorWishView":
+                    view = ViewClass(self.bot.get_cog("FishingCog"))
+                else:
+                    view = ViewClass(self)
+                
+                # Edit message to re-register View
+                await message.edit(view=view)
+                success_count += 1
+                logger.info(f"[REREGISTER] Re-registered View for message {message_id} in channel {channel_id}")
+                
+            except discord.NotFound:
+                logger.warning(f"[REREGISTER] Message {message_id} not found in channel {channel_id}")
+                # Remove stale entry
+                del self.bump_message_ids[channel_id]
+            except Exception as e:
+                logger.error(f"[REREGISTER] Error for channel {channel_id}: {e}")
+        
+        if success_count > 0:
+            logger.info(f"[REREGISTER] Successfully re-registered {success_count} Views")
 
     def start(self):
         """Starts the event monitoring loop."""
@@ -296,11 +361,13 @@ class GlobalEventManager:
         # Save Cooldowns to DB & CLEAR Active State
         await set_global_state("system_cooldowns", self.last_event_times)
         await set_global_state("active_global_event", None)
+        await set_global_state("event_bump_message_ids", {})  # Clear message IDs
         
         self.current_event = None
         self.active_effects = {}
         self.raid_state["active"] = False
         self.dragon_state["active"] = False
+        self.bump_message_ids = {}  # Clear RAM
         
         logger.info(f"[GLOBAL_EVENT] Ended: {key}")
 
@@ -404,11 +471,17 @@ class GlobalEventManager:
 
                         new_msg = await channel.send(embed=embed, view=view)
                         
-                        if is_bump:
-                            self.bump_message_ids[channel_id] = new_msg.id
+                        # Always store message ID for View re-registration on restart
+                        self.bump_message_ids[channel_id] = new_msg.id
                             
                 except Exception as e:
                     logger.warning(f"Failed to send event msg to {channel_id}: {e}")
+                    
+            # Persist message IDs to DB for restart recovery
+            if self.bump_message_ids:
+                await set_global_state("event_bump_message_ids", self.bump_message_ids)
+                logger.info(f"[BROADCAST] Saved {len(self.bump_message_ids)} message IDs to DB")
+                
         except Exception as e:
             logger.error(f"Broadcast error: {e}")
 
