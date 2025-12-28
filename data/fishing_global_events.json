@@ -468,7 +468,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["00:00-23:59"],
-                "frequency_chance": 0.1,
+                "frequency_chance": 0.005,
                 "cooldown_minutes": 1000,
                 "duration_minutes": 60
             },
@@ -492,7 +492,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["00:00-23:59"],
-                "frequency_chance": 0.05,
+                "frequency_chance": 0.002,
                 "cooldown_minutes": 2000,
                 "duration_minutes": 45
             },
@@ -516,7 +516,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["00:00-23:59"],
-                "frequency_chance": 0.05,
+                "frequency_chance": 0.001,
                 "cooldown_minutes": 2000,
                 "duration_minutes": 30
             },
@@ -563,7 +563,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["00:00-23:59"],
-                "frequency_chance": 0.1,
+                "frequency_chance": 0.005,
                 "cooldown_minutes": 1000,
                 "duration_minutes": 45
             },
@@ -587,7 +587,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["00:00-23:59"],
-                "frequency_chance": 0.1,
+                "frequency_chance": 0.005,
                 "cooldown_minutes": 1000,
                 "duration_minutes": 30
             },
@@ -610,7 +610,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["00:00-04:00"],
-                "frequency_chance": 0.1,
+                "frequency_chance": 0.002,
                 "cooldown_minutes": 1440,
                 "duration_minutes": 45
             },
