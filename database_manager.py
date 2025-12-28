@@ -45,22 +45,19 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
         return None
 
 
-async def batch_update_seeds(updates: Dict[int, int], reason: str, category: str):
+async def batch_update_seeds(updates: Dict[int, int]):
     """Updates seed balances for multiple users in a single batch operation.
+
+    NOTE: This is the OLD version without transaction logging.
+    Use core.database.batch_update_seeds for new code that requires logging.
 
     Args:
         updates (Dict[int, int]): A dictionary mapping user_id to the amount of seeds to add (can be negative).
-        reason (str): Reason for the transaction (e.g., 'xi_dach_win', 'baucua_payout')
-        category (str): Category for the transaction (e.g., 'xidach', 'baucua', 'social')
 
     Example:
-        >>> await batch_update_seeds({12345: 100, 67890: -50}, reason='xi_dach_win', category='xidach')
+        >>> await batch_update_seeds({12345: 100, 67890: -50})
     """
-    # Import datetime for transaction logging
-    from datetime import datetime
-    
-    # Prepare balance updates
-    balance_operations = [
+    operations = [
         (
             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
             (amount, user_id)
@@ -68,20 +65,7 @@ async def batch_update_seeds(updates: Dict[int, int], reason: str, category: str
         for user_id, amount in updates.items()
     ]
     
-    # Prepare transaction log entries
-    transaction_operations = [
-        (
-            "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, ?, ?, ?)",
-            (user_id, amount, reason, category, datetime.now())
-        )
-        for user_id, amount in updates.items()
-    ]
-    
-    # Execute all operations in single batch
-    all_operations = balance_operations + transaction_operations
-    await db_manager.batch_modify(all_operations)
-    
-    # Clear caches
+    await db_manager.batch_modify(operations)
     db_manager.clear_cache_by_prefix("balance_")
     db_manager.clear_cache_by_prefix("leaderboard")
 

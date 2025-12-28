@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
 from core.logger import setup_logger
-from database_manager import db_manager, get_user_balance, batch_update_seeds, add_seeds
+from database_manager import get_user_balance
+from core.database import add_seeds, batch_update_seeds  # Use CORE version with proper transaction handling, add_seeds
 
 from ..core.game_manager import game_manager
 from ..core.table import Table, TableStatus
@@ -889,6 +890,25 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                     "payout": payout
                 })
                 logger.info(f"[RESULT] Player {uid}: instant_win ({p_type.name}), net {net:+}")
+                continue
+            
+            # Check if player timed out with underage points (force bust)
+            if player.status == PlayerStatus.BUST:
+                # Player timed out with < 16 points → Always lose
+                payout = 0
+                net = -player.bet
+                results.append({
+                    "user_id": uid,
+                    "username": player.username,
+                    "score": p_score,
+                    "hand": player.hand,
+                    "hand_type": p_type,
+                    "result": "lose",
+                    "bet": player.bet,
+                    "net": net,
+                    "payout": payout
+                })
+                logger.info(f"[RESULT] Player {uid}: lose (timeout bust), net {net:+}")
                 continue
 
             result, mul = compare_hands(player.hand, table.dealer_hand)
