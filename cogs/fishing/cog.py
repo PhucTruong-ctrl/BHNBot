@@ -14,6 +14,7 @@ from core.logger import setup_logger
 logger = setup_logger("FishingCog", "cogs/fishing/fishing.log")
 
 from .constants import *
+from configs.item_constants import ItemKeys, ItemType
 from .helpers import track_caught_fish, get_collection, check_collection_complete
 from .mechanics.rod_system import get_rod_data, update_rod_data as update_rod_data_module
 from .mechanics.legendary import LegendaryBossFightView, check_legendary_spawn_conditions, add_legendary_fish_to_user as add_legendary_module
@@ -598,7 +599,7 @@ class FishingCog(commands.Cog):
                     return
         
                 # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
-                has_worm = inventory.get("moi", 0) > 0
+                has_worm = inventory.get(ItemKeys.MOI, 0) > 0
                 auto_bought = False  # Biến check xem có tự mua không
 
                 # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
@@ -625,7 +626,7 @@ class FishingCog(commands.Cog):
                     
                     if not skip_worm_consumption:
                         # Có mồi trong túi -> Trừ mồi
-                        await remove_item(user_id, "moi", 1)
+                        await remove_item(user_id, ItemKeys.MOI, 1)
                         # Track worms used for achievement
                         try:
                             await increment_stat(user_id, "fishing", "worms_used", 1)
@@ -1198,10 +1199,10 @@ class FishingCog(commands.Cog):
                 
                     # Now roll: common, rare, or trash
                     total_weights = [common_ratio, rare_ratio, trash_rate]
-                    choices = ["common", "rare", "trash"]
+                    choices = [ItemType.COMMON, ItemType.RARE, ItemType.TRASH]
                     catch_type = random.choices(choices, weights=total_weights, k=1)[0]
                 
-                    if catch_type == "trash":
+                    if catch_type == ItemType.TRASH:
                         # Catch trash instead of fish
                         if not TRASH_ITEMS:
                             logger.error("[FISHING] TRASH_ITEMS is empty! Cannot catch trash.")
@@ -1210,7 +1211,7 @@ class FishingCog(commands.Cog):
                         trash = random.choice(TRASH_ITEMS)
                         item_key = trash.get("key", f"trash_{hash(str(trash)) % 1000}")
                         try:
-                            await self.add_inventory_item(user_id, item_key, "trash")
+                            await self.add_inventory_item(user_id, item_key, ItemType.TRASH)
                             if item_key not in trash_items: trash_items[item_key] = 0
                             trash_items[item_key] += 1
                             logger.info(f"[DISASTER_TRASH] {username} caught trash: {item_key} due to {self.current_disaster.get('name', 'disaster')}")
@@ -1227,7 +1228,7 @@ class FishingCog(commands.Cog):
 
                         trash = random.choice(TRASH_ITEMS)
                         item_key = trash.get("key", f"trash_{trash['name'].lower().replace(' ', '_')}")
-                        await self.add_inventory_item(user_id, item_key, "trash")
+                        await self.add_inventory_item(user_id, item_key, ItemType.TRASH)
                         # Track for embed
                         if item_key not in trash_items: trash_items[item_key] = 0
                         trash_items[item_key] += 1
@@ -1235,16 +1236,16 @@ class FishingCog(commands.Cog):
                         logger.info(f"[EVENT-POLLUTION] {username} fish converted to trash: {item_key}")
                         continue
             
-                    if catch_type == "rare" and not caught_rare_this_turn:
+                    if catch_type == ItemType.RARE and not caught_rare_this_turn:
                         if not RARE_FISH:
                              logger.warning("[FISHING] RARE_FISH is empty! Falling back to common.")
-                             catch_type = "common" # Fallback
+                             catch_type = ItemType.COMMON # Fallback
                         else:
                             fish = random.choice(RARE_FISH)
                         caught_rare_this_turn = True  # Mark rare as caught to enforce limit
                         logger.info(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
                         try:
-                            await self.add_inventory_item(user_id, fish['key'], "fish")
+                            await self.add_inventory_item(user_id, fish['key'], ItemType.FISH)
                         except Exception as e:
                             logger.info(f"[FISHING] [ERROR] Failed to add rare fish {fish['key']} for {username}: {e}")
                             continue  # Skip achievement tracking if add failed
@@ -1292,14 +1293,14 @@ class FishingCog(commands.Cog):
                             passive_chance = rod_config.get("passive_chance", 0.05)
                             if random.random() < passive_chance:
                                 # Duplicate the rare fish!
-                                await self.add_inventory_item(user_id, fish['key'], "fish")
+                                await self.add_inventory_item(user_id, fish['key'], ItemType.FISH)
                                 fish_only_items[fish['key']] += 1  # Add to display count
                                 logger.info(f"[FISHING] [PASSIVE] 🌌 Void Rod double catch triggered for {username} - RARE {fish['key']}")
                                 # Store for special message display later
                                 if not hasattr(self, '_void_rod_double_catch'):
                                     self._void_rod_double_catch = {}
                                 self._void_rod_double_catch[user_id] = fish
-                    elif catch_type == "common":
+                    elif catch_type == ItemType.COMMON:
                         # Catch common fish (or fallback if rare limit reached)
                         if not COMMON_FISH:
                             logger.error("[FISHING] COMMON_FISH is empty! Cannot catch fish.")
@@ -1308,7 +1309,7 @@ class FishingCog(commands.Cog):
                         fish = random.choice(COMMON_FISH)
                         logger.info(f"[FISHING] {username} caught common fish: {fish['key']}")
                         try:
-                            await self.add_inventory_item(user_id, fish['key'], "fish")
+                            await self.add_inventory_item(user_id, fish['key'], ItemType.FISH)
                         except Exception as e:
                             logger.info(f"[FISHING] [ERROR] Failed to add common fish {fish['key']} for {username}: {e}")
                             continue  # Skip achievement tracking if add failed
@@ -1343,7 +1344,7 @@ class FishingCog(commands.Cog):
                             passive_chance = rod_config.get("passive_chance", 0.05)
                             if random.random() < passive_chance:
                                 # Duplicate the fish!
-                                await self.add_inventory_item(user_id, fish['key'], "fish")
+                                await self.add_inventory_item(user_id, fish['key'], ItemType.FISH)
                                 fish_only_items[fish['key']] += 1  # Add to display count
                                 logger.info(f"[FISHING] [PASSIVE] 🌌 Void Rod double catch triggered for {username} - {fish['key']}")
                                 # Store for special message display later
@@ -1384,7 +1385,7 @@ class FishingCog(commands.Cog):
                     for _ in range(trash_count):
                         trash = random.choice(TRASH_ITEMS)
                         item_key = trash.get("key", f"trash_{trash['name'].lower().replace(' ', '_')}")
-                        await self.add_inventory_item(user_id, item_key, "trash")
+                        await self.add_inventory_item(user_id, item_key, ItemType.TRASH)
                         
                         # Populate main trash_items dict for central embed generation
                         if item_key not in trash_items:
@@ -1408,7 +1409,7 @@ class FishingCog(commands.Cog):
                 # Process chest (độc lập)
                 if chest_count > 0:
                     for _ in range(chest_count):
-                        await self.add_inventory_item(user_id, "ruong_kho_bau", "tool")
+                        await self.add_inventory_item(user_id, ItemKeys.RUONG_KHO_BAU, "tool")
                     fish_display.append(f"🎁 Rương Kho Báu x{chest_count}")
                     logger.info(f"[FISHING] {username} caught {chest_count}x TREASURE CHEST! 🎁")
                     # Track chests caught for achievement
@@ -2530,7 +2531,7 @@ class FishingCog(commands.Cog):
         
         if reward_type == "moi":
             amount = selected_reward.get("amount", 5)
-            await add_item(user_id, "moi", amount)
+            await add_item(user_id, ItemKeys.MOI, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
         
@@ -2541,7 +2542,7 @@ class FishingCog(commands.Cog):
         
         elif reward_type == "chest":
             amount = selected_reward.get("amount", 1)
-            await add_item(user_id, "ruong_kho_bau", amount)
+            await add_item(user_id, ItemKeys.RUONG_KHO_BAU, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
         
@@ -2573,13 +2574,13 @@ class FishingCog(commands.Cog):
         
         elif reward_type == "ngoc_trai":
             amount = selected_reward.get("amount", 1)
-            await add_item(user_id, "ngoc_trai", amount)
+            await add_item(user_id, ItemKeys.NGOC_TRAI, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} ngoc_trai(s) from {npc_type}")
         
         elif reward_type == "vat_lieu_nang_cap":
             amount = selected_reward.get("amount", 2)
-            await add_item(user_id, "vat_lieu_nang_cap", amount)
+            await add_item(user_id, ItemKeys.VAT_LIEU_NANGCAP, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} rod material(s) from {npc_type}")
         

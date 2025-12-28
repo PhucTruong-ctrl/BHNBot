@@ -262,7 +262,7 @@ class EconomyCog(commands.Cog):
         
         # Create embed using new module
         from cogs.fishing.commands.inventory_display import create_inventory_embed
-        embed = await create_inventory_embed(
+        embed = create_inventory_embed(
             user=target_user,
             seeds=seeds,
             inventory=inventory,
@@ -314,7 +314,7 @@ class EconomyCog(commands.Cog):
         
         # Create embed using new module
         from cogs.fishing.commands.inventory_display import create_inventory_embed
-        embed = await create_inventory_embed(
+        embed = create_inventory_embed(
             user=target_user,
             seeds=seeds,
             inventory=inventory,

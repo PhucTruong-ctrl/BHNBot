@@ -1,0 +1,129 @@
+{
+  "items": {
+    "cafe": {
+      "type": "gift",
+      "key": "cafe",
+      "name": "Cà Phê",
+      "emoji": "☕",
+      "description": "Uống cho tỉnh táo để còn cày deadline và chạy bo.",
+      "price": {
+        "buy": 50,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "flower": {
+      "type": "gift",
+      "key": "flower",
+      "name": "Hoa Hồng",
+      "emoji": "🌹",
+      "description": "Hơi sến súa nhưng mấy bạn nữ (hoặc nam) sẽ thích.",
+      "price": {
+        "buy": 75,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "ring": {
+      "type": "gift",
+      "key": "ring",
+      "name": "Nhẫn",
+      "emoji": "💍",
+      "description": "Còng số 8 phiên bản kim loại quý. Đeo vào là 'game over'.",
+      "price": {
+        "buy": 150,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "gift": {
+      "type": "gift",
+      "key": "gift",
+      "name": "Quà Tặng",
+      "emoji": "🎁",
+      "description": "Hộp rỗng hay có gì bên trong thì mở ra mới biết.",
+      "price": {
+        "buy": 100,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "chocolate": {
+      "type": "gift",
+      "key": "chocolate",
+      "name": "Sô-cô-la",
+      "emoji": "🍫",
+      "description": "Ngọt ngào như lời hứa của mấy anh 'trap boy'.",
+      "price": {
+        "buy": 60,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "card": {
+      "type": "gift",
+      "key": "card",
+      "name": "Thiệp",
+      "emoji": "💌",
+      "description": "Văn mẫu tán tỉnh, dùng để viết lời yêu thương.",
+      "price": {
+        "buy": 40,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "qua_ngau_nhien": {
+      "type": "gift",
+      "key": "qua_ngau_nhien",
+      "name": "Quà Ngẫu Nhiên",
+      "emoji": "🎁",
+      "description": "Một hộp quà bí ẩn được gói ghém cẩn thận. Bạn có thể tặng nó cho NPC hoặc người chơi khác để tăng độ thân thiết.",
+      "price": {
+        "buy": 0,
+        "sell": 100,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    }
+  }
+}

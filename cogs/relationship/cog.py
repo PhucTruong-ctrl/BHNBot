@@ -3,11 +3,22 @@ from discord import app_commands
 from discord.ext import commands
 import random
 from database_manager import remove_item
-from cogs.shop import SHOP_ITEMS, VIETNAMESE_TO_ITEM_KEY
+# Replaced import: SHOP_ITEMS is gone.
+from cogs.fishing.constants import ALL_ITEMS_DATA
 from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
 from core.logger import setup_logger
 
 logger = setup_logger("RelationshipCog", "cogs/relationship.log")
+
+# Build local mapping for relationship items
+# We only care about buyable items or explicit gifts
+VIETNAMESE_TO_ITEM_KEY = {}
+for key, item_data in ALL_ITEMS_DATA.items():
+    # Only include buyable items or items with type=gift to be safe
+    # Relationship tangqua allows giving any buyable item probably
+    flags = item_data.get("flags", {})
+    if flags.get("buyable", False) or item_data.get("type") == "gift":
+        VIETNAMESE_TO_ITEM_KEY[item_data["name"].lower()] = key
 
 class RelationshipCog(commands.Cog):
     def __init__(self, bot):
@@ -31,23 +42,26 @@ class RelationshipCog(commands.Cog):
             return await interaction.followup.send("❌ Bot không biết uống cà phê đâu, cảm ơn tấm lòng nhé!")
 
         # Normalization & Mapping
-        item_key = VIETNAMESE_TO_ITEM_KEY.get(item.lower())
+        item_lower = item.lower()
+        item_key = VIETNAMESE_TO_ITEM_KEY.get(item_lower)
+        
         if not item_key:
             # Try direct key match
-            if item.lower() in SHOP_ITEMS:
-                item_key = item.lower()
+            if item_lower in ALL_ITEMS_DATA:
+                item_key = item_lower
             else:
+                 # Fallback: Check if user typed exact name but case insensitive?
+                 # VIETNAMESE_TO_ITEM_KEY handles names.
                  return await interaction.followup.send(f"❌ Không tìm thấy món quà tên '{item}'. Hãy xem lại `/shop` nhé.")
         
-        # Check if item is giftable (should be in GIFT_MESSAGES)
-        if item_key not in GIFT_MESSAGES and item_key != "gift": # "gift" is generic key
-             # Fallback for generic items if needed, but for now stick to healing items
-             pass
-
+        # Check if item is giftable (should be in GIFT_MESSAGES or just generic gift)
+        # Relationship cog likely supports any item, but GIFT_MESSAGES has templates.
+        
         # Check inventory
         success = await remove_item(interaction.user.id, item_key, 1)
         if not success:
-             return await interaction.followup.send(f"❌ Bạn không có sẵn **{SHOP_ITEMS[item_key]['name']}** trong túi đồ.")
+             item_name = ALL_ITEMS_DATA.get(item_key, {}).get("name", item_key)
+             return await interaction.followup.send(f"❌ Bạn không có sẵn **{item_name}** trong túi đồ.")
 
         logger.info(f"Gift: {interaction.user.id} -> {user.id}, item: {item_key}, anonymous: {an_danh}")
         
@@ -75,7 +89,10 @@ class RelationshipCog(commands.Cog):
             embed.set_author(name="Quà tặng bí mật", icon_url=sender_avatar)
 
         embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text=f"Vật phẩm: {SHOP_ITEMS[item_key]['name']} {SHOP_ITEMS[item_key]['emoji']}")
+        
+        # Get item info
+        item_info = ALL_ITEMS_DATA.get(item_key, {})
+        embed.set_footer(text=f"Vật phẩm: {item_info.get('name', item_key)} {item_info.get('emoji', '🎁')}")
         
         # Send to channel
         if an_danh:
@@ -84,7 +101,8 @@ class RelationshipCog(commands.Cog):
             # Wait then send public message disconnected from interaction
             import asyncio
             await asyncio.sleep(2)
-            await interaction.channel.send(content=user.mention, embed=embed)
+            if interaction.channel:
+                await interaction.channel.send(content=user.mention, embed=embed)
         else:
             # Normal reply
             await interaction.followup.send(content=user.mention, embed=embed)

@@ -11,7 +11,9 @@ import discord
 from typing import Dict, Optional
 
 
-async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_data: Optional[Dict] = None, legendary_fish_caught: Optional[list] = None) -> discord.Embed:
+
+
+def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_data: Optional[Dict] = None, legendary_fish_caught: Optional[list] = None) -> discord.Embed:
     """Create modern inventory embed.
     
     Args:
@@ -25,9 +27,9 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
         discord.Embed: Formatted inventory embed
     """
     # Import dependencies
-    from cogs.fishing import ALL_FISH
+    from cogs.fishing.constants import ALL_FISH, ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
     from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
-    from cogs.fishing.constants import ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
+    from configs.item_constants import ItemKeys
     
     # Create embed
     embed = discord.Embed(
@@ -63,21 +65,20 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
     
     # ==================== LEGENDARY FISH (Only caught) ====================
     if legendary_fish_caught:
-        legendary_map = {
-            "ca_ngan_ha": ("Cá Ngân Hà", "🌌"),
-            "ca_phuong_hoang": ("Phượng Hoàng", "🔥"),
-            "cthulhu_con": ("Cthulhu Non", "🐙"),
-            "ca_voi_52hz": ("Cá Voi 52Hz", "🐋"),
-            "ca_galaxy": ("Cá Galaxy", "🌠"),
-            "ca_isekai": ("Cá Isekai", "🌌🐟")
-        }
+        # We can try to dynamic load legendary fish names/emojis too if possible, 
+        # but LEGENDARY_FISH_KEYS are just keys. We need ALL_FISH data.
         
-        caught_legendary = [key for key in legendary_fish_caught if key in legendary_map]
+        caught_legendary = []
+        for key in legendary_fish_caught:
+            if key in ALL_FISH:
+                caught_legendary.append(key)
         
         if caught_legendary:
             legendary_text = ""
             for fish_key in caught_legendary:
-                name, emoji = legendary_map[fish_key]
+                fish = ALL_FISH[fish_key]
+                name = fish.get('name', fish_key)
+                emoji = fish.get('emoji', '🐟')
                 legendary_text += f"{emoji} **{name}** ✅\n"
             
             legendary_text += f"\n└ Đã bắt: **{len(caught_legendary)}/{len(LEGENDARY_FISH_KEYS)}**"
@@ -95,21 +96,53 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
         inline=True
     )
     
-    # ==================== INVENTORY ITEMS ====================
+    # ==================== INVENTORY ITEMS (DYNAMIC CLASSIFICATION) ====================
     if inventory:
-        # FISH - Exclude items that are shown in other sections
-        # ruong_kho_bau and vat_lieu_nang_cap are shown in Tools, not Fish
-        fish_items = {k: v for k, v in inventory.items() 
-                     if k in ALL_FISH 
-                     and k not in LEGENDARY_FISH_KEYS
-                     and k not in ["ruong_kho_bau", "vat_lieu_nang_cap"]}  # Exclude tools from fish display
+        fish_items = {}
+        gift_items = {}
+        tool_items = {} # Tools, Materials, Consumables, Containers
+        trash_items = {}
+        
+        for key, qty in inventory.items():
+            if qty <= 0: continue
+            
+            # Check ALL_ITEMS_DATA first (Items System)
+            if key in ALL_ITEMS_DATA:
+                item = ALL_ITEMS_DATA[key]
+                itype = item.get("type", "misc")
+                
+                if itype == "trash":
+                    trash_items[key] = qty
+                elif itype == "gift":
+                    gift_items[key] = qty
+                elif itype in ["tool", "material", "consumable", "container", "legendary_component", "commemorative", "special", "buff"]:
+                    tool_items[key] = qty
+                else:
+                    # Fallback to tool/misc
+                    tool_items[key] = qty
+            
+            # Check ALL_FISH (Fishing System)
+            elif key in ALL_FISH and key not in LEGENDARY_FISH_KEYS:
+                # Ensure we don't double count if it was in ITEMS_DATA
+                # But we handled checks above.
+                fish_items[key] = qty
+            
+            # Fallback for truly unknown items (legacy?)
+            else:
+                 # Put in tools just to show it exists
+                 tool_items[key] = qty
+                 
+        # --- DISPLAY SECTIONS ---
+
+        # 1. FISH
         if fish_items:
             fish_lines = []
-            for key, qty in sorted(fish_items.items())[:15]:  # Limit to 15 to avoid overflow
+            for key, qty in sorted(fish_items.items())[:15]:
                 fish = ALL_FISH[key]
                 fish_name = apply_display_glitch(fish['name']) if is_glitch_active() else fish['name']
-                price = fish['sell_price'] * qty
-                fish_lines.append(f"{fish['emoji']} **{fish_name}** x{qty} = {price:,} Hạt")
+                # Safe Price Accessor
+                price = (fish.get('price', {}).get('sell') or fish.get('sell_price', 0)) * qty
+                fish_lines.append(f"{fish.get('emoji','🐟')} **{fish_name}** x{qty} = {price:,} Hạt")
             
             if len(fish_items) > 15:
                 fish_lines.append(f"_...+{len(fish_items) - 15} loại khác_")
@@ -120,78 +153,55 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
                 inline=False
             )
         
-        # GIFTS (compact)
-        gift_lookup = {
-            "cafe": ("Cà Phê", "☕"),
-            "flower": ("Hoa", "🌹"),
-            "ring": ("Nhẫn", "💍"),
-            "gift": ("Quà", "🎁"),
-            "chocolate": ("Sô Cô La", "🍫"),
-            "card": ("Thiệp", "💌"),
-        }
-        gift_items = {k: v for k, v in inventory.items() if k in gift_lookup}
+        # 2. GIFTS
         if gift_items:
-            # Compact format: 2 items per line
-            gift_parts = [f"{gift_lookup[k][1]} {gift_lookup[k][0]} x{v}" for k, v in sorted(gift_items.items())]
-            gift_text = " | ".join(gift_parts)
+            gift_parts = []
+            for key, qty in sorted(gift_items.items()):
+                 item = ALL_ITEMS_DATA[key]
+                 gift_parts.append(f"{item.get('emoji','🎁')} {item['name']} x{qty}")
             
+            gift_text = " | ".join(gift_parts)
             embed.add_field(
                 name=f"💝 Quà Tặng ({sum(gift_items.values())})",
                 value=gift_text,
                 inline=False
             )
-        
-        # TOOLS (compact)
-        tool_lookup = {
-            "ruong_kho_bau": ("Rương Kho Báu", "🎁"),
-            "phan_bon": ("Phân Bón", "🌾"),
-            "ngoc_trai": ("Ngọc Trai", "🔮"),
-            "vat_lieu_nang_cap": ("Vật Liệu Nâng Cấp Cần", "⚙️"),
-            "manh_ghep_a": ("Mảnh Ghép A", "🧩"),
-            "manh_ghep_b": ("Mảnh Ghép B", "🧩"),
-            "manh_ghep_c": ("Mảnh Ghép C", "🧩"),
-            "manh_ghep_d": ("Mảnh Ghép D", "🧩"),
-            "manh_ban_do_a": ("Mảnh Bản Đồ A", "🗺️"),
-            "manh_ban_do_b": ("Mảnh Bản Đồ B", "🗺️"),
-            "manh_ban_do_c": ("Mảnh Bản Đồ C", "🗺️"),
-            "manh_ban_do_d": ("Mảnh Bản Đồ D", "🗺️"),
-            "ban_do_ham_am": ("Bản Đồ Hắc", "🗺️✨"),
-            "manh_sao_bang": ("Mảnh Sao Băng", "🌠"),
-            "long_vu_lua": ("Lông Vũ Lửa", "🔥"),
-            "may_do_song": ("Máy Dò Sóng", "📡"),
-            # Commemorative items (season rewards)
-            "qua_ngot_mua_1": ("Quả Ngọt Mùa 1", "🍎"),
-            "qua_ngot_mua_2": ("Quả Ngọt Mùa 2", "🍏"),
-            "qua_ngot_mua_3": ("Quả Ngọt Mùa 3", "�"),
-            "qua_ngot_mua_4": ("Quả Ngọt Mùa 4", "🍋"),
-            "qua_ngot_mua_5": ("Quả Ngọt Mùa 5", "🍌"),
-            # Consumable buff items
-            "nuoc_tang_luc": ("Nước TL", "💪"),
-            "gang_tay_xin": ("Găng Tay", "🥊"),
-            "thao_tac_tinh_vi": ("Thao Tác Tinh Vi", "🎯"),
-            "tinh_yeu_ca": ("Tình Yêu Cá", "❤️"),
-            "tinh_cau": ("Tinh Cầu Không Gian", "🌌"),
-        }
-        tool_items = {k: v for k, v in inventory.items() if k in tool_lookup}
-        if tool_items:
-            tool_parts = [f"{tool_lookup[k][1]} {tool_lookup[k][0]} x{v}" for k, v in sorted(tool_items.items())]
-            tool_text = " | ".join(tool_parts)
             
+        # 3. TOOLS / MATERIALS
+        if tool_items:
+            tool_parts = []
+            for key, qty in sorted(tool_items.items()):
+                # Try ALL_ITEMS_DATA first, fallback to ALL_FISH if needed (unlikely here)
+                # Then check ORPHAN_ITEMS_METADATA for legacy items, or use raw key as last resort
+                if key in ALL_ITEMS_DATA:
+                    item = ALL_ITEMS_DATA[key]
+                    name = item['name']
+                    emoji = item.get('emoji', '📦')
+                elif key in ALL_FISH:
+                    item = ALL_FISH[key]
+                    name = item['name']
+                    emoji = item.get('emoji', '🐟')
+                else:
+                    name = key
+                    emoji = "❓"
+
+                tool_parts.append(f"{emoji} {name} x{qty}")
+                
+            tool_text = " | ".join(tool_parts)
             embed.add_field(
                 name=f"🛠️ Công Cụ ({sum(tool_items.values())})",
                 value=tool_text,
                 inline=False
             )
-        
-        # TRASH (collapsed)
-        trash_items = {k: v for k, v in inventory.items() if k.startswith("trash_")}
+            
+        # 4. TRASH
         if trash_items:
             total_trash = sum(trash_items.values())
-            # Show first 3 items + count
             trash_list = list(sorted(trash_items.items()))[:3]
             trash_parts = []
             for key, qty in trash_list:
-                name = ALL_ITEMS_DATA.get(key, {}).get('name', key.replace('trash_', '').replace('_', ' ').title())
+                item = ALL_ITEMS_DATA.get(key, {})
+                name = item.get('name', key.replace('trash_', '').title())
                 trash_parts.append(f"{name} x{qty}")
             
             trash_text = " | ".join(trash_parts)
@@ -204,6 +214,7 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
                 value=trash_text,
                 inline=False
             )
+            
     else:
         embed.add_field(
             name="🎒 Inventory",

@@ -223,5 +223,20 @@ class AdminCog(commands.Cog):
         msg += f"\n**Total: {len(all_slash)} slash commands, {len(list(self.bot.commands))} prefix commands**"
         await ctx.send(msg)
 
+    # --- Item System Commands ---
+    @commands.command(name="reload_items", description="Reload items from JSON (Admin Only)")
+    @commands.is_owner()
+    async def reload_items(self, ctx):
+        """Reload fishing items data from disk"""
+        from core.item_system import item_system
+        success = item_system.reload()
+        
+        if success:
+            count = len(item_system.get_all_items())
+            await ctx.send(f"✅ **Đã reload items thành công!** (Tổng: {count} items)\n\nDữ liệu mới đã được cập nhật vào hệ thống.")
+            logger.info(f"ADMIN_ACTION: !reload_items by {ctx.author}")
+        else:
+            await ctx.send("❌ **Lỗi khi reload items!** Vui lòng kiểm tra log.")
+
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))

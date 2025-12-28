@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, Union
 import discord
 
 from database_manager import db_manager, add_item, get_server_config
+from configs.item_constants import ItemKeys
 from ..mechanics.rod_system import ROD_LEVELS
 from ..mechanics.glitch import apply_glitch_lite, apply_glitch_moderate, apply_glitch_aggressive, DISPLAY_GLITCH_ACTIVE
 
@@ -423,7 +424,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     if reward_type == "moi":
         amount = selected_reward.get("amount", 5)
-        await add_item(user_id, "moi", amount)
+        await add_item(user_id, ItemKeys.MOI, amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
     
@@ -435,7 +436,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     elif reward_type == "chest":
         amount = selected_reward.get("amount", 1)
-        await add_item(user_id, "ruong_kho_bau", amount)
+        await add_item(user_id, ItemKeys.RUONG_KHO_BAU, amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
     
@@ -489,7 +490,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     elif reward_type == "triple_money":
         # Calculate 3x fish price
-        price = fish_info["sell_price"] * 3
+        price = (fish_info.get('price', {}).get('sell') or fish_info.get('sell_price', 0)) * 3
         await add_seeds(user_id, price, reason='npc_reward_triple_money', category='fishing')
         # Replace placeholder in message with actual amount
         result_text = selected_reward["message"]

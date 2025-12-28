@@ -11,6 +11,8 @@ from datetime import datetime
 
 from database_manager import get_inventory, add_seeds, db_manager, get_stat, increment_stat, remove_item
 from ..constants import ALL_FISH, LEGENDARY_FISH_KEYS, COMMON_FISH_KEYS, RARE_FISH_KEYS
+from configs.item_constants import ItemKeys
+from core.item_system import item_system
 from ..mechanics.glitch import apply_display_glitch as _glitch
 from ..mechanics.events import trigger_random_event
 
@@ -32,37 +34,8 @@ async def _should_auto_sell_item(user_id: int, item_key: str) -> bool:
     """
     from database_manager import get_rod_data, get_stat
     
-    # COMPREHENSIVE protected items list
-    # Import would be ideal but avoiding circular dependency
-    PROTECTED_ITEMS = {
-        # === CHESTS (CRITICAL - User reported bug) ===
-        "ruong_kho_bau",  # Main treasure chest from fishing events
-        "ruong_go", "ruong_bac", "ruong_vang", "ruong_kim_cuong",
-        
-        # === GIFTS (For trading/giving) ===
-        "cafe", "flower", "ring", "gift", "chocolate", "card",
-        
-        # === CONSUMABLES (Bait & Buffs) ===
-        "moi",  # Worm (bait)
-        "co_bon_la",  # Four-leaf clover
-        "phan_bon",  # Fertilizer (for tree)
-        "nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca", "tinh_cau",
-        
-        # === LEGENDARY COMPONENTS (Rare crafting) ===
-        "long_vu_lua",  # Phoenix feather
-        
-        # === PUZZLE PIECES (Quest items) ===
-        "manh_ghep_a", "manh_ghep_b", "manh_ghep_c", "manh_ghep_d",
-        
-        # === COMMEMORATIVE (Season rewards - never sellable) ===
-        "qua_ngot_mua_1", "qua_ngot_mua_2", "qua_ngot_mua_3", "qua_ngot_mua_4", "qua_ngot_mua_5",
-        
-        # === SPECIAL (Manual sell only via /banca ngoc_trai) ===
-        "ngoc_trai",  # Pearl
-    }
-    
     # Always forbid protected items
-    if item_key in PROTECTED_ITEMS:
+    if item_key in item_system.get_protected_items():
         return False
     
     # === Conditional Items (can sell after achievements) ===
@@ -224,7 +197,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             temp_base_value = 0
             for fish_key, quantity in fish_items.items():
                 if fish_key in ALL_FISH:
-                    temp_base_value += ALL_FISH[fish_key].get("sell_price", 0) * quantity
+                    temp_base_value += (ALL_FISH[fish_key].get('price', {}).get('sell') or ALL_FISH[fish_key].get('sell_price', 0)) * quantity
                     
             interactive_event = await check_interactive_event(
                 user_id, fish_items, temp_base_value, sell_events_data
@@ -269,7 +242,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         for fish_key, quantity in fish_items.items():
             if fish_key in ALL_FISH:
                 fish_data = ALL_FISH[fish_key]
-                sell_price = fish_data.get("sell_price", 0)
+                sell_price = fish_data.get('price', {}).get('sell') or fish_data.get('sell_price', 0)
                 total_value += sell_price * quantity
                 fish_sold[fish_key] = {"quantity": quantity, "unit_price": sell_price, "total": sell_price * quantity}
         
@@ -411,10 +384,10 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             special_type = event_result["special"]
             
             if special_type == "chest":
-                await add_item(user_id, "ruong_kho_bau", 1)
+                await add_item(user_id, ItemKeys.RUONG_KHO_BAU, 1)
                 reward_msg = "🎁 **Nhận thêm:** 1 Rương Kho Báu"
             elif special_type == "moi":
-                await add_item(user_id, "moi", 5)
+                await add_item(user_id, ItemKeys.MOI, 5)
                 reward_msg = "🪱 **Nhận thêm:** 5 Mồi Câu"
             elif special_type == "ngoc_trai":
                 await add_item(user_id, "ngoc_trai", 1)

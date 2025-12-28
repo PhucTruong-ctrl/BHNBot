@@ -1,0 +1,200 @@
+{
+  "items": {
+    "manh_ban_do_a": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_a",
+      "name": "Mảnh Bản Đồ A",
+      "emoji": "🗺️",
+      "description": "Một góc giấy nhăn nheo, nhìn chả hiểu vẽ cái gì.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_b": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_b",
+      "name": "Mảnh Bản Đồ B",
+      "emoji": "🗺️",
+      "description": "Vẽ đường đi nước bước, nhưng thiếu 3 mảnh kia thì chịu.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_c": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_c",
+      "name": "Mảnh Bản Đồ C",
+      "emoji": "🗺️",
+      "description": "Có vẻ như nó chỉ dẫn đến một kho báu... hoặc một bãi rác.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_d": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_d",
+      "name": "Mảnh Bản Đồ D",
+      "emoji": "🗺️",
+      "description": "Mảnh ghép nhân phẩm cuối cùng. Gom đủ đi rồi tính.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_sao_bang": {
+      "type": "legendary_component",
+      "key": "manh_sao_bang",
+      "name": "Mảnh Sao Băng",
+      "emoji": "✨",
+      "description": "Mảnh sao băng lấp lánh ánh sáng kỳ ảo, thu hút những sinh vật trôi dạt từ dải thiên hà xa xôi (21:00-21:30). (Có thể bán lấy tiền)",
+      "price": {
+        "buy": 0,
+        "sell": 150,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "may_do_song": {
+      "type": "legendary_component",
+      "key": "may_do_song",
+      "name": "Máy Dò Sóng",
+      "emoji": "📡",
+      "description": "Thiết bị chuyên dụng để tìm kiếm tần số âm thanh cô đơn nhất đại dương.",
+      "price": {
+        "buy": 20000,
+        "sell": 200,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "special"
+      }
+    },
+    "tinh_cau": {
+      "type": "consumable",
+      "key": "tinh_cau",
+      "name": "Tinh Cầu Không Gian",
+      "emoji": "🌌",
+      "description": "Vật phẩm chứa đựng tinh hoa vũ trụ, dùng để mở ra cánh cổng kết nối với những vì sao.",
+      "effect_type": "legendary_summon",
+      "effect_value": "ca_ngan_ha",
+      "one_time_use": true,
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "ruong_kho_bau": {
+      "type": "container",
+      "key": "ruong_kho_bau",
+      "name": "Rương Kho Báu",
+      "emoji": "📦",
+      "price": {
+        "buy": 0,
+        "sell": 100,
+        "currency": "seeds"
+      },
+      "description": "Rương chứa đầy bất ngờ, mở ra để xem có gì.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ghep_a": {
+      "key": "manh_ghep_a",
+      "name": "Mảnh Ghép A",
+      "type": "material",
+      "price": {
+        "buy": 0,
+        "sell": 50
+      },
+      "description": "Một phần của tấm bản đồ kho báu cổ xưa.",
+      "emoji": "🧩",
+      "flags": {
+        "buyable": false
+      }
+    },
+    "manh_ghep_b": {
+      "key": "manh_ghep_b",
+      "name": "Mảnh Ghép B",
+      "type": "material",
+      "price": {
+        "buy": 0,
+        "sell": 50
+      },
+      "description": "Một phần của tấm bản đồ kho báu cổ xưa.",
+      "emoji": "🧩",
+      "flags": {
+        "buyable": false
+      }
+    },
+    "manh_ghep_c": {
+      "key": "manh_ghep_c",
+      "name": "Mảnh Ghép C",
+      "type": "material",
+      "price": {
+        "buy": 0,
+        "sell": 50
+      },
+      "description": "Một phần của tấm bản đồ kho báu cổ xưa.",
+      "emoji": "🧩",
+      "flags": {
+        "buyable": false
+      }
+    },
+    "manh_ghep_d": {
+      "key": "manh_ghep_d",
+      "name": "Mảnh Ghép D",
+      "type": "material",
+      "price": {
+        "buy": 0,
+        "sell": 50
+      },
+      "description": "Một phần của tấm bản đồ kho báu cổ xưa.",
+      "emoji": "🧩",
+      "flags": {
+        "buyable": false
+      }
+    }
+  }
+}
