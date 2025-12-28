@@ -384,7 +384,7 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     if tree_cog:
         try:
             # Add contribution with phan_bon type
-            await tree_cog.add_external_contribution(user_id, guild_id, total_exp, contribution_type="phan_bon")
+            await tree_cog.add_external_contribution(user_id, guild_id, total_exp, contribution_type=ItemKeys.PHAN_BON)
             
             # Get tree data for progress display
             tree_level, tree_prog, tree_total, season, req, percentage = await tree_cog.get_tree_data(guild_id)

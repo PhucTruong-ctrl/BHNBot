@@ -1,5 +1,6 @@
 class ItemKeys:
     BAN_DO_HAM_AM = "ban_do_ham_am"
+    CA_ISEKAI = "ca_isekai"
     CAFE = "cafe"
     CARD = "card"
     CHOCOLATE = "chocolate"

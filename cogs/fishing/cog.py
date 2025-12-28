@@ -840,7 +840,7 @@ class FishingCog(commands.Cog):
 
                     # Process event effects
                     if event_result.get("lose_worm", False) and has_worm:
-                        await remove_item(user_id, "moi", 1)
+                        await remove_item(user_id, ItemKeys.MOI, 1)
                         event_message += " (Mất 1 Giun)"
             
                     if event_result.get("lose_money", 0) > 0:
@@ -866,9 +866,9 @@ class FishingCog(commands.Cog):
                     if event_result.get("gain_items", {}):
                         for item_key, item_count in event_result["gain_items"].items():
                             # Special check for ca_isekai: don't gain if already have
-                            if item_key == "ca_isekai":
+                            if item_key == ItemKeys.CA_ISEKAI:
                                 inventory = await get_inventory(user_id)
-                                if inventory.get("ca_isekai", 0) > 0:
+                                if inventory.get(ItemKeys.CA_ISEKAI, 0) > 0:
                                     continue  # Skip adding ca_isekai if already have
                             await add_item(user_id, item_key, item_count)
                             item_id = ALL_FISH.get(item_key, {}).get("name", item_key)
@@ -877,9 +877,9 @@ class FishingCog(commands.Cog):
                     # Handle special effects
                     if event_result.get("custom_effect") == "lose_all_bait":
                         # sea_sickness: Lose all bait (worm)
-                        worm_count = inventory.get("moi", 0)
+                        worm_count = inventory.get(ItemKeys.MOI, 0)
                         if worm_count > 0:
-                            await remove_item(user_id, "moi", worm_count)
+                            await remove_item(user_id, ItemKeys.MOI, worm_count)
                             event_message += f" (Nôn hết {worm_count} Giun)"
                             logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=sea_sickness inventory_change=-{worm_count} item=worm")
             
@@ -989,7 +989,7 @@ class FishingCog(commands.Cog):
                     # Special embed for Isekai event - show legendary fish info or rejection
                     if event_type == "isekai_truck":
                         inventory = await get_inventory(user_id)
-                        has_isekai = inventory.get("ca_isekai", 0) > 0
+                        has_isekai = inventory.get(ItemKeys.CA_ISEKAI, 0) > 0
                         
                         if has_isekai:
                             # User ALREADY has the fish -> FAIL (Meaningless Bump)
@@ -1014,11 +1014,11 @@ class FishingCog(commands.Cog):
                         else:
                             # User does NOT have fish -> SUCCESS -> Grant Item Manually
                             # This block replaces the generic gain_items logic we removed
-                            await add_item(user_id, "ca_isekai", 1)
+                            await add_item(user_id, ItemKeys.CA_ISEKAI, 1)
                             logger.info(f"[EVENT] {username} received ca_isekai from isekai_truck event")
                             
                             # Find the legendary fish data
-                            legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == "ca_isekai"), None)
+                            legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == ItemKeys.CA_ISEKAI), None)
                             if legendary_fish:
                                 fish_embed = discord.Embed(
                                     title=f"🌌 {username} - CÁ HUYỀN THOẠI MỚI! 🌌",
@@ -1463,21 +1463,21 @@ class FishingCog(commands.Cog):
                             fish_display[0] = fish_display[0] + f"\n(🐈 Mèo cướp mất {fish_info['name']} giá {highest_price} Hạt!)"
         
                 # Update caught items for sell button
-                self.caught_items[user_id] = {k: v for k, v in fish_only_items.items() if k != "ca_isekai"}
+                self.caught_items[user_id] = {k: v for k, v in fish_only_items.items() if k != ItemKeys.CA_ISEKAI}
             
                 # Check if bucket is full after fishing, if so, sell all fish instead of just caught
                 updated_inventory = await get_inventory(user_id)
-                current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != "ca_isekai")
+                current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != ItemKeys.CA_ISEKAI)
                 if current_fish_count >= FISH_BUCKET_LIMIT:
                     all_fish_items = {k: v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS}
                     # Exclude ca_isekai from sellable items
-                    all_fish_items = {k: v for k, v in all_fish_items.items() if k != "ca_isekai"}
+                    all_fish_items = {k: v for k, v in all_fish_items.items() if k != ItemKeys.CA_ISEKAI}
                     self.caught_items[user_id] = all_fish_items
                     sell_items = all_fish_items
                     logger.info(f"[FISHING] Bucket full ({current_fish_count}/{FISH_BUCKET_LIMIT}), sell button will sell all fish")
                 else:
                     # Exclude ca_isekai from sellable items
-                    sell_items = {k: v for k, v in fish_only_items.items() if k != "ca_isekai"}
+                    sell_items = {k: v for k, v in fish_only_items.items() if k != ItemKeys.CA_ISEKAI}
         
                 # ==================== CHECK FOR LEGENDARY FISH ====================
                 current_hour = datetime.now().hour
@@ -2303,7 +2303,7 @@ class FishingCog(commands.Cog):
         Returns:
             bool: True if bucket is full (fishing blocked), False if can fish
         """
-        fish_count = sum(v for k, v in inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != "ca_isekai")
+        fish_count = sum(v for k, v in inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != ItemKeys.CA_ISEKAI)
         
         if fish_count >= FISH_BUCKET_LIMIT:
             embed = discord.Embed(
@@ -2529,7 +2529,7 @@ class FishingCog(commands.Cog):
         # Process reward
         reward_type = selected_reward["type"]
         
-        if reward_type == "moi":
+        if reward_type == ItemKeys.MOI:
             amount = selected_reward.get("amount", 5)
             await add_item(user_id, ItemKeys.MOI, amount)
             result_text = selected_reward["message"]

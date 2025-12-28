@@ -14,6 +14,7 @@ from .constants import (
     PROGRESS_BAR_LENGTH
 )
 from .models import TreeData, ContributorData
+from configs.item_constants import ItemKeys
 
 logger = setup_logger("TreeHelpers", "logs/cogs/tree.log")
 
@@ -285,7 +286,7 @@ def get_contribution_exp(contribution_type: str, amount: int) -> int:
     Returns:
         Experience points earned
     """
-    if contribution_type == "phan_bon":
+    if contribution_type == ItemKeys.PHAN_BON:
         # Phan bon: amount is already the exp (50-100)
         return amount
     else:
