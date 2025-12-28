@@ -394,7 +394,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
             )
             return result_embed
         
-        await add_seeds(user_id, -cost)
+        await add_seeds(user_id, -cost, reason='npc_payment', category='fishing')
         logger.info(f"[NPC] User {user_id} paid {cost} seeds to {npc_type}")
     
     elif cost == "cooldown_5min":
@@ -456,7 +456,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     elif reward_type == "money":
         amount = selected_reward.get("amount", 150)
-        await add_seeds(user_id, amount)
+        await add_seeds(user_id, amount, reason='npc_reward_money', category='fishing')
         result_text = selected_reward["message"]
         # Add amount to message if not already included
         if "{amount}" in result_text:
@@ -490,7 +490,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     elif reward_type == "triple_money":
         # Calculate 3x fish price
         price = fish_info["sell_price"] * 3
-        await add_seeds(user_id, price)
+        await add_seeds(user_id, price, reason='npc_reward_triple_money', category='fishing')
         # Replace placeholder in message with actual amount
         result_text = selected_reward["message"]
         if "{amount}" in result_text:

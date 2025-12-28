@@ -90,7 +90,7 @@ class TrashSellView(View):
             lines.append(f"🗑️ **{item_name}** x{qty}: `{line_total:,} Hạt` ({unit_price}/c)")
 
         # 5. Add Money
-        await add_seeds(user_id, total_seeds)
+        await add_seeds(user_id, total_seeds, reason='sell_trash', category='fishing')
         
         # 6. Response
         desc = "\n".join(lines)

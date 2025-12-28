@@ -894,7 +894,7 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
 
     # Pay winners
     if seed_updates:
-        await batch_update_seeds(seed_updates)
+        await batch_update_seeds(seed_updates, reason='xi_dach_refund', category='minigame')
 
     # Flavor texts
     win_flavors = ["Đỉnh cao! 🔥", "Thắng đậm! 💰", "Số hưởng! 🍀", "Ngon! 👏"]
