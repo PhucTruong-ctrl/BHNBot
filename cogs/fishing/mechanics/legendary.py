@@ -281,6 +281,8 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     Checks for special summoning conditions: sacrifice, crafted bait, map, frequency, etc."""
     import json
     from database_manager import get_inventory
+    print(f"[LEGENDARY_CHECK] START: user_id={user_id}, hour={current_hour}")
+    import random
 
     try:
         fish_collection = await get_fish_collection(user_id)
@@ -313,6 +315,21 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
         already_caught = legendary_key in legendary_list
         
         # If already caught, check if summoning condition is met anyway (for lore embed)
+        # Special check for Phoenix BEFORE already_caught check
+        if legendary_key == "ca_phuong_hoang":
+            from .legendary_quest_helper import get_phoenix_energy, consume_phoenix_buff
+            energy = await get_phoenix_energy(user_id)
+            if energy == 0 and inventory.get("long_vu_lua", 0) == 0:
+                continue
+            if energy > 0:
+                roll = random.randint(1, 100)
+                print(f"[PHOENIX_RNG] user={user_id}, energy={energy}%, roll={roll}")
+                if roll > energy:
+                    await consume_phoenix_buff(user_id)
+                    return {"spawn_failed": "ca_phuong_hoang", "energy": energy, "roll": roll}
+                await consume_phoenix_buff(user_id)
+                print(f"[PHOENIX] user={user_id} spawn SUCCESS at {energy}%")
+                return legendary
         if already_caught:
             # Special handling for each legendary
             if legendary_key == "thuong_luong":
@@ -320,13 +337,6 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 continue
             elif legendary_key == "ca_ngan_ha":
                 if user_id in cog.guaranteed_catch_users:
-                    return {"already_caught": legendary_key}
-                continue
-            elif legendary_key == "ca_phuong_hoang":
-                if not (12 <= current_hour < 14):
-                    continue
-                has_buff = cog.phoenix_buff_active.get(user_id, False)
-                if has_buff or inventory.get("long_vu_lua", 0) > 0:
                     return {"already_caught": legendary_key}
                 continue
             elif legendary_key == "cthulhu_con":
@@ -452,32 +462,14 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     cog.dark_map_active[user_id] = False
                     cog.dark_map_cast_count[user_id] = 0
                     from database_manager import remove_item
-                    await remove_item(user_id, "ban_do_ham_am", 1)
-            continue
-        
-        # 5. CÁ VOI 52HZ - Frequency detected flag
-        if legendary_key == "ca_voi_52hz":
             consumable_cog = cog.bot.get_cog("ConsumableCog") if hasattr(cog, 'bot') else None
             if consumable_cog and consumable_cog.has_detected_52hz(user_id):
                 # 100% spawn and reset flag
                 consumable_cog.clear_52hz_signal(user_id)
                 return legendary
-            continue
-        
-        # 6. CÁ PHƯỢNG HOÀNG - Guaranteed catch from phoenix buff
-        if legendary_key == "ca_phuong_hoang":
-            from .legendary_quest_helper import has_phoenix_buff
-            if await has_phoenix_buff(user_id):
-                # Reset buff after guaranteed catch
-                from .legendary_quest_helper import set_phoenix_buff
-                await set_phoenix_buff(user_id, False)
+                print(f"[PHOENIX] user={user_id} SUCCESS - boss spawned")
                 return legendary
             continue
-        
-        # Fallback: basic spawn check with time restriction
-        time_restriction = legendary.get("time_restriction")
-        if time_restriction is not None:
-            start_hour, end_hour = time_restriction
             if not (start_hour <= current_hour < end_hour):
                 continue
         

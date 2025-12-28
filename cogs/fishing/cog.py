@@ -1501,6 +1501,33 @@ class FishingCog(commands.Cog):
                 legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=self)
                 legendary_failed = False  # Track if legendary boss fight failed
 
+                # Check for Phoenix spawn RNG failure
+                if isinstance(legendary_fish, dict) and "spawn_failed" in legendary_fish:
+                    from .mechanics.legendary_quest_helper import consume_phoenix_buff
+                    
+                    legendary_key = legendary_fish["spawn_failed"]
+                    energy = legendary_fish["energy"]
+                    roll = legendary_fish["roll"]
+                    
+                    # Consume buff (used up)
+                    await consume_phoenix_buff(user_id)
+                    
+                    # Public fail message
+                    username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
+                    fail_embed = discord.Embed(
+                        title=f"💔 {username} - NGỌN LỬA ĐÃ TẮT!",
+                        description=f"Bạn cố triệu hồi **Cá Phượng Hoàng** với **{energy}%** năng lượng...\n\n"
+                                    f"🎲 Phép thuật thất bại! (Cần ≤{energy}, rolled **{roll}**)\n\n"
+                                    f"🔥 Lông Vũ Lửa đã cháy kiệt. Hãy thử lại!",
+                        color=discord.Color.dark_red()
+                    )
+                    await channel.send(embed=fail_embed)
+                    
+                    logger.info(f"[PHOENIX] {username} spawn FAILED: {energy}% chance, rolled {roll}")
+                    
+                    # Clear legendary_fish to continue normal fishing
+                    legendary_fish = None
+                
                 if isinstance(legendary_fish, dict) and "already_caught" in legendary_fish:
                     legendary_key = legendary_fish["already_caught"]
                     if legendary_key == "ca_ngan_ha":

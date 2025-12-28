@@ -92,121 +92,208 @@ class MemoryGameView(discord.ui.View):
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
 
-class KeepFireView(discord.ui.View):
-    """Mini-game for Cá Phượng Hoàng - Giữ Lửa"""
+class PhoenixEggView(discord.ui.View):
+    """Ấp Trứng Phượng Hoàng (Push Your Luck)"""
+    
     def __init__(self, user_id, bot, channel, user):
-        super().__init__(timeout=5)  # 5 giây mỗi round
+        super().__init__(timeout=180)  # 3 minutes
         self.user_id = user_id
         self.bot = bot
         self.channel = channel
         self.user = user
-        self.temperature = 50  # Bắt đầu từ 50 độ
-        self.round = 1
-        self.max_rounds = 3
-        self.blows = 0  # Số lần thổi lửa trong round này
+        self.energy = 0
         
-        # Thêm nút thổi lửa
-        blow_btn = discord.ui.Button(label="🔥 Thổi Lửa (+10°)", style=discord.ButtonStyle.primary)
-        blow_btn.callback = self.blow_fire
-        self.add_item(blow_btn)
+        # Buttons
+        light = discord.ui.Button(label="🔥 Nạp Nhẹ (5-15%)", style=discord.ButtonStyle.primary)
+        light.callback = self.add_light
+        self.add_item(light)
+        
+        heavy = discord.ui.Button(label="💥 Nạp Mạnh (15-30%)", style=discord.ButtonStyle.danger)
+        heavy.callback = self.add_heavy
+        self.add_item(heavy)
+        
+        activate = discord.ui.Button(label="✨ Kích Hoạt", style=discord.ButtonStyle.success)
+        activate.callback = self.activate
+        self.add_item(activate)
     
-    def get_temperature_display(self):
-        """Tạo thanh nhiệt độ"""
-        temp = self.temperature
-        if temp < 70:
-            status = "❄️ Quá lạnh! Lửa sắp tắt."
-            color = "🥶"
-        elif temp > 90:
-            status = "💥 Quá nóng! Lông vũ cháy thành tro."
-            color = "🔥"
+    def _make_embed(self, last_action=""):
+        # Progress bar
+        filled = self.energy // 10
+        empty = 10 - filled
+        if self.energy < 50:
+            bar = "🟦" * filled + "⬜" * empty
+        elif self.energy < 80:
+            bar = "🟨" * filled + "⬜" * empty
         else:
-            status = "✅ Nhiệt độ hoàn hảo!"
-            color = "🌟"
+            bar = "🟥" * filled + "⬜" * empty
         
-        # Thanh nhiệt độ đơn giản
-        bar = ""
-        for i in range(0, 101, 10):
-            if temp >= i:
-                if i < 70:
-                    bar += "❄️"
-                elif i <= 90:
-                    bar += "✅"
-                else:
-                    bar += "💥"
-            else:
-                bar += "⬜"
+        # Status
+        if self.energy < 50:
+            status = "✅ An toàn"
+            color = discord.Color.blue()
+        elif self.energy < 80:
+            status = "⚠️ Cẩn thận"
+            color = discord.Color.gold()
+        elif self.energy < 95:
+            status = "🎯 VÙ MỤC TIÊU"
+            color = discord.Color.orange()
+        else:
+            status = "🔥 NGUY HIỂM!"
+            color = discord.Color.red()
         
-        return f"{bar}\n**Nhiệt độ hiện tại: {temp}°** - {status}"
+        desc = f"[{bar}] **{self.energy}%**\n\n{status}"
+        if last_action:
+            desc += f"\n\n💫 {last_action}"
+        
+        embed = discord.Embed(
+            title=f"🥚 {self.user.display_name} - ẤP TRỨNG PHƯỢNG HOÀNG",
+            description=desc,
+            color=color
+        )
+        embed.add_field(
+            name="📖 Hướng Dẫn",
+            value="🔥 Nạp Nhẹ: +5-15% an toàn\n"
+                  "💥 Nạp Mạnh: +15-30% mạo hiểm\n"
+                  "✨ Kích Hoạt: Nở trứng (80-100%)\n"
+                  "• Bust >100% ❌ | Perfect 100% 👑",
+            inline=False
+        )
+        return embed
     
-    async def blow_fire(self, interaction: discord.Interaction):
+    async def add_light(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("Đây không phải trò chơi của bạn!", ephemeral=True)
-            return
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
         
-        self.temperature += 10
-        self.blows += 1
+        gain = random.randint(5, 15)
+        self.energy += gain
         
-        embed = interaction.message.embeds[0]
-        embed.description = f"**Hiệp {self.round}/{self.max_rounds}**\n\n{self.get_temperature_display()}\n\nBạn đã thổi **{self.blows}** lần trong hiệp này."
-        await interaction.response.edit_message(embed=embed)
+        if self.energy > 100:
+            self.stop()
+            return await self._bust(interaction)
+        
+        embed = self._make_embed(f"Nạp nhẹ: +{gain}%")
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    async def add_heavy(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+        
+        gain = random.randint(15, 30)
+        self.energy += gain
+        
+        if self.energy > 100:
+            self.stop()
+            return await self._bust(interaction)
+        
+        embed = self._make_embed(f"Nạp mạnh: +{gain}%")
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    async def activate(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+        
+        self.stop()
+        
+        if self.energy < 80:
+            await self._fail_low(interaction)
+        elif self.energy == 100:
+            await self._perfect(interaction)
+        else:
+            await self._success(interaction)
     
     async def on_timeout(self):
-        # Kết thúc round: trừ 20 độ
-        self.temperature -= 20
-        self.temperature = max(0, self.temperature)
+        from database_manager import remove_item
+        from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
-        success = 70 <= self.temperature <= 90
-        
-        if success and self.round < self.max_rounds:
-            # Qua round tiếp theo
-            self.round += 1
-            self.blows = 0
+        try:
+            await remove_item(self.user_id, "long_vu_lua", 1)
+            await set_phoenix_last_play(self.user_id)
+            
             embed = discord.Embed(
-                title="🔥 NGHI LỄ GIỮ LỬA - HIỆP TIẾP THEO",
-                description=f"**Hiệp {self.round}/{self.max_rounds}**\n\n{self.get_temperature_display()}\n\nGió thổi mạnh! Nhiệt độ giảm 20°.\nBắt đầu hiệp mới...",
-                color=discord.Color.orange()
-            )
-            try:
-                msg = await self.channel.send(embed=embed, view=KeepFireView(self.user_id, self.bot, self.channel))
-                # Reset timeout cho round mới
-                self.stop()
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
-        elif success and self.round == self.max_rounds:
-            # Thắng
-            from database_manager import remove_item
-            from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
-            await remove_item(self.user_id, "long_vu_lua", 1)  # Trừ 1 lông vũ từ inventory
-            await set_phoenix_buff(self.user_id, True)  # Kích hoạt buff
-            await set_phoenix_last_play(self.user_id)  # Set thời gian chơi
-            print(f"[CONSUMABLE] Long vu lua success for {self.user_id}")
-            username = self.user.display_name if self.user else "Unknown"
-            embed = discord.Embed(
-                title=f"🎉 {username} - THÀNH CÔNG! PHƯỢNG HOÀNG TÁI SINH",
-                description="Bạn đã giữ được ngọn lửa hoàn hảo!\n\n🔥 Lông Vũ Lửa hóa thành Phượng Hoàng!\n\n🌟 **Cá Phượng Hoàng** sẽ xuất hiện ở lần câu tiếp theo!",
-                color=discord.Color.gold()
-            )
-            try:
-                await self.channel.send(embed=embed)
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
-        else:
-            # Thất bại
-            from database_manager import remove_item
-            from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
-            await remove_item(self.user_id, "long_vu_lua", 1)  # Trừ 1 lông vũ từ inventory
-            await set_phoenix_last_play(self.user_id)  # Set thời gian chơi
-            print(f"[CONSUMABLE] Long vu lua failure for {self.user_id}")
-            username = self.user.display_name if self.user else "Unknown"
-            embed = discord.Embed(
-                title=f"❌ {username} - THẤT BẠI! LỬA ĐÃ TẮT",
-                description=f"Lông Vũ Lửa đã tan biến thành tro bụi.\n\nNhiệt độ cuối: {self.temperature}°\n\n💡 Hãy thử lại với chiếc lông vũ khác!",
+                title=f"⏰ HẾT THỜI GIAN",
+                description=f"Trứng đã nguội lạnh.\n**Năng lượng: {self.energy}%**",
                 color=discord.Color.red()
             )
-            try:
-                await self.channel.send(embed=embed)
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
+            await self.channel.send(embed=embed)
+            logger.info(f"[PHOENIX] User {self.user_id} timed out at {self.energy}%")
+        except Exception as e:
+            logger.error(f"[PHOENIX] Timeout error: {e}")
+    
+    async def _bust(self, interaction):
+        from database_manager import remove_item
+        from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
+        
+        try:
+            await remove_item(self.user_id, "long_vu_lua", 1)
+            await set_phoenix_last_play(self.user_id)
+            
+            embed = discord.Embed(
+                title="💥 NỔ TUNG!",
+                description=f"**{self.energy}%** - Quá tải!\n\nTrứng không chịu nổi áp lực.",
+                color=discord.Color.red()
+            )
+            await interaction.response.edit_message(embed=embed, view=None)
+            logger.info(f"[PHOENIX] {self.user_id} busted at {self.energy}%")
+        except Exception as e:
+            logger.error(f"[PHOENIX] Bust error: {e}")
+    
+    async def _fail_low(self, interaction):
+        from database_manager import remove_item
+        from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
+        
+        try:
+            await remove_item(self.user_id, "long_vu_lua", 1)
+            await set_phoenix_last_play(self.user_id)
+            
+            embed = discord.Embed(
+                title="❌ QUÁ YẾU",
+                description=f"**{self.energy}%** - Cần tối thiểu 80%!\n\nTrứng vỡ.",
+                color=discord.Color.orange()
+            )
+            await interaction.response.edit_message(embed=embed, view=None)
+            logger.info(f"[PHOENIX] {self.user_id} too low at {self.energy}%")
+        except Exception as e:
+            logger.error(f"[PHOENIX] Fail low error: {e}")
+    
+    async def _success(self, interaction):
+        from database_manager import remove_item
+        from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
+        
+        try:
+            await remove_item(self.user_id, "long_vu_lua", 1)
+            await set_phoenix_buff(self.user_id, self.energy)  # Store energy value
+            await set_phoenix_last_play(self.user_id)
+            
+            embed = discord.Embed(
+                title="🎉 TRỨNG NỞ THÀNH CÔNG!",
+                description=f"**{self.energy}%** - Hoàn hảo!\n\n🔥 **Cá Phượng Hoàng** sẽ xuất hiện lần câu tiếp theo!",
+                color=discord.Color.gold()
+            )
+            await interaction.response.edit_message(embed=embed, view=None)
+            logger.info(f"[PHOENIX] {self.user_id} success at {self.energy}%")
+        except Exception as e:
+            logger.error(f"[PHOENIX] Success error: {e}")
+    
+    async def _perfect(self, interaction):
+        from database_manager import remove_item
+        from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
+        
+        try:
+            await remove_item(self.user_id, "long_vu_lua", 1)
+            await set_phoenix_buff(self.user_id, self.energy)  # Store energy value
+            await set_phoenix_last_play(self.user_id)
+            
+            embed = discord.Embed(
+                title="👑 PERFECT! PHƯỢNG HOÀNG CHÚA!",
+                description="**100%** - HOÀN HẢO TUYỆT ĐỐI!\n\n"
+                            "💎 Ánh sáng chói lọi!\n"
+                            "✨ Guaranteed Legendary + Bonus!",
+                color=discord.Color.from_rgb(255, 215, 0)
+            )
+            await interaction.response.edit_message(embed=embed, view=None)
+            logger.info(f"[PHOENIX] {self.user_id} PERFECT 100%!")
+        except Exception as e:
+            logger.error(f"[PHOENIX] Perfect error: {e}")
 
 class ConsumableCog(commands.Cog):
     def __init__(self, bot):
@@ -381,14 +468,11 @@ class ConsumableCog(commands.Cog):
             
             print(f"[CONSUMABLE] Starting long_vu_lua game for {user_id}")
             
-            # Start keep fire game
-            embed = discord.Embed(
-                title=f"🔥 {user.display_name} - NGHI LỄ GIỮ LỬA",
-                description="**Hiệp 1/3**\n\n[❄️❄️❄️❄️❄️✅✅✅✅✅💥💥]\n**Nhiệt độ hiện tại: 50°** - ❄️ Quá lạnh! Lửa sắp tắt.\n\nBạn đã thổi **0** lần trong hiệp này.\n\n⏰ **5 giây** để cân bằng nhiệt độ!",
-                color=discord.Color.orange()
-            )
+            # Create Phoenix Egg View
+            view = PhoenixEggView(user_id, self.bot, ctx_or_interaction.channel if not is_slash else ctx_or_interaction.channel, user)
             
-            view = KeepFireView(user_id, self.bot, ctx_or_interaction.channel if not is_slash else ctx_or_interaction.channel, user)
+            # Create initial embed
+            embed = view._make_embed()
             
             if is_slash:
                 await ctx_or_interaction.followup.send(embed=embed, view=view, ephemeral=False)
