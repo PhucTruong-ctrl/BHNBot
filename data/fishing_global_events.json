@@ -168,6 +168,7 @@
                             "style": "danger",
                             "emoji": "🎲",
                             "cost": {"money": 5000},
+                            "limit_per_user": 1,
                             "rewards": [
                                 {"type": "item", "key": "seeds", "amount": 15000, "rate": 0.3, "fail_msg": "Quỷ dữ đã nuốt chửng 5K của bạn..."}
                             ],
