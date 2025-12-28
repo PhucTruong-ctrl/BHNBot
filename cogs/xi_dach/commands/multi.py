@@ -341,7 +341,7 @@ async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
 
             # Pay winners
             if seed_updates:
-                await batch_update_seeds(seed_updates, reason='xi_dach_payout', category='minigame')
+                await batch_update_seeds(seed_updates, reason='xi_dach_payout', category='xidach')
 
             # Send result
             embed = discord.Embed(
@@ -379,7 +379,7 @@ async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
                 payout = int(player.bet * mul)
                 profit = payout - player.bet
 
-                await batch_update_seeds({uid: payout}, reason='xi_dach_instant_win', category='minigame')
+                await batch_update_seeds({uid: payout}, reason='xi_dach_instant_win', category='xidach')
                 player.status = PlayerStatus.BLACKJACK
                 player.payout = payout  # Store for result embed
 

@@ -45,16 +45,22 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
         return None
 
 
-async def batch_update_seeds(updates: Dict[int, int]):
+async def batch_update_seeds(updates: Dict[int, int], reason: str, category: str):
     """Updates seed balances for multiple users in a single batch operation.
 
     Args:
         updates (Dict[int, int]): A dictionary mapping user_id to the amount of seeds to add (can be negative).
+        reason (str): Reason for the transaction (e.g., 'xi_dach_win', 'baucua_payout')
+        category (str): Category for the transaction (e.g., 'xidach', 'baucua', 'social')
 
     Example:
-        >>> await batch_update_seeds({12345: 100, 67890: -50})
+        >>> await batch_update_seeds({12345: 100, 67890: -50}, reason='xi_dach_win', category='xidach')
     """
-    operations = [
+    # Import datetime for transaction logging
+    from datetime import datetime
+    
+    # Prepare balance updates
+    balance_operations = [
         (
             "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
             (amount, user_id)
@@ -62,7 +68,20 @@ async def batch_update_seeds(updates: Dict[int, int]):
         for user_id, amount in updates.items()
     ]
     
-    await db_manager.batch_modify(operations)
+    # Prepare transaction log entries
+    transaction_operations = [
+        (
+            "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, reason, category, datetime.now())
+        )
+        for user_id, amount in updates.items()
+    ]
+    
+    # Execute all operations in single batch
+    all_operations = balance_operations + transaction_operations
+    await db_manager.batch_modify(all_operations)
+    
+    # Clear caches
     db_manager.clear_cache_by_prefix("balance_")
     db_manager.clear_cache_by_prefix("leaderboard")
 

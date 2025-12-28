@@ -97,6 +97,13 @@ class XiDachCog(commands.Cog):
     async def get_user_seeds(self, user_id: int) -> int:
         """Helper for views to check balance."""
         return await get_user_balance(user_id)
+    
+    @commands.command(name="xidachstats")
+    async def stats_cmd(self, ctx: commands.Context):
+        """Show Xi Dach game statistics."""
+        embed = await self.stats.get_stats_embed()
+        await ctx.send(embed=embed)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(XiDachCog(bot))
