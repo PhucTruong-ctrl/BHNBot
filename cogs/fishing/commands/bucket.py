@@ -19,6 +19,7 @@ from ..constants import (
 from ..mechanics.rod_system import get_rod_data
 from ..mechanics.glitch import apply_display_glitch
 from configs.item_constants import ItemKeys
+from core.item_system import item_system
 
 logger = logging.getLogger("fishing")
 
@@ -185,26 +186,34 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             
         elif item_key in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
             await cog.add_inventory_item(user_id, item_key, count)
-            item_data = ALL_ITEMS_DATA.get(item_key, {})
-            name = item_data.get("name", item_key)
-            emoji = item_data.get("emoji", "❓")
+            item_data = item_system.get_item(item_key)
+            name = item_data.name if item_data else item_key
+            emoji = item_data.emoji if item_data else "❓"
             loot_messages.append(f"{emoji} **{name}** x{count}")
             
-        elif item_key in trash_key_list:
+        elif item_key in trash_key_list or item_key.startswith("trash_"):
             await cog.add_inventory_item(user_id, item_key, count)
-            trash_data = next((t for t in TRASH_ITEMS if t["key"] == item_key), {})
-            name = trash_data.get("name", item_key)
-            emoji = trash_data.get("emoji", "🗑️")
+            item_data = item_system.get_item(item_key)
+            # Fallback to key if name not found, but ItemSystem should have it if registered
+            name = item_data.name if item_data else item_key
+            emoji = item_data.emoji if item_data else "🗑️"
             loot_messages.append(f"{emoji} **{name}** x{count}")
             
         else: # Gifts or generic Items
             await cog.add_inventory_item(user_id, item_key, count)
-            # Try to find name in GIFT_ITEMS logic or ALL_ITEMS_DATA
-            gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
-                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp",
-                         "qua_ngau_nhien": "🎁 Quà Ngẫu Nhiên"}
-            name = gift_names.get(item_key, item_key.title())
-            loot_messages.append(f"🎁 **{name}** x{count}")
+            # Use ItemSystem for everything else
+            item_data = item_system.get_item(item_key)
+            if item_data:
+                 name = item_data.name
+                 emoji = item_data.emoji
+                 loot_messages.append(f"{emoji} **{name}** x{count}")
+            else:
+                # Fallback implementation
+                gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
+                             "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp",
+                             "qua_ngau_nhien": "🎁 Quà Ngẫu Nhiên"}
+                name = gift_names.get(item_key, item_key.title())
+                loot_messages.append(f"🎁 **{name}** x{count}")
 
     # 7. Post-Process Special Logics (Puzzle Check)
     if puzzle_pieces_got:

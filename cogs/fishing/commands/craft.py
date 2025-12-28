@@ -71,6 +71,26 @@ async def hiente_action(cog, ctx_or_interaction, fish_key: str, is_slash: bool):
     except Exception as e:
         logger.error(f"[HIENTE] Error checking thuong_luong ownership: {e}")
     
+    # Check current sacrifice count
+    try:
+        from ..mechanics.legendary_quest_helper import get_sacrifice_count
+        cur_sac = await get_sacrifice_count(user_id, "thuong_luong")
+        if cur_sac >= 3:
+             # Check if expired? No, logic handles that on next cast.
+             # Just warn user.
+            embed = discord.Embed(
+                title="⚠️ Đã Hiến Tế Đủ!",
+                description=f"Bạn đã hiến tế đủ 3 con cá rồi.\n\n🌊 **Thuồng Luồng đang đợi! Hãy câu ngay!**",
+                color=discord.Color.orange()
+            )
+            if is_slash_cmd:
+                await ctx_or_interaction.followup.send(embed=embed)
+            else:
+                await ctx_or_interaction.reply(embed=embed)
+            return
+    except Exception as e:
+        logger.error(f"[HIENTE] Error checking sacrifice count: {e}")
+    
     # Check if fish_key is valid
     if fish_key not in COMMON_FISH_KEYS + RARE_FISH_KEYS:
         embed = discord.Embed(

@@ -180,6 +180,9 @@ class FishingCog(commands.Cog):
         if "legendary_buff" in buffs:
             # Ghost NPC buff
             luck += 0.3 # +30% luck
+
+        # Global Event Luck Bonus
+        luck += self.global_event_manager.get_public_effect("luck_bonus", 0.0)
             
         # Ensure luck doesn't go below -1.0 (though logic handles negatives)
         return max(-0.9, luck)
@@ -665,6 +668,13 @@ class FishingCog(commands.Cog):
             
                 # Set cooldown using rod-based cooldown (will be cleared if global_reset triggers)
                 cooldown_time = rod_config["cd"]
+
+                # Apply Global Event Cooldown Multiplier
+                cd_mul = self.global_event_manager.get_public_effect("cooldown_multiplier", 1.0)
+                if cd_mul != 1.0:
+                    cooldown_time *= cd_mul
+                    # Ensure at least 1 second if multiplier is extremely low but not 0
+                    if cooldown_time < 1: cooldown_time = 1
             
                 # *** APPLY DISASTER COOLDOWN PENALTY (Shark Bite Cable effect) ***
                 if self.disaster_cooldown_penalty > 0 and time.time() < self.disaster_effect_end_time:
@@ -768,6 +778,13 @@ class FishingCog(commands.Cog):
                 else:
                     # Default durability loss per cast
                     durability_loss = 1
+            
+                # Apply Global Event Durability Multiplier
+                dur_mul = self.global_event_manager.get_public_effect("durability_multiplier", 1.0)
+                if dur_mul != 1.0:
+                    durability_loss = int(durability_loss * dur_mul)
+                    # Ensure at least 1 if multiplier is > 0
+                    if durability_loss < 1: durability_loss = 1
         
                 if event_result.get("triggered", False):
                     # Random event occurred!

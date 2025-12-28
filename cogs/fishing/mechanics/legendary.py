@@ -3,6 +3,7 @@
 import discord
 import random
 import json
+import time
 from datetime import datetime
 from ..constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
 from .glitch import apply_display_glitch
@@ -350,9 +351,12 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
             if sacrifice_count >= 3:
                 start_time = cog.thuong_luong_timers.get(user_id)
                 if not start_time:
-                    continue
+                    # RECOVERY LOGIC: If timer missing (restart?) but count >= 3, restart timer!
+                    cog.thuong_luong_timers[user_id] = time.time()
+                    start_time = cog.thuong_luong_timers[user_id]
+                    print(f"[RECOVERY] Resumed Thuong Luong ritual for {user_id}")
 
-                import time
+
                 elapsed = time.time() - start_time
 
                 # Check if ritual expired (> 5 minutes)
