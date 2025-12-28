@@ -119,7 +119,7 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
 
     # Deduct bet immediately
     # Deduct bet immediately
-    await add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'minigame')
+    await add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'xidach')
 
     host = table.add_player(user.id, user.display_name, initial_bet)
     host.is_ready = True
@@ -198,7 +198,7 @@ async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table:
 
         # Deduct the clicked amount
         # Deduct the clicked amount
-        await add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'minigame')
+        await add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'xidach')
 
         if current_player:
             current_player.bet = new_total  # Additive
@@ -603,7 +603,7 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
 
         # Deduct additional bet
         # Deduct additional bet
-        await add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'minigame')
+        await add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'xidach')
 
         player.bet *= 2
         player.is_doubled = True
@@ -821,7 +821,23 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
             logger.warning(f"[DEALER_FINAL] Edit failed, falling back to send: {e}")
 
     if not edited:
-        # Fallback: Render and Send New (only if edit failed)
+        # Fallback: Render and Send New (only if edit failed AND message is gone)
+        # Check if dealer_msg is still valid (not deleted)
+        if dealer_msg:
+            try:
+                # Try to fetch the message to see if it still exists
+                await dealer_msg.channel.fetch_message(dealer_msg.id)
+                # If fetch succeeds, message exists but edit failed for other reason
+                # Don't send duplicate, just log
+                logger.warning(f"[DEALER_FINAL] Edit failed but message exists, skipping duplicate send")
+                return
+            except discord.NotFound:
+                # Message was deleted, proceed with fallback
+                pass
+            except Exception as e:
+                logger.warning(f"[DEALER_FINAL] Unexpected error checking message: {e}")
+        
+        # Send new message only if old one was deleted
         try:
             ts = int(time.time() * 1000)
             img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
@@ -899,7 +915,7 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
 
         # Pay winners
         if seed_updates:
-            await batch_update_seeds(seed_updates, reason='xi_dach_refund', category='minigame')
+            await batch_update_seeds(seed_updates, reason='xi_dach_win', category='xidach')
 
         # Flavor texts
         win_flavors = ["Đỉnh cao! 🔥", "Thắng đậm! 💰", "Số hưởng! 🍀", "Ngon! 👏"]
