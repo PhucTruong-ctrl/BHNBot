@@ -989,14 +989,33 @@ class FishingCog(commands.Cog):
                     if event_type == "isekai_truck":
                         inventory = await get_inventory(user_id)
                         has_isekai = inventory.get("ca_isekai", 0) > 0
+                        
                         if has_isekai:
+                            # User ALREADY has the fish -> FAIL (Meaningless Bump)
+                            # Update the Main Event Embed to reflect Failure/Neutrality instead of "Blessing"
+                            failed_title = self.apply_display_glitch("⚠️ CÚ HÚC VÔ NGHĨA - " + username)
+                            # Remove "PHƯỚC LÀNH" from description if present
+                            failed_desc = event_display.replace("PHƯỚC LÀNH", "CÚ HÚC")
+                            
+                            failed_embed = discord.Embed(
+                                title=failed_title,
+                                description=failed_desc,
+                                color=discord.Color.light_grey()
+                            )
+                            await casting_msg.edit(content=f"<@{user_id}>", embed=failed_embed)
+
                             embed = discord.Embed(
                                 title="🚚 CÚ HÚC... VÔ NGHĨA!",
-                                description="Rầm! Truck-kun húc bạn bay sang dị giới. Bạn hào hứng mở mắt ra, chuẩn bị đón nhận dàn Harem và sức mạnh bá đạo...\n\nNhưng chớp mắt một cái, bạn thấy mình vẫn đang ngồi đần mặt cầm cần câu ở cái hồ này. Hóa ra Nữ Thần Dị Giới đã **từ chối cấp Visa** cho bạn. \n\n*'Về đi, cứu thế giới một lần là đủ rồi!'* - Chẳng có gì xảy ra cả, quê thật sự.",
-                                color=discord.Color.purple()
+                                description="Rầm! Truck-kun húc bạn bay sang dị giới. Bạn hào hứng mở mắt ra, chuẩn bị đón nhận dàn Harem và sức mạnh bá đạo...\n\nNhưng chớp mắt một cái, bạn thấy mình vẫn đang ngồi đần mặt cầm cần câu ở cái hồ này. Hóa ra Nữ Thần Dị Giới đã **từ chối cấp Visa** cho bạn.\n\n*(Bạn đã sở hữu Cá Isekai rồi!)*\n\n*'Về đi, cứu thế giới một lần là đủ rồi!'* - Chẳng có gì xảy ra cả, quê thật sự.",
+                                color=discord.Color.default()
                             )
                             await channel.send(embed=embed)
                         else:
+                            # User does NOT have fish -> SUCCESS -> Grant Item Manually
+                            # This block replaces the generic gain_items logic we removed
+                            await add_item(user_id, "ca_isekai", 1)
+                            logger.info(f"[EVENT] {username} received ca_isekai from isekai_truck event")
+                            
                             # Find the legendary fish data
                             legendary_fish = next((fish for fish in LEGENDARY_FISH_DATA if fish["key"] == "ca_isekai"), None)
                             if legendary_fish:
