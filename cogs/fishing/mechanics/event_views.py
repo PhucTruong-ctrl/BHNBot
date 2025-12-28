@@ -332,9 +332,13 @@ class GenericActionView(discord.ui.View):
                             formatted_msg = formatted_msg.replace("{reward}", reward_str)
                             await interaction.channel.send(formatted_msg)
                     else:
-                        # LOSS - Show fail message
+                        # LOSS - Send ephemeral ACK first
                         loss_msg = fail_msg or "⚠️ Bạn không nhận được gì cả... (Xui quá!)"
                         await interaction.response.send_message(f"❌ {loss_msg}", ephemeral=True)
+                        
+                        # Then PUBLIC SHAME for everyone to laugh
+                        public_loss_msg = f"😂 **<@{user_id}>** đã thua! {loss_msg}"
+                        await interaction.channel.send(public_loss_msg)
                         
                 except Exception as e:
                     await db_manager.db.rollback()
