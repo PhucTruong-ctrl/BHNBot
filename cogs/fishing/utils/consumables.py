@@ -3,22 +3,34 @@
 import json
 import os
 
-# Load consumable items from unified fishing_items.json
-_consumables_path = "./data/fishing_items.json"
+from configs.item_constants import ItemKeys
+
+from core.item_system import item_system
 
 def _load_consumable_items():
-    """Load consumable items from JSON with graceful fallback."""
-    if os.path.exists(_consumables_path):
-        try:
-            with open(_consumables_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                items = data.get("items", {})
-                # Filter only consumable type items
-                consumables = {k: v for k, v in items.items() if v.get("type") == "consumable"}
-                return consumables
-        except Exception as e:
-            print(f"[WARNING] Failed to load consumable items from JSON: {e}")
-    return {}
+    """Load consumable items from ItemSystem."""
+    all_items = item_system.get_all_items()
+    consumables = {}
+    
+    # 1. Standard Consumables
+    for k, v in all_items.items():
+        if v.get("type") == "consumable":
+            consumables[k] = v
+            
+    # 2. Special Legendary Quest Items (whitelist)
+    # These might be type 'legendary_component' or 'tool', but acts as consumable
+    special_keys = [
+        "tinh_cau", 
+        "long_vu_lua", 
+        "ban_do_ham_am", 
+        "may_do_song"
+    ]
+    
+    for k in special_keys:
+        if k in all_items and k not in consumables:
+            consumables[k] = all_items[k]
+            
+    return consumables
 
 # Initialize consumable items from JSON
 CONSUMABLE_ITEMS = _load_consumable_items()
@@ -27,8 +39,8 @@ CONSUMABLE_ITEMS = _load_consumable_items()
 if not CONSUMABLE_ITEMS:
     print("[WARNING] No consumable items loaded from JSON. Using fallback defaults.")
     CONSUMABLE_ITEMS = {
-        "nuoc_tang_luc": {
-            "key": "nuoc_tang_luc",
+        ItemKeys.NUOC_TANG_LUC: {
+            "key": ItemKeys.NUOC_TANG_LUC,
             "type": "consumable",
             "name": "💪 Nước Tăng Lực",
             "emoji": "💪",
@@ -39,8 +51,8 @@ if not CONSUMABLE_ITEMS:
             "original_value": 0.65,
             "one_time_use": True,
         },
-        "gang_tay_xin": {
-            "key": "gang_tay_xin",
+        ItemKeys.GANG_TAY_XIN: {
+            "key": ItemKeys.GANG_TAY_XIN,
             "type": "consumable",
             "name": "🥊 Găng Tay Câu Cá",
             "emoji": "🥊",
@@ -51,8 +63,8 @@ if not CONSUMABLE_ITEMS:
             "original_value": 0.65,
             "one_time_use": True,
         },
-        "thao_tac_tinh_vi": {
-            "key": "thao_tac_tinh_vi",
+        ItemKeys.THAO_TAC_TINH_VI: {
+            "key": ItemKeys.THAO_TAC_TINH_VI,
             "type": "consumable",
             "name": "🎯 Thao Tác Tinh Vi",
             "emoji": "🎯",
@@ -63,8 +75,8 @@ if not CONSUMABLE_ITEMS:
             "original_value": 0.65,
             "one_time_use": True,
         },
-        "tinh_yeu_ca": {
-            "key": "tinh_yeu_ca",
+        ItemKeys.TINH_YEU_CA: {
+            "key": ItemKeys.TINH_YEU_CA,
             "type": "consumable",
             "name": "❤️ Tình Yêu Với Cá",
             "emoji": "❤️",

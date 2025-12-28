@@ -1,0 +1,55 @@
+{
+  "items": {
+    "ngoc_trai": {
+      "type": "material",
+      "key": "ngoc_trai",
+      "name": "Ngọc Trai",
+      "emoji": "🦪",
+      "price": {
+        "buy": 0,
+        "sell": 75,
+        "currency": "seeds"
+      },
+      "description": "Ngọc quý hiếm dùng để trade hoặc làm đẹp.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "vat_lieu_nang_cap": {
+      "type": "material",
+      "key": "vat_lieu_nang_cap",
+      "name": "Vật Liệu Nâng Cấp",
+      "emoji": "⚙️",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "description": "Dùng để nâng cấp cần câu hoặc đồ dùng.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "phan_bon": {
+      "type": "material",
+      "key": "phan_bon",
+      "name": "Phân Bón",
+      "emoji": "💩",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "description": "Dùng để bón cây.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    }
+  }
+}

@@ -160,17 +160,30 @@ async def main():
     # To initialize database manually, run: python3 setup_data.py
     
     async with bot:
-        # Rebuild words dictionary before starting
-        logger.info("\n[REBUILDING WORDS DICT]")
-        try:
-            # Get the absolute path to the script
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build_words_dict.py')
-            result = subprocess.run([os.sys.executable, script_path], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
-            logger.info(result.stdout)
-            if result.returncode != 0:
-                logger.error(f"Error: {result.stderr}")
-        except Exception as e:
-            logger.error(f"Error building words dict: {e}")
+        # PHASE 1 OPTIMIZATION: Skip words dict rebuild if up-to-date
+        dict_file = 'data/words_dict.json'
+        source_file = 'data/tu_dien.txt'
+        
+        should_rebuild = True
+        if os.path.exists(dict_file) and os.path.exists(source_file):
+            dict_mtime = os.path.getmtime(dict_file)
+            source_mtime = os.path.getmtime(source_file)
+            
+            if dict_mtime > source_mtime:
+                logger.info("\n[WORDS_DICT] Up-to-date, skipping rebuild (-1s startup time)")
+                should_rebuild = False
+        
+        if should_rebuild:
+            logger.info("\n[REBUILDING WORDS DICT]")
+            try:
+                # Get the absolute path to the script
+                script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build_words_dict.py')
+                result = subprocess.run([os.sys.executable, script_path], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+                logger.info(result.stdout)
+                if result.returncode != 0:
+                    logger.error(f"Error: {result.stderr}")
+            except Exception as e:
+                logger.error(f"Error building words dict: {e}")
         
         # Start bot (cogs will be loaded in on_ready)
         await bot.start(os.getenv('DISCORD_TOKEN'))

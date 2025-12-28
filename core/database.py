@@ -96,10 +96,28 @@ class DatabaseManager:
         self.db = None  # Persistent connection
 
     async def connect(self):
-        """Initialize database connection"""
+        """Initialize database connection with WAL mode for concurrency."""
         if not self.db:
             self.db = await get_db_connection(self.db_path)
             logger.info("Persistent connection established.")
+            
+            # PHASE 1 OPTIMIZATION: Enable WAL mode for concurrent access
+            try:
+                await self.db.execute("PRAGMA journal_mode=WAL")
+                await self.db.execute("PRAGMA synchronous=NORMAL")
+                await self.db.execute("PRAGMA foreign_keys=ON")
+                
+                # Verify WAL is active
+                async with self.db.execute("PRAGMA journal_mode") as cursor:
+                    mode = await cursor.fetchone()
+                    if mode and mode[0] == 'wal':
+                        logger.info("[OPTIMIZATION] WAL mode enabled - Ready for concurrent access")
+                    else:
+                        logger.warning(f"[OPTIMIZATION] Expected WAL mode, got: {mode[0] if mode else 'None'}")
+                        
+            except Exception as e:
+                logger.error(f"[OPTIMIZATION] Failed to enable WAL mode: {e}", exc_info=True)
+                logger.warning("[OPTIMIZATION] Database will continue with default mode")
 
     async def _get_db(self):
         """Get current connection or create new if missing"""

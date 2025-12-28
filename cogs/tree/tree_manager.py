@@ -249,7 +249,7 @@ class TreeManager:
                 
                 # Deduct seeds
                 await get_or_create_user(user_id, f"User#{user_id}")
-                await add_seeds(user_id, -amount)
+                await add_seeds(user_id, -amount, reason='tree_contribute', category='social')
                 
                 logger.info(
                     f"[CONTRIB_DEBIT] user_id={user_id} seed_change=-{amount} "
@@ -262,7 +262,7 @@ class TreeManager:
                 # Check if already max level
                 if tree_data.current_level >= 6:
                     # Refund
-                    await add_seeds(user_id, amount)
+                    await add_seeds(user_id, amount, reason='tree_refund', category='social')
                     await interaction.followup.send(
                         "🍎 Cây đã chín rồi! Hãy bảo Admin dùng lệnh `/thuhoach`!",
                         ephemeral=True
@@ -552,7 +552,7 @@ class TreeManager:
                 seed_rewards = self.contributor_manager.calculate_harvest_rewards(all_contributors)
                 
                 # Batch update seeds
-                await batch_update_seeds(seed_rewards)
+                await batch_update_seeds(seed_rewards, reason='tree_harvest', category='social')
                 logger.info(f"[HARVEST] Distributed seeds to {len(seed_rewards)} contributors")
                 
                 # Give memorabilia items

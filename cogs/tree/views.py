@@ -236,7 +236,7 @@ class TreeContributeView(discord.ui.View):
             
             # Random reward for user
             reward = random.choice([5, 10, 15, 20, 30, 50])
-            await add_seeds(user_id, reward)
+            await add_seeds(user_id, reward, reason='tree_water_daily', category='social')
             
             await interaction.followup.send(
                 f"💧 **Tưới cây thành công!** Cây nhận +10 XP.{level_up_msg}\n"

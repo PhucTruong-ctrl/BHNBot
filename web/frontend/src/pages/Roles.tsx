@@ -9,6 +9,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -92,6 +94,9 @@ export default function Roles() {
   } | null>(null);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Drag Overlay State
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -333,6 +338,14 @@ export default function Roles() {
     return categories.find(c => c.roles.find(r => r.id === id))?.id;
   }
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     const activeId = String(active.id);
@@ -341,6 +354,7 @@ export default function Roles() {
     if (!over) return;
     if (editingId) return; // Disable drag while editing
 
+    // ===== 1. CATEGORY-TO-CATEGORY REORDERING =====
     const activeCatIndex = categories.findIndex(c => c.id === activeId);
     const overCatIndex = categories.findIndex(c => c.id === overId);
 
@@ -352,21 +366,55 @@ export default function Roles() {
        return;
     }
 
-    const activeContainer = findContainer(activeId);
-    if (activeContainer) {
-        const catIndex = categories.findIndex(c => c.id === activeContainer);
-        const roles = categories[catIndex].roles;
-        const activeIndex = roles.findIndex(r => r.id === activeId);
-        const overIndex = roles.findIndex(r => r.id === overId);
-        
-        if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
-            const newRoles = arrayMove(roles, activeIndex, overIndex);
-            const newCats = [...categories];
-            newCats[catIndex] = { ...newCats[catIndex], roles: newRoles };
-            setCategories(newCats);
-            setDirty(true);
-        }
+    // ===== 2. ROLE REORDERING (SAME OR DIFFERENT CATEGORY) =====
+    const sourceContainer = findContainer(activeId);
+
+    if (!sourceContainer) return;
+
+    const sourceCatIndex = categories.findIndex(c => c.id === sourceContainer);
+    if (sourceCatIndex === -1) return;
+
+    const sourceRoles = categories[sourceCatIndex].roles;
+    const activeRoleIndex = sourceRoles.findIndex(r => r.id === activeId);
+    
+    if (activeRoleIndex === -1) return; // Active item is not a role
+
+    // Case A: Dropping onto another role (within same or different category)
+    let targetCatIndex = categories.findIndex(c => c.roles.some(r => r.id === overId));
+    
+    // Case B: Dropping onto a category header (move to beginning of that category)
+    if (targetCatIndex === -1) {
+      targetCatIndex = categories.findIndex(c => c.id === overId);
     }
+
+    if (targetCatIndex === -1) return;
+
+    const targetRoles = categories[targetCatIndex].roles;
+    const overRoleIndex = targetRoles.findIndex(r => r.id === overId);
+
+    // Same category reordering
+    if (sourceCatIndex === targetCatIndex) {
+      if (overRoleIndex !== -1 && activeRoleIndex !== overRoleIndex) {
+        const newRoles = arrayMove(sourceRoles, activeRoleIndex, overRoleIndex);
+        const newCats = [...categories];
+        newCats[sourceCatIndex] = { ...newCats[sourceCatIndex], roles: newRoles };
+        setCategories(newCats);
+        setDirty(true);
+      }
+    } 
+    // Cross-category move
+    else {
+      const newCats = [...categories];
+      const [movedRole] = newCats[sourceCatIndex].roles.splice(activeRoleIndex, 1);
+      
+      // Insert at target position (if dropped on role) or beginning (if dropped on category)
+      const insertIndex = overRoleIndex !== -1 ? overRoleIndex : 0;
+      newCats[targetCatIndex].roles.splice(insertIndex, 0, movedRole);
+      
+      setCategories(newCats);
+      setDirty(true);
+    }
+    setActiveId(null);
   };
 
   if (loading && !categories.length) return <div style={{padding:'20px'}}>Loading Roles...</div>;
@@ -404,7 +452,9 @@ export default function Roles() {
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <SortableContext 
           items={categories.map(c => c.id)} 
@@ -570,6 +620,63 @@ export default function Roles() {
             </SortableItem>
           ))}
         </SortableContext>
+        
+        {/* Drag Overlay - Shows dragged item anywhere */}
+        <DragOverlay>
+          {activeId ? (() => {
+            // Find the dragged item
+            const draggedCategory = categories.find(c => c.id === activeId);
+            if (draggedCategory) {
+              return (
+                <div style={{
+                  background: 'var(--bg-overlay)',
+                  padding: '0.8rem 1rem',
+                  borderRadius: '8px',
+                  border: '2px solid var(--accent-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  cursor: 'grabbing'
+                }}>
+                  <Folder size={18} color="var(--accent-primary)"/>
+                  <span className="mono">{draggedCategory.name}</span>
+                  {draggedCategory.is_real_category && <span style={{fontSize:'0.7em', padding: '2px 6px', background: 'var(--bg-base)', borderRadius:'4px'}}>CAT</span>}
+                </div>
+              );
+            }
+            
+            // Find the dragged role
+            for (const cat of categories) {
+              const draggedRole = cat.roles.find(r => r.id === activeId);
+              if (draggedRole) {
+                return (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px',
+                    background: 'var(--bg-base)',
+                    borderRadius: '4px',
+                    border: '2px solid var(--accent-primary)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    cursor: 'grabbing'
+                  }}>
+                    <Move size={14} color="var(--text-dim)"/>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: draggedRole.color ? `#${draggedRole.color.toString(16).padStart(6, '0')}` : '#99aab5'
+                    }}/>
+                    <span>{draggedRole.name}</span>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })() : null}
+        </DragOverlay>
       </DndContext>
 
       {/* Delete Confirmation Modal */}

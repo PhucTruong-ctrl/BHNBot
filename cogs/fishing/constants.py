@@ -118,7 +118,7 @@ FISHING_EVENTS_PATH = "./data/fishing_events.json"
 SELL_EVENTS_PATH = "./data/sell_events.json"
 NPC_EVENTS_PATH = "./data/npc_events.json"
 FISHING_ACHIEVEMENTS_PATH = "./data/achievements.json"
-FISHING_ITEMS_PATH = "./data/fishing_items.json"
+FISHING_ITEMS_PATH = "./data/items/"
 DISASTER_EVENTS_PATH = "./data/disaster_events.json"
 
 
@@ -136,8 +136,13 @@ def load_json_config(path: str, default):
 
 
 # ==================== LOAD ALL ITEMS FROM JSON ====================
-_all_items_data = load_json_config(FISHING_ITEMS_PATH, {"items": {}})
-ALL_ITEMS_DATA = _all_items_data.get("items", {})
+from core.item_system import item_system
+
+# ... existing code ...
+
+# ==================== LOAD ALL ITEMS FROM JSON (VIA ITEM SYSTEM) ====================
+# Using the dynamic ItemSystem instead of manual loading
+ALL_ITEMS_DATA = item_system.get_all_items()
 
 # Filter items by type for backward compatibility
 TRASH_ITEMS = [v for v in ALL_ITEMS_DATA.values() if v.get("type") == "trash"]

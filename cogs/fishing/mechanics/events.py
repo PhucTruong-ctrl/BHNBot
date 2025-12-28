@@ -233,7 +233,8 @@ async def handle_free_cast(result: dict, event_data: dict, **kwargs) -> dict:
 async def handle_isekai(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Isekai - Receive Isekai Fish + 10 minute cooldown."""
     # Receive legendary fish from another world
-    result["gain_items"] = {"ca_isekai": 1}
+    # NOTE: Item addition handled in cog.py to prevent spoiler in generic message
+    # result["gain_items"] = {"ca_isekai": 1} 
     result["cooldown_increase"] = 600  # 10 minute stun
     return result
 

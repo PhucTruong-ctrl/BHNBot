@@ -2,15 +2,17 @@
 
 Backs up database.db every 4 hours and maintains maximum 6 backups.
 Oldest backups are automatically deleted when limit is exceeded.
+
+Uses SQLite backup API for WAL-safe backups.
 """
 import discord
 from discord.ext import commands, tasks
-import shutil
+import sqlite3
 from pathlib import Path
 from datetime import datetime
-import logging
+from core.logger import setup_logger
 
-logger = logging.getLogger("database_backup")
+logger = setup_logger("BACKUP", "cogs/database.log")
 
 DB_PATH = "./data/database.db"
 BACKUP_DIR = "./data/backups/auto"
@@ -43,7 +45,7 @@ class DatabaseBackupCog(commands.Cog):
     
     @tasks.loop(hours=BACKUP_INTERVAL_HOURS)
     async def auto_backup_task(self):
-        """Backup database every 4 hours.
+        """Backup database every 4 hours using SQLite backup API (WAL-safe).
         
         Creates timestamped copy of database.db and deletes oldest backups
         if total count exceeds MAX_BACKUPS.
@@ -52,16 +54,32 @@ class DatabaseBackupCog(commands.Cog):
             # Step 1: Cleanup old backups first (before creating new one)
             self._cleanup_old_backups()
             
-            # Step 2: Create new backup
+            # Step 2: Create new backup using SQLite backup API (WAL-safe)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = Path(BACKUP_DIR) / f"database_auto_{timestamp}.db"
             
-            shutil.copy2(DB_PATH, backup_path)
+            # Use SQLite backup API (handles WAL files properly)
+            source = sqlite3.connect(DB_PATH)
+            destination = sqlite3.connect(str(backup_path))
+            
+            with destination:
+                source.backup(destination)
+            
+            destination.close()
+            source.close()
+            
+            # Optional: Checkpoint WAL after successful backup
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+                conn.close()
+            except:
+                pass  # Non-critical
             
             # Log success with file size
             backup_size = backup_path.stat().st_size / 1024  # KB
             logger.info(
-                f"[BACKUP] ✅ Created auto-backup: {backup_path.name} "
+                f"[BACKUP] ✅ Created WAL-safe auto-backup: {backup_path.name} "
                 f"({backup_size:.1f} KB)"
             )
             

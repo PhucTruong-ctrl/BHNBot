@@ -72,99 +72,120 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
         await self.bot.wait_until_ready()
 
     async def cog_load(self):
+        """PHASE 1 OPTIMIZATION: Load cog with lazy view restoration."""
         logger.info("Loading module...")
         
-        # 1. Restore Active Giveaways Views & Cleanup Orphaned
-        active_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
-        count = 0
-        orphaned_count = 0
+        # Start view restoration in background (don't await!)
+        self.bot.loop.create_task(self._restore_views_background())
         
-        for row in active_giveaways:
-            try:
-                ga = Giveaway.from_db(row)
-                # Check if message still exists before restoring view
-                message_exists = False
+        logger.info("Giveaway cog loaded (views will restore in background)")
+    
+    async def _restore_views_background(self):
+        """Restore giveaway views in background after bot ready."""
+        try:
+            # Wait for bot to be ready
+            await self.bot.wait_until_ready()
+            await asyncio.sleep(2)  # Let bot fully initialize
+                
+            logger.info("[GIVEAWAY_RESTORE] Starting background view restoration...")
+                
+            # 1. Restore Active Giveaways Views & Cleanup Orphaned
+            active_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
+            count = 0
+            orphaned_count = 0
+            
+            for row in active_giveaways:
                 try:
-                    channel = self.bot.get_channel(ga.channel_id)
-                    if channel:
-                        await channel.fetch_message(ga.message_id)
-                        message_exists = True
-                        view = GiveawayJoinView(ga.message_id, ga.requirements, self)
-                        self.bot.add_view(view)
-                        count += 1
-                    else:
-                        logger.warning(f"Channel {ga.channel_id} not found for giveaway {ga.message_id}")
-                except discord.NotFound:
-                    logger.warning(f"Message {ga.message_id} not found - marking as orphaned")
-                except Exception as e:
-                    logger.error(f"Error fetching message {ga.message_id}: {e}")
-                
-                # Cleanup orphaned giveaway (message deleted)
-                if not message_exists:
-                    await db_manager.modify(
-                        "UPDATE giveaways SET status = 'cancelled' WHERE message_id = ?",
-                        (ga.message_id,)
-                    )
-                    orphaned_count += 1
-                    logger.info(f"Marked orphaned giveaway {ga.message_id} as cancelled")
+                    ga = Giveaway.from_db(row)
+                # Check if message still exists before restoring view
+                    message_exists = False
+                    try:
+                        channel = self.bot.get_channel(ga.channel_id)
+                        if channel:
+                            await channel.fetch_message(ga.message_id)
+                            message_exists = True
+                            view = GiveawayJoinView(ga.message_id, ga.requirements, self)
+                            self.bot.add_view(view)
+                            count += 1
+                        else:
+                            logger.warning(f"Channel {ga.channel_id} not found for giveaway {ga.message_id}")
+                    except discord.NotFound:
+                        logger.warning(f"Message {ga.message_id} not found - marking as orphaned")
+                    except Exception as e:
+                        logger.error(f"Error fetching message {ga.message_id}: {e}")
                     
-            except ValueError as e:
+                # Cleanup orphaned giveaway (message deleted)
+                    if not message_exists:
+                        await db_manager.modify(
+                            "UPDATE giveaways SET status = 'cancelled' WHERE message_id = ?",
+                            (ga.message_id,)
+                        )
+                        orphaned_count += 1
+                        logger.info(f"Marked orphaned giveaway {ga.message_id} as cancelled")
+                        
+                except ValueError as e:
                 # Date parsing error - mark as invalid
-                logger.error(f"Invalid giveaway data for {row[0]}: {e}")
-                await db_manager.modify(
-                    "UPDATE giveaways SET status = 'error' WHERE message_id = ?",
-                    (row[0],)
-                )
-            except Exception as e:
-                logger.error(f"Error restoring view for giveaway {row[0]}: {e}", exc_info=True)
-                
-        logger.info(f"Restored {count} active giveaway views. Cleaned up {orphaned_count} orphaned giveaways.")
+                    logger.error(f"Invalid giveaway data for {row[0]}: {e}")
+                    await db_manager.modify(
+                        "UPDATE giveaways SET status = 'error' WHERE message_id = ?",
+                        (row[0],)
+                    )
+                except Exception as e:
+                    logger.error(f"Error restoring view for giveaway {row[0]}: {e}", exc_info=True)
+                    
+            logger.info(f"Restored {count} active giveaway views. Cleaned up {orphaned_count} orphaned giveaways.")
 
         # 2. Restore Ended Giveaway Result Views (for reroll/end functionality)
-        ended_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'ended'")
-        result_count = 0
-        for row in ended_giveaways:
-            try:
-                ga = Giveaway.from_db(row)
-                
-                # Get current winners (from persistence or fallback)
-                current_winners = ga.winners
-                if not current_winners:
-                    # Fallback: get from participants (LIMIT to winners_count)
-                    participants = await db_manager.execute(
-                        "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ? ORDER BY id LIMIT ?",
-                        (ga.message_id, ga.winners_count)
-                    )
-                    current_winners = [row[0] for row in participants]
-                
-                # Try to find the result message (it's a reply to the original giveaway message)
+            ended_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'ended'")
+            result_count = 0
+            for row in ended_giveaways:
                 try:
-                    channel = self.bot.get_channel(ga.channel_id)
-                    if channel:
-                        original_msg = await channel.fetch_message(ga.message_id)
+                    ga = Giveaway.from_db(row)
+                    
+                # Get current winners (from persistence or fallback)
+                    current_winners = ga.winners
+                    if not current_winners:
+                    # Fallback: get from participants (LIMIT to winners_count)
+                        participants = await db_manager.execute(
+                            "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ? ORDER BY id LIMIT ?",
+                            (ga.message_id, ga.winners_count)
+                        )
+                        current_winners = [row[0] for row in participants]
+                    
+                # Try to find the result message (it's a reply to the original giveaway message)
+                    try:
+                        channel = self.bot.get_channel(ga.channel_id)
+                        if channel:
+                            original_msg = await channel.fetch_message(ga.message_id)
                         # Get the last reply (assuming it's the result message)
-                        async for message in original_msg.channel.history(after=original_msg, limit=5):
-                            if message.author == self.bot.user and message.embeds:
-                                embed = message.embeds[0]
-                                if "GIVEAWAY KẾT QUẢ" in embed.title:
+                            async for message in original_msg.channel.history(after=original_msg, limit=5):
+                                if message.author == self.bot.user and message.embeds:
+                                    embed = message.embeds[0]
+                                    if "GIVEAWAY KẾT QUẢ" in embed.title:
                                     # This is likely the result message
-                                    view = GiveawayResultView(ga.message_id, current_winners, self.bot)
-                                    self.bot.add_view(view)
+                                        view = GiveawayResultView(ga.message_id, current_winners, self.bot)
+                                        self.bot.add_view(view)
                                     # Refresh the view on the message to update custom_ids for persistence
-                                    try:
-                                        await message.edit(view=view)
-                                    except Exception as e:
-                                        logger.warning(f"Could not refresh view on message {message.id}: {e}")
-                                    
-                                    result_count += 1
-                                    break
+                                        try:
+                                            await message.edit(view=view)
+                                        except Exception as e:
+                                            logger.warning(f"Could not refresh view on message {message.id}: {e}")
+                                        
+                                        result_count += 1
+                                        break
+                    except Exception as e:
+                        logger.error(f"Could not restore result view for giveaway {ga.message_id}: {e}", exc_info=True)
                 except Exception as e:
-                    logger.error(f"Could not restore result view for giveaway {ga.message_id}: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"Error restoring result view for giveaway {row[0]}: {e}", exc_info=True)
-        logger.info(f"Restored {result_count} ended giveaway result views.")
-        for guild in self.bot.guilds:
-            await self.cache_invites(guild)
+                    logger.error(f"Error restoring result view for giveaway {row[0]}: {e}", exc_info=True)
+            logger.info(f"Restored {result_count} ended giveaway result views.")
+            for guild in self.bot.guilds:
+                await self.cache_invites(guild)
+
+
+            logger.info("[GIVEAWAY_RESTORE] Background restoration complete!")
+            
+        except Exception as e:
+            logger.error(f"[GIVEAWAY_RESTORE] Fatal error during restoration: {e}", exc_info=True)
 
     async def update_giveaway_embed(self, giveaway_id: int):
         """Update giveaway embed with current participant count and any updated data"""

@@ -1,0 +1,127 @@
+{
+  "items": {
+    "nuoc_tang_luc": {
+      "type": "consumable",
+      "key": "nuoc_tang_luc",
+      "name": "Nước Tăng Lực",
+      "emoji": "💪",
+      "description": "Uống vào tay to như Lý Đức, kéo cá bao mượt (Tỉ lệ thắng 75% - BASIC).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.75,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 2500,
+        "sell": 5000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "gang_tay_xin": {
+      "type": "consumable",
+      "key": "gang_tay_xin",
+      "name": "Găng Tay Câu Cá",
+      "emoji": "🥊",
+      "description": "Chống trượt tay khi bạn đang run rẩy vì gặp cá to (Tỉ lệ thắng 82% - GOOD).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.82,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 6000,
+        "sell": 15000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "thao_tac_tinh_vi": {
+      "type": "consumable",
+      "key": "thao_tac_tinh_vi",
+      "name": "Thao Tác Tinh Vi",
+      "emoji": "🎯",
+      "description": "Hack não con cá, khiến nó tưởng bạn là đồng loại (Tỉ lệ thắng 90% - GREAT).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.9,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 12000,
+        "sell": 30000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "tinh_yeu_ca": {
+      "type": "consumable",
+      "key": "tinh_yeu_ca",
+      "name": "Tình Yêu Với Cá",
+      "emoji": "❤️",
+      "description": "Thả thính cực mạnh, cá tự nguyện lên bờ vì yêu bạn (Tỉ lệ thắng 95% - LEGENDARY!).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.95,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 18000,
+        "sell": 50000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "long_vu_lua": {
+      "type": "consumable",
+      "key": "long_vu_lua",
+      "name": "Lông Vũ Lửa",
+      "emoji": "🔥",
+      "description": "Lông vũ còn vương hơi ấm, dùng để đánh thức sinh vật bất tử tái sinh từ tro tàn. (Có thể bán lấy tiền)",
+      "price": {
+        "buy": 0,
+        "sell": 250,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "moi": {
+      "type": "consumable",
+      "key": "moi",
+      "name": "Giun (Mồi Câu)",
+      "emoji": "🪱",
+      "price": {
+        "buy": 10,
+        "sell": 2,
+        "currency": "seeds"
+      },
+      "description": "Mồi câu cơ bản, cá ăn rất thích.",
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "fishing"
+      }
+    }
+  }
+}

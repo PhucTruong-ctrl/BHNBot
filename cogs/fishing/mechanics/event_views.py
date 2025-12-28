@@ -130,10 +130,15 @@ class GenericActionView(discord.ui.View):
                 try:
                     # 0. CHECK LIMIT (If Configured)
                     limit = btn_config.get("limit_per_user", 0)
-                    limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}"
+                    logger.info(f"[GENERIC_VIEW] [LIMIT_DEBUG] user_id={user_id} limit_raw={limit} btn_config_keys={list(btn_config.keys())}")
                     
                     if limit > 0:
-                        unique_limit_key = f"{limit_key}_{int(self.manager.current_event['start_time'])}"
+                        # CRITICAL FIX: Use event_key + DATE, not start_time
+                        # start_time changes on bump → limit reset bug
+                        from datetime import datetime
+                        today = datetime.now().strftime("%Y-%m-%d")
+                        unique_limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}_{today}"
+                        logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} key={unique_limit_key} limit={limit}")
                         
                         cursor = await db_manager.db.execute(
                             "SELECT value FROM user_stats WHERE user_id = ? AND game_id = 'global_event' AND stat_key = ?",
@@ -141,9 +146,11 @@ class GenericActionView(discord.ui.View):
                         )
                         row = await cursor.fetchone()
                         current_usage = row[0] if row else 0
+                        logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} current_usage={current_usage}/{limit}")
                         
                         if current_usage >= limit:
-                            raise ValueError(f"⛔ Bạn đã đạt giới hạn mua ({limit}/{limit})!")
+                            logger.warning(f"[GENERIC_VIEW] [LIMIT_BLOCKED] user_id={user_id} exceeded limit {current_usage}/{limit}")
+                            raise ValueError(f"⛔ Bạn đã đạt giới hạn hôm nay ({limit}/{limit})!")
 
                     # 1. CHECK & PAY COST
                     cost = btn_config.get("cost", {})
@@ -239,10 +246,14 @@ class GenericActionView(discord.ui.View):
                     # 2. APPLY REWARDS
                     rewards = btn_config.get("rewards", [])
                     acquired_txt = []
+                    fail_msg = None  # Track fail message from first failed reward
                     
                     for r in rewards:
                         # Rarity Check
                         if random.random() > r.get("rate", 1.0):
+                            # Capture fail message if provided
+                            if not fail_msg and r.get("fail_msg"):
+                                fail_msg = r.get("fail_msg")
                             continue
                             
                         rtype = r.get("type")
@@ -250,20 +261,36 @@ class GenericActionView(discord.ui.View):
                         ramount = r.get("amount", 1)
                         
                         if rtype == "item":
-                            await add_item(user_id, rkey, ramount)
-                            name = self._get_item_name(rkey)
-                            acquired_txt.append(f"{ramount} {name}")
+                            # CRITICAL FIX: "seeds" is currency, not inventory item
+                            if rkey == "seeds":
+                                # MUST use raw SQL - add_seeds() opens its own transaction!
+                                reason = f"event_reward_{self.manager.current_event['key']}"
+                                await db_manager.db.execute(
+                                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                    (ramount, user_id)
+                                )
+                                await db_manager.db.execute(
+                                    "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                    (user_id, ramount, reason, "fishing")
+                                )
+                                acquired_txt.append(f"{ramount:,} Hạt 💰")
+                                logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event {self.manager.current_event['key']}")
+                            else:
+                                # Regular item
+                                await add_item(user_id, rkey, ramount)
+                                name = self._get_item_name(rkey)
+                                acquired_txt.append(f"{ramount} {name}")
                             
                         elif rtype == "money":
-                            # ADD MONEY REWARD SUPPORT
+                            # MUST use raw SQL - add_seeds() opens its own transaction!
+                            reason = f"event_reward_{rkey}" if rkey else f"event_reward_{self.manager.current_event['key']}"
                             await db_manager.db.execute(
                                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                                 (ramount, user_id)
                             )
-                            # Manual Log for ACID Transaction
                             await db_manager.db.execute(
                                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                                (user_id, ramount, f"event_reward_{rkey}", "fishing")
+                                (user_id, ramount, reason, "fishing")
                             )
                             acquired_txt.append(f"{ramount:,} Hạt 💰")
                             logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event")
@@ -278,14 +305,7 @@ class GenericActionView(discord.ui.View):
                                 
                             acquired_txt.append(f"Buff {name} ({duration}p)")
                             
-                    # 3. MESSAGE
-                    msg = btn_config.get("message", "Thành công!")
-                    if acquired_txt:
-                        msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
-                    else:
-                        msg += "\n⚠️ Bạn không nhận được gì cả... (Xui quá!)"
-
-                    
+                    # 3. INCREMENT LIMIT COUNTER
                     if limit > 0:
                          await db_manager.db.execute(
                             """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
@@ -294,20 +314,31 @@ class GenericActionView(discord.ui.View):
                                DO UPDATE SET value = value + 1""",
                             (user_id, unique_limit_key)
                         )
-                        
+                    
                     await db_manager.db.commit()
                     
-                    # Ephemeral for user
-                    await interaction.response.send_message(f"✅ {msg}", ephemeral=True)
-                    
-                    # 5. PUBLIC BROADCAST
-                    public_msg = btn_config.get("public_message")
-                    if public_msg:
-                        formatted_msg = public_msg.replace("{user}", f"<@{user_id}>")
-                        reward_str = ", ".join(acquired_txt) if acquired_txt else "sự hư vô (miss all)"
-                        formatted_msg = formatted_msg.replace("{reward}", reward_str)
+                    # 4. MESSAGE (Win or Loss)
+                    if acquired_txt:
+                        # WIN - Show success message
+                        msg = btn_config.get("message", "Thành công!")
+                        msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
+                        await interaction.response.send_message(f"✅ {msg}", ephemeral=True)
                         
-                        await interaction.channel.send(formatted_msg)
+                        # PUBLIC BROADCAST (Only on win)
+                        public_msg = btn_config.get("public_message")
+                        if public_msg:
+                            formatted_msg = public_msg.replace("{user}", f"<@{user_id}>")
+                            reward_str = ", ".join(acquired_txt)
+                            formatted_msg = formatted_msg.replace("{reward}", reward_str)
+                            await interaction.channel.send(formatted_msg)
+                    else:
+                        # LOSS - Send ephemeral ACK first
+                        loss_msg = fail_msg or "⚠️ Bạn không nhận được gì cả... (Xui quá!)"
+                        await interaction.response.send_message(f"❌ {loss_msg}", ephemeral=True)
+                        
+                        # Then PUBLIC SHAME for everyone to laugh
+                        public_loss_msg = f"😂 **<@{user_id}>** đã thua! {loss_msg}"
+                        await interaction.channel.send(public_loss_msg)
                         
                 except Exception as e:
                     await db_manager.db.rollback()

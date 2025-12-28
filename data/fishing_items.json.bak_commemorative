@@ -1,0 +1,1400 @@
+{
+  "items": {
+    "trash_01": {
+      "type": "trash",
+      "key": "trash_01",
+      "name": "Ủng Rách",
+      "emoji": "🥾",
+      "description": "Jordan 1 phiên bản 'lội ruộng' limited, rách vì phong cách chứ không phải nghèo.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_02": {
+      "type": "trash",
+      "key": "trash_02",
+      "name": "Lon Nước",
+      "emoji": "🥫",
+      "description": "Cú sút của Messi đã đưa nó bay thẳng xuống đây.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_03": {
+      "type": "trash",
+      "key": "trash_03",
+      "name": "Xà Phòng Cũ",
+      "emoji": "🧼",
+      "description": "Rơi cái này thì đừng có dại mà cúi xuống nhặt nhé bro.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_04": {
+      "type": "trash",
+      "key": "trash_04",
+      "name": "Mảnh Kính",
+      "emoji": "🔨",
+      "description": "Sắc bén hơn cả lời chia tay lạnh lùng của người yêu cũ.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_05": {
+      "type": "trash",
+      "key": "trash_05",
+      "name": "Túi Ni Lông",
+      "emoji": "🛍️",
+      "description": "Bay phấp phới trong gió như cái cách crush bơ tin nhắn của bạn.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_06": {
+      "type": "trash",
+      "key": "trash_06",
+      "name": "Chai Nhựa",
+      "emoji": "🥤",
+      "description": "Di sản của một thanh niên ý thức tồi để lại.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_07": {
+      "type": "trash",
+      "key": "trash_07",
+      "name": "Lốp Xe Hư",
+      "emoji": "🍩",
+      "description": "Donut vị cao su cháy, ăn vào là gãy răng cấm.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_08": {
+      "type": "trash",
+      "key": "trash_08",
+      "name": "Cành Củi Khô",
+      "emoji": "🪵",
+      "description": "Que củi mục nát, chả làm nên mùa xuân gì cả.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_09": {
+      "type": "trash",
+      "key": "trash_09",
+      "name": "Giấy Báo Cũ",
+      "emoji": "📰",
+      "description": "Tin tức nóng hổi từ năm 1900 hồi đó.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_10": {
+      "type": "trash",
+      "key": "trash_10",
+      "name": "Hộp Xốp",
+      "emoji": "🥡",
+      "description": "Hộp cơm sinh viên cuối tháng, thoang thoảng mùi của sự nghèo khổ.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_11": {
+      "type": "trash",
+      "key": "trash_11",
+      "name": "Vỏ Chuối",
+      "emoji": "🍌",
+      "description": "Vũ khí tối thượng trong Mario Kart, dẫm vào là té sấp mặt.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_12": {
+      "type": "trash",
+      "key": "trash_12",
+      "name": "Xương Cá",
+      "emoji": "🦴",
+      "description": "Phần còn lại của một bữa nhậu linh đình.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_13": {
+      "type": "trash",
+      "key": "trash_13",
+      "name": "Rong Biển",
+      "emoji": "🌿",
+      "description": "Mắc vào cần câu thì cay hơn ăn ớt chỉ thiên.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_14": {
+      "type": "trash",
+      "key": "trash_14",
+      "name": "Xác Gián",
+      "emoji": "🪳",
+      "description": "Tiểu Cường đã tử nạn. R.I.P my friend.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_15": {
+      "type": "trash",
+      "key": "trash_15",
+      "name": "Cùi Bắp",
+      "emoji": "🌽",
+      "description": "Giống y hệt trình độ chơi game của bạn vậy: Quá cùi bắp!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_16": {
+      "type": "trash",
+      "key": "trash_16",
+      "name": "Trứng Ung",
+      "emoji": "🥚",
+      "description": "Sở hữu mùi hương quyến rũ chết người (theo nghĩa đen).",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_17": {
+      "type": "trash",
+      "key": "trash_17",
+      "name": "Đầu Tôm",
+      "emoji": "🦐",
+      "description": "Chứa gạch hay chứa gì bên trong thì chịu.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_18": {
+      "type": "trash",
+      "key": "trash_18",
+      "name": "Táo Cắn Dở",
+      "emoji": "🍎",
+      "description": "Steve Jobs đã từng ở đây hay là Bạch Tuyết?",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_19": {
+      "type": "trash",
+      "key": "trash_19",
+      "name": "Hoa Héo",
+      "emoji": "🥀",
+      "description": "Tình yêu đã chết, hoa cũng tàn phai. Sad story.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_20": {
+      "type": "trash",
+      "key": "trash_20",
+      "name": "Cơm Thiu",
+      "emoji": "🍚",
+      "description": "Đặc sản lên men tự nhiên, khuyến mãi thêm vé đi gặp bác sĩ.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_21": {
+      "type": "trash",
+      "key": "trash_21",
+      "name": "Quần Xì Rách",
+      "emoji": "🩲",
+      "description": "Giặt sạch rồi bịt mặt đi cướp ngân hàng cũng ổn.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_22": {
+      "type": "trash",
+      "key": "trash_22",
+      "name": "Cục Cứt",
+      "emoji": "💩",
+      "description": "Vàng thật không sợ lửa, nhưng sợ thối. Sô-cô-la vị lạ.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_23": {
+      "type": "trash",
+      "key": "trash_23",
+      "name": "Ba Con Sói",
+      "emoji": "🎈",
+      "description": "An toàn là bạn, tai nạn là lên chức Bố.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_24": {
+      "type": "trash",
+      "key": "trash_24",
+      "name": "Băng Vệ Sinh",
+      "emoji": "🩸",
+      "description": "Vật phẩm phong ấn huyết tế, chống chỉ định cho đàn ông.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_25": {
+      "type": "trash",
+      "key": "trash_25",
+      "name": "Áo Dú Cũ",
+      "emoji": "👙",
+      "description": "Hàng second-hand, chắc là của bà hàng xóm ném xuống.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_26": {
+      "type": "trash",
+      "key": "trash_26",
+      "name": "Vớ Thối",
+      "emoji": "🧦",
+      "description": "Vũ khí sinh học cấp độ 1, ngửi phát ngất luôn.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_27": {
+      "type": "trash",
+      "key": "trash_27",
+      "name": "Răng Giả",
+      "emoji": "🦷",
+      "description": "Cười rớt cả hàm là có thật nhé các fen.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_28": {
+      "type": "trash",
+      "key": "trash_28",
+      "name": "Giấy Chùi Đít",
+      "emoji": "🧻",
+      "description": "Đã qua sử dụng (Ewww!). Rửa tay kỹ sau khi chạm vào.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_29": {
+      "type": "trash",
+      "key": "trash_29",
+      "name": "Tả Em Bé",
+      "emoji": "👶",
+      "description": "Combo hương vị nồng nàn khó quên của trẻ thơ.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_30": {
+      "type": "trash",
+      "key": "trash_30",
+      "name": "Dép Tổ Ong Rách",
+      "emoji": "🩴",
+      "description": "Huyền thoại ngàn lỗ của Việt Nam, dẫm shit bao phê.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_31": {
+      "type": "trash",
+      "key": "trash_31",
+      "name": "Cái Nịt",
+      "emoji": "🧶",
+      "description": "Còn đúng cái nịt theo nghĩa đen. Tiền thì không thấy đâu.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_32": {
+      "type": "trash",
+      "key": "trash_32",
+      "name": "Vé Số Chiều Qua",
+      "emoji": "🎫",
+      "description": "Giấc mộng đổi đời đã tan thành mây khói lúc 16h30.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_33": {
+      "type": "trash",
+      "key": "trash_33",
+      "name": "Nokia Cục Gạch",
+      "emoji": "📱",
+      "description": "Vũ khí sát thương vật lý huyền thoại, ném chó chó lủng đầu.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_34": {
+      "type": "trash",
+      "key": "trash_34",
+      "name": "Tai Nghe Rối",
+      "emoji": "🎧",
+      "description": "Rối hơn cả chuyện tình cảm mập mờ của bạn. Gỡ được chết liền.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_35": {
+      "type": "trash",
+      "key": "trash_35",
+      "name": "Gấu Bông Chột Mắt",
+      "emoji": "🧸",
+      "description": "Quà người yêu cũ tặng. Chia tay xong vứt xuống sông trôi về đâu?",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_36": {
+      "type": "trash",
+      "key": "trash_36",
+      "name": "Bài Kiểm Tra 1 Điểm",
+      "emoji": "📝",
+      "description": "Phi tang chứng cứ phạm tội. Mẹ mà thấy là 'tới công chuyện'.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_37": {
+      "type": "trash",
+      "key": "trash_37",
+      "name": "Khẩu Trang Bẩn",
+      "emoji": "😷",
+      "description": "Đeo 7 ngày 7 đêm chưa giặt, ổ vi khuẩn sinh học cấp quốc gia.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_38": {
+      "type": "trash",
+      "key": "trash_38",
+      "name": "Tóc Giả",
+      "emoji": "🦱",
+      "description": "Của ông hói nào rớt xuống đây? Nhìn cứ tưởng rong biển.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_39": {
+      "type": "trash",
+      "key": "trash_39",
+      "name": "Lông Mi Giả",
+      "emoji": "🐛",
+      "description": "Trôi lềnh bềnh nhìn y chang con rết, xém tí nữa thì ngất.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_40": {
+      "type": "trash",
+      "key": "trash_40",
+      "name": "Thẻ Cào Đã Nạp",
+      "emoji": "💳",
+      "description": "Cào nát tay, nạp thử thì báo 'Mã thẻ đã sử dụng'. Cay!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_41": {
+      "type": "trash",
+      "key": "trash_41",
+      "name": "Đĩa CD Xước",
+      "emoji": "💿",
+      "description": "Đĩa cài Win dạo hay phim hành động Nhật Bản? Xước nát rồi không check được.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_42": {
+      "type": "trash",
+      "key": "trash_42",
+      "name": "Dép Lào Đứt Quai",
+      "emoji": "🩴",
+      "description": "Đi bộ về nhà chân đất nhé cưng. Cái kết của dân tổ lái.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_43": {
+      "type": "trash",
+      "key": "trash_43",
+      "name": "Bàn Chải Toè Lông",
+      "emoji": "🪥",
+      "description": "Đánh răng hay đánh giày mà lông lá nó toè ra như hoa nở thế này?",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_44": {
+      "type": "trash",
+      "key": "trash_44",
+      "name": "Mũ Bảo Hiểm Vỡ",
+      "emoji": "⛑️",
+      "description": "Chứng tích của một pha 'ôm cua' đi vào lòng đất.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_45": {
+      "type": "trash",
+      "key": "trash_45",
+      "name": "Ổ Khoá Rỉ",
+      "emoji": "🔐",
+      "description": "Khoá chặt trái tim nhưng quên chìa, giờ thì vứt luôn.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_46": {
+      "type": "trash",
+      "key": "trash_46",
+      "name": "Kính Râm Gãy",
+      "emoji": "🕶️",
+      "description": "Hết ngầu, đeo vào nhìn giống thầy bói mù xem voi.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_47": {
+      "type": "trash",
+      "key": "trash_47",
+      "name": "Bật Lửa Hết Ga",
+      "emoji": "🔥",
+      "description": "Quẹt mòn cả tay không lên lửa, chỉ tổ đau ngón cái.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_48": {
+      "type": "trash",
+      "key": "trash_48",
+      "name": "Sim Rác",
+      "emoji": "📲",
+      "description": "Sim khuyến mãi dùng một lần rồi vứt, chứa đầy tin nhắn spam.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_49": {
+      "type": "trash",
+      "key": "trash_49",
+      "name": "Quạt Nhựa Rách",
+      "emoji": "🪭",
+      "description": "Quạt quảng cáo phòng khám nam khoa, rách tơi tả.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "trash_50": {
+      "type": "trash",
+      "key": "trash_50",
+      "name": "Cục Sạc Hư",
+      "emoji": "🔌",
+      "description": "Cắm cả đêm sáng dậy pin vẫn 1%, muốn đập máy ghê.",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_a": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_a",
+      "name": "Mảnh Bản Đồ A",
+      "emoji": "🗺️",
+      "description": "Một góc giấy nhăn nheo, nhìn chả hiểu vẽ cái gì.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_b": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_b",
+      "name": "Mảnh Bản Đồ B",
+      "emoji": "🗺️",
+      "description": "Vẽ đường đi nước bước, nhưng thiếu 3 mảnh kia thì chịu.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_c": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_c",
+      "name": "Mảnh Bản Đồ C",
+      "emoji": "🗺️",
+      "description": "Có vẻ như nó chỉ dẫn đến một kho báu... hoặc một bãi rác.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "manh_ban_do_d": {
+      "type": "legendary_component",
+      "key": "manh_ban_do_d",
+      "name": "Mảnh Bản Đồ D",
+      "emoji": "🗺️",
+      "description": "Mảnh ghép nhân phẩm cuối cùng. Gom đủ đi rồi tính.",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "cafe": {
+      "type": "gift",
+      "key": "cafe",
+      "name": "☕ Cà Phê",
+      "emoji": "☕",
+      "description": "Uống cho tỉnh táo để còn cày deadline và chạy bo.",
+      "price": {
+        "buy": 50,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "flower": {
+      "type": "gift",
+      "key": "flower",
+      "name": "🌹 Hoa Hồng",
+      "emoji": "🌹",
+      "description": "Hơi sến súa nhưng mấy bạn nữ (hoặc nam) sẽ thích.",
+      "price": {
+        "buy": 75,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "ring": {
+      "type": "gift",
+      "key": "ring",
+      "name": "💍 Nhẫn",
+      "emoji": "💍",
+      "description": "Còng số 8 phiên bản kim loại quý. Đeo vào là 'game over'.",
+      "price": {
+        "buy": 150,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "gift": {
+      "type": "gift",
+      "key": "gift",
+      "name": "🎁 Quà Tặng",
+      "emoji": "🎁",
+      "description": "Hộp rỗng hay có gì bên trong thì mở ra mới biết.",
+      "price": {
+        "buy": 100,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "chocolate": {
+      "type": "gift",
+      "key": "chocolate",
+      "name": "🍫 Sô-cô-la",
+      "emoji": "🍫",
+      "description": "Ngọt ngào như lời hứa của mấy anh 'trap boy'.",
+      "price": {
+        "buy": 60,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "card": {
+      "type": "gift",
+      "key": "card",
+      "name": "💌 Thiệp",
+      "emoji": "💌",
+      "description": "Văn mẫu tán tỉnh, dùng để viết lời yêu thương.",
+      "price": {
+        "buy": 40,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "gift"
+      }
+    },
+    "nuoc_tang_luc": {
+      "type": "consumable",
+      "key": "nuoc_tang_luc",
+      "name": "💪 Nước Tăng Lực",
+      "emoji": "💪",
+      "description": "Uống vào tay to như Lý Đức, kéo cá bao mượt (Tỉ lệ thắng 75% - BASIC).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.75,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 2500,
+        "sell": 5000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "gang_tay_xin": {
+      "type": "consumable",
+      "key": "gang_tay_xin",
+      "name": "🥊 Găng Tay Câu Cá",
+      "emoji": "🥊",
+      "description": "Chống trượt tay khi bạn đang run rẩy vì gặp cá to (Tỉ lệ thắng 82% - GOOD).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.82,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 6000,
+        "sell": 15000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "thao_tac_tinh_vi": {
+      "type": "consumable",
+      "key": "thao_tac_tinh_vi",
+      "name": "🎯 Thao Tác Tinh Vi",
+      "emoji": "🎯",
+      "description": "Hack não con cá, khiến nó tưởng bạn là đồng loại (Tỉ lệ thắng 90% - GREAT).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.9,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 12000,
+        "sell": 30000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "tinh_yeu_ca": {
+      "type": "consumable",
+      "key": "tinh_yeu_ca",
+      "name": "❤️ Tình Yêu Với Cá",
+      "emoji": "❤️",
+      "description": "Thả thính cực mạnh, cá tự nguyện lên bờ vì yêu bạn (Tỉ lệ thắng 95% - LEGENDARY!).",
+      "effect_type": "legendary_fish_boost",
+      "effect_value": 0.95,
+      "original_value": 0.65,
+      "one_time_use": true,
+      "price": {
+        "buy": 18000,
+        "sell": 50000,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "buff"
+      }
+    },
+    "manh_sao_bang": {
+      "type": "legendary_component",
+      "key": "manh_sao_bang",
+      "name": "Mảnh Sao Băng",
+      "emoji": "✨",
+      "description": "Mảnh sao băng lấp lánh ánh sáng kỳ ảo, thu hút những sinh vật trôi dạt từ dải thiên hà xa xôi (21:00-21:30). (Có thể bán lấy tiền)",
+      "price": {
+        "buy": 0,
+        "sell": 150,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "long_vu_lua": {
+      "type": "consumable",
+      "key": "long_vu_lua",
+      "name": "Lông Vũ Lửa",
+      "emoji": "🔥",
+      "description": "Lông vũ còn vương hơi ấm, dùng để đánh thức sinh vật bất tử tái sinh từ tro tàn. (Có thể bán lấy tiền)",
+      "price": {
+        "buy": 0,
+        "sell": 250,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "ban_do_ham_am": {
+      "type": "legendary_component",
+      "key": "ban_do_ham_am",
+      "name": "Bản Đồ Hắc Ám",
+      "emoji": "🌑",
+      "description": "Tấm bản đồ toát lên khí tức u ám, chỉ lối đến nơi say ngủ của cổ thần đáy biển (Hiệu lực 10 lượt).",
+      "price": {
+        "buy": 0,
+        "sell": 300,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "may_do_song": {
+      "type": "legendary_component",
+      "key": "may_do_song",
+      "name": "Máy Dò Sóng",
+      "emoji": "📡",
+      "description": "Thiết bị chuyên dụng để tìm kiếm tần số âm thanh cô đơn nhất đại dương.",
+      "price": {
+        "buy": 20000,
+        "sell": 200,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "special"
+      }
+    },
+    "tinh_cau": {
+      "type": "consumable",
+      "key": "tinh_cau",
+      "name": "🌌 Tinh Cầu Không Gian",
+      "emoji": "🌌",
+      "description": "Vật phẩm chứa đựng tinh hoa vũ trụ, dùng để mở ra cánh cổng kết nối với những vì sao.",
+      "effect_type": "legendary_summon",
+      "effect_value": "ca_ngan_ha",
+      "one_time_use": true,
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "qua_ngau_nhien": {
+      "type": "gift",
+      "key": "qua_ngau_nhien",
+      "name": "🎁 Quà Ngẫu Nhiên",
+      "emoji": "🎁",
+      "description": "Một hộp quà bí ẩn được gói ghém cẩn thận. Bạn có thể tặng nó cho NPC hoặc người chơi khác để tăng độ thân thiết.",
+      "price": {
+        "buy": 0,
+        "sell": 100,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "moi": {
+      "type": "consumable",
+      "key": "moi",
+      "name": "🪱 Giun (Mồi Câu)",
+      "emoji": "🪱",
+      "price": {
+        "buy": 10,
+        "sell": 2,
+        "currency": "seeds"
+      },
+      "description": "Mồi câu cơ bản, cá ăn rất thích.",
+      "flags": {
+        "buyable": true,
+        "tradable": true,
+        "stackable": true,
+        "shop_category": "fishing"
+      }
+    },
+    "ruong_kho_bau": {
+      "type": "container",
+      "key": "ruong_kho_bau",
+      "name": "📦 Rương Kho Báu",
+      "emoji": "📦",
+      "price": {
+        "buy": 0,
+        "sell": 100,
+        "currency": "seeds"
+      },
+      "description": "Rương chứa đầy bất ngờ, mở ra để xem có gì.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "ngoc_trai": {
+      "type": "material",
+      "key": "ngoc_trai",
+      "name": "🦪 Ngọc Trai",
+      "emoji": "🦪",
+      "price": {
+        "buy": 0,
+        "sell": 75,
+        "currency": "seeds"
+      },
+      "description": "Ngọc quý hiếm dùng để trade hoặc làm đẹp.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "vat_lieu_nang_cap": {
+      "type": "material",
+      "key": "vat_lieu_nang_cap",
+      "name": "⚙️ Vật Liệu Nâng Cấp",
+      "emoji": "⚙️",
+      "price": {
+        "buy": 0,
+        "sell": 50,
+        "currency": "seeds"
+      },
+      "description": "Dùng để nâng cấp cần câu hoặc đồ dùng.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "phan_bon": {
+      "type": "material",
+      "key": "phan_bon",
+      "name": "💩 Phân Bón",
+      "emoji": "💩",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "description": "Dùng để bón cây.",
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
+    },
+    "qua_ngot_mua_1": {
+      "type": "commemorative",
+      "key": "qua_ngot_mua_1",
+      "name": "Quả Ngọt Mùa 1",
+      "emoji": "🍎",
+      "description": "Vật kỉ niệm từ mùa 1 - Chứng tỏ bạn là người lập công xây dựng server!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": false,
+        "stackable": true,
+        "shop_category": "commemorative"
+      }
+    },
+    "qua_ngot_mua_2": {
+      "type": "commemorative",
+      "key": "qua_ngot_mua_2",
+      "name": "Quả Ngọt Mùa 2",
+      "emoji": "🍏",
+      "description": "Vật kỉ niệm từ mùa 2 - Tiếp tục lập công xây dựng server!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": false,
+        "stackable": true,
+        "shop_category": "commemorative"
+      }
+    },
+    "qua_ngot_mua_3": {
+      "type": "commemorative",
+      "key": "qua_ngot_mua_3",
+      "name": "Quả Ngọt Mùa 3",
+      "emoji": "🍊",
+      "description": "Vật kỉ niệm từ mùa 3 - Cộng đồng mạnh mẽ hơn!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": false,
+        "stackable": true,
+        "shop_category": "commemorative"
+      }
+    },
+    "qua_ngot_mua_4": {
+      "type": "commemorative",
+      "key": "qua_ngot_mua_4",
+      "name": "Quả Ngọt Mùa 4",
+      "emoji": "🍋",
+      "description": "Vật kỉ niệm từ mùa 4 - Kiên trì xây dựng!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": false,
+        "stackable": true,
+        "shop_category": "commemorative"
+      }
+    },
+    "qua_ngot_mua_5": {
+      "type": "commemorative",
+      "key": "qua_ngot_mua_5",
+      "name": "Quả Ngọt Mùa 5",
+      "emoji": "🍌",
+      "description": "Vật kỉ niệm từ mùa 5 - Hành trình vĩ đại!",
+      "price": {
+        "buy": 0,
+        "sell": 0,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": false,
+        "stackable": true,
+        "shop_category": "commemorative"
+      }
+    }
+  }
+}

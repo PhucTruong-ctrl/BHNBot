@@ -18,6 +18,7 @@ from ..constants import (
 )
 from ..mechanics.rod_system import get_rod_data
 from ..mechanics.glitch import apply_display_glitch
+from configs.item_constants import ItemKeys
 
 logger = logging.getLogger("fishing")
 
@@ -61,7 +62,7 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     
     # 2. Check Inventory & Deduct Chests
     inventory = await get_inventory(user_id)
-    current_chests = inventory.get("ruong_kho_bau", 0)
+    current_chests = inventory.get(ItemKeys.RUONG_KHO_BAU, 0)
     
     if current_chests < quantity:
         msg = f"❌ Bạn chỉ có **{current_chests}** Rương Kho Báu! (Muốn mở: {quantity})"
@@ -70,7 +71,7 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
         return
     
     # Deduct chests immediately
-    await remove_item(user_id, "ruong_kho_bau", quantity)
+    await remove_item(user_id, ItemKeys.RUONG_KHO_BAU, quantity)
     
     # 3. Track Stats
     try:
@@ -161,8 +162,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     puzzle_pieces_got = []
     
     for item_key, count in aggregated_loot.items():
-        if item_key == "phan_bon":
-            await cog.add_inventory_item(user_id, "phan_bon", count)
+        if item_key == ItemKeys.PHAN_BON:
+            await cog.add_inventory_item(user_id, ItemKeys.PHAN_BON, count)
             loot_messages.append(f"🌾 **Phân Bón** x{count}")
             
         elif item_key == "manh_ghep":
@@ -308,7 +309,7 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
         await remove_item(user_id, trash_key, quantity)
     
     # Add phan_bon (not seeds!)
-    await cog.add_inventory_item(user_id, "phan_bon", phan_bon_amount)
+    await cog.add_inventory_item(user_id, ItemKeys.PHAN_BON, phan_bon_amount)
     
     # Track recycling stats
     try:
@@ -360,7 +361,7 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     
     # Get inventory
     inventory = await get_inventory(user_id)
-    fertilizer_count = inventory.get("phan_bon", 0)
+    fertilizer_count = inventory.get(ItemKeys.PHAN_BON, 0)
     
     # Check if user has fertilizers
     if fertilizer_count == 0:
@@ -375,7 +376,7 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     total_exp = sum(random.randint(50, 100) for _ in range(fertilizer_count))
     
     # Remove all fertilizers from inventory
-    await remove_item(user_id, "phan_bon", fertilizer_count)
+    await remove_item(user_id, ItemKeys.PHAN_BON, fertilizer_count)
     logger.info(f"[BONPHAN] {username} used {fertilizer_count} fertilizers for {total_exp} EXP")
     
     # Use tree cog's API to add contribution
