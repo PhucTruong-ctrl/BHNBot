@@ -205,8 +205,8 @@
                     "common": ["ca_chep", "ca_ro_dong", "ca_loc", "ca_tra", "ca_dong"]
                 },
                 "quantity_ranges": {
-                    "rare": {"min": 10, "max": 20},
-                    "common": {"min": 20, "max": 40}
+                    "rare": {"min": 5, "max": 10},
+                    "common": {"min": 10, "max": 20}
                 },
                 "bump_interval_seconds": 60
             },
