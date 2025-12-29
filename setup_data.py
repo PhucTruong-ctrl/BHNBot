@@ -132,7 +132,10 @@ def init_database():
                     bump_channel_id INTEGER,
                     bump_start_time TEXT,
                     last_reminder_sent TEXT,
-                    category_roles TEXT DEFAULT '[]' -- JSON list of role IDs
+                    category_roles TEXT DEFAULT '[]', -- JSON list of role IDs
+                    log_discord_channel_id INTEGER, -- Channel for Discord error logging
+                    log_ping_user_id INTEGER, -- User to ping on ERROR/CRITICAL
+                    log_discord_level TEXT DEFAULT 'WARNING' -- Min level: INFO/WARNING/ERROR/CRITICAL
                 )''')
 
     # Add category_roles column if not exists
@@ -140,7 +143,13 @@ def init_database():
         c.execute("ALTER TABLE server_config ADD COLUMN category_roles TEXT DEFAULT '[]'")
         print("✓ Added category_roles column to server_config table")
     except sqlite3.OperationalError:
-        # Column already exists
+        pass
+
+    # Add log_discord_channel_id column if not exists
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN log_discord_channel_id INTEGER")
+        print("✓ Added log_discord_channel_id column to server_config table")
+    except sqlite3.OperationalError:
         pass
     
     c.execute('''CREATE TABLE IF NOT EXISTS server_tree (

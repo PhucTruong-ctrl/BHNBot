@@ -59,6 +59,15 @@ async def on_ready():
         logger.info("✓ Xi Dach assets loaded")
     except Exception as e:
         logger.error(f"Failed to load Xi Dach assets: {e}")
+    
+    # Attach Discord logging handler (reads config from database)
+    try:
+        from core.logger import attach_discord_handler, get_log_config_from_db
+        log_channel_id, ping_user_id, log_level = await get_log_config_from_db()
+        if log_channel_id:
+            attach_discord_handler(bot, log_channel_id, ping_user_id, log_level)
+    except Exception as e:
+        logger.error(f"Failed to attach Discord logging handler: {e}")
 
     # Load cogs on first ready only
     if not bot.cogs_loaded:

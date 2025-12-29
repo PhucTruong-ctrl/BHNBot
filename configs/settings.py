@@ -1,6 +1,8 @@
 """Configuration settings for the bot."""
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Base directory paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -92,3 +94,5 @@ ROD_LEVELS = {
         "lore": "Cá Ngân Hà ban phép thuật thời gian vào cần câu, cho phép bạn câu cá vượt thời gian..."
     }
 }
+# Discord Logging Configuration (read from .env)
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))

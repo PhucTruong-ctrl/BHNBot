@@ -1,0 +1,14 @@
+--- core/logger.py
++++ core/logger.py
+@@ -257,8 +257,10 @@ def attach_discord_handler(bot: discord.Client):
+         >>>     attach_discord_handler(bot)
+     """
+     try:
++        print(f"[DEBUG] attach_discord_handler() called, bot={bot}")
+         from configs.settings import LOG_CHANNEL_ID, LOG_LEVEL_DISCORD, OWNER_ID
+-        
++        print(f"[DEBUG] Settings: channel={LOG_CHANNEL_ID}, level={LOG_LEVEL_DISCORD}, owner={OWNER_ID}")
++
+         if LOG_CHANNEL_ID <= 0:
+             return  # Not configured
+ 
