@@ -79,13 +79,13 @@
       "effect": "lose_money_100"
     },
     "snake_bite": {
-      "chance": 0.001,
+      "chance": 0.0002,
       "type": "bad",
       "name": "Rắn Cắn!",
       "effect": "lose_money_percent"
     },
     "hospital_fee": {
-      "chance": 0.002,
+      "chance": 0.0004,
       "type": "bad",
       "name": "Nhập Viện!",
       "effect": "lose_money_percent"
@@ -607,10 +607,10 @@
       "effect": "keo_ly_buff"
     },
     "crypto_pump": {
-      "chance": 0.002,
+      "chance": 0.001,
       "type": "good",
       "name": "🚀 Crypto Bơm!",
-      "effect": "gain_money_huge"
+      "effect": "gain_money_percent"
     },
     "tiktok_viral": {
       "chance": 0.003,

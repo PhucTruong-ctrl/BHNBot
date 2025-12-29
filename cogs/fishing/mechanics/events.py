@@ -72,6 +72,11 @@ async def handle_lose_money_percent(result: dict, event_data: dict, **kwargs) ->
     result["custom_effect"] = "snake_bite"
     return result
 
+async def handle_gain_money_percent(result: dict, event_data: dict, **kwargs) -> dict:
+    """Handler: Gain % of assets (Crypto Pump)."""
+    result["custom_effect"] = "gain_money_percent"
+    return result
+
 def handle_gain_items(items: dict):
     """Factory: Creates a handler to add items."""
     async def handler(result: dict, event_data: dict, **kwargs) -> dict:
@@ -298,9 +303,10 @@ EFFECT_HANDLERS = {
     "durability_hit": handle_durability_hit,
     "lose_all_bait": handle_lose_all_bait,
     "gain_money_small": handle_gain_money(30, 80),
-    "gain_money_medium": handle_gain_money(100, 200),
-    "gain_money_large": handle_gain_money(300, 500),
-    "gain_money_huge": handle_gain_money_fixed(1000),
+    "gain_money_medium": handle_gain_money(100, 250),
+    "gain_money_large": handle_gain_money(300, 600),
+    "gain_money_huge": handle_gain_money(1000, 2000),
+    "gain_money_percent": handle_gain_money_percent,
     "lose_money_percent": handle_lose_money_percent,
     "gain_worm_5": handle_gain_items({ItemKeys.MOI: 5}),
     "gain_worm_10": handle_gain_items({ItemKeys.MOI: 10}),

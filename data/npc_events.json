@@ -246,7 +246,7 @@
     },
     "affinity_tiers": [
         {
-            "min_affinity": -5,
+            "min_affinity": 9999,
             "overrides": {
                 "name": "🏴‍☠️ Kẻ Thù Của Cướp Biển (Lv.-1)",
                 "description": "Hắn nhận ra mặt bạn: 'Lại là thằng lì lợm này! Tao sẽ không tha đâu!'",

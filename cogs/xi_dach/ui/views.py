@@ -230,8 +230,14 @@ class MultiGameView(ui.View):
              await interaction.response.send_message("❌ Không thể Gấp đôi!", ephemeral=True)
              return
 
-        await interaction.response.defer()
-        await self.cog.player_double_multi(interaction, self.table, player, self)
+        try:
+            await interaction.response.defer()
+            await self.cog.player_double_multi(interaction, self.table, player, self)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"[ERROR] double_button failed: {e}")
+            await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
 
     async def on_timeout(self) -> None:
         for item in self.children:

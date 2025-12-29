@@ -529,15 +529,15 @@ async def player_hit_multi(cog: "XiDachCog", interaction: discord.Interaction, t
     """Handle player drawing a card."""
     async with table.lock:
         if table.status != TableStatus.PLAYING:
-            await interaction.response.send_message("⚠️ Game chưa bắt đầu hoặc đã kết thúc!", ephemeral=True)
+            await interaction.followup.send("⚠️ Game chưa bắt đầu hoặc đã kết thúc!", ephemeral=True)
             return
 
         if table.current_player != player:
-            await interaction.response.send_message("❌ Không phải lượt của bạn!", ephemeral=True)
+            await interaction.followup.send("❌ Không phải lượt của bạn!", ephemeral=True)
             return
 
-        await interaction.response.defer()
-
+        # Defer handled by View
+        
         card = table.deck.draw_one()
         player.add_card(card)
         logger.info(f"[HIT] Player {player.user_id} drew {card}")
@@ -565,23 +565,23 @@ async def player_stand_multi(cog: "XiDachCog", interaction: discord.Interaction,
     """Handle player standing."""
     async with table.lock:
         if table.status != TableStatus.PLAYING:
-            await interaction.response.send_message("⚠️ Game chưa bắt đầu!", ephemeral=True)
+            await interaction.followup.send("⚠️ Game chưa bắt đầu!", ephemeral=True)
             return
 
         if table.current_player != player:
-            await interaction.response.send_message("❌ Không phải lượt của bạn!", ephemeral=True)
+            await interaction.followup.send("❌ Không phải lượt của bạn!", ephemeral=True)
             return
 
         # Check "Đủ tuổi" rule
         if not is_du_tuoi(player.hand):
             score = calculate_hand_value(player.hand)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Bạn chỉ có **{score} điểm** - Chưa đủ tuổi (cần ≥16)! Phải rút thêm.",
                 ephemeral=True
             )
             return
 
-        await interaction.response.defer()
+        # Defer handled by View
         player.status = PlayerStatus.STAND
         logger.info(f"[STAND] Player {player.user_id} stood with {calculate_hand_value(player.hand)}")
 
@@ -592,15 +592,15 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
     """Handle double down."""
     async with table.lock:
         if not player.can_double:
-            await interaction.response.send_message("❌ Không thể gấp đôi lúc này!", ephemeral=True)
+            await interaction.followup.send("❌ Không thể gấp đôi lúc này!", ephemeral=True)
             return
 
         balance = await get_user_balance(player.user_id)
         if balance < player.bet:
-            await interaction.response.send_message(f"❌ Không đủ hạt để gấp đôi!", ephemeral=True)
+            await interaction.followup.send(f"❌ Không đủ hạt để gấp đôi!", ephemeral=True)
             return
 
-        await interaction.response.defer()
+        # Defer handled by View
 
         # Deduct additional bet
         # Deduct additional bet

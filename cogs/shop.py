@@ -4,10 +4,7 @@ from discord.ext import commands
 import aiosqlite
 from database_manager import (
     get_user_balance,
-    add_seeds,
-    get_inventory,
-    add_item,
-    remove_item
+    add_seeds
 )
 
 from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
@@ -56,15 +53,32 @@ class ShopCog(commands.Cog):
 
     async def add_item_local(self, user_id: int, item_id: str, quantity: int = 1):
         """Adds an item to the user's inventory."""
-        await add_item(user_id, item_id, quantity)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(user_id, item_id, quantity)
 
     async def remove_item(self, user_id: int, item_id: str, quantity: int = 1) -> bool:
         """Removes an item from the user's inventory."""
-        return await remove_item(user_id, item_id, quantity)
+        # [CACHE] Use bot.inventory.modify
+        # Note: modify returns new qty, not bool, but boolean return for remove_item is tricky
+        # Usually remove_item returned True/False if success.
+        # Strict write-through doesn't check 'if user has item' inside modify (it allows negative?), 
+        # wait. My modify implementation in inventory_cache allows negatives?
+        # NO. "If new_qty <= 0: pop".
+        # It handles subtraction fine.
+        # But if user didn't have item, qty becomes -quantity? That's bad.
+        # LEGACY BEHAVIOR: remove_item returns False if not enough.
+        # I should check first.
+        
+        current = await self.bot.inventory.get(user_id, item_id)
+        if current < quantity:
+            return False
+            
+        await self.bot.inventory.modify(user_id, item_id, -quantity)
+        return True
 
     async def get_inventory(self, user_id: int) -> dict:
         """Retrieves user's inventory data."""
-        return await get_inventory(user_id)
+        return await self.bot.inventory.get_all(user_id)
 
     # ==================== COMMANDS ====================
 
@@ -273,7 +287,7 @@ class ShopCog(commands.Cog):
             if item_key not in all_items:
                  pass
 
-            await add_item(target_user_id, item_key, count)
+            await self.bot.inventory.modify(target_user_id, item_key, count)
             
             # Get item display name
             item_display = all_items.get(item_key, {}).get("name", item_key)

@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 import discord
 
-from database_manager import add_seeds, get_stat, increment_stat, db_manager, add_item, remove_item
+from database_manager import add_seeds, get_stat, increment_stat, db_manager
 from .legendary_quest_helper import increment_manh_sao_bang
 
 logger = logging.getLogger("fishing")
@@ -42,7 +42,7 @@ class MeteorWishView(discord.ui.View):
         
         # 10% chance for manh_sao_bang (User Request)
         if random.random() < 0.2:
-            await increment_manh_sao_bang(user_id, 1)
+            await increment_manh_sao_bang(self.cog.bot, user_id, 1)
             await increment_stat(user_id, 'fishing', stat_key, 1)
             
             message = (
@@ -277,7 +277,7 @@ class GenericActionView(discord.ui.View):
                                 logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event {self.manager.current_event['key']}")
                             else:
                                 # Regular item
-                                await add_item(user_id, rkey, ramount)
+                                await self.manager.bot.inventory.modify(user_id, rkey, ramount)
                                 name = self._get_item_name(rkey)
                                 acquired_txt.append(f"{ramount} {name}")
                             

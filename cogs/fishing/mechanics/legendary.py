@@ -280,7 +280,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     """Check if legendary fish should spawn. Each player can only catch 1 of each legendary fish.
     Checks for special summoning conditions: sacrifice, crafted bait, map, frequency, etc."""
     import json
-    from database_manager import get_inventory
+    # [CACHE] get_inventory removed
     print(f"[LEGENDARY_CHECK] START: user_id={user_id}, hour={current_hour}")
     import random
 
@@ -305,7 +305,8 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
         return None
     
     # Fetch inventory once for all checks
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory.get_all
+    inventory = await cog.bot.inventory.get_all(user_id)
     
     # Check each legendary fish for summoning conditions
     for legendary in LEGENDARY_FISH:
@@ -420,8 +421,8 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 if random.random() < legendary["spawn_chance"]:
                     # Use item if not in active buff
                     if not has_buff and inventory.get("long_vu_lua", 0) > 0:
-                        from database_manager import remove_item
-                        await remove_item(user_id, "long_vu_lua", 1)
+                        # [CACHE] Use bot.inventory.modify
+                        await cog.bot.inventory.modify(user_id, "long_vu_lua", -1)
                         cog.phoenix_buff_active[user_id] = True  # Buff lasts until next catch
                     return legendary
             continue
@@ -444,8 +445,8 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     cog.dark_map_active[user_id] = False
                     cog.dark_map_casts[user_id] = 0
                     cog.dark_map_cast_count[user_id] = 0
-                    from database_manager import remove_item
-                    await remove_item(user_id, "ban_do_ham_am", 1)
+                    # [CACHE] Use bot.inventory.modify
+                    await cog.bot.inventory.modify(user_id, "ban_do_ham_am", -1)
                     return legendary
                 elif current_cast < 10:
                     # Casts 1-9: Random spawn chance
@@ -454,14 +455,14 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                         cog.dark_map_active[user_id] = False
                         cog.dark_map_casts[user_id] = 0
                         cog.dark_map_cast_count[user_id] = 0
-                        from database_manager import remove_item
-                        await remove_item(user_id, "ban_do_ham_am", 1)
+                        # [CACHE] Use bot.inventory.modify
+                        await cog.bot.inventory.modify(user_id, "ban_do_ham_am", -1)
                         return legendary
                 elif cog.dark_map_casts[user_id] <= 0:
                     # Map expired (should not happen with 10 casts, but safety check)
                     cog.dark_map_active[user_id] = False
                     cog.dark_map_cast_count[user_id] = 0
-                    from database_manager import remove_item
+                    # [CACHE] Cleaned up stray import
             consumable_cog = cog.bot.get_cog("ConsumableCog") if hasattr(cog, 'bot') else None
             if consumable_cog and consumable_cog.has_detected_52hz(user_id):
                 # 100% spawn and reset flag

@@ -51,7 +51,7 @@ from .commands.legendary import legendary_hall_of_fame_action as _legendary_hall
 from .commands.admin import trigger_event_action as _trigger_event_impl
 
 from database_manager import (
-    get_inventory, add_item, remove_item, add_seeds, 
+    add_seeds, 
     get_user_balance, get_or_create_user, db_manager, get_stat, increment_stat, get_all_stats, get_fish_count, get_fish_collection,
     save_user_buff, get_user_buffs, remove_user_buff, get_server_config
 )
@@ -62,8 +62,7 @@ from .mechanics.legendary_quest_helper import (
     set_map_pieces_count, get_map_pieces_count, set_quest_completed, is_quest_completed,
     set_frequency_hunt_status, get_frequency_hunt_status,
     is_legendary_caught, set_legendary_caught,
-    get_manh_sao_bang_count, set_manh_sao_bang_count, increment_manh_sao_bang,
-    has_tinh_cau, set_has_tinh_cau, get_tinh_cau_cooldown, set_tinh_cau_cooldown, craft_tinh_cau
+    increment_manh_sao_bang
 )
 
 # Import event views from mechanics module
@@ -523,7 +522,8 @@ class FishingCog(commands.Cog):
             # --- GET USER AND ROD DATA ---
             rod_lvl, rod_durability = await get_rod_data(user_id)
             rod_config = ROD_LEVELS.get(rod_lvl, ROD_LEVELS[1])
-            inventory = await get_inventory(user_id) # Fetch inventory once
+            # [CACHE] Use bot.inventory instead of direct DB call
+            inventory = await self.bot.inventory.get_all(user_id)
             username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
             logger.info(f"[FISHING] [ROD_DATA] {username_display} (user_id={user_id}) rod_level={rod_lvl} durability={rod_durability}/{rod_config['durability']}")
             
@@ -629,7 +629,8 @@ class FishingCog(commands.Cog):
                     
                     if not skip_worm_consumption:
                         # Có mồi trong túi -> Trừ mồi
-                        await remove_item(user_id, ItemKeys.MOI, 1)
+                        # [CACHE] Use bot.inventory.modify
+                        await self.bot.inventory.modify(user_id, ItemKeys.MOI, -1)
                         # Track worms used for achievement
                         try:
                             await increment_stat(user_id, "fishing", "worms_used", 1)
@@ -857,7 +858,7 @@ class FishingCog(commands.Cog):
 
                     # Process event effects
                     if event_result.get("lose_worm", False) and has_worm:
-                        await remove_item(user_id, ItemKeys.MOI, 1)
+                        await self.bot.inventory.modify(user_id, ItemKeys.MOI, -1)
                         event_message += " (Mất 1 Giun)"
             
                     if event_result.get("lose_money", 0) > 0:
@@ -884,10 +885,10 @@ class FishingCog(commands.Cog):
                         for item_key, item_count in event_result["gain_items"].items():
                             # Special check for ca_isekai: don't gain if already have
                             if item_key == ItemKeys.CA_ISEKAI:
-                                inventory = await get_inventory(user_id)
+                                inventory = await self.bot.inventory.get_all(user_id)
                                 if inventory.get(ItemKeys.CA_ISEKAI, 0) > 0:
                                     continue  # Skip adding ca_isekai if already have
-                            await add_item(user_id, item_key, item_count)
+                            await self.bot.inventory.modify(user_id, item_key, item_count)
                             item_id = ALL_FISH.get(item_key, {}).get("name", item_key)
                             event_message += f" (+{item_count} {item_id})"
             
@@ -896,7 +897,7 @@ class FishingCog(commands.Cog):
                         # sea_sickness: Lose all bait (worm)
                         worm_count = inventory.get(ItemKeys.MOI, 0)
                         if worm_count > 0:
-                            await remove_item(user_id, ItemKeys.MOI, worm_count)
+                            await self.bot.inventory.modify(user_id, ItemKeys.MOI, -worm_count)
                             event_message += f" (Nôn hết {worm_count} Giun)"
                             logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=sea_sickness inventory_change=-{worm_count} item=worm")
             
@@ -915,6 +916,18 @@ class FishingCog(commands.Cog):
                         await add_seeds(user_id, -penalty, 'fishing_event_penalty', 'fishing')
                         event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
                         logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
+            
+                    elif event_result.get("custom_effect") == "gain_money_percent":
+                        # Crypto Pump: Gain 5% assets
+                        from .constants import GAIN_PERCENT_CAP
+                        balance = await get_user_balance(user_id)
+                        gain = max(100, int(balance * 0.05))
+                        # Cap at 30k (defined in settings)
+                        if gain > GAIN_PERCENT_CAP:
+                            gain = GAIN_PERCENT_CAP
+                        await add_seeds(user_id, gain, 'fishing_event_bonus', 'fishing')
+                        event_message += f" (Tăng 5% tài sản: +{gain} Hạt)"
+                        logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=crypto_pump seed_change=+{gain} bonus_type=asset_bonus")
             
                     elif event_result.get("custom_effect") == "lucky_buff":
                         # Double Rainbow: Next catch guaranteed rare
@@ -1005,7 +1018,7 @@ class FishingCog(commands.Cog):
             
                     # Special embed for Isekai event - show legendary fish info or rejection
                     if event_type == "isekai_truck":
-                        inventory = await get_inventory(user_id)
+                        inventory = await self.bot.inventory.get_all(user_id)
                         has_isekai = inventory.get(ItemKeys.CA_ISEKAI, 0) > 0
                         
                         if has_isekai:
@@ -1031,7 +1044,7 @@ class FishingCog(commands.Cog):
                         else:
                             # User does NOT have fish -> SUCCESS -> Grant Item Manually
                             # This block replaces the generic gain_items logic we removed
-                            await add_item(user_id, ItemKeys.CA_ISEKAI, 1)
+                            await self.bot.inventory.modify(user_id, ItemKeys.CA_ISEKAI, 1)
                             logger.info(f"[EVENT] {username} received ca_isekai from isekai_truck event")
                             
                             # Find the legendary fish data
@@ -1385,7 +1398,7 @@ class FishingCog(commands.Cog):
                         new_qty = qty * duplicate_multiplier
                         duplicated_items[fish_key] = new_qty
                         # Add duplicated fish to inventory
-                        await add_item(user_id, fish_key, new_qty - qty)
+                        await self.bot.inventory.modify(user_id, fish_key, new_qty - qty)
                         logger.info(f"[EVENT] {username} activated duplicate_multiplier x{duplicate_multiplier}: {fish_key} {qty} → {new_qty}")
                     fish_only_items = duplicated_items
         
@@ -1453,7 +1466,7 @@ class FishingCog(commands.Cog):
                             most_valuable_fish = fish_key
             
                     if most_valuable_fish:
-                        await remove_item(user_id, most_valuable_fish, 1)
+                        await self.bot.inventory.modify(user_id, most_valuable_fish, -1)
                         fish_info = ALL_FISH[most_valuable_fish]
                         fish_only_items[most_valuable_fish] -= 1
                         if fish_only_items[most_valuable_fish] == 0:
@@ -1483,7 +1496,7 @@ class FishingCog(commands.Cog):
                 self.caught_items[user_id] = {k: v for k, v in fish_only_items.items() if k != ItemKeys.CA_ISEKAI}
             
                 # Check if bucket is full after fishing, if so, sell all fish instead of just caught
-                updated_inventory = await get_inventory(user_id)
+                updated_inventory = await self.bot.inventory.get_all(user_id)
                 current_fish_count = sum(v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS and k != ItemKeys.CA_ISEKAI)
                 if current_fish_count >= FISH_BUCKET_LIMIT:
                     all_fish_items = {k: v for k, v in updated_inventory.items() if k in COMMON_FISH_KEYS + RARE_FISH_KEYS + LEGENDARY_FISH_KEYS}
@@ -1637,7 +1650,7 @@ class FishingCog(commands.Cog):
                 if legendary_failed:
                     drop_chance = random.random()
                     if drop_chance < 0.08:  # 8% chance
-                        await add_item(user_id, "long_vu_lua", 1)
+                        await self.bot.inventory.modify(user_id, "long_vu_lua", 1)
                         logger.info(f"[PHOENIX] {username} dropped Lông Vũ Lửa from failed legendary boss fight!")
                     
                         # Send notification
@@ -2477,7 +2490,7 @@ class FishingCog(commands.Cog):
     
     async def add_inventory_item(self, user_id: int, item_id: str, item_type: str):
         """Add item to inventory."""
-        await add_item(user_id, item_id, 1)
+        await self.bot.inventory.modify(user_id, item_id, 1)
         try:
             await db_manager.modify(
                 "UPDATE inventory SET item_type = ? WHERE user_id = ? AND item_id = ?",
@@ -2530,7 +2543,7 @@ class FishingCog(commands.Cog):
         
         if cost == "fish":
             # Remove the fish
-            await remove_item(user_id, fish_key, 1)
+            await self.bot.inventory.modify(user_id, fish_key, -1)
             logger.info(f"[NPC] User {user_id} gave {fish_key} to {npc_type}")
         
         elif isinstance(cost, int):
@@ -2575,7 +2588,7 @@ class FishingCog(commands.Cog):
         
         if reward_type == ItemKeys.MOI:
             amount = selected_reward.get("amount", 5)
-            await add_item(user_id, ItemKeys.MOI, amount)
+            await self.bot.inventory.modify(user_id, ItemKeys.MOI, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
         
@@ -2586,7 +2599,7 @@ class FishingCog(commands.Cog):
         
         elif reward_type == "chest":
             amount = selected_reward.get("amount", 1)
-            await add_item(user_id, ItemKeys.RUONG_KHO_BAU, amount)
+            await self.bot.inventory.modify(user_id, ItemKeys.RUONG_KHO_BAU, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
         
@@ -2618,13 +2631,13 @@ class FishingCog(commands.Cog):
         
         elif reward_type == "ngoc_trai":
             amount = selected_reward.get("amount", 1)
-            await add_item(user_id, ItemKeys.NGOC_TRAI, amount)
+            await self.bot.inventory.modify(user_id, ItemKeys.NGOC_TRAI, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} ngoc_trai(s) from {npc_type}")
         
         elif reward_type == "vat_lieu_nang_cap":
             amount = selected_reward.get("amount", 2)
-            await add_item(user_id, ItemKeys.VAT_LIEU_NANGCAP, amount)
+            await self.bot.inventory.modify(user_id, ItemKeys.VAT_LIEU_NANGCAP, amount)
             result_text = selected_reward["message"]
             logger.info(f"[NPC] User {user_id} received {amount} rod material(s) from {npc_type}")
         
