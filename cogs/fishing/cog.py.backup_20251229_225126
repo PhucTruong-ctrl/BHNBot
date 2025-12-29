@@ -576,7 +576,7 @@ class FishingCog(commands.Cog):
             # This ensures only ONE execution per user passes through at a time
             async with self.user_locks[user_id]:
                 logger.info(f"[FISHING] [DEBUG] Lock acquired for {user_id}")
-                
+            
                 # --- CHECK COOLDOWN (Inside Lock) ---
                 remaining = await self.get_fishing_cooldown_remaining(user_id)
                 if remaining > 0:

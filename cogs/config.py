@@ -8,7 +8,7 @@ import json
 DB_PATH = "./data/database.db"
 class ApprovalView(discord.ui.View):
     def __init__(self, bot, word, suggester_id):
-        super().__init__(timeout=None)
+        super().__init__(timeout=1800)  # 30 min for word approval
         self.bot = bot
         self.word = word
         self.suggester_id = suggester_id

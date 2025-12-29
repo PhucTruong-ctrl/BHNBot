@@ -127,7 +127,7 @@ class QuickAddWordView(discord.ui.View):
 
 class PendingWordView(discord.ui.View):
     def __init__(self, user_id, word, proposer_mention, admin_channel):
-        super().__init__(timeout=None)
+        super().__init__(timeout=3600)  # 1 hour for admin review
         self.user_id = user_id
         self.word = word
         self.proposer_mention = proposer_mention
