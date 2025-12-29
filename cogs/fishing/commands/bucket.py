@@ -90,8 +90,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     
     # Base item count weights: 0, 1, 2, 3 items per chest
     # Base item count weights: 1, 2, 3, 4 items per chest (No more empty chests!)
-    # Weights: 50% for 1, 35% for 2, 12% for 3, 3% for 4
-    base_weights = [50, 35, 12, 3]
+    # Weights: 5% for 0 (Rarely empty), 55% for 1, 30% for 2, 10% for 3
+    base_weights = [5, 55, 30, 10]
     rod_bonus = (rod_level - 1) * 2 # Reduced bonus scaling to prevent too many items
     
     # Shift weights towards higher counts based on rod level
@@ -120,7 +120,7 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
         elif "trash" in item or item in trash_key_list:
             # Drastically reduce trash weight (Base 0.3 instead of 1.0)
             # Trash should be filler, not main loot
-            multiplier = max(0.05, 0.3 - max(0, user_luck * 0.5))
+            multiplier = max(0.01, 0.1 - max(0, user_luck * 0.5))
             loot_weights.append(base_weight * multiplier)
         else:
             loot_weights.append(base_weight)

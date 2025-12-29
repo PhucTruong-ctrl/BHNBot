@@ -28,7 +28,7 @@ echo "🚀 Starting Admin Panel..."
 
 # Start Backend (using venv python)
 cd "$ROOT_DIR"
-nohup python -m uvicorn web.main:app --reload --host 0.0.0.0 --port 8000 > "$WEB_DIR/backend.log" 2>&1 &
+nohup "$VENV_PATH/bin/python" -m uvicorn web.main:app --reload --host 0.0.0.0 --port 8000 > "$WEB_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo "✅ Backend started (PID $BACKEND_PID) -> http://0.0.0.0:8000"
 

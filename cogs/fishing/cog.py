@@ -917,6 +917,18 @@ class FishingCog(commands.Cog):
                         event_message += f" (Trừ 5% tài sản: {penalty} Hạt)"
                         logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=snake_bite seed_change=-{penalty} penalty_type=asset_penalty")
             
+                    elif event_result.get("custom_effect") == "gain_money_percent":
+                        # Crypto Pump: Gain 5% assets
+                        from .constants import GAIN_PERCENT_CAP
+                        balance = await get_user_balance(user_id)
+                        gain = max(100, int(balance * 0.05))
+                        # Cap at 30k (defined in settings)
+                        if gain > GAIN_PERCENT_CAP:
+                            gain = GAIN_PERCENT_CAP
+                        await add_seeds(user_id, gain, 'fishing_event_bonus', 'fishing')
+                        event_message += f" (Tăng 5% tài sản: +{gain} Hạt)"
+                        logger.info(f"[FISHING] [EVENT] {username} (user_id={user_id}) event=crypto_pump seed_change=+{gain} bonus_type=asset_bonus")
+            
                     elif event_result.get("custom_effect") == "lucky_buff":
                         # Double Rainbow: Next catch guaranteed rare
                         # Store in temporary cache
