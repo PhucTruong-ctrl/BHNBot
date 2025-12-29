@@ -494,6 +494,7 @@ async def _next_turn(cog: "XiDachCog", channel, table: Table) -> None:
         file = None
 
     view = MultiGameView(cog, table, channel=channel, timeout=TURN_TIMEOUT)
+    table.current_view = view  # Store for cleanup
 
     if file:
         msg = await _safe_send(
@@ -861,6 +862,12 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
     
     async with table.lock:
         table.status = TableStatus.FINISHED
+        
+        # Cleanup view to prevent memory leak
+        if table.current_view:
+            table.current_view.stop()
+            table.current_view = None
+            logger.info(f"[CLEANUP] View stopped for table {table.table_id}")
 
     try:
         d_score, d_type = determine_hand_type(table.dealer_hand)

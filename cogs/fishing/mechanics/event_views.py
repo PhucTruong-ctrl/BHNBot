@@ -87,7 +87,7 @@ class GenericActionView(discord.ui.View):
     """
     
     def __init__(self, manager):
-        super().__init__(timeout=None) # Persistent view? Or rely on manager
+        super().__init__(timeout=600)  # Match event duration (10 min), prevent leak
         self.manager = manager
         # Get button config from current event of the MANAGER
         # Note: If manager.current_event is None, this will fail. 

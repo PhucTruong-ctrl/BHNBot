@@ -41,6 +41,7 @@ class BauCuaCog(commands.Cog):
         self.bot = bot
         self.game_manager = GameManager(bot)
         self.stats_tracker = StatisticsTracker(bot)
+        self.active_views = {}  # channel_id -> BauCuaBetView (for cleanup)
         logger.info("[BAUCUA_COG] Cog initialized")
     
     @app_commands.command(name="baucua", description="Chơi game Bầu Cua Tôm Cá Gà Nai")
@@ -88,6 +89,7 @@ class BauCuaCog(commands.Cog):
             end_timestamp = int(time.time() + BETTING_TIME_SECONDS)
             embed = create_betting_embed(end_timestamp)
             view = BauCuaBetView(self.game_manager, game_state.game_id)
+            self.active_views[channel_id] = view  # Store for cleanup
             
             if is_slash:
                 game_message = await ctx_or_interaction.followup.send(embed=embed, view=view)
@@ -105,6 +107,10 @@ class BauCuaCog(commands.Cog):
             if not game_state.has_bets():
                 await channel.send("⚠️ Không ai cược! Game bị hủy.")
                 logger.info(f"[GAME_CANCELLED] game_id={game_state.game_id} reason=no_bets")
+                # Cleanup view before ending game
+                if channel_id in self.active_views:
+                    self.active_views[channel_id].stop()
+                    del self.active_views[channel_id]
                 self.game_manager.end_game(channel_id)
                 return
             
@@ -133,7 +139,11 @@ class BauCuaCog(commands.Cog):
             # Display results and summary
             await self._display_results(channel, results, bets_data, payouts)
             
-            # Clean up game state
+            # Clean up game state and view
+            if channel_id in self.active_views:
+                self.active_views[channel_id].stop()
+                del self.active_views[channel_id]
+                logger.info(f"[CLEANUP] View stopped for channel {channel_id}")
             self.game_manager.end_game(channel_id)
             
             # Update results in background
@@ -158,7 +168,10 @@ class BauCuaCog(commands.Cog):
                 except Exception:
                     pass
             
-            # Remove active game
+            # Remove active game and view
+            if channel.id in self.active_views:
+                self.active_views[channel.id].stop()
+                del self.active_views[channel.id]
             self.game_manager.end_game(channel.id)
     
     async def _run_betting_phase(self, game_message, view):

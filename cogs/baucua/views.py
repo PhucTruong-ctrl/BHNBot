@@ -115,7 +115,7 @@ class BauCuaBetView(discord.ui.View):
             game_cog: BauCuaCog instance
             game_id: Current game session ID
         """
-        super().__init__(timeout=None)
+        super().__init__(timeout=600)  # 10 minutes max per game (prevents memory leak)
         self.game_cog = game_cog
         self.game_id = game_id
     

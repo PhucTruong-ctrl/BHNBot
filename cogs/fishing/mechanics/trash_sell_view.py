@@ -10,7 +10,7 @@ logger = logging.getLogger("fishing")
 class TrashSellView(View):
     """View for Black Market trash selling."""
     def __init__(self, manager):
-        super().__init__(timeout=None) # Persistent view? Or attached to message?
+        super().__init__(timeout=600)  # Match event duration, prevent leak
         # If attached to event message, timeout should match event duration or handle "Event Ended" interaction.
         # Ideally, we verify event is active on interaction.
         self.manager = manager

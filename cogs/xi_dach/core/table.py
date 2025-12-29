@@ -37,6 +37,7 @@ class Table:
     # Shared state
     turn_action_timestamp: float = 0.0
     current_turn_msg: Optional[object] = None
+    current_view: Optional[object] = None  # MultiGameView for cleanup
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     @property
