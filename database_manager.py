@@ -118,71 +118,24 @@ async def get_top_contributors(guild_id: int, limit: int = 3) -> List[tuple]:
 # ==================== INVENTORY QUERIES ====================
 
 async def get_inventory(user_id: int) -> Dict[str, int]:
-    """Retrieves the user's inventory from the database.
+    """DEPRECATED: Use bot.inventory.get_all() instead."""
+    logger.error(f"[DEPRECATED] get_inventory called for {user_id}")
+    raise NotImplementedError("Legacy get_inventory is removed. Use bot.inventory.get_all()")
 
-    Args:
-        user_id (int): The Discord user ID.
 
-    Returns:
-        Dict[str, int]: A dictionary mapping item_id to quantity. Example: {'worm': 10, 'rod': 1}
+async def _add_item_unsafe(user_id: int, item_id: str, quantity: int = 1) -> bool:
+    """DEPRECATED: Use bot.inventory.modify() instead."""
+    logger.error(f"[DEPRECATED] _add_item_unsafe called for {user_id}")
+    raise NotImplementedError("Legacy _add_item_unsafe is removed. Use bot.inventory.modify()")
+
+
+async def _remove_item_unsafe(user_id: int, item_id: str, quantity: int = 1) -> bool:
     """
-    result = await db_manager.execute(
-        "SELECT item_id, quantity FROM inventory WHERE user_id = ? AND quantity > 0",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"inventory_{user_id}",
-        cache_ttl=600
-    )
-    
-    inventory = {}
-    for item_id, quantity in result:
-        inventory[item_id] = quantity
-    return inventory
-
-
-async def add_item(user_id: int, item_id: str, quantity: int = 1):
-    """Adds an item to the user's inventory.
-
-    Args:
-        user_id (int): The Discord user ID.
-        item_id (str): The unique identifier of the item.
-        quantity (int): The amount to add. Defaults to 1.
-
-    Returns:
-        bool: True if the operation was successful.
+    [DEPRECATED] UNSAFE METHOD - BYPASSES CACHE.
+    DO NOT USE DIRECTLY. Use bot.inventory.modify() instead.
     """
-    # Check if item exists
-    existing = await db_manager.fetchone(
-        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-        (user_id, item_id)
-    )
+    logger.warning(f"[UNSAFE] _remove_item_unsafe called for {user_id} item={item_id}. This bypasses cache!")
     
-    if existing:
-        await db_manager.modify(
-            "UPDATE inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?",
-            (quantity, user_id, item_id)
-        )
-    else:
-        await db_manager.modify(
-            "INSERT INTO inventory (user_id, item_id, item_type, quantity) VALUES (?, ?, 'item', ?)",
-            (user_id, item_id, quantity)
-        )
-    
-    db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
-    return True
-
-
-async def remove_item(user_id: int, item_id: str, quantity: int = 1) -> bool:
-    """Removes an item from the user's inventory.
-
-    Args:
-        user_id (int): The Discord user ID.
-        item_id (str): The unique identifier of the item.
-        quantity (int): The amount to remove. Defaults to 1.
-
-    Returns:
-        bool: True if the item was successfully removed (user had enough quantity), False otherwise.
-    """
     existing = await db_manager.fetchone(
         "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
         (user_id, item_id)

@@ -8,7 +8,7 @@ import asyncio
 import discord
 
 from database_manager import (
-    get_inventory, add_item, remove_item, add_seeds,
+    add_seeds,
     get_stat, increment_stat, db_manager
 )
 from ..constants import (
@@ -62,7 +62,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
         logger.info(f"[EVENT] {user_name} experienced lag delay (3s) - open chest")
     
     # 2. Check Inventory & Deduct Chests
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory
+    inventory = await cog.bot.inventory.get_all(user_id)
     current_chests = inventory.get(ItemKeys.RUONG_KHO_BAU, 0)
     
     if current_chests < quantity:
@@ -72,7 +73,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
         return
     
     # Deduct chests immediately
-    await remove_item(user_id, ItemKeys.RUONG_KHO_BAU, quantity)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, ItemKeys.RUONG_KHO_BAU, -quantity)
     
     # 3. Track Stats
     try:
@@ -164,7 +166,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     
     for item_key, count in aggregated_loot.items():
         if item_key == ItemKeys.PHAN_BON:
-            await cog.add_inventory_item(user_id, ItemKeys.PHAN_BON, count)
+            # [CACHE] Use bot.inventory.modify
+            await cog.bot.inventory.modify(user_id, ItemKeys.PHAN_BON, count)
             loot_messages.append(f"🌾 **Phân Bón** x{count}")
             
         elif item_key == "manh_ghep":
@@ -176,7 +179,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
                 p = random.choice(pieces)
                 puzzle_pieces_got.append(p)
                 puzzle_counts[p] += 1
-                await cog.add_inventory_item(user_id, p, 1) # Add one by one
+                # [CACHE] Use bot.inventory.modify
+                await cog.bot.inventory.modify(user_id, p, 1) # Add one by one
             
             # Display detailed breakdown
             for p_key, p_qty in puzzle_counts.items():
@@ -185,14 +189,16 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
                     loot_messages.append(f"🧩 **{p_name}** x{p_qty}")
             
         elif item_key in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
-            await cog.add_inventory_item(user_id, item_key, count)
+            # [CACHE] Use bot.inventory.modify
+            await cog.bot.inventory.modify(user_id, item_key, count)
             item_data = item_system.get_item(item_key)
             name = item_data.name if item_data else item_key
             emoji = item_data.emoji if item_data else "❓"
             loot_messages.append(f"{emoji} **{name}** x{count}")
             
         elif item_key in trash_key_list or item_key.startswith("trash_"):
-            await cog.add_inventory_item(user_id, item_key, count)
+            # [CACHE] Use bot.inventory.modify
+            await cog.bot.inventory.modify(user_id, item_key, count, item_type="trash")
             item_data = item_system.get_item(item_key)
             # Fallback to key if name not found, but ItemSystem should have it if registered
             name = item_data.name if item_data else item_key
@@ -200,7 +206,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             loot_messages.append(f"{emoji} **{name}** x{count}")
             
         else: # Gifts or generic Items
-            await cog.add_inventory_item(user_id, item_key, count)
+            # [CACHE] Use bot.inventory.modify
+            await cog.bot.inventory.modify(user_id, item_key, count)
             # Use ItemSystem for everything else
             item_data = item_system.get_item(item_key)
             if item_data:
@@ -217,7 +224,8 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
 
     # 7. Post-Process Special Logics (Puzzle Check)
     if puzzle_pieces_got:
-        inv_check = await get_inventory(user_id)
+        # [CACHE] Use bot.inventory.get_all
+        inv_check = await cog.bot.inventory.get_all(user_id)
         # Check how many full sets user has
         a, b, c, d = [inv_check.get(f"puzzle_{x}", 0) for x in "abcd"]
         sets_can_make = min(a, b, c, d)
@@ -227,10 +235,11 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             for _ in range(sets_can_make):
                 reward_total += random.randint(5000, 10000)
                 
-            await remove_item(user_id, "puzzle_a", sets_can_make)
-            await remove_item(user_id, "puzzle_b", sets_can_make)
-            await remove_item(user_id, "puzzle_c", sets_can_make)
-            await remove_item(user_id, "puzzle_d", sets_can_make)
+            # [CACHE] Use bot.inventory.modify
+            await cog.bot.inventory.modify(user_id, "puzzle_a", -sets_can_make)
+            await cog.bot.inventory.modify(user_id, "puzzle_b", -sets_can_make)
+            await cog.bot.inventory.modify(user_id, "puzzle_c", -sets_can_make)
+            await cog.bot.inventory.modify(user_id, "puzzle_d", -sets_can_make)
             await add_seeds(user_id, reward_total, 'puzzle_reward', 'item_usage')
                 
             loot_messages.append(f"\n🎉 **TỰ ĐỘNG GHÉP {sets_can_make} BỘ!**")
@@ -286,7 +295,8 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
         ctx = ctx_or_interaction
     
     # Get inventory
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory
+    inventory = await cog.bot.inventory.get_all(user_id)
     
     # Find all trash items (stored as "trash_01", "trash_02", etc.)
     # OLD BUG: trash_keys = [t.get("key") for t in TRASH_ITEMS]  # This was WRONG!
@@ -315,10 +325,12 @@ async def recycle_trash_action(cog, ctx_or_interaction, action: str = None):
     
     # Remove all trash
     for trash_key, quantity in user_trash.items():
-        await remove_item(user_id, trash_key, quantity)
+        # [CACHE] Use bot.inventory.modify
+        await cog.bot.inventory.modify(user_id, trash_key, -quantity)
     
     # Add phan_bon (not seeds!)
-    await cog.add_inventory_item(user_id, ItemKeys.PHAN_BON, phan_bon_amount)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, ItemKeys.PHAN_BON, phan_bon_amount)
     
     # Track recycling stats
     try:
@@ -369,7 +381,8 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
         ctx = ctx_or_interaction
     
     # Get inventory
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory
+    inventory = await cog.bot.inventory.get_all(user_id)
     fertilizer_count = inventory.get(ItemKeys.PHAN_BON, 0)
     
     # Check if user has fertilizers
@@ -385,7 +398,8 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     total_exp = sum(random.randint(50, 100) for _ in range(fertilizer_count))
     
     # Remove all fertilizers from inventory
-    await remove_item(user_id, ItemKeys.PHAN_BON, fertilizer_count)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, ItemKeys.PHAN_BON, -fertilizer_count)
     logger.info(f"[BONPHAN] {username} used {fertilizer_count} fertilizers for {total_exp} EXP")
     
     # Use tree cog's API to add contribution

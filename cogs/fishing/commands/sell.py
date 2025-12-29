@@ -9,7 +9,7 @@ import asyncio
 import discord
 from datetime import datetime
 
-from database_manager import get_inventory, add_seeds, db_manager, get_stat, increment_stat, remove_item
+from database_manager import add_seeds, db_manager, get_stat, increment_stat
 from ..constants import ALL_FISH, LEGENDARY_FISH_KEYS, COMMON_FISH_KEYS, RARE_FISH_KEYS
 from configs.item_constants import ItemKeys
 from core.item_system import item_system
@@ -124,7 +124,8 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         logger.info(f"[SELL] Processing sell command for {username} (user_id={user_id})")
         
         # Get inventory
-        inventory = await get_inventory(user_id)
+        # [CACHE] Use bot.inventory.get_all
+        inventory = await cog.bot.inventory.get_all(user_id)
         
         # ==================== FILTER SELLABLE ITEMS ====================
         # Start with items that are in ALL_FISH (fish + special items from fishing)
@@ -380,21 +381,21 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
         # Handle Special Item rewards
         reward_msg = ""
         if "special" in event_result:
-            from database_manager import add_item # Import here to be safe
+            # [CACHE] Use bot.inventory.modify
             special_type = event_result["special"]
             
             if special_type == "chest":
-                await add_item(user_id, ItemKeys.RUONG_KHO_BAU, 1)
+                await cog.bot.inventory.modify(user_id, ItemKeys.RUONG_KHO_BAU, 1)
                 reward_msg = "🎁 **Nhận thêm:** 1 Rương Kho Báu"
             elif special_type == ItemKeys.MOI:
-                await add_item(user_id, ItemKeys.MOI, 5)
+                await cog.bot.inventory.modify(user_id, ItemKeys.MOI, 5)
                 reward_msg = "🪱 **Nhận thêm:** 5 Mồi Câu"
             elif special_type == "ngoc_trai":
-                await add_item(user_id, "ngoc_trai", 1)
+                await cog.bot.inventory.modify(user_id, "ngoc_trai", 1)
                 reward_msg = "🔮 **Nhận thêm:** 1 Ngọc Trai"
             elif special_type == "vat_lieu_nang_cap":
                 amt = random.randint(2, 5)
-                await add_item(user_id, "vat_lieu_nang_cap", amt)
+                await cog.bot.inventory.modify(user_id, "vat_lieu_nang_cap", amt)
                 reward_msg = f"🛠️ **Nhận thêm:** {amt} Vật Liệu Cần Câu"
             
             if reward_msg:
@@ -402,7 +403,8 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
 
         # Actually remove fish from inventory and add money
         for fish_key in fish_items.keys():
-            await remove_item(user_id, fish_key, fish_items[fish_key])
+            # [CACHE] Use bot.inventory.modify
+            await cog.bot.inventory.modify(user_id, fish_key, -fish_items[fish_key])
             
         # HOOK: Cthulhu Raid Hijack
         if hasattr(cog, "global_event_manager") and cog.global_event_manager.current_event:

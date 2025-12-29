@@ -1,7 +1,7 @@
 
 import logging
 import discord
-from database_manager import db_manager, get_user_balance, add_seeds, get_inventory, remove_item, increment_stat, get_stat
+from database_manager import db_manager, get_user_balance, add_seeds, increment_stat, get_stat
 from ..constants import ROD_LEVELS
 from ..mechanics.rod_system import get_rod_data, update_rod_data
 from core.utils import format_currency
@@ -21,6 +21,8 @@ async def nangcap_action(ctx_or_interaction):
         reply = ctx_or_interaction.reply
 
     user_id = user.id
+    # Get bot instance
+    bot = ctx_or_interaction.client if isinstance(ctx_or_interaction, discord.Interaction) else ctx_or_interaction.bot
     logger.info(f"[ROD] User {user.name} ({user_id}) initiated upgrade.")
 
     try:
@@ -79,14 +81,16 @@ async def nangcap_action(ctx_or_interaction):
         balance = await get_user_balance(user_id)
         current_materials = 0
         if material_cost > 0:
-            inventory = await get_inventory(user_id)
+            # [CACHE] Use bot.inventory.get_all
+            inventory = await bot.inventory.get_all(user_id)
             current_materials = inventory.get("vat_lieu_nang_cap", 0)
         
         # Check special materials (Level 6 - Void Rod)
         special_material_ok = True
         special_material_msg = ""
         if special_materials:
-            inventory = await get_inventory(user_id)
+            # [CACHE] Use bot.inventory.get_all
+            inventory = await bot.inventory.get_all(user_id)
             for mat_key, mat_count in special_materials.items():
                 user_mat = inventory.get(mat_key, 0)
                 if user_mat < mat_count:
@@ -133,7 +137,8 @@ async def nangcap_action(ctx_or_interaction):
         
         # 2. Deduct Materials (if required)
         if material_cost > 0:
-            await remove_item(user_id, "vat_lieu_nang_cap", material_cost)
+            # [CACHE] Use bot.inventory.modify
+            await bot.inventory.modify(user_id, "vat_lieu_nang_cap", -material_cost)
             # Track rod_upgrades achievement
             try:
                 await increment_stat(user_id, "fishing", "rod_upgrades", 1)
@@ -149,7 +154,8 @@ async def nangcap_action(ctx_or_interaction):
         # 3. Deduct Special Materials (Level 6 - Void Rod)
         if special_materials:
             for mat_key, mat_count in special_materials.items():
-                await remove_item(user_id, mat_key, mat_count)
+                # [CACHE] Use bot.inventory.modify
+                await bot.inventory.modify(user_id, mat_key, -mat_count)
                 logger.info(f"[ROD] {user.name} used {mat_count}x {mat_key} for upgrade")
         
         # 4. Update Rod

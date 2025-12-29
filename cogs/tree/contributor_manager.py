@@ -5,7 +5,7 @@ Manages contributor statistics, rankings, and reward calculations.
 
 from typing import List, Dict, Tuple
 from core.logger import setup_logger
-from database_manager import db_manager, add_item
+from database_manager import db_manager
 
 from .constants import HARVEST_REWARDS
 from .models import ContributorData
@@ -222,7 +222,8 @@ class ContributorManager:
             memorabilia_key = f"qua_ngot_mua_{season}"
             
             for user_id, _ in contributors:
-                await add_item(user_id, memorabilia_key, 1)
+                # [CACHE] Use bot.inventory.modify
+                await self.bot.inventory.modify(user_id, memorabilia_key, 1)
             
             logger.info(
                 f"[MEMORABILIA] Gave {memorabilia_key} to {len(contributors)} contributors"

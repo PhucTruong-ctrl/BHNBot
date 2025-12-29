@@ -120,11 +120,11 @@ class PhoenixEggView(discord.ui.View):
             await self._success(interaction)
     
     async def on_timeout(self):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -137,11 +137,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Timeout error: {e}")
     
     async def _bust(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -155,11 +155,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Bust error: {e}")
     
     async def _fail_low(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -173,11 +173,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Fail low error: {e}")
     
     async def _success(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_buff(self.user_id, True)
             await set_phoenix_last_play(self.user_id)
             
@@ -192,11 +192,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Success error: {e}")
     
     async def _perfect(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_buff(self.user_id, True)
             await set_phoenix_last_play(self.user_id)
             

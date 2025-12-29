@@ -6,7 +6,7 @@ from datetime import datetime
 from discord.ext import tasks
 import discord
 from core.logger import setup_logger
-from database_manager import db_manager, add_item, add_seeds, get_stat, increment_stat, set_global_state, get_global_state
+from database_manager import db_manager, add_seeds, get_stat, increment_stat, set_global_state, get_global_state
 from ..mechanics.event_views import MeteorWishView
 
 logger = setup_logger("GlobalEvents", "cogs/fishing/global_events.log")
@@ -617,7 +617,8 @@ class GlobalEventManager:
 
                      qty = random.randint(min_qty, max_qty) * multiplier
                      if qty > 0:
-                         await add_item(uid, key, qty)
+                         # [CACHE] Use bot.inventory.modify
+                         await self.bot.inventory.modify(uid, key, qty)
                          # Try to resolve name from ALL_FISH/items if possible
                          name = key
                          from ..constants import ALL_FISH
@@ -1011,7 +1012,8 @@ class GlobalEventManager:
                         min_qty = item.get("min", 1)
                         max_qty = item.get("max", 1)
                         qty = random.randint(min_qty, max_qty) * multiplier
-                        await add_item(uid, key, qty)
+                        # [CACHE] Use bot.inventory.modify
+                        await self.bot.inventory.modify(uid, key, qty)
                         added_text.append(f"{qty} {key}")
                 
                 return ", ".join(added_text)

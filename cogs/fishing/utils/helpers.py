@@ -7,7 +7,7 @@ import time
 from typing import Optional, Dict, Any, Union
 import discord
 
-from database_manager import db_manager, add_item, get_server_config
+from database_manager import db_manager, get_server_config
 from configs.item_constants import ItemKeys
 from ..mechanics.rod_system import ROD_LEVELS
 from ..mechanics.glitch import apply_glitch_lite, apply_glitch_moderate, apply_glitch_aggressive, DISPLAY_GLITCH_ACTIVE
@@ -330,7 +330,8 @@ def apply_display_glitch(self, text: str) -> str:
 
 async def add_inventory_item(self, user_id: int, item_id: str, item_type: str):
     """Add item to inventory."""
-    await add_item(user_id, item_id, 1)
+    # [CACHE] Use bot.inventory.modify
+    await self.bot.inventory.modify(user_id, item_id, 1)
     try:
         await db_manager.modify(
             "UPDATE inventory SET item_type = ? WHERE user_id = ? AND item_id = ?",
@@ -379,7 +380,8 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     if cost == "fish":
         # Remove the fish
-        await remove_item(user_id, fish_key, 1)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(user_id, fish_key, -1)
         logger.info(f"[NPC] User {user_id} gave {fish_key} to {npc_type}")
     
     elif isinstance(cost, int):
@@ -424,7 +426,8 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     if reward_type == ItemKeys.MOI:
         amount = selected_reward.get("amount", 5)
-        await add_item(user_id, ItemKeys.MOI, amount)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(user_id, ItemKeys.MOI, amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} worms from {npc_type}")
     
@@ -436,7 +439,8 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     elif reward_type == "chest":
         amount = selected_reward.get("amount", 1)
-        await add_item(user_id, ItemKeys.RUONG_KHO_BAU, amount)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(user_id, ItemKeys.RUONG_KHO_BAU, amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} chest(s) from {npc_type}")
     
@@ -468,13 +472,15 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     
     elif reward_type == "ngoc_trai":
         amount = selected_reward.get("amount", 1)
-        await add_item(user_id, "ngoc_trai", amount)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(user_id, "ngoc_trai", amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} ngoc_trai(s) from {npc_type}")
     
     elif reward_type == "vat_lieu_nang_cap":
         amount = selected_reward.get("amount", 2)
-        await add_item(user_id, "vat_lieu_nang_cap", amount)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(user_id, "vat_lieu_nang_cap", amount)
         result_text = selected_reward["message"]
         logger.info(f"[NPC] User {user_id} received {amount} rod material(s) from {npc_type}")
     

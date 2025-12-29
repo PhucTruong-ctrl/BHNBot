@@ -5,7 +5,7 @@ from discord.ext import commands
 import discord
 import random
 import random
-from database_manager import get_inventory, remove_item, add_item
+# [CACHE] Removed legacy imports
 from .fishing.utils.consumables import CONSUMABLE_ITEMS, get_consumable_info, is_consumable
 from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
 
@@ -202,11 +202,11 @@ class PhoenixEggView(discord.ui.View):
             await self._success(interaction)
     
     async def on_timeout(self):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -220,11 +220,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Timeout error: {e}")
     
     async def _bust(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -238,11 +238,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Bust error: {e}")
     
     async def _fail_low(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -256,11 +256,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Fail low error: {e}")
     
     async def _success(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_buff(self.user_id, self.energy)  # Store energy value
             await set_phoenix_last_play(self.user_id)
             
@@ -275,11 +275,11 @@ class PhoenixEggView(discord.ui.View):
             logger.error(f"[PHOENIX] Success error: {e}")
     
     async def _perfect(self, interaction):
-        from database_manager import remove_item
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
         
         try:
-            await remove_item(self.user_id, "long_vu_lua", 1)
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
             await set_phoenix_buff(self.user_id, self.energy)  # Store energy value
             await set_phoenix_last_play(self.user_id)
             
@@ -358,7 +358,8 @@ class ConsumableCog(commands.Cog):
         item_info = get_consumable_info(item_key)
         
         # Check inventory
-        inventory = await get_inventory(user_id)
+        # [CACHE] Use bot.inventory.get_all
+        inventory = await self.bot.inventory.get_all(user_id)
         quantity = inventory.get(item_key, 0)
         
         if quantity < 1:
@@ -455,7 +456,8 @@ class ConsumableCog(commands.Cog):
         # Special handling for long_vu_lua
         if item_key == "long_vu_lua":
             # Check if user has long vu lua in inventory
-            inventory = await get_inventory(user_id)
+            # [CACHE] Use bot.inventory.get_all
+            inventory = await self.bot.inventory.get_all(user_id)
             quantity = inventory.get("long_vu_lua", 0)
             if quantity < 1:
                 error_msg = "❌ Bạn không có **Lông Vũ Lửa**!"
@@ -481,7 +483,14 @@ class ConsumableCog(commands.Cog):
             return
         
         # Use the item - remove from inventory (for regular items)
-        success = await remove_item(user_id, item_key, 1)
+        try:
+            # [CACHE] Use bot.inventory.modify
+            await self.bot.inventory.modify(user_id, item_key, -1)
+            success = True
+        except Exception as e:
+            logger.error(f"[CONSUMABLE] Error using item {item_key}: {e}")
+            success = False
+
         if not success:
             error_msg = "❌ Lỗi khi sử dụng vật phẩm!"
             if is_slash:
@@ -536,7 +545,8 @@ class ConsumableCog(commands.Cog):
             return
         
         item_info = get_consumable_info(item_key)
-        await add_item(target_user.id, item_key, quantity)
+        # [CACHE] Use bot.inventory.modify
+        await self.bot.inventory.modify(target_user.id, item_key, quantity)
         
         embed = discord.Embed(
             title="✅ Đã Thêm Consumable Item",

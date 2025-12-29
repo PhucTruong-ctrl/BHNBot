@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
-from database_manager import remove_item
+# from database_manager import remove_item (Removed)
 # Replaced import: SHOP_ITEMS is gone.
 from cogs.fishing.constants import ALL_ITEMS_DATA
 from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
@@ -58,10 +58,14 @@ class RelationshipCog(commands.Cog):
         # Relationship cog likely supports any item, but GIFT_MESSAGES has templates.
         
         # Check inventory
-        success = await remove_item(interaction.user.id, item_key, 1)
-        if not success:
+        # [CACHE] Check inventory
+        current_qty = await self.bot.inventory.get(interaction.user.id, item_key)
+        if current_qty < 1:
              item_name = ALL_ITEMS_DATA.get(item_key, {}).get("name", item_key)
              return await interaction.followup.send(f"❌ Bạn không có sẵn **{item_name}** trong túi đồ.")
+        
+        # Deduct item
+        await self.bot.inventory.modify(interaction.user.id, item_key, -1)
 
         logger.info(f"Gift: {interaction.user.id} -> {user.id}, item: {item_key}, anonymous: {an_danh}")
         

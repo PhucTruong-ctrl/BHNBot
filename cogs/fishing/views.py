@@ -2,7 +2,7 @@
 
 import discord
 import random
-from database_manager import remove_item, add_seeds, get_inventory
+from database_manager import add_seeds
 from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
 from .mechanics.glitch import apply_display_glitch
 from core.logger import setup_logger
@@ -65,42 +65,12 @@ class HagglingView(discord.ui.View):
         self.completed = True
         
         try:
-            from database_manager import db_manager
-            
-            # Prepare batch operations
-            operations = []
-            
-            # Remove fish items
+            # [CACHE] Use new inventory system
             for fish_key, quantity in self.caught_items.items():
-                operations.append((
-                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                    (quantity, self.user_id, fish_key)
-                ))
-            
-            operations.append((
-                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                (self.user_id,)
-            ))
+                await self.cog.bot.inventory.modify(self.user_id, fish_key, -quantity)
             
             # Add seeds
-            operations.append((
-                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                (self.base_total, self.user_id)
-            ))
-            
-            # Manual Log for ACID Transaction
-            operations.append((
-                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (self.user_id, self.base_total, 'haggle_accept', 'fishing')
-            ))
-            
-            # Execute transaction
-            await db_manager.batch_modify(operations)
-            
-            # Clear caches
-            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
-            db_manager.clear_cache_by_prefix("leaderboard")
+            await add_seeds(self.user_id, self.base_total, reason='haggle_accept', category='fishing')
             
             embed = discord.Embed(
                 title="🤝 **CHỐT XONG!**",
@@ -149,42 +119,12 @@ class HagglingView(discord.ui.View):
             action = "FAIL"
         
         try:
-            from database_manager import db_manager
-            
-            # Prepare batch operations
-            operations = []
-            
-            # Remove fish items
+            # [CACHE] Use new inventory system
             for fish_key, quantity in self.caught_items.items():
-                operations.append((
-                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                    (quantity, self.user_id, fish_key)
-                ))
-            
-            operations.append((
-                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                (self.user_id,)
-            ))
+                await self.cog.bot.inventory.modify(self.user_id, fish_key, -quantity)
             
             # Add seeds
-            operations.append((
-                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                (final_total, self.user_id)
-            ))
-            
-            # Manual Log for ACID Transaction
-            operations.append((
-                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (self.user_id, final_total, 'haggle_result', 'fishing')
-            ))
-            
-            # Execute transaction
-            await db_manager.batch_modify(operations)
-            
-            # Clear caches
-            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
-            db_manager.clear_cache_by_prefix("leaderboard")
+            await add_seeds(self.user_id, final_total, reason='haggle_result', category='fishing')
             
             embed = discord.Embed(
                 title=f"😏 **MẶC CÀ {action}!**",

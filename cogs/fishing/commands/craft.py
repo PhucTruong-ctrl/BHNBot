@@ -10,7 +10,7 @@ import time
 import discord
 
 from database_manager import (
-    get_inventory, add_item, remove_item, add_seeds,
+    add_seeds,
     get_fish_count, get_stat, increment_stat
 )
 from ..constants import (
@@ -20,7 +20,6 @@ from ..constants import (
 from ..mechanics.legendary_quest_helper import (
     increment_sacrifice_count, get_sacrifice_count, reset_sacrifice_count,
     set_crafted_bait_status, get_crafted_bait_status,
-    get_manh_sao_bang_count, set_manh_sao_bang_count,
     get_map_pieces_count, set_map_pieces_count
 )
 from ..utils.helpers import (
@@ -105,7 +104,8 @@ async def hiente_action(cog, ctx_or_interaction, fish_key: str, is_slash: bool):
         return
     
     # Check inventory
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory.get_all
+    inventory = await cog.bot.inventory.get_all(user_id)
     if inventory.get(fish_key, 0) <= 0:
         fish_name = ALL_FISH.get(fish_key, {}).get("name", fish_key)
         embed = discord.Embed(
@@ -120,7 +120,8 @@ async def hiente_action(cog, ctx_or_interaction, fish_key: str, is_slash: bool):
         return
     
     # Remove fish and add sacrifice count
-    await remove_item(user_id, fish_key, 1)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, fish_key, -1)
     current_count = await increment_sacrifice_count(user_id, 1, "thuong_luong")
     
     # Start timer if first sacrifice
@@ -175,7 +176,8 @@ async def chetao_action(cog, ctx_or_interaction, item_key: str, is_slash: bool):
         logger.info(f"[CRAFT] {user_id} experienced lag delay (3s)")
     
     # Get inventory
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory.get_all
+    inventory = await cog.bot.inventory.get_all(user_id)
     
     # Define craftable items
     craftable_items = {
@@ -233,9 +235,11 @@ async def chetao_action(cog, ctx_or_interaction, item_key: str, is_slash: bool):
     
     # Craft the item
     for req_item, req_count in craft_info["requires"].items():
-        await remove_item(user_id, req_item, req_count)
+        # [CACHE] Use bot.inventory.modify
+        await cog.bot.inventory.modify(user_id, req_item, -req_count)
     
-    await add_item(user_id, item_key, 1)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, item_key, 1)
     
     embed = discord.Embed(
         title="✨ Chế Tạo Thành Công!",
@@ -268,7 +272,8 @@ async def dosong_action(cog, ctx_or_interaction, is_slash: bool):
         user_id = ctx_or_interaction.author.id
     
     # Check if user has frequency detector
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory.get_all
+    inventory = await cog.bot.inventory.get_all(user_id)
     if inventory.get("may_do_song", 0) <= 0:
         embed = discord.Embed(
             title="❌ Không Có Máy Dò Sóng",
@@ -282,7 +287,8 @@ async def dosong_action(cog, ctx_or_interaction, is_slash: bool):
         return
     
     # Use the detector
-    await remove_item(user_id, "may_do_song", 1)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, "may_do_song", -1)
     
     # Set detection flag via consumable cog
     consumable_cog = cog.bot.get_cog("ConsumableCog")
@@ -320,7 +326,8 @@ async def ghepbando_action(cog, ctx_or_interaction, is_slash: bool):
         user_id = ctx_or_interaction.author.id
     
     # Check inventory for map pieces
-    inventory = await get_inventory(user_id)
+    # [CACHE] Use bot.inventory.get_all
+    inventory = await cog.bot.inventory.get_all(user_id)
     
     pieces = ["manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]
     has_all = all(inventory.get(p, 0) > 0 for p in pieces)
@@ -341,9 +348,11 @@ async def ghepbando_action(cog, ctx_or_interaction, is_slash: bool):
     
     # Remove pieces and create map
     for piece in pieces:
-        await remove_item(user_id, piece, 1)
+        # [CACHE] Use bot.inventory.modify
+        await cog.bot.inventory.modify(user_id, piece, -1)
     
-    await add_item(user_id, "ban_do_ham_am", 1)
+    # [CACHE] Use bot.inventory.modify
+    await cog.bot.inventory.modify(user_id, "ban_do_ham_am", 1)
     
     # Activate dark map for 10 casts (with lock protection to prevent race condition)
     # Initialize lock if not exists

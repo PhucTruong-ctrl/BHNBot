@@ -1,7 +1,7 @@
 import discord
 import random
 from discord.ui import View, Button
-from database_manager import get_inventory, add_seeds, remove_item
+from database_manager import add_seeds
 from ..constants import TRASH_ITEMS
 import logging
 
@@ -27,7 +27,8 @@ class TrashSellView(View):
             return
 
         user_id = interaction.user.id
-        inventory = await get_inventory(user_id)
+        # [CACHE] Use bot.inventory.get_all
+        inventory = await self.manager.bot.inventory.get_all(user_id)
         
         # 2. Identify Trash Items
         # TRASH_ITEMS is a list of dicts or objects? properties: key, name, etc.
@@ -83,7 +84,8 @@ class TrashSellView(View):
             total_seeds += line_total
             
             # Remove from DB
-            await remove_item(user_id, key, qty)
+            # [CACHE] Use bot.inventory.modify (negative delta)
+            await self.manager.bot.inventory.modify(user_id, key, -qty)
             
             # Find name
             item_name = next((t["name"] for t in TRASH_ITEMS if t["key"] == key), key)

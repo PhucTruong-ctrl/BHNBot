@@ -229,8 +229,9 @@ class EconomyCog(commands.Cog):
         seeds = await self.get_user_balance_local(target_user.id)
         
         # Get inventory
-        from database_manager import get_inventory, get_stat
-        inventory = await get_inventory(target_user.id)
+        from database_manager import get_stat
+        # [CACHE] Use new inventory system
+        inventory = await self.bot.inventory.get_all(target_user.id)
         
         # Get rod data from fishing module
         rod_data = None
@@ -281,8 +282,9 @@ class EconomyCog(commands.Cog):
         seeds = await self.get_user_balance_local(target_user.id)
         
         # Get inventory
-        from database_manager import get_inventory, get_stat
-        inventory = await get_inventory(target_user.id)
+        from database_manager import get_stat
+        # [CACHE] Use new inventory system
+        inventory = await self.bot.inventory.get_all(target_user.id)
         
         # Get rod data from fishing module
         rod_data = None

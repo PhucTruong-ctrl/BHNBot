@@ -3,7 +3,7 @@ Legendary Quest Helper Functions
 Quản lý tiến độ quest cho các cá huyền thoại
 """
 
-from database_manager import db_manager, get_inventory, add_item, remove_item
+from database_manager import db_manager
 
 
 # ==================== THUỒNG LUỒNG - Hiến Tế Cá ====================
@@ -199,128 +199,22 @@ async def set_frequency_hunt_status(user_id: int, status: int, fish_key: str = "
 
 # ==================== CÁ NGÂN HÀ - Mảnh Sao Băng & Tinh Cầu ====================
 
-async def get_manh_sao_bang_count(user_id: int) -> int:
-    """Lấy số lượng Mảnh Sao Băng từ Inventory (Real Item)"""
+# ==================== CÁ NGÂN HÀ - Mảnh Sao Băng & Tinh Cầu ====================
+# NOTE: Removed direct inventory access functions as they are largely unused or refactored.
+# Use bot.inventory directly in Cogs.
+
+async def increment_manh_sao_bang(bot, user_id: int, amount: int = 1) -> int:
+    """Tăng số lượng Mảnh Sao Băng (dùng bot.inventory)"""
     try:
-        inv = await get_inventory(user_id)
-        return inv.get("manh_sao_bang", 0)
-    except Exception as e:
-        print(f"[LEGENDARY] Error getting manh sao bang count: {e}")
-        return 0
-
-
-async def set_manh_sao_bang_count(user_id: int, count: int) -> None:
-    """Set số lượng Mảnh Sao Băng (Sync with Inventory)"""
-    try:
-        current = await get_manh_sao_bang_count(user_id)
-        diff = count - current
-        
-        if diff > 0:
-            await add_item(user_id, "manh_sao_bang", diff)
-        elif diff < 0:
-            await remove_item(user_id, "manh_sao_bang", abs(diff))
-            
-        print(f"[LEGENDARY] Set manh sao bang count for {user_id}: {count}")
-    except Exception as e:
-        print(f"[LEGENDARY] Error setting manh sao bang count: {e}")
-
-
-async def increment_manh_sao_bang(user_id: int, amount: int = 1) -> int:
-    """Tăng số lượng Mảnh Sao Băng (dùng add_item)"""
-    try:
-        if amount > 0:
-            await add_item(user_id, "manh_sao_bang", amount)
-        elif amount < 0:
-            await remove_item(user_id, "manh_sao_bang", abs(amount))
-            
-        return await get_manh_sao_bang_count(user_id)
+        # [CACHE] Use bot.inventory.modify
+        await bot.inventory.modify(user_id, "manh_sao_bang", amount)
+        # Return new count
+        return await bot.inventory.get(user_id, "manh_sao_bang")
     except Exception as e:
         print(f"[LEGENDARY] Error incrementing manh sao bang: {e}")
         return 0
 
-
-async def has_tinh_cau(user_id: int) -> bool:
-    """Kiểm tra có Tinh Cầu (Sync with Inventory)"""
-    try:
-        inv = await get_inventory(user_id)
-        # Check standard item
-        return inv.get("tinh_cau", 0) > 0
-    except Exception as e:
-        print(f"[LEGENDARY] Error checking tinh cau: {e}")
-        return False
-
-
-async def set_has_tinh_cau(user_id: int, has: bool = True) -> None:
-    """Set trạng thái Tinh Cầu (Sync with Inventory)"""
-    try:
-        inv = await get_inventory(user_id)
-        current = inv.get("tinh_cau", 0) > 0
-        
-        # If we need it but don't have it -> add 1
-        if has and not current:
-            await add_item(user_id, "tinh_cau", 1)
-        # If we don't need it but have it -> remove 1 (consume)
-        elif not has and current:
-            await remove_item(user_id, "tinh_cau", 1) # Assumes 1 consumed per use
-            
-        print(f"[LEGENDARY] Set tinh cau for {user_id}: {has}")
-    except Exception as e:
-        print(f"[LEGENDARY] Error setting tinh cau: {e}")
-
-
-async def get_tinh_cau_cooldown(user_id: int) -> str or None:
-    """Lấy thời gian cooldown của Tinh Cầu (last_progress_time)"""
-    try:
-        row = await db_manager.fetchone(
-            "SELECT last_progress_time FROM legendary_quests WHERE user_id = ? AND fish_key = 'ca_ngan_ha'",
-            (user_id,)
-        )
-        return row[0] if row else None
-    except Exception as e:
-        print(f"[LEGENDARY] Error getting tinh cau cooldown: {e}")
-        return None
-
-
-async def set_tinh_cau_cooldown(user_id: int) -> None:
-    """Set thời gian cooldown cho Tinh Cầu (sau khi thất bại mini-game)"""
-    try:
-        await db_manager.modify(
-            "INSERT OR REPLACE INTO legendary_quests (user_id, fish_key, last_progress_time) VALUES (?, 'ca_ngan_ha', CURRENT_TIMESTAMP) ON CONFLICT(user_id, fish_key) DO UPDATE SET last_progress_time = CURRENT_TIMESTAMP",
-            (user_id,)
-        )
-        print(f"[LEGENDARY] Set tinh cau cooldown for {user_id}")
-    except Exception as e:
-        print(f"[LEGENDARY] Error setting tinh cau cooldown: {e}")
-
-
-async def craft_tinh_cau(user_id: int) -> bool:
-    """Chế tạo Tinh Cầu từ 5 Mảnh Sao Băng + 1 Ngọc Trai"""
-    try:
-        # Check if already caught
-        if await is_legendary_caught(user_id, "ca_ngan_ha"):
-            return False
-        
-        manh_count = await get_manh_sao_bang_count(user_id)
-        if manh_count < 5:
-            return False
-        
-        # Check có Ngọc Trai không
-        from database_manager import get_inventory
-        inventory = await get_inventory(user_id)
-        if inventory.get('ngoc_trai', 0) < 1:
-            return False
-        
-        # Trừ vật phẩm
-        from database_manager import remove_item # Already imported at top, but local scope ok
-        await remove_item(user_id, 'ngoc_trai', 1)
-        await remove_item(user_id, 'manh_sao_bang', 5) # Use remove_item now
-        await set_has_tinh_cau(user_id, True)
-        
-        print(f"[LEGENDARY] {user_id} crafted Tinh Cầu")
-        return True
-    except Exception as e:
-        print(f"[LEGENDARY] Error crafting tinh cau: {e}")
-        return False
+# NOTE: Unused legacy functions removed (has_tinh_cau, craft_tinh_cau etc)
 
 
 # ==================== LEGENDARY CAUGHT ====================

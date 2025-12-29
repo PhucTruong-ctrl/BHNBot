@@ -12,16 +12,21 @@ load_dotenv()
 
 from core.logger import setup_logger
 from core.timeout_monitor import get_monitor as get_timeout_monitor
+from core.database import db_manager
+from core.inventory_cache import InventoryCache
 
-# Setup System Logger
-logger = setup_logger("System", "system.log")
+# 1. SETUP LOGGING
+setup_logger("Main", "main.log")
+logger = logging.getLogger("Main")
 
-# Cấu hình Intent (Quyền hạn)
-intents = discord.Intents.default()
-intents.message_content = True # Bắt buộc để đọc tin nhắn nối từ
-intents.members = True         # Bắt buộc để check Invite/Welcome
-
+# 2. CREATE BOT
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+
+# 3. ATTACH DATABASE & INVENTORY CACHE
+bot.db = db_manager
+bot.inventory = InventoryCache(bot.db) # Singleton Injection
+bot.achievement_manager = None # Will be set in setup_hooks.getenv("OWNER_ID", "0"))  # Load from .env
 bot.owner_id = int(os.getenv("OWNER_ID", "0"))  # Load from .env
 bot.cogs_loaded = False  # Flag to track if cogs are already loaded
 
