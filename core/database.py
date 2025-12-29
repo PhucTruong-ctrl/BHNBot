@@ -175,6 +175,7 @@ class DatabaseManager:
             async with db.execute(query, params) as cursor:
                 await db.commit()
                 rowcount = cursor.rowcount
+                logger.debug(f"[DB] [COMMIT] Query: {query[:50]}... | Rows: {rowcount}")
 
         # Invalidate relevant caches
         self._invalidate_cache_pattern(query)

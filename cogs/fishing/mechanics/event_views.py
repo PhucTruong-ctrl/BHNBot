@@ -18,7 +18,8 @@ class MeteorWishView(discord.ui.View):
     """View for wishing on shooting stars during meteor shower events."""
     
     def __init__(self, cog):
-        super().__init__(timeout=30)
+        # FIX: Increase timeout to 10 mins (was 30s)
+        super().__init__(timeout=600)
         self.cog = cog
         self.wished_users = set()
     
@@ -41,6 +42,9 @@ class MeteorWishView(discord.ui.View):
         self.wished_users.add(user_id)
         
         # 10% chance for manh_sao_bang (User Request)
+        # Defer immediately to prevent timeout during DB ops
+        await interaction.response.defer()
+        
         if random.random() < 0.2:
             await increment_manh_sao_bang(self.cog.bot, user_id, 1)
             await increment_stat(user_id, 'fishing', stat_key, 1)
@@ -61,7 +65,7 @@ class MeteorWishView(discord.ui.View):
             )
             logger.info(f"[METEOR] User {interaction.user.name} ({user_id}) got {seeds} SEEDS")
         
-        await interaction.response.send_message(message, ephemeral=False)
+        await interaction.followup.send(message)
         
         # Disable button after 15s
         await asyncio.sleep(15)
@@ -110,6 +114,8 @@ class GenericActionView(discord.ui.View):
             
     def create_callback(self, idx):
         async def callback(interaction: discord.Interaction):
+            # Defer to preventing Timeout
+            await interaction.response.defer(ephemeral=True)
             await self._handle_click(interaction, idx)
         return callback
     
@@ -322,7 +328,7 @@ class GenericActionView(discord.ui.View):
                         # WIN - Show success message
                         msg = btn_config.get("message", "Thành công!")
                         msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
-                        await interaction.response.send_message(f"✅ {msg}", ephemeral=True)
+                        await interaction.followup.send(f"✅ {msg}", ephemeral=True)
                         
                         # PUBLIC BROADCAST (Only on win)
                         public_msg = btn_config.get("public_message")
@@ -334,7 +340,7 @@ class GenericActionView(discord.ui.View):
                     else:
                         # LOSS - Send ephemeral ACK first
                         loss_msg = fail_msg or "⚠️ Bạn không nhận được gì cả... (Xui quá!)"
-                        await interaction.response.send_message(f"❌ {loss_msg}", ephemeral=True)
+                        await interaction.followup.send(f"❌ {loss_msg}", ephemeral=True)
                         
                         # Then PUBLIC SHAME for everyone to laugh
                         public_loss_msg = f"😂 **<@{user_id}>** đã thua! {loss_msg}"
@@ -349,7 +355,7 @@ class GenericActionView(discord.ui.View):
                     raise e
                     
         except ValueError as ve:
-             await interaction.response.send_message(str(ve), ephemeral=True)
+             await interaction.followup.send(str(ve), ephemeral=True)
         except Exception as e:
              logger.error(f"[GENERIC_VIEW] Error: {e}")
-             await interaction.response.send_message("❌ Lỗi hệ thống!", ephemeral=True)
+             await interaction.followup.send("❌ Lỗi hệ thống!", ephemeral=True)

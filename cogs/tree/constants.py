@@ -84,6 +84,9 @@ HARVEST_BUFF_HOURS = 24
 # Security: Maximum total harvest rewards to prevent overflow
 MAX_TOTAL_REWARDS = 100_000_000  # 100M seeds cap
 
+# Maximum single contribution
+MAX_CONTRIBUTION = 1_000_000
+
 # ==================== UPDATE SETTINGS ====================
 
 # Minimum seconds between tree message updates (debounce)

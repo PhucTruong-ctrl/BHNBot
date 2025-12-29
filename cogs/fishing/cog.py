@@ -527,21 +527,29 @@ class FishingCog(commands.Cog):
             username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
             logger.info(f"[FISHING] [ROD_DATA] {username_display} (user_id={user_id}) rod_level={rod_lvl} durability={rod_durability}/{rod_config['durability']}")
             
+            # [DEBUG] Trace execution
+            logger.info(f"[FISHING] [DEBUG] Checking server freeze for {user_id}")
+            
             # --- CHECK FOR SERVER FREEZE (GLOBAL DISASTER) ---
             username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
             if await self._check_server_freeze(user_id, username_display, is_slash, ctx):
                 return
 
 
-
             # --- CHECK FOR NON-FREEZE DISASTER EFFECTS EXPIRING ---
             await self._clear_expired_disaster()
+
+            # [DEBUG] Trace execution
+            logger.info(f"[FISHING] [DEBUG] Checking bucket limit for {user_id}")
 
             # --- CHECK FISH BUCKET LIMIT (BEFORE ANYTHING ELSE) ---
             username_display = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
             if await self._check_bucket_limit(user_id, inventory, username_display, is_slash, ctx):
                 return
         
+            # [DEBUG] Trace execution
+            logger.info(f"[FISHING] [DEBUG] Checking repair for {user_id}")
+
             # --- CHECK DURABILITY & AUTO REPAIR ---
             rod_durability, repair_msg, is_broken_rod = await self._check_and_repair_rod(
                 user_id, rod_lvl, rod_durability, rod_config, channel, username_display
@@ -550,6 +558,10 @@ class FishingCog(commands.Cog):
         
             # Ensure user exists
             username = ctx.author.name if not is_slash else ctx_or_interaction.user.name
+            
+            # [DEBUG] Trace execution
+            logger.info(f"[FISHING] [DEBUG] Getting/Creating user {user_id}")
+            
             await get_or_create_user(user_id, username)
 
             # ==================== FIX: COOLDOWN BYPASS & RACE CONDITIONS ====================
@@ -557,9 +569,13 @@ class FishingCog(commands.Cog):
             if user_id not in self.user_locks:
                 self.user_locks[user_id] = asyncio.Lock()
             
+            # [DEBUG] Trace execution
+            logger.info(f"[FISHING] [DEBUG] Acquiring lock for {user_id}")
+
             # ACQUIRE LOCK BEFORE CHECKING COOLDOWN
             # This ensures only ONE execution per user passes through at a time
             async with self.user_locks[user_id]:
+                logger.info(f"[FISHING] [DEBUG] Lock acquired for {user_id}")
             
                 # --- CHECK COOLDOWN (Inside Lock) ---
                 remaining = await self.get_fishing_cooldown_remaining(user_id)
