@@ -422,7 +422,7 @@ async def _process_npc_acceptance(self, user_id: int, npc_type: str, npc_data: d
     # Process reward
     reward_type = selected_reward["type"]
     
-    if reward_type == "moi":
+    if reward_type == ItemKeys.MOI:
         amount = selected_reward.get("amount", 5)
         await add_item(user_id, ItemKeys.MOI, amount)
         result_text = selected_reward["message"]

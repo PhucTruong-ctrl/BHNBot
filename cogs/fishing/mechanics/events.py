@@ -2,6 +2,7 @@
 
 import random
 from ..constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES, CRYPTO_LOSS_CAP, AUDIT_TAX_CAP
+from configs.item_constants import ItemKeys
 
 from database_manager import increment_stat
 
@@ -227,14 +228,14 @@ async def handle_flexing(result: dict, event_data: dict, **kwargs) -> dict:
 
 async def handle_free_cast(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Forgot Bait - No bait cost."""
-    result["gain_items"] = {"moi": 1}  # Refund 1 bait (treated as no cost)
+    result["gain_items"] = {ItemKeys.MOI: 1}  # Refund 1 bait (treated as no cost)
     return result
 
 async def handle_isekai(result: dict, event_data: dict, **kwargs) -> dict:
     """Handler: Isekai - Receive Isekai Fish + 10 minute cooldown."""
     # Receive legendary fish from another world
     # NOTE: Item addition handled in cog.py to prevent spoiler in generic message
-    # result["gain_items"] = {"ca_isekai": 1} 
+    # result["gain_items"] = {ItemKeys.CA_ISEKAI: 1} 
     result["cooldown_increase"] = 600  # 10 minute stun
     return result
 
@@ -301,12 +302,12 @@ EFFECT_HANDLERS = {
     "gain_money_large": handle_gain_money(300, 500),
     "gain_money_huge": handle_gain_money_fixed(1000),
     "lose_money_percent": handle_lose_money_percent,
-    "gain_worm_5": handle_gain_items({"moi": 5}),
-    "gain_worm_10": handle_gain_items({"moi": 10}),
+    "gain_worm_5": handle_gain_items({ItemKeys.MOI: 5}),
+    "gain_worm_10": handle_gain_items({ItemKeys.MOI: 10}),
     "bet_loss": handle_bet_loss,
-    "gain_chest_1": handle_gain_items({"ruong_kho_bau": 1}),
-    "gain_chest_2": handle_gain_items({"ruong_kho_bau": 2}),
-    "gain_ngoc_trai": handle_gain_items({"ngoc_trai": 1}),
+    "gain_chest_1": handle_gain_items({ItemKeys.RUONG_KHO_BAU: 1}),
+    "gain_chest_2": handle_gain_items({ItemKeys.RUONG_KHO_BAU: 2}),
+    "gain_ngoc_trai": handle_gain_items({ItemKeys.NGOC_TRAI: 1}),
     "gain_ring": handle_gain_items({"ring": 1}),
     "gain_map_piece": handle_gain_random_map_piece,
     "bonus_catch_2": handle_bonus_catch(2),

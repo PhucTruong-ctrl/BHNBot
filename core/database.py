@@ -170,10 +170,11 @@ class DatabaseManager:
         Returns:
             int: Number of rows affected (rowcount).
         """
-        db = await self._get_db()
-        async with db.execute(query, params) as cursor:
-            await db.commit()
-            rowcount = cursor.rowcount
+        async with self.lock:
+            db = await self._get_db()
+            async with db.execute(query, params) as cursor:
+                await db.commit()
+                rowcount = cursor.rowcount
 
         # Invalidate relevant caches
         self._invalidate_cache_pattern(query)
@@ -203,9 +204,10 @@ class DatabaseManager:
     @retry_on_db_lock()
     async def batch_modify(self, operations: List[Tuple[str, tuple]]):
         """Execute multiple INSERT/UPDATE/DELETE in a single transaction with automatic retry on lock"""
-        db = await self._get_db()
-        # Use transaction
-        async with db.cursor() as cursor:
+        async with self.lock:
+            db = await self._get_db()
+            
+            # Execute transaction without nesting
             await db.execute("BEGIN")
             try:
                 for query, params in operations:

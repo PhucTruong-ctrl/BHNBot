@@ -303,15 +303,30 @@ class TreeManager:
                 
                 # Send success message
                 embed = create_contribution_success_embed(
-                    interaction.user,
-                    amount,
-                    new_progress,
-                    req,
-                    leveled_up,
-                    new_level
+                    user=interaction.user,
+                    amount=amount,
+                    new_progress=new_progress,
+                    requirement=req,
+                    leveled_up=leveled_up,
+                    new_level=new_level,
+                    item_name="Hạt",
+                    quantity=amount,
+                    action_title="Góp Hạt Cho Cây!"
                 )
                 await interaction.followup.send(embed=embed, ephemeral=False)
                 
+                # Echo to tree channel if different
+                if tree_data.tree_channel_id and interaction.channel_id != tree_data.tree_channel_id:
+                    try:
+                        tree_channel = self.bot.get_channel(tree_data.tree_channel_id)
+                        if not tree_channel:
+                            tree_channel = await self.bot.fetch_channel(tree_data.tree_channel_id)
+                        
+                        if tree_channel:
+                            await tree_channel.send(embed=embed)
+                    except Exception as e:
+                        logger.warning(f"[TREE] Could not echo contribution to tree channel: {e}")
+
                 # Update tree message
                 if tree_data.tree_channel_id:
                     await self.update_tree_message(guild_id, tree_data.tree_channel_id)

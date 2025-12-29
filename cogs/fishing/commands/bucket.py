@@ -9,7 +9,7 @@ import discord
 
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds,
-    get_stat, increment_stat
+    get_stat, increment_stat, db_manager
 )
 from ..constants import (
     ALL_FISH, TRASH_ITEMS, CHEST_LOOT, GIFT_ITEMS,
@@ -19,6 +19,7 @@ from ..constants import (
 from ..mechanics.rod_system import get_rod_data
 from ..mechanics.glitch import apply_display_glitch
 from configs.item_constants import ItemKeys
+from core.item_system import item_system
 
 logger = logging.getLogger("fishing")
 
@@ -185,26 +186,34 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
             
         elif item_key in ["manh_sao_bang", "manh_ban_do_a", "manh_ban_do_b", "manh_ban_do_c", "manh_ban_do_d"]:
             await cog.add_inventory_item(user_id, item_key, count)
-            item_data = ALL_ITEMS_DATA.get(item_key, {})
-            name = item_data.get("name", item_key)
-            emoji = item_data.get("emoji", "❓")
+            item_data = item_system.get_item(item_key)
+            name = item_data.name if item_data else item_key
+            emoji = item_data.emoji if item_data else "❓"
             loot_messages.append(f"{emoji} **{name}** x{count}")
             
-        elif item_key in trash_key_list:
+        elif item_key in trash_key_list or item_key.startswith("trash_"):
             await cog.add_inventory_item(user_id, item_key, count)
-            trash_data = next((t for t in TRASH_ITEMS if t["key"] == item_key), {})
-            name = trash_data.get("name", item_key)
-            emoji = trash_data.get("emoji", "🗑️")
+            item_data = item_system.get_item(item_key)
+            # Fallback to key if name not found, but ItemSystem should have it if registered
+            name = item_data.name if item_data else item_key
+            emoji = item_data.emoji if item_data else "🗑️"
             loot_messages.append(f"{emoji} **{name}** x{count}")
             
         else: # Gifts or generic Items
             await cog.add_inventory_item(user_id, item_key, count)
-            # Try to find name in GIFT_ITEMS logic or ALL_ITEMS_DATA
-            gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
-                         "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp",
-                         "qua_ngau_nhien": "🎁 Quà Ngẫu Nhiên"}
-            name = gift_names.get(item_key, item_key.title())
-            loot_messages.append(f"🎁 **{name}** x{count}")
+            # Use ItemSystem for everything else
+            item_data = item_system.get_item(item_key)
+            if item_data:
+                 name = item_data.name
+                 emoji = item_data.emoji
+                 loot_messages.append(f"{emoji} **{name}** x{count}")
+            else:
+                # Fallback implementation
+                gift_names = {"cafe": "☕ Cà Phê", "flower": "🌹 Hoa", "ring": "💍 Nhẫn", 
+                             "gift": "🎁 Quà", "chocolate": "🍫 Sô Cô La", "card": "💌 Thiệp",
+                             "qua_ngau_nhien": "🎁 Quà Ngẫu Nhiên"}
+                name = gift_names.get(item_key, item_key.title())
+                loot_messages.append(f"🎁 **{name}** x{count}")
 
     # 7. Post-Process Special Logics (Puzzle Check)
     if puzzle_pieces_got:
@@ -384,7 +393,7 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
     if tree_cog:
         try:
             # Add contribution with phan_bon type
-            await tree_cog.add_external_contribution(user_id, guild_id, total_exp, contribution_type="phan_bon")
+            await tree_cog.add_external_contribution(user_id, guild_id, total_exp, contribution_type=ItemKeys.PHAN_BON)
             
             # Get tree data for progress display
             tree_level, tree_prog, tree_total, season, req, percentage = await tree_cog.get_tree_data(guild_id)
@@ -435,6 +444,33 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
         await ctx.followup.send(embed=embed)
     else:
         await ctx.reply(embed=embed)
+
+    # NEW: Send notification to Tree Channel if action was done elsewhere
+    try:
+        # Get tree channel ID
+        tree_row = await db_manager.fetchone(
+            "SELECT tree_channel_id FROM server_tree WHERE guild_id = ?",
+            (guild_id,)
+        )
+        if tree_row and tree_row[0]:
+            tree_channel_id = tree_row[0]
+            current_channel_id = ctx.channel.id
+            
+            # If command was used in a different channel, echo to tree channel
+            if tree_channel_id != current_channel_id:
+                tree_channel = cog.bot.get_channel(tree_channel_id)
+                if not tree_channel:
+                    try:
+                        tree_channel = await cog.bot.fetch_channel(tree_channel_id)
+                    except Exception:
+                        pass
+                
+                if tree_channel:
+                    await tree_channel.send(embed=embed)
+                    logger.info(f"[BONPHAN] Echoed notification to tree channel {tree_channel_id}")
+                    
+    except Exception as e:
+        logger.error(f"[BONPHAN] Error echoing to tree channel: {e}")
 
 
 async def view_collection_action(cog, ctx_or_interaction, user_id: int, username: str):

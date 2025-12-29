@@ -386,7 +386,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
             if special_type == "chest":
                 await add_item(user_id, ItemKeys.RUONG_KHO_BAU, 1)
                 reward_msg = "🎁 **Nhận thêm:** 1 Rương Kho Báu"
-            elif special_type == "moi":
+            elif special_type == ItemKeys.MOI:
                 await add_item(user_id, ItemKeys.MOI, 5)
                 reward_msg = "🪱 **Nhận thêm:** 5 Mồi Câu"
             elif special_type == "ngoc_trai":

@@ -7,7 +7,8 @@ import { FileSpreadsheet } from 'lucide-react';
 import ServerHealth from '../components/ServerHealth';
 import { statsApi, EconomyStats, ModuleStats } from '../api';
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#4f46e5', '#8b5cf6'];
+// Color palette for charts - each category gets unique color
+const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#ec4899', '#a855f7', '#06b6d4'];
 
 export default function Dashboard() {
 
@@ -197,11 +198,11 @@ export default function Dashboard() {
                 }
                 cx="50%" cy="50%"
                 innerRadius={60} outerRadius={80}
-                fill="#ef4444" paddingAngle={5}
+                fill="#82ca9d" paddingAngle={5}
                 dataKey="value"
               >
                 {Object.keys(cashflow?.categories || {})
-                     .filter((key) => (cashflow?.categories[key]?.total_out || 0) < 0)
+                     .filter((key) => Math.abs(cashflow?.categories[key]?.out || 0) > 0)
                      .map((_: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}

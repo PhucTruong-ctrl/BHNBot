@@ -212,6 +212,11 @@ class ShopCog(commands.Cog):
         if cost_per_item <= 0:
              await ctx.send("❌ Vật phẩm này không bán!")
              return
+
+        # Sanity check: quantity > 0
+        if soluong <= 0:
+            await ctx.send("❌ Số lượng phải lớn hơn 0!")
+            return
  
         total_cost = cost_per_item * soluong
         

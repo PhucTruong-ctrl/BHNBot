@@ -63,7 +63,7 @@
             },
             "type": "raid_boss",
             "mechanics": {
-                "hp_goal": 50000,
+                "hp_goal": 15000,
                 "damage_multiplier": 1.0
             },
             "rewards": {
@@ -205,8 +205,8 @@
                     "common": ["ca_chep", "ca_ro_dong", "ca_loc", "ca_tra", "ca_dong"]
                 },
                 "quantity_ranges": {
-                    "rare": {"min": 10, "max": 30},
-                    "common": {"min": 40, "max": 70}
+                    "rare": {"min": 5, "max": 10},
+                    "common": {"min": 10, "max": 20}
                 },
                 "bump_interval_seconds": 60
             },
@@ -349,7 +349,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["10:00-23:00"],
-                "frequency_chance": 0.05,
+                "frequency_chance": 0.001,
                 "cooldown_minutes": 2000,
                 "duration_minutes": 15
             },
@@ -396,7 +396,7 @@
             "schedule": {
                 "days": [],
                 "time_ranges": ["10:00-23:00"],
-                "frequency_chance": 0.05,
+                "frequency_chance": 0.001,
                 "cooldown_minutes": 2000,
                 "duration_minutes": 15
             },
@@ -410,6 +410,246 @@
             },
             "effects": {
                 "trash_chance_multiplier": 3.0
+            },
+            "type": "passive"
+        },
+        "golden_hour": {
+            "name": "🌅 Giờ Vàng",
+            "priority": 70,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["06:00-07:00", "18:00-19:00"],
+                "frequency_chance": 0.3,
+                "cooldown_minutes": 1000,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "image_url": "https://media.discordapp.net/attachments/1253945310690934835/1266023778536009778/sunrise.png",
+                "color": "#FFD700",
+                "title": "🌅 GIỜ VÀNG ĐÃ ĐIỂM"
+            },
+            "messages": {
+                "start": "🌅 **BÌNH MINH/HOÀNG HÔN RỰC RỠ!**\n\nÁnh sáng vàng chiếu rọi mặt biển. Cá ăn mạnh, thương lái trả giá cao.\n\n*Hiệu ứng: Giá bán x1.5 | Tỉ lệ Cá Hiếm x1.2*",
+                "end": "Giờ vàng đã kết thúc."
+            },
+            "effects": {
+                "sell_multiplier": 1.5,
+                "rare_chance_multiplier": 1.2
+            },
+            "type": "passive"
+        },
+        "solar_flare": {
+            "name": "☀️ Bão Mặt Trời",
+            "priority": 50,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["11:00-13:00"],
+                "frequency_chance": 0.1,
+                "cooldown_minutes": 1440,
+                "duration_minutes": 30
+            },
+            "visuals": {
+                "color": "#FF4500",
+                "title": "☀️ BÃO MẶT TRỜI"
+            },
+            "messages": {
+                "start": "☀️ **BỨC XẠ MẶT TRỜI TĂNG ĐỘT BIẾN!**\n\nCá bơi nhanh như điên nhưng rác cũng nổi lềnh phềnh.\n\n*Hiệu ứng: Câu siêu tốc (Cooldown x0.5) | Rác x1.5*",
+                "end": "Bão mặt trời đã đi qua."
+            },
+            "effects": {
+                "cooldown_multiplier": 0.5,
+                "trash_chance_multiplier": 1.5
+            },
+            "type": "passive"
+        },
+        "el_nino": {
+            "name": "🌊 Dòng Chảy Ấm El Niño",
+            "priority": 60,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["00:00-23:59"],
+                "frequency_chance": 0.005,
+                "cooldown_minutes": 1000,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#FF8C00",
+                "title": "🌊 EL NIÑO ĐỔ BỘ"
+            },
+            "messages": {
+                "start": "🌊 **DÒNG HẢI LƯU ẤM TRÀN VỀ!**\n\nSinh vật biển sinh sôi nảy nở, tài lộc dồi dào.\n\n*Hiệu ứng: Tiền x1.2 | May Mắn +20%*",
+                "end": "Dòng hải lưu đã nguội."
+            },
+            "effects": {
+                "money_multiplier": 1.2,
+                "luck_bonus": 0.2
+            },
+            "type": "passive"
+        },
+        "red_tide": {
+            "name": "🩸 Thủy Triều Đỏ",
+            "priority": 40,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["00:00-23:59"],
+                "frequency_chance": 0.002,
+                "cooldown_minutes": 2000,
+                "duration_minutes": 45
+            },
+            "visuals": {
+                "color": "#DC143C",
+                "title": "🩸 THỦY TRIỀU ĐỎ"
+            },
+            "messages": {
+                "start": "🩸 **BIỂN NHUỐM MÀU ĐỎ QUÁCH!**\n\nTảo nở hoa độc hại. Nước biển ăn mòn tàu thuyền, nhưng cá quý hiếm lại thích điều này.\n\n*Hiệu ứng: Cá Hiếm x1.5 | Hỏng Cần x2 (Độ bền giảm gấp đôi)*",
+                "end": "Thủy triều đỏ đã rút."
+            },
+            "effects": {
+                "rare_chance_multiplier": 1.5,
+                "durability_multiplier": 2.0
+            },
+            "type": "passive"
+        },
+        "poseidon_blessing": {
+            "name": "🔱 Phước Lành Poseidon",
+            "priority": 90,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["00:00-23:59"],
+                "frequency_chance": 0.001,
+                "cooldown_minutes": 2000,
+                "duration_minutes": 30
+            },
+            "visuals": {
+                "color": "#00BFFF",
+                "title": "🔱 PHƯỚC LÀNH POSEIDON"
+            },
+            "messages": {
+                "start": "🔱 **THẦN BIỂN ĐANG MỈM CƯỜI!**\n\nCây đinh ba của Poseidon rực sáng. May mắn tuyệt đối cho mọi ngư dân.\n\n*Hiệu ứng: May Mắn +50%*",
+                "end": "Poseidon đã rời đi."
+            },
+            "effects": {
+                "luck_bonus": 0.5
+            },
+            "type": "passive"
+        },
+        "pirate_golden_age": {
+            "name": "🏴‍☠️ Kỷ Nguyên Hải Tặc",
+            "priority": 55,
+            "schedule": {
+                "days": [5, 6],
+                "time_ranges": ["22:00-02:00"],
+                "frequency_chance": 0.2,
+                "cooldown_minutes": 1000,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#2F4F4F",
+                "title": "🏴‍☠️ KỶ NGUYÊN HẢI TẶC"
+            },
+            "messages": {
+                "start": "🏴‍☠️ **CỜ ĐEN PHẤP PHỚI!**\n\nChợ đen mở cửa công khai. Giá cá tăng vọt nhưng cẩn thận bị cướp (hỏng cần)!\n\n*Hiệu ứng: Tiền x2.0 | Hỏng Cần x1.5*",
+                "end": "Hải quân đã dẹp loạn hải tặc."
+            },
+            "effects": {
+                "money_multiplier": 2.0,
+                "durability_multiplier": 1.5
+            },
+            "type": "passive"
+        },
+        "marine_migration": {
+            "name": "🐋 Cuộc Đại Di Cư",
+            "priority": 65,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["00:00-23:59"],
+                "frequency_chance": 0.005,
+                "cooldown_minutes": 1000,
+                "duration_minutes": 45
+            },
+            "visuals": {
+                "color": "#4682B4",
+                "title": "🐋 CUỘC ĐẠI DI CƯ"
+            },
+            "messages": {
+                "start": "🐋 **HÀNG TRIỆU CON CÁ ĐANG DI CƯ!**\n\nBiển cả đông đúc lạ thường. Dòng người... à nhầm dòng cá chen chúc nhau.\n\n*Hiệu ứng: Tỉ lệ Cá Hiếm x3.0 | Câu Chậm (Cooldown x1.5 do tắc đường)*",
+                "end": "Đàn cá đã bơi đi xa."
+            },
+            "effects": {
+                "rare_chance_multiplier": 3.0,
+                "cooldown_multiplier": 1.5
+            },
+            "type": "passive"
+        },
+        "plastisphere": {
+            "name": "🗑️ Đảo Rác Trôi Dạt",
+            "priority": 30,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["00:00-23:59"],
+                "frequency_chance": 0.005,
+                "cooldown_minutes": 1000,
+                "duration_minutes": 30
+            },
+            "visuals": {
+                "color": "#808080",
+                "title": "🗑️ CẢNH BÁO: ĐẢO RÁC"
+            },
+            "messages": {
+                "start": "🗑️ **MỘT ĐẢO RÁC KHỔNG LỒ ĐANG TRÔI QUA!**\n\nCần thủ đâu! Hãy chung tay làm sạch biển cả! Đừng mong bắt được cá lúc này.\n\n*Hiệu ứng: Tỉ lệ Rác x10.0*",
+                "end": "Đảo rác đã trôi đi (hoặc đã được dọn sạch)."
+            },
+            "effects": {
+                "trash_chance_multiplier": 10.0
+            },
+            "type": "passive"
+        },
+        "deep_sea_resonance": {
+            "name": "🦑 Cộng Hưởng Biển Sâu",
+            "priority": 75,
+            "schedule": {
+                "days": [],
+                "time_ranges": ["00:00-04:00"],
+                "frequency_chance": 0.002,
+                "cooldown_minutes": 1440,
+                "duration_minutes": 45
+            },
+            "visuals": {
+                "color": "#191970",
+                "title": "🦑 CỘNG HƯỞNG BIỂN SÂU"
+            },
+            "messages": {
+                "start": "🦑 **ÂM THANH KỲ LẠ TỪ VỰC THẲM...**\n\nQuái vật biển sâu đang ngoi lên mặt nước vì tò mò.\n\n*Hiệu ứng: Cá Hiếm x2.0 | May Mắn +20% | Cooldown x1.2*",
+                "end": "Âm thanh đã tắt."
+            },
+            "effects": {
+                "rare_chance_multiplier": 2.0,
+                "luck_bonus": 0.2,
+                "cooldown_multiplier": 1.2
+            },
+            "type": "passive"
+        },
+        "festival_lights": {
+            "name": "🏮 Lễ Hội Hoa Đăng",
+            "priority": 60,
+            "schedule": {
+                "days": [0, 6],
+                "time_ranges": ["19:00-22:00"],
+                "frequency_chance": 0.2,
+                "cooldown_minutes": 1000,
+                "duration_minutes": 60
+            },
+            "visuals": {
+                "color": "#FF6347",
+                "title": "🏮 LỄ HỘI HOA ĐĂNG"
+            },
+            "messages": {
+                "start": "🏮 **BIỂN ĐÊM LUNG LINH!**\n\nHàng ngàn chiếc đèn lồng được thả xuống biển, mang theo lời cầu nguyện bình an.\n\n*Hiệu ứng: Giá bán x1.3 | May Mắn +10%*",
+                "end": "Lễ hội đã tàn."
+            },
+            "effects": {
+                "sell_multiplier": 1.3,
+                "luck_bonus": 0.1
             },
             "type": "passive"
         }

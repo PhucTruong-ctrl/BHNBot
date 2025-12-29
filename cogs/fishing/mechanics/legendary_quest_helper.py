@@ -403,29 +403,39 @@ async def increment_long_vu_lua(user_id: int, amount: int = 1) -> int:
         return await get_long_vu_lua_count(user_id)
 
 
-async def has_phoenix_buff(user_id: int) -> bool:
-    """Kiểm tra có buff Cá Phượng Hoàng không (quest_completed)"""
+async def get_phoenix_energy(user_id: int) -> int:
+    """Get phoenix energy value (0-100), 0 = no buff"""
     try:
         row = await db_manager.fetchone(
             "SELECT quest_completed FROM legendary_quests WHERE user_id = ? AND fish_key = 'ca_phuong_hoang'",
             (user_id,)
         )
-        return bool(row[0]) if row else False
+        return int(row[0]) if row else 0
     except Exception as e:
-        print(f"[LEGENDARY] Error checking phoenix buff: {e}")
-        return False
+        print(f"[LEGENDARY] Error getting phoenix energy: {e}")
+        return 0
+
+async def has_phoenix_buff(user_id: int) -> bool:
+    """Check if has phoenix buff (energy > 0)"""
+    energy = await get_phoenix_energy(user_id)
+    return energy > 0
 
 
-async def set_phoenix_buff(user_id: int, active: bool = True) -> None:
-    """Set buff Cá Phượng Hoàng"""
+async def set_phoenix_buff(user_id: int, energy: int) -> None:
+    """Set phoenix buff with energy value (0-100)"""
     try:
         await db_manager.modify(
             "INSERT OR REPLACE INTO legendary_quests (user_id, fish_key, quest_completed) VALUES (?, 'ca_phuong_hoang', ?)",
-            (user_id, int(active))
+            (user_id, int(energy))
         )
-        print(f"[LEGENDARY] Set phoenix buff for {user_id}: {active}")
+        print(f"[LEGENDARY] Set phoenix buff: user={user_id}, energy={energy}%")
     except Exception as e:
         print(f"[LEGENDARY] Error setting phoenix buff: {e}")
+
+async def consume_phoenix_buff(user_id: int) -> None:
+    """Remove phoenix buff (set energy to 0)"""
+    await set_phoenix_buff(user_id, 0)
+    print(f"[LEGENDARY] Consumed phoenix buff for user {user_id}")
 
 
 async def get_phoenix_last_play(user_id: int) -> str:

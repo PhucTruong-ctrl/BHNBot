@@ -38,17 +38,16 @@ class ItemSystem:
         self.load_items()
         self._initialized = True
     
-    def load_items(self) -> bool:
-        """Load items from all JSON files in data directory."""
-        if not os.path.exists(self.data_dir):
-            logger.error(f"Item data directory not found: {self.data_dir}")
-            self.items = copy.deepcopy(self.fallback_items)
-            return False
-            
+    def _load_from_json(self) -> Dict[str, dict]:
+        """Internal: Load items from disk without side effects."""
         loaded_items = {}
         file_count = 0
         
         try:
+            if not os.path.exists(self.data_dir):
+                logger.error(f"Item data directory not found: {self.data_dir}")
+                return copy.deepcopy(self.fallback_items)
+
             # Scan all .json files in directory
             for filename in os.listdir(self.data_dir):
                 if not filename.endswith(".json"):
@@ -67,24 +66,31 @@ class ItemSystem:
             
             if not loaded_items:
                 logger.warning("No items found in any file!")
-                self.items = copy.deepcopy(self.fallback_items)
-                return False
+                return copy.deepcopy(self.fallback_items)
 
-            self._validate_and_index_items(loaded_items)
-            logger.info(f"Total: Loaded {len(self.items)} items from {file_count} files.")
-            return True
+            return self._validate_and_index_items(loaded_items)
             
         except Exception as e:
             logger.error(f"Error scanning item directory: {e}")
-            self.items = copy.deepcopy(self.fallback_items)
-            return False
+            return copy.deepcopy(self.fallback_items)
+
+    def load_items(self) -> bool:
+        """Atomic load (Public API)."""
+        new_items = self._load_from_json()
+        if new_items:
+            self.items = new_items
+            logger.info(f"Total: Loaded {len(self.items)} items.")
+            return True
+        return False
+            
+
             
     def reload(self) -> bool:
         """Reload items from disk (Public API)."""
         logger.info("Reloading items...")
         return self.load_items()
         
-    def _validate_and_index_items(self, raw_items: Dict[str, dict]):
+    def _validate_and_index_items(self, raw_items: Dict[str, dict]) -> Dict[str, dict]:
         """Validate raw items and build internal index."""
         valid_items = {}
         
@@ -111,9 +117,7 @@ class ItemSystem:
                 
             valid_items[key] = item
             
-        # Update in-place to preserve references
-        self.items.clear()
-        self.items.update(valid_items)
+        return valid_items
 
     def get_item(self, key: str) -> Optional[dict]:
         """Get item data by key."""

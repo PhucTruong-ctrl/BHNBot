@@ -105,7 +105,7 @@ class LegendaryHallView(discord.ui.View):
         conditions_map = {
             "thuong_luong": "🌊 **Nghi Thức Hiến Tế**\n📌 Dùng `/hiente` để hiến tế 3 sinh vật to lớn (> 150 hạt)\n📌 Nhận bùa chú để dẫn dụ \"Bóng Ma Dưới Đáy Sông\" xuất hiện",
             "ca_ngan_ha": "🌌 **Kết Nối Tinh Tú**\n📌 Săn Mảnh Sao Băng từ sự kiện lúc 21:00 hằng ngày\n📌 Chế tạo **Tinh Cầu Không Gian** (5 Mảnh + 1 Ngọc Trai)\n📌 Sử dụng Tinh Cầu để giải mã tín hiệu vũ trụ bí ẩn",
-            "ca_phuong_hoang": "🔥 **Thử Thách Giữ Lửa**\n📌 Tìm **Lông Vũ Lửa** (Tỉ lệ rớt khi câu hụt Boss)\n📌 Sử dụng Lông Vũ để bắt đầu nghi lễ hồi sinh\n📌 Canh nhiệt độ chuẩn xác để đánh thức \"Thần Thú Bất Tử\"",
+            "ca_phuong_hoang": "🔥 **Nghi Lễ Ấp Trứng Phượng Hoàng**\n📌 Tìm **Lông Vũ Lửa** (Tỉ lệ rớt khi câu hụt Boss)\n📌 Sử dụng Lông Vũ để bắt đầu mini-game ấp trứng\n📌 Tích năng lượng 80-100% (Push-Your-Luck)\n📌 Tỉ lệ triệu hồi = % năng lượng (100% = chắc chắn)",
             "cthulhu_con": "🗺️ **Bản Đồ Hắc Ám**\n📌 Thu thập 4 Mảnh Bản Đồ rách nát từ rương kho báu\n📌 Ghép lại thành Bản Đồ hoàn chỉnh\n📌 Kích hoạt để tìm hang ổ của \"Cổ Thần Say Ngủ\" (Hiệu lực 10 lần câu)",
             "ca_voi_52hz": "📡 **Tần Số Cô Đơn**\n📌 Sở hữu **Máy Dò Sóng** chuyên dụng\n📌 Dùng lệnh `/dosong` để quét tín hiệu đại dương\n📌 Tìm ra tần số **52Hz** để kết nối với sinh vật cô độc nhất thế giới",
         }

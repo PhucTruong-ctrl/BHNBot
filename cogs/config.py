@@ -178,16 +178,24 @@ class ConfigCog(commands.Cog):
     @config_group.command(name="set", description="Cài đặt các kênh chức năng (Admin Only)")
     @app_commands.describe(
         kenh_noitu="Kênh chơi nối từ (Game Channel)",
-        kenh_logs="Kênh ghi log (Log Channel)",
+        kenh_logs="Kênh ghi log admin (Log Channel)",
         kenh_cay="Kênh trồng cây server (Tree Channel)",
-        kenh_fishing="Kênh thông báo sự kiện câu cá (Fishing Channel)"
+        kenh_fishing="Kênh thông báo sự kiện câu cá (Fishing Channel)",
+        kenh_bump="Kênh nhắc bump Disboard",
+        kenh_log_bot="Kênh gửi log lỗi bot lên Discord",
+        log_ping_user="Người nhận ping khi có lỗi ERROR/CRITICAL",
+        log_level="Mức độ log gửi lên Discord (INFO/WARNING/ERROR/CRITICAL)"
     )
     @app_commands.checks.has_permissions(administrator=True)
     async def config_set(self, interaction: discord.Interaction, 
                          kenh_noitu: discord.TextChannel = None, 
                          kenh_logs: discord.TextChannel = None,
                          kenh_cay: discord.TextChannel = None,
-                         kenh_fishing: discord.TextChannel = None):
+                         kenh_fishing: discord.TextChannel = None,
+                         kenh_bump: discord.TextChannel = None,
+                         kenh_log_bot: discord.TextChannel = None,
+                         log_ping_user: discord.Member = None,
+                         log_level: str = None):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
@@ -203,7 +211,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -238,16 +246,29 @@ class ConfigCog(commands.Cog):
                 else:
                     new_tree = None
                 
-                # Save
                 # Save using UPSERT
+                from datetime import datetime
+                
+                # Prepare bump_start_time for new bump channel
+                bump_start_time = datetime.now().isoformat() if kenh_bump else None
+                new_bump = kenh_bump.id if kenh_bump else None
+                new_log_bot = kenh_log_bot.id if kenh_log_bot else None
+                new_ping_user = log_ping_user.id if log_ping_user else None
+                new_log_level = log_level.upper() if log_level else None
+                
                 await db.execute("""
-                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) 
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, bump_channel_id, bump_start_time, log_discord_channel_id, log_ping_user_id, log_discord_level) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(guild_id) DO UPDATE SET
-                        logs_channel_id = excluded.logs_channel_id,
-                        noitu_channel_id = excluded.noitu_channel_id,
-                        fishing_channel_id = excluded.fishing_channel_id
-                """, (guild_id, new_logs, new_noitu, new_fishing))
+                        logs_channel_id = COALESCE(excluded.logs_channel_id, logs_channel_id),
+                        noitu_channel_id = COALESCE(excluded.noitu_channel_id, noitu_channel_id),
+                        fishing_channel_id = COALESCE(excluded.fishing_channel_id, fishing_channel_id),
+                        bump_channel_id = COALESCE(excluded.bump_channel_id, bump_channel_id),
+                        bump_start_time = CASE WHEN excluded.bump_channel_id IS NOT NULL THEN excluded.bump_start_time ELSE bump_start_time END,
+                        log_discord_channel_id = COALESCE(excluded.log_discord_channel_id, log_discord_channel_id),
+                        log_ping_user_id = COALESCE(excluded.log_ping_user_id, log_ping_user_id),
+                        log_discord_level = COALESCE(excluded.log_discord_level, log_discord_level)
+                """, (guild_id, new_logs, new_noitu, new_fishing, new_bump, bump_start_time, new_log_bot, new_ping_user, new_log_level))
                 
                 if kenh_cay:
                     # UPSERT for server_tree
@@ -263,11 +284,26 @@ class ConfigCog(commands.Cog):
 
             msg = "✅ Setup ok:\n"
             if kenh_noitu: msg += f"📝 Nối Từ: {kenh_noitu.mention}\n"
-            if kenh_logs: msg += f"📋 Logs: {kenh_logs.mention}\n"
+            if kenh_logs: msg += f"📋 Logs Admin: {kenh_logs.mention}\n"
             if kenh_cay: msg += f"🌳 Cây: {kenh_cay.mention}\n"
             if kenh_fishing: msg += f"🎣 Câu Cá: {kenh_fishing.mention}\n"
+            if kenh_bump: msg += f"⏰ Bump Disboard: {kenh_bump.mention}\n"
+            if kenh_log_bot: msg += f"🤖 Log Bot: {kenh_log_bot.mention}\n"
+            if log_ping_user: msg += f"🔔 Ping User: {log_ping_user.mention}\n"
+            if log_level: msg += f"📊 Log Level: {log_level.upper()}\n"
             
             await interaction.followup.send(msg)
+            
+            # Reload Discord Logger if any log setting changed
+            if kenh_log_bot or log_ping_user or log_level:
+                try:
+                    from core.logger import attach_discord_handler, get_log_config_from_db
+                    channel_id, ping_user_id, level = await get_log_config_from_db(guild_id)
+                    if channel_id > 0:
+                        attach_discord_handler(self.bot, channel_id, ping_user_id, level)
+                        print(f"[CONFIG] Discord logger: channel={channel_id}, ping={ping_user_id}, level={level}")
+                except Exception as e:
+                    print(f"[CONFIG] Failed to attach Discord logger: {e}")
 
             # Reload Game
             if kenh_noitu:
@@ -501,140 +537,6 @@ class ConfigCog(commands.Cog):
             
             embed.set_footer(text="Dùng /exclude add/remove để quản lý")
             await interaction.followup.send(embed=embed, ephemeral=True)
-        
-        except Exception as e:
-            traceback.print_exc()
-            await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
-    
-    @config_group.command(name="bump", description="Cài đặt channel nhắc bump Disboard")
-    @app_commands.describe(
-        channel="Kênh nhận thông báo bump (để trống để xem config hiện tại)",
-        reset_timer="Reset thời gian về bây giờ (để test hoặc điều chỉnh)"
-    )
-    @app_commands.checks.has_permissions(administrator=True)
-    async def config_bump(self, interaction: discord.Interaction, channel: discord.TextChannel = None, reset_timer: bool = False):
-        """Configure Disboard bump reminder channel"""
-        try:
-            await interaction.response.defer(ephemeral=True)
-        except discord.errors.NotFound:
-            return
-        
-        guild_id = interaction.guild.id
-        
-        try:
-            from datetime import datetime
-            
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Handle reset_timer if provided with channel
-                if reset_timer and channel:
-                    now = datetime.now().isoformat()
-                    await db.execute(
-                        "UPDATE server_config SET bump_start_time = ? WHERE guild_id = ?",
-                        (now, guild_id)
-                    )
-                    await db.commit()
-                    await interaction.followup.send(
-                        f"⏰ Đã reset thời gian bump tại {channel.mention}\nThời gian tiếp theo: 3 giờ từ bây giờ",
-                        ephemeral=True
-                    )
-                    print(f"[CONFIG] Guild {guild_id} reset bump timer")
-                    return
-                
-                if channel is None and not reset_timer:
-                    # Show current config
-                    async with db.execute(
-                        "SELECT bump_channel_id, bump_start_time FROM server_config WHERE guild_id = ?",
-                        (guild_id,)
-                    ) as cursor:
-                        row = await cursor.fetchone()
-                    
-                    if not row or not row[0]:
-                        await interaction.followup.send(
-                            "⚠️ Chưa cài đặt channel bump.\nDùng `/config bump #channel` để cài đặt",
-                            ephemeral=True
-                        )
-                        return
-                    
-                    bump_channel_id, bump_start_time = row
-                    bump_channel = interaction.guild.get_channel(bump_channel_id)
-                    
-                    embed = discord.Embed(
-                        title="⚙️ Cấu hình Bump Reminder",
-                        color=discord.Color.blue()
-                    )
-                    
-                    if bump_channel:
-                        embed.add_field(name="Kênh", value=bump_channel.mention, inline=False)
-                    else:
-                        embed.add_field(name="Kênh", value=f"❌ Không tìm thấy (ID: {bump_channel_id})", inline=False)
-                    
-                    if bump_start_time:
-                        start_dt = datetime.fromisoformat(bump_start_time)
-                        elapsed = datetime.now() - start_dt
-                        hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
-                        minutes, _ = divmod(remainder, 60)
-                        embed.add_field(
-                            name="Thời gian từ lần bump cuối",
-                            value=f"{hours}h {minutes}m",
-                            inline=False
-                        )
-                        
-                        next_bump_seconds = 10800 - elapsed.total_seconds()  # 3 hours in seconds
-                        if next_bump_seconds > 0:
-                            next_hours = int(next_bump_seconds // 3600)
-                            next_minutes = int((next_bump_seconds % 3600) // 60)
-                            embed.add_field(
-                                name="Thời gian đến lần bump tiếp theo",
-                                value=f"{next_hours}h {next_minutes}m",
-                                inline=False
-                            )
-                        else:
-                            embed.add_field(
-                                name="Thời gian đến lần bump tiếp theo",
-                                value="Đã đến giờ bump!",
-                                inline=False
-                            )
-                    
-                    embed.set_footer(text="Bump reminder tự động mỗi 3 giờ")
-                    await interaction.followup.send(embed=embed, ephemeral=True)
-                    return
-                
-                # Set bump channel
-                # Validate bot has permission to send messages
-                permissions = channel.permissions_for(interaction.guild.me)
-                if not permissions.send_messages:
-                    await interaction.followup.send(
-                        f"❌ Bot không có quyền gửi tin nhắn trong {channel.mention}",
-                        ephemeral=True
-                    )
-                    return
-                
-                # Save config with current time as start time
-                now = datetime.now().isoformat()
-                
-                # Check if row exists
-                async with db.execute("SELECT 1 FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
-                    exists = await cursor.fetchone()
-                
-                if exists:
-                    # UPDATE existing row (preserves other columns)
-                    await db.execute(
-                        "UPDATE server_config SET bump_channel_id = ?, bump_start_time = ? WHERE guild_id = ?",
-                        (channel.id, now, guild_id)
-                    )
-                else:
-                    # INSERT new row
-                    await db.execute(
-                        "INSERT INTO server_config (guild_id, bump_channel_id, bump_start_time) VALUES (?, ?, ?)",
-                        (guild_id, channel.id, now)
-                    )
-                await db.commit()
-                
-                await interaction.followup.send(
-                    f"✅ Đã cài đặt bump reminder tại {channel.mention}\n⏰ Sẽ nhắc bump mỗi 3 giờ",
-                    ephemeral=True
-                )
-                print(f"[CONFIG] Guild {guild_id} set bump channel to {channel.id}")
         
         except Exception as e:
             traceback.print_exc()

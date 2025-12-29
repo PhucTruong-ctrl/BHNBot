@@ -207,6 +207,7 @@ class MultiGameView(ui.View):
             await interaction.response.send_message("❌ Không phải lượt của bạn!", ephemeral=True)
             return
 
+        await interaction.response.defer()
         await self.cog.player_hit_multi(interaction, self.table, self.table.current_player, self)
 
     @ui.button(label="✋ Dằn", style=discord.ButtonStyle.secondary, custom_id="btn_stand_multi")
@@ -215,6 +216,7 @@ class MultiGameView(ui.View):
             await interaction.response.send_message("❌ Không phải lượt của bạn!", ephemeral=True)
             return
 
+        await interaction.response.defer()
         await self.cog.player_stand_multi(interaction, self.table, self.table.current_player, self)
 
     @ui.button(label="💰 Gấp Đôi", style=discord.ButtonStyle.success, custom_id="btn_double_multi")
@@ -228,6 +230,7 @@ class MultiGameView(ui.View):
              await interaction.response.send_message("❌ Không thể Gấp đôi!", ephemeral=True)
              return
 
+        await interaction.response.defer()
         await self.cog.player_double_multi(interaction, self.table, player, self)
 
     async def on_timeout(self) -> None:

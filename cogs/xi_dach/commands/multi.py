@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
 from core.logger import setup_logger
-from database_manager import db_manager, get_user_balance, batch_update_seeds, add_seeds
+from database_manager import get_user_balance
+from core.database import add_seeds, batch_update_seeds  # Use CORE version with proper transaction handling, add_seeds
 
 from ..core.game_manager import game_manager
 from ..core.table import Table, TableStatus
@@ -97,7 +98,7 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
     # Create table
     table = game_manager.create_table(channel_id, user.id, is_solo=False)
     if not table:
-        msg = "⚠️ Đang có game diễn ra ở kênh này! Hãy đợi kết thúc hoặc qua kênh khác."
+        msg = "⚠️ Kênh này đang có 3 sòng chạy! Hãy đợi bớt hoặc qua kênh khác."
         if isinstance(ctx_or_interaction, discord.Interaction):
             await ctx_or_interaction.response.send_message(msg, ephemeral=True)
         else:
@@ -114,12 +115,12 @@ async def start_multiplayer(cog: "XiDachCog", ctx_or_interaction, initial_bet: i
             await ctx_or_interaction.response.send_message(msg, ephemeral=True)
         else:
             await ctx_or_interaction.send(msg)
-        game_manager.remove_table(table.channel_id)
+        game_manager.remove_table(table.table_id)
         return
 
     # Deduct bet immediately
     # Deduct bet immediately
-    await add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'minigame')
+    await add_seeds(user.id, -initial_bet, 'xi_dach_bet', 'xidach')
 
     host = table.add_player(user.id, user.display_name, initial_bet)
     host.is_ready = True
@@ -165,7 +166,7 @@ async def _run_lobby(cog: "XiDachCog", ctx_or_interaction, table: Table) -> None
             channel = ctx_or_interaction.channel if hasattr(ctx_or_interaction, 'channel') else cog.bot.get_channel(table.channel_id)
             if channel:
                 await channel.send("❌ Hết giờ, không có ai tham gia. Hủy sòng.")
-            game_manager.remove_table(table.channel_id)
+            game_manager.remove_table(table.table_id)
             return
 
     channel = ctx_or_interaction.channel if hasattr(ctx_or_interaction, 'channel') else cog.bot.get_channel(table.channel_id)
@@ -198,7 +199,7 @@ async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table:
 
         # Deduct the clicked amount
         # Deduct the clicked amount
-        await add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'minigame')
+        await add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'xidach')
 
         if current_player:
             current_player.bet = new_total  # Additive
@@ -311,97 +312,101 @@ async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
     _, dealer_type = determine_hand_type(table.dealer_hand)
     phase1_ended = False
 
-    if dealer_type in (HandType.XI_BAN, HandType.XI_DACH):
-        # Dealer has special hand - immediate resolution
-        logger.info(f"[PHASE_1] Dealer has {dealer_type.name}!")
-        phase1_ended = True
+    try:
+        if dealer_type in (HandType.XI_BAN, HandType.XI_DACH):
+            # Dealer has special hand - immediate resolution
+            logger.info(f"[PHASE_1] Dealer has {dealer_type.name}!")
+            phase1_ended = True
 
-        results = []
-        seed_updates = {}
+            results = []
+            seed_updates = {}
 
-        for uid, player in table.players.items():
+            for uid, player in table.players.items():
+                if player.bet <= 0:
+                    continue
+
+                result, mul = check_phase1_winner(player.hand, table.dealer_hand)
+                payout = int(player.bet * mul)
+
+                if payout > 0:
+                    seed_updates[uid] = payout
+
+                _, p_type = determine_hand_type(player.hand)
+                results.append({
+                    "username": player.username,
+                    "hand_type": p_type.name,
+                    "result": result,
+                    "payout": payout - player.bet
+                })
+                player.status = PlayerStatus.BLACKJACK if p_type in (HandType.XI_BAN, HandType.XI_DACH) else PlayerStatus.STAND
+
+            # Pay winners
+            if seed_updates:
+                await batch_update_seeds(seed_updates, reason='xi_dach_payout', category='xidach')
+
+            # Send result
+            embed = discord.Embed(
+                title=f"🎰 NHÀ CÁI CÓ {get_hand_description(dealer_type)}!",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="🤖 Nhà Cái",
+                value=f"{format_hand(table.dealer_hand)}\n{get_hand_description(dealer_type)}",
+                inline=False
+            )
+
+            for r in results:
+                emoji = "🏆" if r["result"] == "win" else ("🤝" if r["result"] == "push" else "💀")
+                net_str = f"+{r['payout']:,}" if r["payout"] >= 0 else f"{r['payout']:,}"
+                embed.add_field(
+                    name=f"{emoji} {r['username']}",
+                    value=f"{r['hand_type']} | {net_str} Hạt",
+                    inline=True
+                )
+
+            await channel.send(embed=embed)
+            return
+
+        # Check for player instant wins
+        for uid, player in list(table.players.items()):
             if player.bet <= 0:
                 continue
 
-            result, mul = check_phase1_winner(player.hand, table.dealer_hand)
-            payout = int(player.bet * mul)
-
-            if payout > 0:
-                seed_updates[uid] = payout
-
             _, p_type = determine_hand_type(player.hand)
-            results.append({
-                "username": player.username,
-                "hand_type": p_type.name,
-                "result": result,
-                "payout": payout - player.bet
-            })
-            player.status = PlayerStatus.BLACKJACK if p_type in (HandType.XI_BAN, HandType.XI_DACH) else PlayerStatus.STAND
 
-        # Pay winners
-        if seed_updates:
-            await batch_update_seeds(seed_updates, reason='xi_dach_payout', category='minigame')
+            if p_type in (HandType.XI_BAN, HandType.XI_DACH):
+                # Player instant win
+                mul = 2.0 if p_type == HandType.XI_BAN else 1.5
+                payout = int(player.bet * mul)
+                profit = payout - player.bet
 
-        # Send result
-        embed = discord.Embed(
-            title=f"🎰 NHÀ CÁI CÓ {get_hand_description(dealer_type)}!",
-            color=discord.Color.red()
-        )
-        embed.add_field(
-            name="🤖 Nhà Cái",
-            value=f"{format_hand(table.dealer_hand)}\n{get_hand_description(dealer_type)}",
-            inline=False
-        )
+                await batch_update_seeds({uid: payout}, reason='xi_dach_instant_win', category='xidach')
+                player.status = PlayerStatus.BLACKJACK
+                player.payout = payout  # Store for result embed
 
-        for r in results:
-            emoji = "🏆" if r["result"] == "win" else ("🤝" if r["result"] == "push" else "💀")
-            net_str = f"+{r['payout']:,}" if r["payout"] >= 0 else f"{r['payout']:,}"
-            embed.add_field(
-                name=f"{emoji} {r['username']}",
-                value=f"{r['hand_type']} | {net_str} Hạt",
-                inline=True
-            )
+                # Remove from turn order
+                if uid in table._turn_order:
+                    table._turn_order.remove(uid)
 
-        await channel.send(embed=embed)
-        game_manager.remove_table(table.channel_id)
-        return
+                type_emoji = "🎰" if p_type == HandType.XI_DACH else "🏆"
+                await channel.send(
+                    f"{type_emoji} **{player.username}** có {get_hand_description(p_type)}! "
+                    f"Lời **+{profit:,}** hạt, tổng **{payout:,}** về tay! 🎉"
+                )
+                logger.info(f"[PHASE_1] Player {uid} instant win: {p_type.name}")
 
-    # Check for player instant wins
-    for uid, player in list(table.players.items()):
-        if player.bet <= 0:
-            continue
+        # Continue to Phase 2
+        if table._turn_order:
+            table.players[table._turn_order[0]].status = PlayerStatus.PLAYING
+            await _next_turn(cog, channel, table)
+        else:
+            # All players won instantly - go to dealer
+            await _run_dealer(cog, channel, table)
 
-        _, p_type = determine_hand_type(player.hand)
-
-        if p_type in (HandType.XI_BAN, HandType.XI_DACH):
-            # Player instant win
-            mul = 2.0 if p_type == HandType.XI_BAN else 1.5
-            payout = int(player.bet * mul)
-            profit = payout - player.bet
-
-            await batch_update_seeds({uid: payout}, reason='xi_dach_instant_win', category='minigame')
-            player.status = PlayerStatus.BLACKJACK
-            player.payout = payout  # Store for result embed
-
-            # Remove from turn order
-            if uid in table._turn_order:
-                table._turn_order.remove(uid)
-
-            type_emoji = "🎰" if p_type == HandType.XI_DACH else "🏆"
-            await channel.send(
-                f"{type_emoji} **{player.username}** có {get_hand_description(p_type)}! "
-                f"Lời **+{profit:,}** hạt, tổng **{payout:,}** về tay! 🎉"
-            )
-            logger.info(f"[PHASE_1] Player {uid} instant win: {p_type.name}")
-
-
-    # Continue to Phase 2
-    if table._turn_order:
-        table.players[table._turn_order[0]].status = PlayerStatus.PLAYING
-        await _next_turn(cog, channel, table)
-    else:
-        # All players won instantly - go to dealer
-        await _run_dealer(cog, channel, table)
+    finally:
+        # ONLY remove if Phase 1 ended the entire game (Dealer Win)
+        if phase1_ended:
+             game_manager.remove_table(table.table_id)
 
 
 # ==================== PHASE 2: PLAYER TURNS ====================
@@ -599,7 +604,7 @@ async def player_double_multi(cog: "XiDachCog", interaction: discord.Interaction
 
         # Deduct additional bet
         # Deduct additional bet
-        await add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'minigame')
+        await add_seeds(player.user_id, -player.bet, 'xi_dach_double', 'xidach')
 
         player.bet *= 2
         player.is_doubled = True
@@ -817,7 +822,23 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
             logger.warning(f"[DEALER_FINAL] Edit failed, falling back to send: {e}")
 
     if not edited:
-        # Fallback: Render and Send New (only if edit failed)
+        # Fallback: Render and Send New (only if edit failed AND message is gone)
+        # Check if dealer_msg is still valid (not deleted)
+        if dealer_msg:
+            try:
+                # Try to fetch the message to see if it still exists
+                await dealer_msg.channel.fetch_message(dealer_msg.id)
+                # If fetch succeeds, message exists but edit failed for other reason
+                # Don't send duplicate, just log
+                logger.warning(f"[DEALER_FINAL] Edit failed but message exists, skipping duplicate send")
+                return
+            except discord.NotFound:
+                # Message was deleted, proceed with fallback
+                pass
+            except Exception as e:
+                logger.warning(f"[DEALER_FINAL] Unexpected error checking message: {e}")
+        
+        # Send new message only if old one was deleted
         try:
             ts = int(time.time() * 1000)
             img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
@@ -841,20 +862,61 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
     async with table.lock:
         table.status = TableStatus.FINISHED
 
-    d_score, d_type = determine_hand_type(table.dealer_hand)
-    seed_updates = {}
-    results = []
+    try:
+        d_score, d_type = determine_hand_type(table.dealer_hand)
+        seed_updates = {}
+        results = []
 
-    for uid, player in table.players.items():
-        if player.bet <= 0:
-            continue
+        for uid, player in table.players.items():
+            if player.bet <= 0:
+                continue
 
-        p_score, p_type = determine_hand_type(player.hand)
-        
-        # Check if instant winner (already paid in Phase 1)
-        if player.status == PlayerStatus.BLACKJACK:
-            # Instant winner - use stored payout
-            payout = getattr(player, 'payout', int(player.bet * (2.0 if p_type == HandType.XI_BAN else 1.5)))
+            p_score, p_type = determine_hand_type(player.hand)
+            
+            # Check if instant winner (already paid in Phase 1)
+            if player.status == PlayerStatus.BLACKJACK:
+                # Instant winner - use stored payout
+                payout = getattr(player, 'payout', int(player.bet * (2.0 if p_type == HandType.XI_BAN else 1.5)))
+                net = payout - player.bet
+                results.append({
+                    "user_id": uid,
+                    "username": player.username,
+                    "score": p_score,
+                    "hand": player.hand,
+                    "hand_type": p_type,
+                    "result": "instant_win",
+                    "bet": player.bet,
+                    "net": net,
+                    "payout": payout
+                })
+                logger.info(f"[RESULT] Player {uid}: instant_win ({p_type.name}), net {net:+}")
+                continue
+            
+            # Check if player timed out with underage points (force bust)
+            if player.status == PlayerStatus.BUST:
+                # Player timed out with < 16 points → Always lose
+                payout = 0
+                net = -player.bet
+                results.append({
+                    "user_id": uid,
+                    "username": player.username,
+                    "score": p_score,
+                    "hand": player.hand,
+                    "hand_type": p_type,
+                    "result": "lose",
+                    "bet": player.bet,
+                    "net": net,
+                    "payout": payout
+                })
+                logger.info(f"[RESULT] Player {uid}: lose (timeout bust), net {net:+}")
+                continue
+
+            result, mul = compare_hands(player.hand, table.dealer_hand)
+            payout = int(player.bet * mul)
+
+            if payout > 0:
+                seed_updates[uid] = payout
+
             net = payout - player.bet
             results.append({
                 "user_id": uid,
@@ -862,128 +924,116 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                 "score": p_score,
                 "hand": player.hand,
                 "hand_type": p_type,
-                "result": "instant_win",
+                "result": result,
                 "bet": player.bet,
                 "net": net,
                 "payout": payout
             })
-            logger.info(f"[RESULT] Player {uid}: instant_win ({p_type.name}), net {net:+}")
-            continue
 
-        result, mul = compare_hands(player.hand, table.dealer_hand)
-        payout = int(player.bet * mul)
-
-        if payout > 0:
-            seed_updates[uid] = payout
-
-        net = payout - player.bet
-        results.append({
-            "user_id": uid,
-            "username": player.username,
-            "score": p_score,
-            "hand": player.hand,
-            "hand_type": p_type,
-            "result": result,
-            "bet": player.bet,
-            "net": net,
-            "payout": payout
-        })
-
-        logger.info(f"[RESULT] Player {uid}: {result}, net {net:+}")
+            logger.info(f"[RESULT] Player {uid}: {result}, net {net:+}")
 
 
-    # Pay winners
-    if seed_updates:
-        await batch_update_seeds(seed_updates, reason='xi_dach_refund', category='minigame')
+        if seed_updates:
+            await batch_update_seeds(seed_updates, reason='xi_dach_win', category='xidach')
 
-    # Flavor texts
-    win_flavors = ["Đỉnh cao! 🔥", "Thắng đậm! 💰", "Số hưởng! 🍀", "Ngon! 👏"]
-    lose_flavors = ["Gà văiii 🤣", "Đen quá! 😢", "Thua keo này, bày keo khác! 💪", "Chia buồn... 😅"]
-    push_flavors = ["Hòa êm! 🤝", "Huề vốn! ⚖️"]
+        # Flavor texts
+        win_flavors = ["Đỉnh cao! 🔥", "Thắng đậm! 💰", "Số hưởng! 🍀", "Ngon! 👏"]
+        lose_flavors = ["Gà văiii 🤣", "Đen quá! 😢", "Thua keo này, bày keo khác! 💪", "Chia buồn... 😅"]
+        push_flavors = ["Hòa êm! 🤝", "Huề vốn! ⚖️"]
 
-    # Build result embed
-    embed = discord.Embed(
-        title="🎰🎰🎰 KẾT QUẢ XÌ DÁCH",
-        color=discord.Color.gold()
-    )
+        # Build result embed
+        embed = discord.Embed(
+            title="🎰🎰🎰 KẾT QUẢ XÌ DÁCH",
+            color=discord.Color.gold()
+        )
 
-    # Dealer info with cards
-    d_desc = get_hand_description(d_type)
-    embed.add_field(
-        name="🤖 Nhà Cái",
-        value=f"{format_hand(table.dealer_hand)} ({d_score})",
-        inline=False
-    )
-
-    # Each player result - BIG format
-    for r in results:
-        # Special emoji for instant winners
-        if r["result"] == "instant_win":
-            if r["hand_type"] == HandType.XI_BAN:
-                p_emoji = "💎"
-                type_label = "XÌ BÀN"
-            else:
-                p_emoji = "�"
-                type_label = "XÌ DÁCH"
-        elif r["result"] == "win":
-            p_emoji = "🏆"
-            type_label = None
-        elif r["result"] == "lose":
-            p_emoji = "😢"
-            type_label = None
-        else:
-            p_emoji = "🤝"
-            type_label = None
+        # Add result processing logic...
+        # (Assuming you don't need to replace the whole big function if I scroll down to the end)
         
-        # Cards line with type label for instant wins
-        cards_str = f"{format_hand(r['hand'])} ({r['score']})"
-        if type_label:
-            cards_str = f"**{type_label}** - {cards_str}"
-        
-        # Build player result
+        # Add result processing logic...
+        # (Assuming you don't need to replace the whole big function if I scroll down to the end)
+
+        # Dealer info with cards
+        d_desc = get_hand_description(d_type)
         embed.add_field(
-            name=f"{p_emoji} @{r['username']}",
-            value=cards_str,
+            name="🤖 Nhà Cái",
+            value=f"{format_hand(table.dealer_hand)} ({d_score})",
             inline=False
         )
-        
-        # Big result text
-        if r["result"] == "instant_win":
-            result_str = f"**🎉 {type_label}! Lời +{r['net']:,}, tổng {r['payout']:,} HẠT 🎉**"
-            flavor = random.choice(win_flavors)
-        elif r["result"] == "win":
-            result_str = f"**Kết quả: THẮNG | +{r['net']:,} HẠT💰**"
-            flavor = random.choice(win_flavors)
-        elif r["result"] == "lose":
-            result_str = f"**Kết quả: THUA | {r['net']:,} HẠT💸**"
-            flavor = random.choice(lose_flavors)
-        else:
-            result_str = f"**Kết quả: HÒA | ±0 HẠT⚖️**"
-            flavor = random.choice(push_flavors)
-        
-        embed.description = f"{result_str}\n\n*{flavor}*" if len(results) == 1 else None
 
-
-    # If multiple players, add summary
-    if len(results) > 1:
-        summary_lines = []
+        # Each player result - BIG format
         for r in results:
+            # Special emoji for instant winners
             if r["result"] == "instant_win":
-                emoji = "�" if r["hand_type"] == HandType.XI_DACH else "💎"
+                if r["hand_type"] == HandType.XI_BAN:
+                    p_emoji = "💎"
+                    type_label = "XÌ BÀN"
+                else:
+                    p_emoji = ""
+                    type_label = "XÌ DÁCH"
             elif r["result"] == "win":
-                emoji = "🏆"
+                p_emoji = "🏆"
+                type_label = None
             elif r["result"] == "lose":
-                emoji = "💀"
+                p_emoji = "😢"
+                type_label = None
             else:
-                emoji = "🤝"
-            net_str = f"+{r['net']:,}" if r["net"] >= 0 else f"{r['net']:,}"
-            summary_lines.append(f"{emoji} **{r['username']}**: {net_str} Hạt")
-        embed.add_field(name="📊 Tổng Kết", value="\n".join(summary_lines), inline=False)
+                p_emoji = "🤝"
+                type_label = None
+            
+            # Cards line with type label for instant wins
+            cards_str = f"{format_hand(r['hand'])} ({r['score']})"
+            if type_label:
+                cards_str = f"**{type_label}** - {cards_str}"
+            
+            # Build player result
+            embed.add_field(
+                name=f"{p_emoji} @{r['username']}",
+                value=cards_str,
+                inline=False
+            )
+            
+            # Big result text
+            if r["result"] == "instant_win":
+                result_str = f"**🎉 {type_label}! Lời +{r['net']:,}, tổng {r['payout']:,} HẠT 🎉**"
+                flavor = random.choice(win_flavors)
+            elif r["result"] == "win":
+                result_str = f"**Kết quả: THẮNG | +{r['net']:,} HẠT💰**"
+                flavor = random.choice(win_flavors)
+            elif r["result"] == "lose":
+                result_str = f"**Kết quả: THUA | {r['net']:,} HẠT💸**"
+                flavor = random.choice(lose_flavors)
+            else:
+                result_str = f"**Kết quả: HÒA | ±0 HẠT⚖️**"
+                flavor = random.choice(push_flavors)
+            
+            embed.description = f"{result_str}\n\n*{flavor}*" if len(results) == 1 else None
 
 
-    # Send result
-    await channel.send(embed=embed)
-    game_manager.remove_table(table.channel_id)
+        # If multiple players, add summary
+        if len(results) > 1:
+            summary_lines = []
+            for r in results:
+                if r["result"] == "instant_win":
+                    emoji = "" if r["hand_type"] == HandType.XI_DACH else "💎"
+                elif r["result"] == "win":
+                    emoji = "🏆"
+                elif r["result"] == "lose":
+                    emoji = "💀"
+                elif r["result"] == "lose":
+                    emoji = "💀"
+                else:
+                    emoji = "🤝"
+                net_str = f"+{r['net']:,}" if r["net"] >= 0 else f"{r['net']:,}"
+                summary_lines.append(f"{emoji} **{r['username']}**: {net_str} Hạt")
+            embed.add_field(name="📊 Tổng Kết", value="\n".join(summary_lines), inline=False)
+
+
+        # Send result
+        await channel.send(embed=embed)
+    
+    finally:
+        game_manager.remove_table(table.table_id)
 
 
 # ==================== LOBBY HELPERS ====================

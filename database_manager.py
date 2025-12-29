@@ -48,6 +48,9 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
 async def batch_update_seeds(updates: Dict[int, int]):
     """Updates seed balances for multiple users in a single batch operation.
 
+    NOTE: This is the OLD version without transaction logging.
+    Use core.database.batch_update_seeds for new code that requires logging.
+
     Args:
         updates (Dict[int, int]): A dictionary mapping user_id to the amount of seeds to add (can be negative).
 

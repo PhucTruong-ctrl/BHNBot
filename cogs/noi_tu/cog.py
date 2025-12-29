@@ -413,7 +413,7 @@ class GameNoiTu(commands.Cog):
                     bonus_reward = correct_words * 3 * buff_multiplier
                     total_reward = base_reward + bonus_reward
                     
-                    await economy_cog.add_seeds_local(user_id, total_reward, 'noitu_streak_reward', 'game_reward')
+                    await economy_cog.add_seeds_local(user_id, total_reward, 'noitu_streak_reward', 'noitu')
                     
                     # Format for display: @mention - X từ (Y Hạt)
                     try:
@@ -487,10 +487,10 @@ class GameNoiTu(commands.Cog):
             # Distribute rewards
             for user_id, username in all_players.items():
                 if user_id == winner_id:
-                    await economy_cog.add_seeds_local(user_id, winner_reward, 'noitu_win_reward', 'game_reward')
+                    await economy_cog.add_seeds_local(user_id, winner_reward, 'noitu_win_reward', 'noitu')
                     winner_name = username
                 else:
-                    await economy_cog.add_seeds_local(user_id, loser_reward, 'noitu_loss_consolation', 'game_reward')
+                    await economy_cog.add_seeds_local(user_id, loser_reward, 'noitu_loss_consolation', 'noitu')
                     loser_names.append(username)
             
             # Create reward notification embed

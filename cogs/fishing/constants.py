@@ -2,6 +2,8 @@
 
 import json
 import os
+import random
+from configs.item_constants import ItemKeys
 from configs.settings import (
     DB_PATH, DB_TIMEOUT, FISHING_DATA_PATH, LEGENDARY_FISH_PATH,
     FISHING_EVENTS_PATH, SELL_EVENTS_PATH, NPC_EVENTS_PATH,
@@ -102,7 +104,7 @@ ALL_FISH["vat_lieu_nang_cap"] = {"key": "vat_lieu_nang_cap", "name": "Vật Li�
 # Chest loot (will be populated after TRASH_ITEMS is defined)
 CHEST_LOOT = {
     # "nothing": REMOVED - No more empty chests!
-    "phan_bon": 25,  # Increased from 20 - common item
+    ItemKeys.PHAN_BON: 25,  # Increased from 20 - common item
     "manh_ghep": 22,  # Increased from 18 - common item
     "tui_tien": 32,  # Increased from 28 - common item
     "qua_ngau_nhien": 20,  # Decreased from 33 - rare item
@@ -153,7 +155,7 @@ GIFT_ITEMS = [v.get("key") for v in ALL_ITEMS_DATA.values() if v.get("type") == 
 # These are valuable special items: chests, materials, quest items, commemorative rewards, consumables
 PROTECTED_ITEMS = {
     "ruong_kho_bau",  # Treasure Chest
-    "phan_bon",  # Fertilizer (used for tree growth)
+    ItemKeys.PHAN_BON,  # Fertilizer (used for tree growth)
     "manh_ghep_a", "manh_ghep_b", "manh_ghep_c", "manh_ghep_d",  # Puzzle pieces
     "qua_ngot_mua_1", "qua_ngot_mua_2", "qua_ngot_mua_3", "qua_ngot_mua_4", "qua_ngot_mua_5",  # Season rewards
     "nuoc_tang_luc", "gang_tay_xin", "thao_tac_tinh_vi", "tinh_yeu_ca", "tinh_cau",  # Consumable buffs
@@ -271,8 +273,8 @@ phan_bon_EFFECTS = [
     {"type": "xp_boost", "value": 25, "message": "🪴 Phân bón tạm được... Cây nhận **+25 XP**."},
     {"type": "seeds", "value": 50, "message": "💰 Phân bón lạ! Bạn tìm thấy **50 Hạt** trong đất."},
     {"type": "seeds", "value": 100, "message": "💰 WOW! Phân bón chứa **100 Hạt** bên trong!"},
-    {"type": "moi", "value": 5, "message": "🪱 Phân bón hấp dẫn giun! Bạn nhận được **5 Giun**."},
-    {"type": "moi", "value": 10, "message": "🪱 Cả bầy giun kéo đến! Bạn nhận được **10 Giun**."},
+    {"type": ItemKeys.MOI, "value": 5, "message": "🪱 Phân bón hấp dẫn giun! Bạn nhận được **5 Giun**."},
+    {"type": ItemKeys.MOI, "value": 10, "message": "🪱 Cả bầy giun kéo đến! Bạn nhận được **10 Giun**."},
     {"type": "xp_boost", "value": 200, "message": "🌳 SIÊU PHÂN BÓN! Cây bùng nổ với **+200 XP**!"},
 ]
 

@@ -9,7 +9,9 @@ import asyncio
 import time
 from typing import Dict, Optional
 from core.logger import setup_logger
-from database_manager import get_user_balance, add_seeds, get_or_create_user, batch_update_seeds
+from core.logger import setup_logger
+from database_manager import get_user_balance, add_seeds, get_or_create_user
+from core.database import batch_update_seeds
 
 from .constants import (
     ANIMAL_LIST,
@@ -132,7 +134,7 @@ class GameManager:
         # Track balance before/after
         balance_before = await get_user_balance(user_id)
         reason = 'baucua_bet' if amount < 0 else 'baucua_win'
-        await add_seeds(user_id, amount, reason, 'minigame')
+        await add_seeds(user_id, amount, reason, 'baucua')
         balance_after = balance_before + amount
         
         logger.info(
@@ -412,7 +414,7 @@ class GameManager:
             return
         
         try:
-            await batch_update_seeds(payouts, reason='baucua_payout', category='minigame')
+            await batch_update_seeds(payouts, reason='baucua_payout', category='baucua')
             logger.info(f"[RESULTS] Batch updated seeds for {len(payouts)} users")
         except Exception as e:
             logger.error(f"Error batch updating seeds: {e}", exc_info=True)
