@@ -361,6 +361,21 @@ class GameManager:
         
         return (final_result1, final_result2, final_result3)
     
+    def _calculate_tax(self, net_profit: int) -> int:
+        """Calculate progressive tax on NET PROFIT.
+        
+        Rules:
+        - Profit <= 100k: 0%
+        - Profit <= 1M: 5%
+        - Profit > 1M: 10%
+        """
+        if net_profit <= 100_000:
+            return 0
+        elif net_profit <= 1_000_000:
+            return int(net_profit * 0.05)
+        else:
+            return int(net_profit * 0.10)
+
     async def calculate_results(
         self,
         game_state: GameState,
@@ -368,33 +383,44 @@ class GameManager:
     ) -> Dict[int, int]:
         """Calculate payouts for all bets based on results.
         
-        Formula: payout = bet_amount * (matches + 1)
-        - 0 matches = 0 payout (loss)
-        - 1 match = bet_amount * 2
-        - 2 matches = bet_amount * 3
-        - 3 matches = bet_amount * 4
+        Applies 'Symbiosis Model' Tax:
+        - Tax is applied on NET PROFIT only.
+        - Calculated after summing all bets/wins for the user.
         
         Args:
             game_state: Active game state with bets
             results: Tuple of (result1, result2, result3)
             
         Returns:
-            Dictionary mapping user_id to total payout amount
+            Dictionary mapping user_id to total payout amount (After Tax)
         """
         result1, result2, result3 = results
         final_result = [result1, result2, result3]
         payouts = {}
         
         for user_id, bet_list in game_state.bets.items():
-            total_payout = 0
+            total_payout_raw = 0
+            total_bet = 0
             
             for animal_key, bet_amount in bet_list:
+                total_bet += bet_amount
                 matches = sum(1 for r in final_result if r == animal_key)
                 payout = calculate_payout(bet_amount, matches)
-                total_payout += payout
+                total_payout_raw += payout
             
-            if total_payout > 0:
-                payouts[user_id] = total_payout
+            if total_payout_raw > 0:
+                # Calculate Tax
+                net_profit = total_payout_raw - total_bet
+                tax = 0
+                
+                if net_profit > 0:
+                    tax = self._calculate_tax(net_profit)
+                
+                final_payout = total_payout_raw - tax
+                payouts[user_id] = final_payout
+                
+                if tax > 0:
+                    logger.info(f"[TAX] User {user_id} Profit: {net_profit:,} -> Tax: {tax:,}")
         
         return payouts
     

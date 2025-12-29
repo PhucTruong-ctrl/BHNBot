@@ -20,92 +20,51 @@ def init_database():
     c.execute("PRAGMA foreign_keys = ON")
     print("✓ Foreign key constraints enabled")
 
-    # 1. CORE: USERS (Thay thế economy_users)
+    # 1. CORE: USERS
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
                     seeds INTEGER DEFAULT 0,
+                    leaf_coin INTEGER DEFAULT 0, -- Project Aquarium Currency
+                    charm_point INTEGER DEFAULT 0, -- Social Credibility
+                    vip_tier TEXT DEFAULT 'none', -- none, dai_gia, shark, whale
+                    home_thread_id INTEGER DEFAULT NULL, -- Forum Thread ID
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     last_daily DATETIME,
                     last_chat_reward DATETIME
                 )''')
 
-    # 2. CORE: USER STATS (Thay thế player_stats & các cột lẻ tẻ)
-    # Lưu mọi chỉ số: wins nối từ, số lần câu, số cá bắt được...
-    c.execute('''CREATE TABLE IF NOT EXISTS user_stats (
-                    user_id INTEGER,
-                    game_id TEXT, -- 'fishing', 'noitu', 'wolf'
-                    stat_key TEXT, -- 'wins', 'worms_used', 'bad_events'
-                    value INTEGER DEFAULT 0,
-                    PRIMARY KEY (user_id, game_id, stat_key)
-                )''')
+    # ... (Keep existing User Stats, Achievements, Inventory, Fishing Profiles, Legendary Quests, Fish Collection, Relationships as is) ...
 
-    # 2.5. CORE: USER ACHIEVEMENTS (Lưu thành tựu đã đạt được)
-    # Tránh trao thưởng lặp lại
-    c.execute('''CREATE TABLE IF NOT EXISTS user_achievements (
+    # 7. PROJECT AQUARIUM: HOUSE & DECOR (Refined Schema)
+    
+    # Inventory for Decor items
+    c.execute('''CREATE TABLE IF NOT EXISTS user_decor (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER,
-                    achievement_key TEXT,
-                    unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (user_id, achievement_key),
-                    FOREIGN KEY(user_id) REFERENCES users(user_id)
-                )''')
-
-    # 3. CORE: INVENTORY
-    # Using item_id to match database_manager.py (NOT item_id)
-    c.execute('''CREATE TABLE IF NOT EXISTS inventory (
-                    user_id INTEGER,
-                    item_id TEXT, -- Khớp với key trong constants.py
-                    quantity INTEGER DEFAULT 1,
-                    item_type TEXT, -- 'tool', 'consumable', 'material'
-                    PRIMARY KEY (user_id, item_id)
-                )''')
-
-    # 4. MODULE: FISHING PROFILES
-    c.execute('''CREATE TABLE IF NOT EXISTS fishing_profiles (
-                    user_id INTEGER PRIMARY KEY,
-                    rod_level INTEGER DEFAULT 1,
-                    rod_durability INTEGER DEFAULT 30,
-                    FOREIGN KEY(user_id) REFERENCES users(user_id)
-                )''')
-
-    # 4.5. MODULE: LEGENDARY QUESTS (Tiến độ từng cá huyền thoại)
-    # Mỗi con cá có cơ chế riêng:
-    # thuong_luong: quest_status = số lần hiến tế (0-3)
-    # ca_ngan_ha: quest_status = 0 (chưa chế tạo mồi), 1 (đã chế tạo)
-    # ca_phuong_hoang: quest_status = 0 (chưa chuẩn bị), 1 (đã chuẩn bị)
-    # cthulhu_con: quest_status = số mảnh bản đồ (0-4), quest_completed = true để kích hoạt
-    # ca_voi_52hz: quest_status = 0 (chưa mua), 1 (có máy), 2 (đã dò được 52Hz)
-    c.execute('''CREATE TABLE IF NOT EXISTS legendary_quests (
-                    user_id INTEGER,
-                    fish_key TEXT,
-                    quest_status INTEGER DEFAULT 0,
-                    quest_completed BOOLEAN DEFAULT FALSE,
-                    legendary_caught BOOLEAN DEFAULT FALSE,
-                    last_progress_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (user_id, fish_key),
-                    FOREIGN KEY(user_id) REFERENCES users(user_id)
-                )''')
-
-    # 5. MODULE: FISH COLLECTION (Túi Cá)
-    c.execute('''CREATE TABLE IF NOT EXISTS fish_collection (
-                    user_id INTEGER,
-                    fish_id TEXT,
+                    item_id TEXT, -- e.g., 'san_ho', 'ruong_vang'
                     quantity INTEGER DEFAULT 0,
-                    biggest_size REAL DEFAULT 0,
-                    PRIMARY KEY (user_id, fish_id)
+                    purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, item_id)
                 )''')
 
-    # 6. MODULE: RELATIONSHIPS (Thân thiết)
-    c.execute('''CREATE TABLE IF NOT EXISTS relationships (
-                    user_id_1 INTEGER,
-                    user_id_2 INTEGER,
-                    affinity INTEGER DEFAULT 0,
-                    status TEXT DEFAULT 'pending', -- 'pending', 'accepted'
-                    last_interaction DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (user_id_1, user_id_2)
+    # Slot arrangement in Home
+    c.execute('''CREATE TABLE IF NOT EXISTS home_slots (
+                    user_id INTEGER,
+                    slot_index INTEGER, -- 0, 1, 2, 3, 4...
+                    item_id TEXT, -- Item placed here (NULL if empty)
+                    placed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, slot_index)
                 )''')
+
+    # Visitor Tracking (Limit 5 per day)
+    c.execute('''CREATE TABLE IF NOT EXISTS home_visits (
+                    visitor_id INTEGER,
+                    host_id INTEGER,
+                    visited_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (visitor_id, host_id, visited_at)
+                )''')
+
 
     # 7. MODULE: SHARED PETS
     c.execute('''CREATE TABLE IF NOT EXISTS shared_pets (

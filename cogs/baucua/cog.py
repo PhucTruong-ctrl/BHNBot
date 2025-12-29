@@ -120,15 +120,25 @@ class BauCuaCog(commands.Cog):
             # Roll dice and show results
             results = await self._run_dice_roll(channel)
             
+            # Calculate results immediately (for display consistency)
+            from .models import GameState
+            temp_game = GameState(
+                game_id="temp",
+                channel_id=channel_id,
+                start_time=0,
+                bets=bets_data
+            )
+            payouts = await self.game_manager.calculate_results(temp_game, results)
+            
             # Display results and summary
-            await self._display_results(channel, results, bets_data)
+            await self._display_results(channel, results, bets_data, payouts)
             
             # Clean up game state
             self.game_manager.end_game(channel_id)
             
             # Update results in background
             asyncio.create_task(
-                self._process_game_results(channel_id, results, bets_data)
+                self._process_game_results(channel_id, results, bets_data, payouts)
             )
             
             logger.info(f"[GAME_COMPLETE] game_id={game_state.game_id}")
@@ -196,16 +206,17 @@ class BauCuaCog(commands.Cog):
         
         return results
     
-    async def _display_results(self, channel, results, bets_data):
+    async def _display_results(self, channel, results, bets_data, payouts):
         """Display final results and summary.
         
         Args:
             channel: Discord channel
             results: Tuple of (result1, result2, result3)
             bets_data: Dictionary of bets
+            payouts: Dictionary of final taxed payouts
         """
         result_display = create_result_display(*results)
-        summary_text = create_summary_text(*results, bets_data)
+        summary_text = create_summary_text(*results, bets_data, payouts)
         
         # Find and update rolling message, send summary
         async for message in channel.history(limit=5):
@@ -216,7 +227,7 @@ class BauCuaCog(commands.Cog):
                 )
                 break
     
-    async def _process_game_results(self, channel_id, results, bets_data):
+    async def _process_game_results(self, channel_id, results, bets_data, payouts):
         """Process game results: update balances and statistics.
         
         Runs in background via asyncio.create_task().
@@ -225,19 +236,10 @@ class BauCuaCog(commands.Cog):
             channel_id: Discord channel ID
             results: Tuple of dice results
             bets_data: Dictionary of user bets
+            payouts: Pre-calculated payouts (Taxed)
         """
         try:
-            # Calculate payouts
-            from .models import GameState
-            temp_game = GameState(
-                game_id="temp",
-                channel_id=channel_id,
-                start_time=0,
-                bets=bets_data
-            )
-            payouts = await self.game_manager.calculate_results(temp_game, results)
-            
-            # Update balances
+            # Update balances (using pre-calculated payouts)
             await self.game_manager.update_game_results_batch(payouts)
             
             # Update statistics

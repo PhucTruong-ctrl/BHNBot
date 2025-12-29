@@ -35,6 +35,9 @@ CRYPTO_LOSS_CAP = 5000
 AUDIT_TAX_CAP = 10000
 GAIN_PERCENT_CAP = 30000
 
+# Project Aquarium
+AQUARIUM_FORUM_CHANNEL_ID = 1455222546675929181 # ⚠️ REPLACE WITH REAL CHANNEL ID
+
 # Loot tables (game logic, same across servers)
 LOOT_TABLE_NORMAL = {
     "trash": 30, "common_fish": 60, "rare_fish": 5, "chest": 5

@@ -108,17 +108,20 @@ def create_summary_text(
     result1: str,
     result2: str,
     result3: str,
-    bets_data: Dict[int, List[Tuple[str, int]]]
+    bets_data: Dict[int, List[Tuple[str, int]]],
+    payouts: Dict[int, int] = None
 ) -> str:
     """Create detailed summary text of results per user.
     
     Shows each player's bets and their winnings/losses.
+    Now supports Taxed Payouts via 'payouts' argument.
     
     Args:
         result1: First dice result
         result2: Second dice result
         result3: Third dice result
         bets_data: Dictionary mapping user_id to list of (animal_key, amount) tuples
+        payouts: Dictionary of actual payouts (after tax). Optional for backward compat.
         
     Returns:
         Formatted multi-line string with summary for each user
@@ -171,18 +174,27 @@ def create_summary_text(
         total_payout = 0
         total_bet = 0
         
+        # Calculate Total Bet
         for animal_key, bet_amount in bet_list:
             total_bet += bet_amount
-            matches = sum(1 for r in final_result if r == animal_key)
-            if matches > 0:
-                # Payout includes original bet
-                total_payout += bet_amount * (matches + 1)
+            
+        # Determine Payout (Use provided source of truth if available)
+        if payouts is not None and user_id in payouts:
+            total_payout = payouts[user_id]
+        elif payouts is None:
+            # Fallback (Legacy calculation - ignoring tax)
+            for animal_key, bet_amount in bet_list:
+                matches = sum(1 for r in final_result if r == animal_key)
+                if matches > 0:
+                    total_payout += bet_amount * (matches + 1)
         
         net_profit = total_payout - total_bet
         
         if net_profit > 0:
             msg_template = random.choice(WIN_MSGS)
             summary = msg_template.format(user=user_mention, amount=net_profit)
+             # Add Tax Note if using new system and profit differs from raw
+             # (Actually simplier to just show the net profit)
         elif net_profit < 0:
             msg_template = random.choice(LOSS_MSGS)
             summary = msg_template.format(user=user_mention, amount=abs(net_profit))
