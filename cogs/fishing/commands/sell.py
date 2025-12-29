@@ -117,8 +117,8 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
     cog.sell_processing[user_id] = current_time
     
     try:
-        # Get username
-        username = ctx.user.name if is_slash else ctx.author.name
+        # Get username (ctx is already aliased correctly above)
+        username = ctx_or_interaction.user.name if is_slash else ctx_or_interaction.author.name
         
         # ENTRY LOG
         logger.info(f"[SELL] Processing sell command for {username} (user_id={user_id})")
