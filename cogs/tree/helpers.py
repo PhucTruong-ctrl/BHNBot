@@ -97,39 +97,78 @@ def create_contribution_success_embed(
     new_progress: int,
     requirement: int,
     leveled_up: bool = False,
-    new_level: int = None
+    new_level: int = None,
+    item_name: str = "Hạt",
+    quantity: int = None,
+    action_title: str = "Góp Hạt Cho Cây!"
 ) -> discord.Embed:
     """Create success embed after contribution.
     
     Args:
         user: Discord user who contributed
-        amount: Seeds contributed
+        amount: Total value contributed (EXP)
         new_progress: New progress value
         requirement: Requirement for next level
         leveled_up: Whether tree leveled up
         new_level: New level if leveled up
+        item_name: Name of item used (e.g. "Phân Bón", "Hạt")
+        quantity: Quantity of items used (e.g. 3)
+        action_title: Title of the embed action
         
     Returns:
         Discord embed with success message
     """
+    # Defaults
+    if quantity is None:
+        quantity = amount
+        
+    # Calculate value per item for breakdown
+    if quantity > 0:
+        value_per_item = amount // quantity
+    else:
+        value_per_item = 0
+
     embed = discord.Embed(
-        title="Góp Hạt Thành Công!",
+        description=f"**{user.name}** đã xài **{quantity}** {item_name}",
         color=discord.Color.green()
     )
-    embed.add_field(name="Người góp", value=f"**{user.name}**", inline=False)
-    embed.add_field(name="Hạt góp", value=f"**+{amount}**", inline=True)
     
+    # Title with Icon (mapped from action_title if needed, or just use string)
+    if "Phân" in item_name:
+        icon = "🌾"
+        title = "Bón Phân Cho Cây!"
+    else:
+        icon = "🌱"
+        title = "Góp Hạt Cho Cây!"
+        
+    embed.set_author(name=f"{icon} {title}")
+    
+    # Field 1: Total EXP
+    embed.add_field(
+        name="⚡ Tổng EXP",
+        value=f"**{amount} EXP** → +{amount} điểm cho cây",
+        inline=False
+    )
+    
+    # Field 2: Detail
+    embed.add_field(
+        name="📋 Chi tiết",
+        value=f"{quantity} × {value_per_item}",
+        inline=False
+    )
+    
+    # Field 3: Progress
     percent = int((new_progress / requirement) * 100) if requirement > 0 else 0
     embed.add_field(
-        name="Tiến độ",
+        name="📊 Tiến độ",
         value=f"**{percent}%** ({new_progress}/{requirement})",
-        inline=True
+        inline=False
     )
     
     if leveled_up and new_level:
         embed.add_field(
-            name="CÂY ĐÃ LÊN CẤP!",
-            value=f"**{TREE_NAMES[new_level]}** - Cấp {new_level}/6",
+            name="🎉 CÂY ĐÃ LÊN CẤP!",
+            value=f"**{TREE_NAMES.get(new_level, 'Cây Thần')}** - Cấp {new_level}/6",
             inline=False
         )
         embed.color = discord.Color.gold()

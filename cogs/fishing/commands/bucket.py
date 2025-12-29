@@ -9,7 +9,7 @@ import discord
 
 from database_manager import (
     get_inventory, add_item, remove_item, add_seeds,
-    get_stat, increment_stat
+    get_stat, increment_stat, db_manager
 )
 from ..constants import (
     ALL_FISH, TRASH_ITEMS, CHEST_LOOT, GIFT_ITEMS,
@@ -444,6 +444,33 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
         await ctx.followup.send(embed=embed)
     else:
         await ctx.reply(embed=embed)
+
+    # NEW: Send notification to Tree Channel if action was done elsewhere
+    try:
+        # Get tree channel ID
+        tree_row = await db_manager.fetchone(
+            "SELECT tree_channel_id FROM server_tree WHERE guild_id = ?",
+            (guild_id,)
+        )
+        if tree_row and tree_row[0]:
+            tree_channel_id = tree_row[0]
+            current_channel_id = ctx.channel.id
+            
+            # If command was used in a different channel, echo to tree channel
+            if tree_channel_id != current_channel_id:
+                tree_channel = cog.bot.get_channel(tree_channel_id)
+                if not tree_channel:
+                    try:
+                        tree_channel = await cog.bot.fetch_channel(tree_channel_id)
+                    except Exception:
+                        pass
+                
+                if tree_channel:
+                    await tree_channel.send(embed=embed)
+                    logger.info(f"[BONPHAN] Echoed notification to tree channel {tree_channel_id}")
+                    
+    except Exception as e:
+        logger.error(f"[BONPHAN] Error echoing to tree channel: {e}")
 
 
 async def view_collection_action(cog, ctx_or_interaction, user_id: int, username: str):

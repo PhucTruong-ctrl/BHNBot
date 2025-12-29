@@ -933,7 +933,6 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
             logger.info(f"[RESULT] Player {uid}: {result}, net {net:+}")
 
 
-        # Pay winners
         if seed_updates:
             await batch_update_seeds(seed_updates, reason='xi_dach_win', category='xidach')
 
@@ -947,6 +946,12 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
             title="🎰🎰🎰 KẾT QUẢ XÌ DÁCH",
             color=discord.Color.gold()
         )
+
+        # Add result processing logic...
+        # (Assuming you don't need to replace the whole big function if I scroll down to the end)
+        
+        # Add result processing logic...
+        # (Assuming you don't need to replace the whole big function if I scroll down to the end)
 
         # Dealer info with cards
         d_desc = get_hand_description(d_type)
