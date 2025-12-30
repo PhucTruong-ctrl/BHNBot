@@ -38,20 +38,32 @@ def calculate_hand_value(hand: List["Card"]) -> int:
         return 0
     
     total = 0
-    ace_count = 0
     
-    for card in hand:
-        if card.is_ace:
-            ace_count += 1
-            total += 11
-        else:
-            total += card.value
+    # USER RULE: Ace = 1 if hand has > 2 cards.
+    # Ace = 11 (or 1 if bust) if hand has <= 2 cards.
     
-    # Downgrade Aces from 11 to 1 if busting
-    while total > 21 and ace_count > 0:
-        total -= 10
-        ace_count -= 1
-    
+    if len(hand) > 2:
+        # Strict Mode: Ace always 1
+        for card in hand:
+            if card.is_ace:
+                total += 1
+            else:
+                total += card.value
+    else:
+        # Standard Mode (<= 2 cards): Ace starts at 11
+        ace_count = 0
+        for card in hand:
+            if card.is_ace:
+                ace_count += 1
+                total += 11
+            else:
+                total += card.value
+        
+        # Downgrade if bust
+        while total > 21 and ace_count > 0:
+            total -= 10
+            ace_count -= 1
+            
     return total
 
 

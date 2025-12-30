@@ -428,6 +428,11 @@ async def _next_turn(cog: "XiDachCog", channel, table: Table) -> None:
                 table.next_turn()
                 current = table.current_player
 
+    # CRITICAL FIX: Stop previous view to prevent "Timeout Leak" (User A's timeout hitting User B)
+    if table.current_view:
+        table.current_view.stop()
+        table.current_view = None
+
     if not current:
         await _run_dealer(cog, channel, table)
         return
@@ -451,9 +456,15 @@ async def _next_turn(cog: "XiDachCog", channel, table: Table) -> None:
         embed_color = discord.Color.blue()
         title = f"👤 Lượt của {current.username}"
 
+    # Calculate turn deadline
+    import time
+    from ..constants import TURN_TIMEOUT
+    deadline_ts = int(time.time() + TURN_TIMEOUT)
+    
     embed = discord.Embed(
         title=title,
-        color=embed_color
+        color=embed_color,
+        description=f"⏳ **Thời gian còn lại:** <t:{deadline_ts}:R>"
     )
     
     # Trạng thái field
@@ -685,6 +696,8 @@ async def _advance_to_next(cog: "XiDachCog", channel, table: Table) -> None:
     """Advance to next player."""
     async with table.lock:
         # Keep old message for history (do NOT delete)
+        if table.current_view:
+            table.current_view.stop() # Prevent timeout firing later
         table.current_turn_msg = None
         table.next_turn()
 
@@ -808,48 +821,33 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
     final_embed.add_field(name="🎰 Điểm", value=f"**{d_score}**", inline=True)
     final_embed.add_field(name="📊 Trạng thái", value=status_str, inline=True)
     
-    # Consolidate message: Edit the last dealer message instead of sending new one
-    edited = False
+    # Consolidate message: DELETE old and SEND new to prevent double image glitch
+    # (Discord Client shows both Attachment and Embed Image if we edit existing msg)
+    # Consolidate message: DELETE old and SEND new to prevent double image glitch
+    # (Discord Client shows both Attachment and Embed Image if we edit existing msg)
     if dealer_msg:
         try:
-            # Reuse the image from the existing message
-            if dealer_msg.embeds and dealer_msg.embeds[0].image:
-                final_embed.set_image(url=dealer_msg.embeds[0].image.url)
-            
-            # Edit the message
-            if await _safe_edit(dealer_msg, embed=final_embed):
-                edited = True
-        except Exception as e:
-            logger.warning(f"[DEALER_FINAL] Edit failed, falling back to send: {e}")
+             await dealer_msg.delete()
+        except:
+             pass
 
-    if not edited:
-        # Fallback: Render and Send New (only if edit failed AND message is gone)
-        # Check if dealer_msg is still valid (not deleted)
-        if dealer_msg:
-            try:
-                # Try to fetch the message to see if it still exists
-                await dealer_msg.channel.fetch_message(dealer_msg.id)
-                # If fetch succeeds, message exists but edit failed for other reason
-                # Don't send duplicate, just log
-                logger.warning(f"[DEALER_FINAL] Edit failed but message exists, skipping duplicate send")
-                return
-            except discord.NotFound:
-                # Message was deleted, proceed with fallback
-                pass
-            except Exception as e:
-                logger.warning(f"[DEALER_FINAL] Unexpected error checking message: {e}")
+    # Generate fresh image for final state
+    try:
+        ts = int(time.time() * 1000)
+        img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
+        filename = f"dealer_final_{ts}.png"
+        file = discord.File(io.BytesIO(img_bytes), filename=filename)
         
-        # Send new message only if old one was deleted
-        try:
-            ts = int(time.time() * 1000)
-            img_bytes = await render_player_hand(table.dealer_hand, "Nhà Cái")
-            filename = f"dealer_final_{ts}.png"
-            file = discord.File(io.BytesIO(img_bytes), filename=filename)
-            final_embed.set_image(url=f"attachment://{filename}")
-            await _safe_send(channel, embed=final_embed, file=file)
-        except Exception as e:
-            logger.error(f"[DEALER_FINAL] Render error: {e}")
-            await _safe_send(channel, embed=final_embed)
+        final_embed.set_footer(text="Hệ thống tự động chốt bài")
+        final_embed.set_image(url=f"attachment://{filename}")
+        
+        # Send new message with proper attachment/embed linking
+        await _safe_send(channel, embed=final_embed, file=file)
+        
+    except Exception as e:
+        logger.error(f"[DEALER_FINAL] Render error: {e}")
+        # Fallback text only
+        await _safe_send(channel, embed=final_embed)
 
     await _finish_game(cog, channel, table)
 
@@ -885,46 +883,30 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                 # Instant winner - use stored payout
                 payout = getattr(player, 'payout', int(player.bet * (3.0 if p_type == HandType.XI_BAN else 2.5)))
                 net = payout - player.bet
-                results.append({
-                    "user_id": uid,
-                    "username": player.username,
-                    "score": p_score,
-                    "hand": player.hand,
-                    "hand_type": p_type,
-                    "result": "instant_win",
-                    "bet": player.bet,
-                    "net": net,
-                    "payout": payout
-                })
-                logger.info(f"[RESULT] Player {uid}: instant_win ({p_type.name}), net {net:+}")
-                continue
-            
-            # Check if player timed out with underage points (force bust)
-            if player.status == PlayerStatus.BUST:
-                # Player timed out with < 16 points → Always lose
-                payout = 0
-                net = -player.bet
-                results.append({
-                    "user_id": uid,
-                    "username": player.username,
-                    "score": p_score,
-                    "hand": player.hand,
-                    "hand_type": p_type,
-                    "result": "lose",
-                    "bet": player.bet,
-                    "net": net,
-                    "payout": payout
-                })
-                logger.info(f"[RESULT] Player {uid}: lose (timeout bust), net {net:+}")
-                continue
+                result = "instant_win"
+            else:
+                # Compare with dealer
+                # FIX: Pass lists of cards, not scores/types
+                outcome, ratio = compare_hands(player.hand, table.dealer_hand)
+                
+                # Ratio includes original bet (e.g., 2.0 for win, 1.0 for push, 0.0 for lose)
+                payout = int(player.bet * ratio)
+                net = payout - player.bet
+                
+                if outcome == "win":
+                    # Add to seed updates
+                    if uid not in seed_updates: seed_updates[uid] = 0
+                    seed_updates[uid] += payout
+                    result = "win"
+                elif outcome == "lose":
+                    # No payout update needed (bet already deducted)
+                    result = "lose"
+                else: # push
+                    # Refund bet
+                    if uid not in seed_updates: seed_updates[uid] = 0
+                    seed_updates[uid] += payout
+                    result = "push"
 
-            result, mul = compare_hands(player.hand, table.dealer_hand)
-            payout = int(player.bet * mul)
-
-            if payout > 0:
-                seed_updates[uid] = payout
-
-            net = payout - player.bet
             results.append({
                 "user_id": uid,
                 "username": player.username,
@@ -933,7 +915,7 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                 "hand_type": p_type,
                 "result": result,
                 "bet": player.bet,
-                "net": net,
+                "net_profit": net,  # FIX KEY NAME: was 'net' in some places and 'net_profit' in helpers
                 "payout": payout
             })
 
@@ -943,101 +925,25 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
         if seed_updates:
             await batch_update_seeds(seed_updates, reason='xi_dach_win', category='xidach')
 
-        # Flavor texts
-        win_flavors = ["Đỉnh cao! 🔥", "Thắng đậm! 💰", "Số hưởng! 🍀", "Ngon! 👏"]
-        lose_flavors = ["Gà văiii 🤣", "Đen quá! 😢", "Thua keo này, bày keo khác! 💪", "Chia buồn... 😅"]
-        push_flavors = ["Hòa êm! 🤝", "Huề vốn! ⚖️"]
-
-        # Build result embed
-        embed = discord.Embed(
-            title="🎰🎰🎰 KẾT QUẢ XÌ DÁCH",
-            color=discord.Color.gold()
-        )
-
-        # Add result processing logic...
-        # (Assuming you don't need to replace the whole big function if I scroll down to the end)
-        
-        # Add result processing logic...
-        # (Assuming you don't need to replace the whole big function if I scroll down to the end)
-
-        # Dealer info with cards
-        d_desc = get_hand_description(d_type)
-        embed.add_field(
-            name="🤖 Nhà Cái",
-            value=f"{format_hand(table.dealer_hand)} ({d_score})",
-            inline=False
-        )
-
-        # Each player result - BIG format
-        for r in results:
-            # Special emoji for instant winners
-            if r["result"] == "instant_win":
-                if r["hand_type"] == HandType.XI_BAN:
-                    p_emoji = "💎"
-                    type_label = "XÌ BÀN"
-                else:
-                    p_emoji = ""
-                    type_label = "XÌ DÁCH"
-            elif r["result"] == "win":
-                p_emoji = "🏆"
-                type_label = None
-            elif r["result"] == "lose":
-                p_emoji = "😢"
-                type_label = None
-            else:
-                p_emoji = "🤝"
-                type_label = None
+        try:
+            # Build detailed text summary (Bau Cua Style)
+            from ..helpers import format_final_result_text
             
-            # Cards line with type label for instant wins
-            cards_str = f"{format_hand(r['hand'])} ({r['score']})"
-            if type_label:
-                cards_str = f"**{type_label}** - {cards_str}"
-            
-            # Build player result
-            embed.add_field(
-                name=f"{p_emoji} @{r['username']}",
-                value=cards_str,
-                inline=False
+            result_text = format_final_result_text(
+                dealer_score=d_score,
+                dealer_type=d_type,
+                dealer_hand=table.dealer_hand,
+                results=results
             )
             
-            # Big result text
-            if r["result"] == "instant_win":
-                result_str = f"**🎉 {type_label}! Lời +{r['net']:,}, tổng {r['payout']:,} HẠT 🎉**"
-                flavor = random.choice(win_flavors)
-            elif r["result"] == "win":
-                result_str = f"**Kết quả: THẮNG | +{r['net']:,} HẠT💰**"
-                flavor = random.choice(win_flavors)
-            elif r["result"] == "lose":
-                result_str = f"**Kết quả: THUA | {r['net']:,} HẠT💸**"
-                flavor = random.choice(lose_flavors)
-            else:
-                result_str = f"**Kết quả: HÒA | ±0 HẠT⚖️**"
-                flavor = random.choice(push_flavors)
-            
-            embed.description = f"{result_str}\n\n*{flavor}*" if len(results) == 1 else None
+            # Send as Fun Text Message (NO EMBED)
+            logger.info(f"[RESULT] Sending text result len={len(result_text)}")
+            await channel.send(f"🎰 **KẾT QUẢ XÌ DÁCH** 🎰\n\n{result_text}")
+            logger.info(f"[RESULT] Final results sent to channel {channel.id}")
 
-
-        # If multiple players, add summary
-        if len(results) > 1:
-            summary_lines = []
-            for r in results:
-                if r["result"] == "instant_win":
-                    emoji = "" if r["hand_type"] == HandType.XI_DACH else "💎"
-                elif r["result"] == "win":
-                    emoji = "🏆"
-                elif r["result"] == "lose":
-                    emoji = "💀"
-                elif r["result"] == "lose":
-                    emoji = "💀"
-                else:
-                    emoji = "🤝"
-                net_str = f"+{r['net']:,}" if r["net"] >= 0 else f"{r['net']:,}"
-                summary_lines.append(f"{emoji} **{r['username']}**: {net_str} Hạt")
-            embed.add_field(name="📊 Tổng Kết", value="\n".join(summary_lines), inline=False)
-
-
-        # Send result
-        await channel.send(embed=embed)
+        except Exception as e:
+            logger.error(f"[RESULT_ERROR] Failed to format/send results: {e}", exc_info=True)
+            await channel.send(f"⚠️ **Lỗi hiển thị kết quả:** {e}\n(Tiền vẫn được tính vào ví!)")
     
     finally:
         game_manager.remove_table(table.table_id)

@@ -93,31 +93,59 @@ class GenericActionView(discord.ui.View):
         # Note: If manager.current_event is None, this will fail. 
         # But this view is created only when event is active.
         self.event_data = self.manager.current_event.get("data", {})
-        # configuration is in data.data.mechanics.buttons (nested structure)
+        # Config IS in data.data.mechanics.buttons (double nested structure is REAL!)
         self.buttons_config = self.event_data.get("data", {}).get("mechanics", {}).get("buttons", [])
+        
+        print(f"⚠️ [GENERIC_VIEW] [INIT] Event: {self.manager.current_event.get('key', 'unknown')}")
+        print(f"⚠️ [GENERIC_VIEW] [INIT] buttons_config count: {len(self.buttons_config)}")
+        print(f"⚠️ [GENERIC_VIEW] [INIT] buttons_config: {self.buttons_config}")
         
         self._setup_buttons()
         
     def _setup_buttons(self):
+        logger.info(f"[GENERIC_VIEW] [SETUP_BUTTONS] Starting setup with {len(self.buttons_config)} buttons")
         for idx, btn_cfg in enumerate(self.buttons_config):
-            style = getattr(discord.ButtonStyle, btn_cfg.get("style", "primary"), discord.ButtonStyle.primary)
-            
-            button = discord.ui.Button(
-                label=btn_cfg.get("label", "Click Me"),
-                style=style,
-                emoji=btn_cfg.get("emoji"),
-                custom_id=f"generic_btn_{idx}"
-            )
-            # Bind callback with index capture
-            button.callback = self.create_callback(idx)
-            self.add_item(button)
+            try:
+                logger.info(f"[GENERIC_VIEW] [SETUP_BUTTONS] Setting up button {idx}: {btn_cfg.get('label', 'NO_LABEL')}")
+                style = getattr(discord.ButtonStyle, btn_cfg.get("style", "primary"), discord.ButtonStyle.primary)
+                
+                button = discord.ui.Button(
+                    label=btn_cfg.get("label", "Click Me"),
+                    style=style,
+                    emoji=btn_cfg.get("emoji"),
+                    custom_id=f"generic_btn_{idx}"
+                )
+                # Bind callback with index capture
+                button.callback = self.create_callback(idx)
+                self.add_item(button)
+                logger.info(f"[GENERIC_VIEW] [SETUP_BUTTONS] Button {idx} added successfully")
+            except Exception as e:
+                logger.error(f"[GENERIC_VIEW] [SETUP_BUTTONS] Failed to add button {idx}: {e}", exc_info=True)
             
     def create_callback(self, idx):
         async def callback(interaction: discord.Interaction):
-            # Defer to preventing Timeout
+            logger.info(f"[GENERIC_VIEW] [CALLBACK_TRIGGERED] User {interaction.user.id} clicked button {idx}")
+            # Defer to prevent Timeout
             await interaction.response.defer(ephemeral=True)
+            logger.info(f"[GENERIC_VIEW] [DEFERRED] Calling _handle_click for user {interaction.user.id}")
             await self._handle_click(interaction, idx)
         return callback
+    
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
+        """Override to capture exceptions that Discord ignores."""
+        logger.error(
+            f"[GENERIC_VIEW] [ON_ERROR] User {interaction.user.id} ({interaction.user.name}) "
+            f"Button: {item.label if hasattr(item, 'label') else '?'} "
+            f"Error: {type(error).__name__}: {error}",
+            exc_info=error
+        )
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"❌ Lỗi: {error}", ephemeral=True)
+            else:
+                await interaction.followup.send(f"❌ Lỗi: {error}", ephemeral=True)
+        except:
+            pass
     
     def _get_item_name(self, key):
         """Resolve item name from constants."""
@@ -126,8 +154,8 @@ class GenericActionView(discord.ui.View):
         return key
 
     async def _handle_click(self, interaction: discord.Interaction, idx: int):
-        # CRITICAL: Defer immediately to prevent "This interaction failed" (3s timeout)
-        await interaction.response.defer(ephemeral=True)
+        # NOTE: interaction.response.defer() already called in create_callback()
+        # Do NOT defer again - causes InteractionResponded error!
         
         user_id = interaction.user.id
         btn_config = self.buttons_config[idx]
@@ -348,12 +376,17 @@ class GenericActionView(discord.ui.View):
                         public_loss_msg = f"😂 **<@{user_id}>** đã thua! {loss_msg}"
                         await interaction.channel.send(public_loss_msg)
                         
+                except ValueError as ve:
+                    # Validation error (not enough items/money) - NOT a system error
+                    logger.warning(f"[GENERIC_VIEW] Validation failed for user {user_id}: {ve}")
+                    await interaction.followup.send(f"⚠️ {ve}", ephemeral=True)
+                    return  # Transaction auto-rollbacks, no need to raise
+                    
                 except Exception as e:
-                    # Transaction auto-rolls back on exception
+                    # Real system errors only
+                    logger.error(f"[GENERIC_VIEW] System error for user {user_id}: {type(e).__name__}: {e}", exc_info=True)
                     raise e
                     
-        except ValueError as ve:
-             await interaction.followup.send(str(ve), ephemeral=True)
         except Exception as e:
-             logger.error(f"[GENERIC_VIEW] Error: {e}")
+             logger.error(f"[GENERIC_VIEW] Unhandled error for user {user_id}: {type(e).__name__}: {e}", exc_info=True)
              await interaction.followup.send("❌ Lỗi hệ thống!", ephemeral=True)

@@ -276,12 +276,23 @@ class InteractiveSellEventView(discord.ui.View):
             )
             
         except ValueError as ve:
-             await interaction.followup.send(
-                f"❌ Lỗi giao dịch: {ve}", 
-                ephemeral=True
-            )
+             # Friendly error message for Race Conditions (user sold items elsewhere)
+             msg = f"❌ **Giao dịch thất bại!**\n{str(ve)}\n\n_Có thể bạn đã bán số cá này ở lệnh khác hoặc số lượng trong kho đã thay đổi._"
+             
+             try:
+                 await interaction.followup.send(msg, ephemeral=True)
+                 
+                 # Disable view to prevent further spam
+                 for item in self.children:
+                     item.disabled = True
+                 await interaction.message.edit(view=self)
+                 self.stop()
+             except Exception:
+                 pass # Ignore UI update errors
+                 
              logger.warning(f"[INTERACTIVE_SELL_FAIL] Transaction blocked: {ve}")
-             # Do not reset completed flag, as transaction failed due to invalid state (user likely exploited or sold elsewhere)
+             # Do not reset completed flag, stop view explicitly
+             self.completed = True
              
         except Exception as e:
             await interaction.followup.send(
