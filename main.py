@@ -21,7 +21,14 @@ logger = logging.getLogger("Main")
 
 # 2. CREATE BOT
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+# Optimize for USB tethering / unstable connections
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    help_command=None,
+    heartbeat_timeout=90.0,  # Default 60s → 90s (more tolerant of lag spikes)
+    chunk_guilds_at_startup=False  # Reduce initial load (only 1 server)
+)
 
 # 3. ATTACH DATABASE & INVENTORY CACHE
 bot.db = db_manager

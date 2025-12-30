@@ -126,13 +126,15 @@ class GenericActionView(discord.ui.View):
         return key
 
     async def _handle_click(self, interaction: discord.Interaction, idx: int):
+        # CRITICAL: Defer immediately to prevent "This interaction failed" (3s timeout)
+        await interaction.response.defer(ephemeral=True)
+        
         user_id = interaction.user.id
         btn_config = self.buttons_config[idx]
         
         try:
-            # ACID TRANSACTION
-            async with db_manager.lock:
-                await db_manager.db.execute("BEGIN")
+            # ACID TRANSACTION - Use safe transaction() context
+            async with db_manager.transaction() as conn:
                 try:
                     # 0. CHECK LIMIT (If Configured)
                     limit = btn_config.get("limit_per_user", 0)
@@ -146,7 +148,7 @@ class GenericActionView(discord.ui.View):
                         unique_limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}_{today}"
                         logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} key={unique_limit_key} limit={limit}")
                         
-                        cursor = await db_manager.db.execute(
+                        cursor = await conn.execute(
                             "SELECT value FROM user_stats WHERE user_id = ? AND game_id = 'global_event' AND stat_key = ?",
                             (user_id, unique_limit_key)
                         )
@@ -163,19 +165,19 @@ class GenericActionView(discord.ui.View):
                     # A. Money Cost
                     money_cost = cost.get("money", 0)
                     if money_cost > 0:
-                        cursor = await db_manager.db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+                        cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
                         row = await cursor.fetchone()
                         current_bal = row[0] if row else 0
                         
                         if current_bal < money_cost:
                              raise ValueError(f"Không đủ tiền! Cần {money_cost} Hạt.")
                              
-                        await db_manager.db.execute(
+                        await conn.execute(
                             "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
                             (money_cost, user_id)
                         )
                         # Manual Log for ACID Transaction
-                        await db_manager.db.execute(
+                        await conn.execute(
                             "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
                             (user_id, -money_cost, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
                         )
@@ -188,7 +190,7 @@ class GenericActionView(discord.ui.View):
                         req_key = item_input.get("key")
                         req_amt = item_input.get("amount", 1)
                         if req_key and req_amt > 0:
-                            cursor = await db_manager.db.execute(
+                            cursor = await conn.execute(
                                 "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                 (user_id, req_key)
                             )
@@ -198,7 +200,7 @@ class GenericActionView(discord.ui.View):
                             if start_qty < req_amt:
                                 raise ValueError(f"Không đủ vật phẩm! Cần {req_amt} {req_key}.")
                             
-                            await db_manager.db.execute(
+                            await conn.execute(
                                 "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
                                 (req_amt, user_id, req_key)
                             )
@@ -225,7 +227,7 @@ class GenericActionView(discord.ui.View):
                             query = f"SELECT item_id, quantity FROM inventory WHERE user_id = ? AND item_id IN ({placeholders})"
                             params = [user_id] + valid_keys
                             
-                            cursor = await db_manager.db.execute(query, params)
+                            cursor = await conn.execute(query, params)
                             rows = await cursor.fetchall()
                             
                             total_qty = sum(r[1] for r in rows)
@@ -238,13 +240,13 @@ class GenericActionView(discord.ui.View):
                                 if remaining_deduct <= 0: break
                                 deduct_amt = min(remaining_deduct, i_qty)
                                 
-                                await db_manager.db.execute(
+                                await conn.execute(
                                     "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
                                     (deduct_amt, user_id, i_id)
                                 )
                                 remaining_deduct -= deduct_amt
                             
-                            await db_manager.db.execute(
+                            await conn.execute(
                                 "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
                                 (user_id,)
                             )
@@ -271,11 +273,11 @@ class GenericActionView(discord.ui.View):
                             if rkey == "seeds":
                                 # MUST use raw SQL - add_seeds() opens its own transaction!
                                 reason = f"event_reward_{self.manager.current_event['key']}"
-                                await db_manager.db.execute(
+                                await conn.execute(
                                     "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                                     (ramount, user_id)
                                 )
-                                await db_manager.db.execute(
+                                await conn.execute(
                                     "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
                                     (user_id, ramount, reason, "fishing")
                                 )
@@ -290,11 +292,11 @@ class GenericActionView(discord.ui.View):
                         elif rtype == "money":
                             # MUST use raw SQL - add_seeds() opens its own transaction!
                             reason = f"event_reward_{rkey}" if rkey else f"event_reward_{self.manager.current_event['key']}"
-                            await db_manager.db.execute(
+                            await conn.execute(
                                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                                 (ramount, user_id)
                             )
-                            await db_manager.db.execute(
+                            await conn.execute(
                                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
                                 (user_id, ramount, reason, "fishing")
                             )
@@ -313,7 +315,7 @@ class GenericActionView(discord.ui.View):
                             
                     # 3. INCREMENT LIMIT COUNTER
                     if limit > 0:
-                         await db_manager.db.execute(
+                         await conn.execute(
                             """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
                                VALUES (?, 'global_event', ?, 1)
                                ON CONFLICT(user_id, game_id, stat_key) 
@@ -321,9 +323,7 @@ class GenericActionView(discord.ui.View):
                             (user_id, unique_limit_key)
                         )
                     
-                    # CRITICAL FIX: Add missing COMMIT to prevent zombie transactions
-                    await db_manager.db.commit()
-                    logger.debug(f"[GENERIC_VIEW] Transaction committed for user {user_id}")
+                    # Transaction auto-commits on success (no manual commit needed)
                     
                     # 4. MESSAGE (Win or Loss)
                     if acquired_txt:
@@ -349,11 +349,7 @@ class GenericActionView(discord.ui.View):
                         await interaction.channel.send(public_loss_msg)
                         
                 except Exception as e:
-                    await db_manager.db.rollback()
-                    raise e
-                    
-                except Exception as e:
-                    await db_manager.db.rollback()
+                    # Transaction auto-rolls back on exception
                     raise e
                     
         except ValueError as ve:

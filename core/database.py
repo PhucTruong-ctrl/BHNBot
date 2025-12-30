@@ -161,8 +161,15 @@ class DatabaseManager:
                 return entry.data
 
         db = await self._get_db()
-        async with db.execute(query, params) as cursor:
-            result = await cursor.fetchone()
+        
+        # CRITICAL FIX: Add timeout to prevent infinite hangs
+        try:
+            async with asyncio.timeout(10.0):  # 10s max wait
+                async with db.execute(query, params) as cursor:
+                    result = await cursor.fetchone()
+        except asyncio.TimeoutError:
+            logger.error(f"[DB] fetchone TIMEOUT after 10s: {query[:100]}")
+            raise  # Re-raise to let caller handle
 
         # Cache if requested
         if use_cache and cache_key:
