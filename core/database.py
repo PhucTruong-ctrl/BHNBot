@@ -62,7 +62,8 @@ def retry_on_db_lock(max_retries: int = DB_MAX_RETRIES, initial_delay: float = D
 
 async def get_db_connection(db_path: str = DB_PATH):
     """Get database connection with proper timeout and WAL mode"""
-    db = await aiosqlite.connect(db_path, timeout=DB_TIMEOUT)
+    # isolation_level=None enables autocommit mode, allowing us to manually manage transactions using BEGIN/COMMIT.
+    db = await aiosqlite.connect(db_path, timeout=DB_TIMEOUT, isolation_level=None)
     await db.execute("PRAGMA journal_mode=WAL")
     await db.execute("PRAGMA synchronous=NORMAL")
     await db.execute("PRAGMA foreign_keys=ON")

@@ -27,6 +27,15 @@ class HousingManager:
         return rows[0][0] if rows and rows[0][0] else None
 
     @staticmethod
+    async def get_house_owner(thread_id: int) -> Optional[int]:
+        """Get the User ID who owns the house (thread)."""
+        rows = await db_manager.execute(
+            "SELECT user_id FROM user_house WHERE thread_id = ?",
+            (thread_id,)
+        )
+        return rows[0][0] if rows else None
+
+    @staticmethod
     async def register_house(user_id: int, thread_id: int) -> bool:
         """
         Register a new house in the database.
@@ -78,5 +87,244 @@ class HousingManager:
             if idx < 5: # Limit just in case
                 slots[idx] = item
         return slots
+
+    @staticmethod
+    async def get_inventory(user_id: int) -> Dict[str, int]:
+        """Get user's available decor inventory."""
+        rows = await db_manager.execute(
+            "SELECT item_id, quantity FROM user_decor WHERE user_id = ? AND quantity > 0",
+            (user_id,)
+        )
+        return {row[0]: row[1] for row in rows}
+
+    @staticmethod
+    async def update_slot(user_id: int, slot_index: int, new_item_id: Optional[str]) -> tuple[bool, str]:
+        """
+        Update a decor slot. Handles Inventory management correctly.
+        Returns: (Success, Message)
+        """
+        try:
+            # 1. Get current item in this slot
+            current_rows = await db_manager.execute(
+                "SELECT item_id FROM home_slots WHERE user_id = ? AND slot_index = ?",
+                (user_id, slot_index)
+            )
+            old_item_id = current_rows[0][0] if current_rows and current_rows[0][0] else None
+
+            # Nothing changed?
+            if old_item_id == new_item_id:
+                return True, "Không có thay đổi."
+
+            operations = []
+
+            # 2. Logic: Return OLD item to inventory (if any)
+            if old_item_id:
+                operations.append((
+                    """
+                    INSERT INTO user_decor (user_id, item_id, quantity) 
+                    VALUES (?, ?, 1)
+                    ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + 1
+                    """,
+                    (user_id, old_item_id)
+                ))
+
+            # 3. Logic: Take NEW item from inventory (if any)
+            if new_item_id:
+                operations.append((
+                    "UPDATE user_decor SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
+                    (user_id, new_item_id)
+                ))
+            
+            # 4. Update Slot
+            operations.append((
+                "UPDATE home_slots SET item_id = ? WHERE user_id = ? AND slot_index = ?",
+                (new_item_id, user_id, slot_index)
+            ))
+            
+            # 5. Cleanup: Remove 0 quantity rows to keep DB clean
+            operations.append((
+                "DELETE FROM user_decor WHERE user_id = ? AND quantity <= 0",
+                (user_id,)
+            ))
+
+            await db_manager.batch_modify(operations)
+            logger.info(f"[HOUSE_UPDATE] User {user_id} Slot {slot_index}: {old_item_id} -> {new_item_id}")
+            return True, "Cập nhật thành công."
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc() # Print to console for debugging
+            logger.error(f"[HOUSE_UPDATE_ERROR] User {user_id}: {e}", exc_info=True)
+            return False, f"Lỗi hệ thống: {e}"
+
+    @staticmethod
+    async def get_dashboard_message_id(user_id: int) -> Optional[int]:
+        """Get the ID of the floating dashboard message."""
+        try:
+            rows = await db_manager.execute(
+                "SELECT dashboard_message_id FROM user_house WHERE user_id = ?",
+                (user_id,)
+            )
+            return rows[0][0] if rows and rows[0][0] else None
+        except Exception:
+            return None
+
+    @staticmethod
+    async def set_dashboard_message_id(user_id: int, message_id: int):
+        """Update the ID of the floating dashboard message."""
+        await db_manager.execute(
+            "UPDATE user_house SET dashboard_message_id = ? WHERE user_id = ?",
+            (message_id, user_id)
+        )
+
+    @staticmethod
+    async def get_active_sets(user_id: int) -> List[Dict]:
+        """Check which Feng Shui sets are active for the user."""
+        from ..constants import FENG_SHUI_SETS
+        
+        slots = await HousingManager.get_slots(user_id)
+        # Convert slots to set of item_ids for O(1) lookup
+        placed_items = set(item for item in slots if item)
+        
+        active_sets = []
+        for set_key, set_data in FENG_SHUI_SETS.items():
+            required = set(set_data.get("required", []))
+            if required.issubset(placed_items):
+                active_sets.append(set_data)
+                
+        return active_sets
+
+    @staticmethod
+    async def calculate_home_stats(user_id: int) -> Dict:
+        """Calculate total value and charm of the house based on placed items."""
+        from ..constants import DECOR_ITEMS
+        
+        slots = await HousingManager.get_slots(user_id)
+        active_sets = await HousingManager.get_active_sets(user_id)
+        
+        total_charm = 0
+        total_value = 0 # Sum of leaf_price or seed_price? "Giá trị hồ" -> Maybe Sell Value? Or Display Value. Let's use Leaf Value for now as "Asset".
+        
+        for item_id in slots:
+            if item_id and item_id in DECOR_ITEMS:
+                item = DECOR_ITEMS[item_id]
+                # Parse Charm from description? Or should we add charm field to constants?
+                # Description format: "... (+50 Charm)"
+                # Regex or simple string split.
+                desc = item.get('desc', '')
+                if "(+" in desc and "Charm)" in desc:
+                    try:
+                        charm_part = desc.split("(+")[1].split(" Charm)")[0]
+                        total_charm += int(charm_part)
+                    except:
+                        pass
+                
+                total_value += item.get('price_leaf', 0)
+        
+        return {
+            "charm": total_charm,
+            "value": total_value,
+            "sets": active_sets
+        }
+
+    @staticmethod
+    async def refresh_dashboard(user_id: int, bot) -> bool:
+        """
+        Smart Bump Logic:
+        - If last message in thread IS dashboard -> Edit it.
+        - If dashboard is old/buried -> Delete and Resend.
+        """
+        try:
+            from ..ui.render import render_engine # Lazy import to avoid circular dep if any
+            from ..ui.embeds import create_aquarium_dashboard
+            import discord
+
+            thread_id = await HousingManager.get_home_thread_id(user_id)
+            if not thread_id: return False
+
+            # Get Thread Object
+            # We need a way to get the thread. If we have 'bot', we can fetch channel.
+            # But fetching by ID globally is hard without guild.
+            # We can find guild from user_house? No guild_id in user_house?
+            # Actually we assume bot can fetch channel directly by ID or cache.
+            thread = bot.get_channel(thread_id)
+            if not thread:
+                try:
+                    thread = await bot.fetch_channel(thread_id)
+                except:
+                    return False
+
+            # Generate Content
+            slots = await HousingManager.get_slots(user_id)
+            inventory = await HousingManager.get_inventory(user_id)
+            
+            # Use unified stats & embed
+            stats = await HousingManager.calculate_home_stats(user_id)
+            visuals = render_engine.generate_view(slots)
+            
+            # Fetch User for fancy embed (Name/Avatar)
+            try:
+                user = bot.get_user(user_id) or await bot.fetch_user(user_id)
+                user_name = user.display_name
+                user_avatar = user.display_avatar.url
+            except:
+                user_name = thread.name.replace('Nhà của ', '')
+                user_avatar = None
+
+            embed = create_aquarium_dashboard(
+                user_name=user_name,
+                user_avatar=user_avatar,
+                view_visuals=visuals,
+                stats=stats,
+                inventory_count=len(inventory)
+            )
+
+            # Check Last Message (Smart Adoption Logic)
+            last_message = None
+            try:
+                # History is an async iterator
+                async for msg in thread.history(limit=1):
+                    last_message = msg
+            except:
+                pass
+
+            old_dashboard_id = await HousingManager.get_dashboard_message_id(user_id)
+            
+            # Scenario 0: ADOPTION - DB is empty but last message IS dashboard (from restart/manual send)
+            if not old_dashboard_id and last_message and last_message.author.id == bot.user.id:
+                 # Check if it looks like a dashboard
+                 if last_message.embeds and "Nhà của" in (last_message.embeds[0].title or ""):
+                     old_dashboard_id = last_message.id
+                     await HousingManager.set_dashboard_message_id(user_id, old_dashboard_id)
+                     logger.info(f"[DASHBOARD] Adopted orphan message {old_dashboard_id} for user {user_id}")
+
+            # Scenario 1: Dashboard is already the latest message
+            if old_dashboard_id and last_message and last_message.id == old_dashboard_id:
+                try:
+                    msg = last_message # Optimization: use already fetched msg
+                    await msg.edit(embed=embed)
+                    return True
+                except discord.NotFound:
+                    pass # Message deleted, send new
+
+            # Scenario 2: Dashboard is old or missing -> Scroll Bump
+            # Delete old one if exists to keep chat clean? 
+            # User wants "Dashboard at bottom". If we leave old ones, it spams.
+            # So yes, delete old one.
+            if old_dashboard_id:
+                try:
+                    old_msg = await thread.fetch_message(old_dashboard_id)
+                    await old_msg.delete()
+                except:
+                    pass
+
+            # Send New
+            new_msg = await thread.send(embed=embed)
+            await HousingManager.set_dashboard_message_id(user_id, new_msg.id)
+            return True
+
+        except Exception as e:
+            logger.error(f"[DASHBOARD_REFRESH] Error: {e}")
+            return False
 
 housing_manager = HousingManager()

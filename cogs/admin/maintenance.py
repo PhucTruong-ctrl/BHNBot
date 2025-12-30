@@ -4,6 +4,7 @@ Handles periodic WAL checkpoints and database health monitoring.
 Uses db_manager singleton instead of direct connections.
 """
 import discord
+import sqlite3
 from discord.ext import commands, tasks
 from pathlib import Path
 from core.logger import setup_logger
@@ -55,9 +56,17 @@ class Maintenance(commands.Cog):
             wal_path = Path(f"{self.bot.db.db_path}-wal")
             wal_size_before = wal_path.stat().st_size / 1024 if wal_path.exists() else 0
             
-            # Perform checkpoint (TRUNCATE = aggressive, resets WAL to 0)
-            cursor = await db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            result = await cursor.fetchone()
+            # Perform checkpoint
+            # Use PASSIVE mode to avoid locking the database
+            try:
+                cursor = await db.execute("PRAGMA wal_checkpoint(PASSIVE)")
+                result = await cursor.fetchone()
+            except sqlite3.OperationalError as e:
+                # If DB is locked, skip this checkpoint run. It's not critical.
+                if "locked" in str(e):
+                    logger.warning(f"[WAL_CHECKPOINT] ⚠️ Database locked, skipping checkpoint: {e}")
+                    return
+                raise e
             
             # Get WAL file size after checkpoint
             wal_size_after = wal_path.stat().st_size / 1024 if wal_path.exists() else 0

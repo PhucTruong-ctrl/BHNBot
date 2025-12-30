@@ -23,7 +23,8 @@ DECOR_ITEMS = {
         "price_leaf": 50, 
         "icon": "🪸", 
         "type": "water", 
-        "desc": "Tăng vẻ đẹp hoang sơ. (+2 Charm)"
+        "desc": "Tăng vẻ đẹp hoang sơ. (+2 Charm)",
+        "set": "dai_duong"
     },
     "rong_bien": {
         "name": "Rong Biển Xanh", 
@@ -31,7 +32,8 @@ DECOR_ITEMS = {
         "price_leaf": 20, 
         "icon": "🌿", 
         "type": "water", 
-        "desc": "Thức ăn cho cá. (+1 Charm)"
+        "desc": "Thức ăn cho cá. (+1 Charm)",
+        "set": "dai_duong"
     },
     "ruong_vang": {
         "name": "Rương Kho Báu", 
@@ -39,7 +41,8 @@ DECOR_ITEMS = {
         "price_leaf": 200, 
         "icon": "⚱️", 
         "type": "floor", 
-        "desc": "Chứa đầy bí mật. (+10 Charm)"
+        "desc": "Chứa đầy bí mật. (+10 Charm)",
+        "set": "hoang_gia"
     },
     "ca_map": {
         "name": "Cá Mập Con", 
@@ -47,7 +50,8 @@ DECOR_ITEMS = {
         "price_leaf": 500, 
         "icon": "🦈", 
         "type": "fish", 
-        "desc": "Hung dữ nhưng đáng yêu. (+20 Charm)"
+        "desc": "Hung dữ nhưng đáng yêu. (+20 Charm)",
+        "set": "dai_duong"
     },
     "mo_neo": {
         "name": "Mỏ Neo Cổ", 
@@ -55,7 +59,8 @@ DECOR_ITEMS = {
         "price_leaf": 100, 
         "icon": "⚓", 
         "type": "floor", 
-        "desc": "Dấu tích tàu đắm. (+5 Charm)"
+        "desc": "Dấu tích tàu đắm. (+5 Charm)",
+        "set": "hoang_gia"
     },
     "den_neon": {
         "name": "Đèn Neon Sứa", 
@@ -63,7 +68,8 @@ DECOR_ITEMS = {
         "price_leaf": 150, 
         "icon": "💡", 
         "type": "float", 
-        "desc": "Lung linh huyền ảo. (+8 Charm)"
+        "desc": "Lung linh huyền ảo. (+8 Charm)",
+        "set": "dai_duong"
     },
     "lau_dai_cat": {
         "name": "Lâu Đài Cát", 
@@ -71,7 +77,8 @@ DECOR_ITEMS = {
         "price_leaf": 80, 
         "icon": "🏰", 
         "type": "floor", 
-        "desc": "Công trình kiến trúc tí hon. (+6 Charm)"
+        "desc": "Công trình kiến trúc tí hon. (+6 Charm)",
+        "set": "hoang_gia"
     },
     "ngoc_trai_khong_lo": {
         "name": "Ngọc Trai Khổng Lồ", 
@@ -79,6 +86,24 @@ DECOR_ITEMS = {
         "price_leaf": 1000, 
         "icon": "🔮", 
         "type": "floor", 
-        "desc": "Hào quang chói lóa. (+50 Charm)"
+        "desc": "Hào quang chói lóa. (+50 Charm)",
+        "set": "hoang_gia"
+    }
+}
+
+# Feng Shui Sets (Bonuses)
+# Logic: If user has ALL required items in their slots (any order), apply bonus.
+FENG_SHUI_SETS = {
+    "dai_duong": {
+        "name": "🌊 Hơi Thở Đại Dương",
+        "required": ["san_ho", "rong_bien", "ca_map", "den_neon"],
+        "bonus_desc": "Tăng 20% sản lượng Xu Lá khi tái chế.",
+        "icon": "🌊"
+    },
+    "hoang_gia": {
+        "name": "👑 Kho Báu Hoàng Gia",
+        "required": ["ruong_vang", "lau_dai_cat", "ngoc_trai_khong_lo", "mo_neo"],
+        "bonus_desc": "Giảm 10% giá mua nội thất.",
+        "icon": "👑"
     }
 }
