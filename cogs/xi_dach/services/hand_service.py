@@ -178,14 +178,14 @@ def compare_hands(
     # Rule 3: Compare types first (higher type wins)
     if p_type.value > d_type.value:
         # Player has stronger hand type
-        # XI_BAN pays 2x, XI_DACH pays 1.5x
+        # Payouts by rarity: XI_BAN 3.0x, NGU_LINH 3.5x, XI_DACH 2.5x
         if p_type == HandType.XI_BAN:
-            return ("win", 2.0)
+            return ("win", 3.0)  # Two Aces - Very rare
         elif p_type == HandType.XI_DACH:
-            return ("win", 1.5)
+            return ("win", 2.5)  # Blackjack - Rare
         elif p_type == HandType.NGU_LINH:
-            return ("win", 2.0)
-        return ("win", 2.0)
+            return ("win", 3.5)  # 5 cards ≤21 - Hardest
+        return ("win", 2.0)  # Normal - Base
     
     if p_type.value < d_type.value:
         # Dealer has stronger hand type
@@ -195,7 +195,7 @@ def compare_hands(
     if p_type == HandType.NGU_LINH:
         # NGU_LINH vs NGU_LINH: Lower score wins
         if p_score < d_score:
-            return ("win", 2.0)
+            return ("win", 3.5)  # Ngu Linh win pays 3.5x
         elif p_score > d_score:
             return ("lose", 0.0)
         else:
@@ -238,7 +238,7 @@ def check_phase1_winner(
     if d_type in (HandType.XI_BAN, HandType.XI_DACH):
         if p_type.value > d_type.value:
             # Player XI_BAN beats Dealer XI_DACH
-            return ("win", 2.0 if p_type == HandType.XI_BAN else 1.5)
+            return ("win", 3.0 if p_type == HandType.XI_BAN else 2.5)
         elif p_type.value == d_type.value:
             return ("push", 1.0)
         else:
@@ -246,7 +246,7 @@ def check_phase1_winner(
     
     # Dealer normal, Player special
     if p_type in (HandType.XI_BAN, HandType.XI_DACH):
-        return ("win", 2.0 if p_type == HandType.XI_BAN else 1.5)
+        return ("win", 3.0 if p_type == HandType.XI_BAN else 2.5)
     
     # Both normal - no Phase 1 resolution
     return ("continue", 0.0)

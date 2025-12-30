@@ -376,7 +376,7 @@ async def _start_game(cog: "XiDachCog", channel, table: Table) -> None:
 
             if p_type in (HandType.XI_BAN, HandType.XI_DACH):
                 # Player instant win
-                mul = 2.0 if p_type == HandType.XI_BAN else 1.5
+                mul = 3.0 if p_type == HandType.XI_BAN else 2.5
                 payout = int(player.bet * mul)
                 profit = payout - player.bet
 
@@ -883,7 +883,7 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
             # Check if instant winner (already paid in Phase 1)
             if player.status == PlayerStatus.BLACKJACK:
                 # Instant winner - use stored payout
-                payout = getattr(player, 'payout', int(player.bet * (2.0 if p_type == HandType.XI_BAN else 1.5)))
+                payout = getattr(player, 'payout', int(player.bet * (3.0 if p_type == HandType.XI_BAN else 2.5)))
                 net = payout - player.bet
                 results.append({
                     "user_id": uid,

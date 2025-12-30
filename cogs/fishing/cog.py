@@ -1858,13 +1858,16 @@ class FishingCog(commands.Cog):
                             await check_conditional_unlocks(user_id, "total_fish_caught", current_total, channel)
                         except Exception as e:
                             logger.error(f"[ACHIEVEMENT] Error updating total_fish_caught for {user_id}: {e}")
-            
+        
                     await casting_msg.edit(content="", embed=embed, view=view)
                     logger.info(f"[FISHING] [RESULT_POST] {username} (user_id={user_id}) action=display_result")
-        
-                    # ==================== NPC ENCOUNTER ====================
+    
+                    # ==================== NPC ENCOUNTER (PREPARE DATA ONLY) ====================
+                    # CRITICAL: Prepare NPC data inside lock but SEND outside to avoid deadlock
+                    npc_data_to_send = None
                     npc_triggered = False
                     npc_type = None
+                    
                     # Check forced pending trigger
                     if hasattr(self, "pending_npc_event") and user_id in self.pending_npc_event:
                         npc_type = self.pending_npc_event.pop(user_id)
@@ -1874,7 +1877,7 @@ class FishingCog(commands.Cog):
                     # Check random trigger (Chance 6%)
                     elif random.random() < NPC_ENCOUNTER_CHANCE and num_fish > 0:
                          npc_triggered = True
-            
+        
                     if npc_triggered:
                         # If npc_type is NOT set (i.e. Random Trigger), roll for it now
                         if not npc_type:
@@ -1882,8 +1885,8 @@ class FishingCog(commands.Cog):
                 
                             # Select random NPC based on weighted chances
                             npc_pool = []
-                            for npc_key, npc_data in NPC_ENCOUNTERS.items():
-                                npc_pool.extend([npc_key] * int(npc_data.get("chance", 0.1) * 100))
+                            for npc_key, npc_data_config in NPC_ENCOUNTERS.items():
+                                npc_pool.extend([npc_key] * int(npc_data_config.get("chance", 0.1) * 100))
                         
                             if not npc_pool:
                                  npc_pool = list(NPC_ENCOUNTERS.keys())
@@ -1892,7 +1895,7 @@ class FishingCog(commands.Cog):
                 
                         # Use Adaptive Data based on Affinity
                         npc_data = await self._get_adaptive_npc_data(user_id, npc_type)
-        
+    
                         # Get caught fish context
                         # We need the key and info of the fish on hook
                         # fish_only_items is {fish_key: count}
@@ -1908,66 +1911,22 @@ class FishingCog(commands.Cog):
                         
                         caught_fish_ctx = {caught_fish_key: caught_fish_info}
 
-                        # Build NPC embed
-                        npc_title = f"⚠️ {npc_data['name']} - {username}!"
-                        npc_desc = f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}"
-                        npc_embed = discord.Embed(
-                            title=self.apply_display_glitch(npc_title),
-                            description=self.apply_display_glitch(npc_desc),
-                            color=discord.Color.gold() # Make it stand out
-                        )
-        
-                        if npc_data.get("image_url"):
-                            npc_embed.set_image(url=npc_data["image_url"])
-        
-                        # Add cost information
-                        cost_text = ""
-                        cost_val = npc_data.get("cost")
-                        if cost_val == "fish":
-                            cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
-                        elif isinstance(cost_val, int):
-                            cost_text = f"💰 **Chi phí:** {cost_val} Hạt"
-                        elif cost_val == "cooldown_5min":
-                            cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
-        
-                        if cost_text:
-                            npc_embed.add_field(name="💸 Yêu Cầu", value=self.apply_display_glitch(cost_text), inline=False)
-        
-                        # Send NPC message with INTERACTIVE VIEW
-                        npc_view = InteractiveNPCView(
-                            self, 
-                            user_id, 
-                            npc_type, 
-                            npc_data, 
-                            caught_fish_ctx, 
-                            channel
-                        )
-            
-                        # Track stats
+                        # Track stats (inside lock is OK - just DB writes)
                         await increment_stat(user_id, "fishing", "npc_events_triggered", 1)
-                        # Explicitly track specific NPC encounter for achievements
                         await increment_stat(user_id, "fishing", f"{npc_type}_encounter", 1)
-            
-                        npc_msg = await channel.send(content=f"<@{user_id}> 🔥 **SỰ KIỆN NPC!**", embed=npc_embed, view=npc_view)
-                    
-                        # Store message reference for timeout handling
-                        npc_view.message = npc_msg
                         
-                            # Note: We don't 'wait' here in the blocking sense if we want the bot to be free?
-                            # But user logic usually wants this to block the 'fishing result' loop?
-                            # Actually, previous logic sent msg then waited.
-                            # Since we are at the END of the fishing loop (post-result), we don't need to block anything.
-                            # The user has already got their fish (or failed).
-                            # Wait, if cost is 'fish', we need to ensure they DON'T sell it or lose it before interacting?
-                            # But the fish is already in DB.
-                            # ACID view handles removal.
-                            # So just fire and forget view is safer for async flow?
-                            # No, previous code awaited view.wait(). 
-                            # Let's keep it non-blocking to avoid lag for other users if we were inside a big loop.
-                            # But here it's per command.
-                            # Safe to let view run.
-
-            
+                        # STORE data to send AFTER lock release
+                        npc_data_to_send = {
+                            "npc_type": npc_type,
+                            "npc_data": npc_data,
+                            "caught_fish_ctx": caught_fish_ctx,
+                            "caught_fish_info": caught_fish_info,
+                            "username": username,
+                            "user_id": user_id,
+                            "channel": channel
+                        }
+                        logger.info(f"[NPC] Prepared NPC data for {npc_type}, will send after lock release")
+        
                     # ==================== FINAL COOLDOWN CHECK ====================
                     # If global_reset was triggered, ensure user has no cooldown
                     if triggers_global_reset:
@@ -1990,6 +1949,60 @@ class FishingCog(commands.Cog):
                     raise
                 finally:
                     logger.info(f"[FISHING] [DEBUG] Lock released for {user_id}")
+            
+            # ==================== SEND NPC VIEW (OUTSIDE LOCK) ====================
+            # CRITICAL: NPC View sent AFTER lock release to prevent deadlock
+            if 'npc_data_to_send' in locals() and npc_data_to_send:
+                try:
+                    npc_type = npc_data_to_send["npc_type"]
+                    npc_data = npc_data_to_send["npc_data"]
+                    caught_fish_ctx = npc_data_to_send["caught_fish_ctx"]
+                    caught_fish_info = npc_data_to_send["caught_fish_info"]
+                    username = npc_data_to_send["username"]
+                    user_id = npc_data_to_send["user_id"]
+                    channel = npc_data_to_send["channel"]
+                    
+                    # Build NPC embed
+                    npc_title = f"⚠️ {npc_data['name']} - {username}!"
+                    npc_desc = f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}"
+                    npc_embed = discord.Embed(
+                        title=self.apply_display_glitch(npc_title),
+                        description=self.apply_display_glitch(npc_desc),
+                        color=discord.Color.gold()
+                    )
+
+                    if npc_data.get("image_url"):
+                        npc_embed.set_image(url=npc_data["image_url"])
+
+                    # Add cost information
+                    cost_text = ""
+                    cost_val = npc_data.get("cost")
+                    if cost_val == "fish":
+                        cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
+                    elif isinstance(cost_val, int):
+                        cost_text = f"💰 **Chi phí:** {cost_val} Hạt"
+                    elif cost_val == "cooldown_5min":
+                        cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
+
+                    if cost_text:
+                        npc_embed.add_field(name="💸 Yêu Cầu", value=self.apply_display_glitch(cost_text), inline=False)
+
+                    # Create and send NPC View
+                    npc_view = InteractiveNPCView(
+                        self, 
+                        user_id, 
+                        npc_type, 
+                        npc_data, 
+                        caught_fish_ctx, 
+                        channel
+                    )
+
+                    npc_msg = await channel.send(content=f"<@{user_id}> 🔥 **SỰ KIỆN NPC!**", embed=npc_embed, view=npc_view)
+                    npc_view.message = npc_msg
+                    logger.info(f"[NPC] Sent NPC View for {npc_type} to user {user_id} (OUTSIDE lock)")
+                    
+                except Exception as npc_error:
+                    logger.error(f"[NPC] Error sending NPC View: {npc_error}", exc_info=True)
         
         except asyncio.TimeoutError as e:
             total_time = time.time() - start_time
