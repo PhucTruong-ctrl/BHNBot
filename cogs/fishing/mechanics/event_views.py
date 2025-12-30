@@ -321,7 +321,9 @@ class GenericActionView(discord.ui.View):
                             (user_id, unique_limit_key)
                         )
                     
+                    # CRITICAL FIX: Add missing COMMIT to prevent zombie transactions
                     await db_manager.db.commit()
+                    logger.debug(f"[GENERIC_VIEW] Transaction committed for user {user_id}")
                     
                     # 4. MESSAGE (Win or Loss)
                     if acquired_txt:
