@@ -1646,7 +1646,7 @@ class FishingCog(commands.Cog):
                                     except Exception as e:
                                         logger.warning(f"[LEGENDARY] Could not send progress update: {e}")
                         except Exception as e:
-                            logger.error(f"Unexpected error: {e}")
+                            logger.error(f"Unexpected error in legendary battle progress: {e}")
             
                         # Check if battle was fought
                         if boss_view.fought:
