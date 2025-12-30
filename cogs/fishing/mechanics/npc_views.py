@@ -117,80 +117,72 @@ class InteractiveNPCView(discord.ui.View):
         cost_type = self.npc_data.get("cost")
         
         try:
-            # ACQUIRE LOCK
-            async with db_manager.lock:
-                await db_manager.db.execute("BEGIN")
-                try:
-                    # 1. PAY COST
-                    if cost_type == "fish":
-                        # Consume the caught fish
-                        # Note: In current flow, fish is not yet in inventory (it's pending). 
-                        # So we effectively "don't give it" to the user.
-                        # BUT current cog logic might have already added it? 
-                        # WAIT: The trigger flow says NPC happens POST-CATCH.
-                        # So fish IS in inventory. We must remove it.
-                        
-                        fish_key = list(self.caught_fish.keys())[0]
-                        cursor = await db_manager.db.execute(
-                            "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                            (self.user_id, fish_key)
-                        )
-                        row = await cursor.fetchone()
-                        if not row or row[0] < 1:
-                            raise ValueError("Cá đã bốc hơi đâu mất rồi!")
-                            
-                        await db_manager.db.execute(
-                            "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
-                            (self.user_id, fish_key)
-                        )
-                        
-                    elif isinstance(cost_type, int): # Money cost
-                        cursor = await db_manager.db.execute(
-                            "SELECT seeds FROM users WHERE user_id = ?", (self.user_id,)
-                        )
-                        row = await cursor.fetchone()
-                        if not row or row[0] < cost_type:
-                            raise ValueError(f"Không đủ tiền! Cần {cost_type} Hạt.")
-                            
-                        await db_manager.db.execute(
-                            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                            (cost_type, self.user_id)
-                        )
-                        # Manual Log for ACID Transaction
-                        await db_manager.db.execute(
-                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (self.user_id, -cost_type, f"npc_cost_{self.npc_key}", "fishing")
-                        )
-
-                    # 2. ROLL REWARDS
-                    reward_pool = self.npc_data.get("rewards", {}).get("accept", [])
-                    result = self._roll_outcome(reward_pool)
-                    
-                    # 3. APPLY REWARDS
-                    msg_extra = await self._apply_outcome(result)
-                    embed = discord.Embed(
-                        title=f"{self.npc_data['name']} - Kết Quả",
-                        description=result.get("message", "Giao dịch thành công!").replace("{amount}", msg_extra if 'msg_extra' in locals() else ""),
-                        color=discord.Color.green()
+            # Use safe transaction context manager (auto-COMMIT on success, auto-ROLLBACK on exception)
+            async with db_manager.transaction() as conn:
+                # 1. PAY COST
+                if cost_type == "fish":
+                    # Consume the caught fish
+                    fish_key = list(self.caught_fish.keys())[0]
+                    cursor = await conn.execute(
+                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                        (self.user_id, fish_key)
                     )
-                    await interaction.followup.send(embed=embed)
-                    
-                    # --- STAT TRACKING (Scam/Fail) ---
-                    # 1. Generic Scam Tracking (Nothing/Cursed/Rock)
-                    if result.get("type") in ["nothing", "cursed", "rock"]:
-                        await increment_stat(self.user_id, "fishing", "scam_events", 1)
+                    row = await cursor.fetchone()
+                    if not row or row[0] < 1:
+                        raise ValueError("Cá đã bốc hơi đâu mất rồi!")
                         
-                    # 2. Gemstone Gambler Failure
-                    if self.npc_key == "gemstone_gambler" and result.get("type") in ["nothing", "worm"]:
-                        await increment_stat(self.user_id, "fishing", "gemstone_gambler_fails", 1)
+                    await conn.execute(
+                        "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
+                        (self.user_id, fish_key)
+                    )
+                    
+                elif isinstance(cost_type, int): # Money cost
+                    cursor = await conn.execute(
+                        "SELECT seeds FROM users WHERE user_id = ?", (self.user_id,)
+                    )
+                    row = await cursor.fetchone()
+                    if not row or row[0] < cost_type:
+                        raise ValueError(f"Không đủ tiền! Cần {cost_type} Hạt.")
+                        
+                    await conn.execute(
+                        "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                        (cost_type, self.user_id)
+                    )
+                    # Manual Log for ACID Transaction
+                    await conn.execute(
+                        "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                        (self.user_id, -cost_type, f"npc_cost_{self.npc_key}", "fishing")
+                    )
 
-                    # 7. MEMORY HOOK (Affinity +1)
-                    await increment_stat(self.user_id, "npc_affinity", self.npc_key, 1)
-                    logger.info(f"[NPC_AFFINITY] User {self.user_id} increased affinity with {self.npc_key} (+1)")
+                # 2. ROLL REWARDS
+                reward_pool = self.npc_data.get("rewards", {}).get("accept", [])
+                result = self._roll_outcome(reward_pool)
+                
+                # 3. APPLY REWARDS
+                msg_extra = await self._apply_outcome(result)
+                
+                # Transaction auto-commits here when exiting context
+                
+            # After successful transaction, send result
+            embed = discord.Embed(
+                title=f"{self.npc_data['name']} - Kết Quả",
+                description=result.get("message", "Giao dịch thành công!").replace("{amount}", msg_extra if 'msg_extra' in locals() else ""),
+                color=discord.Color.green()
+            )
+            await interaction.followup.send(embed=embed)
+            
+            # --- STAT TRACKING (Scam/Fail) ---
+            # 1. Generic Scam Tracking (Nothing/Cursed/Rock)
+            if result.get("type") in ["nothing", "cursed", "rock"]:
+                await increment_stat(self.user_id, "fishing", "scam_events", 1)
+                
+            # 2. Gemstone Gambler Failure
+            if self.npc_key == "gemstone_gambler" and result.get("type") in ["nothing", "worm"]:
+                await increment_stat(self.user_id, "fishing", "gemstone_gambler_fails", 1)
 
-                except Exception as e:
-                    await db_manager.db.rollback()
-                    raise e
+            # 7. MEMORY HOOK (Affinity +1)
+            await increment_stat(self.user_id, "npc_affinity", self.npc_key, 1)
+            logger.info(f"[NPC_AFFINITY] User {self.user_id} increased affinity with {self.npc_key} (+1)")
 
         except ValueError as ve:
             await interaction.followup.send(f"❌ {ve}", ephemeral=True)
