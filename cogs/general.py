@@ -36,8 +36,8 @@ class General(commands.Cog):
         # Database latency
         db_start = time.time()
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                await db.execute("SELECT 1")
+            from core.database import db_manager
+            await db_manager.fetchone("SELECT 1")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
         db_latency = (time.time() - db_start) * 1000
