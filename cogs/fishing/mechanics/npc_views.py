@@ -159,7 +159,7 @@ class InteractiveNPCView(discord.ui.View):
                 result = self._roll_outcome(reward_pool)
                 
                 # 3. APPLY REWARDS
-                msg_extra = await self._apply_outcome(result)
+                msg_extra = await self._apply_outcome(result, conn)
                 
                 # Transaction auto-commits here when exiting context
                 
@@ -190,20 +190,25 @@ class InteractiveNPCView(discord.ui.View):
             logger.error(f"[NPC_ERROR] {e}", exc_info=True)
             await interaction.followup.send("❌ Lỗi hệ thống! Mèo đã ăn mất code.", ephemeral=True)
 
-    async def _apply_outcome(self, result: dict) -> str:
-        """Apply rewards/penalties from roll result and return extra message string."""
+    async def _apply_outcome(self, result: dict, conn) -> str:
+        """Apply rewards/penalties from roll result and return extra message string.
+        
+        Args:
+            result: Outcome dict from roll
+            conn: Database connection from transaction context
+        """
         msg_extra = ""
         reward_type = result.get("type")
         
         if reward_type == "money":
             amt = result.get("amount", 0)
             msg_extra = f"\n💰 **Tiền Nhận:** {amt} Hạt"
-            await db_manager.db.execute(
+            await conn.execute(
                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                 (amt, self.user_id)
             )
             # Manual Log
-            await db_manager.db.execute(
+            await conn.execute(
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
                 (self.user_id, amt, f"npc_reward_{self.npc_key}_money", "fishing")
             )
@@ -220,12 +225,12 @@ class InteractiveNPCView(discord.ui.View):
             total_val = base_price * multiplier
             msg_extra = f"\n💰 **Tiền Nhận:** {total_val} Hạt (x{multiplier})"
             
-            await db_manager.db.execute(
+            await conn.execute(
                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                 (total_val, self.user_id)
             )
             # Manual Log
-            await db_manager.db.execute(
+            await conn.execute(
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
                 (self.user_id, total_val, f"npc_reward_{self.npc_key}_triple", "fishing")
             )
@@ -233,7 +238,7 @@ class InteractiveNPCView(discord.ui.View):
         elif reward_type == "ngoc_trai":
             amt = result.get("amount", 1)
             msg_extra = f"\n⚪ **Nhận:** {amt} Ngọc Trai"
-            await db_manager.db.execute("""
+            await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'ngoc_trai', ?)
                 ON CONFLICT(user_id, item_id) 
@@ -243,7 +248,7 @@ class InteractiveNPCView(discord.ui.View):
         elif reward_type == "worm":
             amt = result.get("amount", 0)
             msg_extra = f"\n🪱 **Nhận:** {amt} Mồi Câu"
-            await db_manager.db.execute("""
+            await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'moicau', ?)
                 ON CONFLICT(user_id, item_id) 
@@ -253,7 +258,7 @@ class InteractiveNPCView(discord.ui.View):
         elif reward_type == "vat_lieu_nang_cap":
             amt = result.get("amount", 1)
             msg_extra = f"\n⚙️ **Nhận:** {amt} Vật Liệu"
-            await db_manager.db.execute("""
+            await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'vat_lieu_nang_cap', ?)
                 ON CONFLICT(user_id, item_id) 
@@ -263,16 +268,14 @@ class InteractiveNPCView(discord.ui.View):
         elif reward_type == "chest":
                 amt = result.get("amount", 1)
                 msg_extra = f"\n🎁 **Nhận:** {amt} Rương Kho Báu"
-                await db_manager.db.execute("""
+                await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'ruong_kho_bau', ?)
                 ON CONFLICT(user_id, item_id) 
                 DO UPDATE SET quantity = quantity + ?
             """, (self.user_id, amt, amt))
 
-        # COMMIT
-        await db_manager.db.commit()
-        
+
         # POST-COMMIT EFFECTS
         if reward_type == "rod_durability":
             change = result.get("amount", 0)
@@ -305,7 +308,7 @@ class InteractiveNPCView(discord.ui.View):
             
         elif reward_type == "random_rare_fish":
             fish_key = random.choice(RARE_FISH_POOL)
-            await db_manager.db.execute("""
+            await conn.execute("""
                 INSERT INTO fish_collection (user_id, fish_id, quantity, biggest_size)
                 VALUES (?, ?, 1, 0)
                 ON CONFLICT(user_id, fish_id)
