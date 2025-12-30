@@ -32,20 +32,17 @@ async def trigger_global_disaster(cog, user_id: int, username: str, channel) -> 
     if user_id in cog.pending_disaster:
         disaster_key = cog.pending_disaster.pop(user_id)
         # Load disaster data
-        import json
-        from ..constants import DISASTER_EVENTS_PATH
-        try:
-            with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                disasters_by_key = {d["key"]: d for d in data.get("disasters", [])}
-                if disaster_key in disasters_by_key:
-                    disaster = disasters_by_key[disaster_key]
-                else:
-                    logger.info(f"[DISASTER] Pending disaster key {disaster_key} not found, skipping")
-                    return {"triggered": False, "reason": "pending_disaster_key_invalid"}
-        except Exception as e:
-            logger.error(f"[DISASTER] Error loading pending disaster: {e}")
-            return {"triggered": False, "reason": "pending_disaster_load_error"}
+        # Use cached data from constants instead of re-reading file
+        from ..constants import DISASTER_EVENTS
+        
+        # Convert list to dict for fast lookup (could be optimized to global var if needed)
+        disasters_by_key = {d["key"]: d for d in DISASTER_EVENTS}
+        
+        if disaster_key in disasters_by_key:
+            disaster = disasters_by_key[disaster_key]
+        else:
+            logger.info(f"[DISASTER] Pending disaster key {disaster_key} not found in cached config, skipping")
+            return {"triggered": False, "reason": "pending_disaster_key_invalid"}
     else:
         # Check if server is in global cooldown period
         if current_time - cog.last_disaster_time < cog.global_disaster_cooldown:

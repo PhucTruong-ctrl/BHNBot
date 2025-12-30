@@ -188,10 +188,13 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: str = None):
                 create_interactive_embed
             )
             # Load sell events data
-            import json
-            from ..constants import SELL_EVENTS_PATH
-            with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
-                sell_events_data = json.load(f)
+            # Use cached data from constants
+            from ..constants import SELL_EVENTS, SELL_MESSAGES
+            # Reconstruct the structure previously loaded from JSON
+            sell_events_data = {
+                "events": SELL_EVENTS,
+                "messages": SELL_MESSAGES
+            }
             
             # Check if interactive event triggers
             # Calculate base value for condition checking

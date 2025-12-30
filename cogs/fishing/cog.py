@@ -605,7 +605,21 @@ class FishingCog(commands.Cog):
                     # setting it in DB/memory provides double safety for distributed systems if ever expanded)
                 
                     # --- TRIGGER GLOBAL DISASTER (0.05% chance) ---
-                    disaster_result = await self.trigger_global_disaster(user_id, username, channel)
+                    # --- TRIGGER GLOBAL DISASTER (0.05% chance) ---
+                    # Use timeout to prevent hang due to I/O blocking
+                    try:
+                        logger.info(f"[FISHING] [DEBUG] Checking global disaster for {user_id}")
+                        disaster_result = await asyncio.wait_for(
+                            self.trigger_global_disaster(user_id, username, channel),
+                            timeout=5.0
+                        )
+                        logger.info(f"[FISHING] [DEBUG] Disaster check done for {user_id}, triggered={disaster_result.get('triggered')}")
+                    except asyncio.TimeoutError:
+                        logger.error(f"[FISHING] [CRITICAL] Disaster check timed out for {user_id} - skipping")
+                        disaster_result = {"triggered": False}
+                    except Exception as e:
+                        logger.error(f"[FISHING] Error in disaster trigger: {e}")
+                        disaster_result = {"triggered": False}
                     if disaster_result.get("triggered"):
                         # Disaster was triggered! User's cast is cancelled
                         culprit_reward = disaster_result["disaster"]["reward_message"]
