@@ -90,8 +90,9 @@ async def load_cogs():
     logger.info("\n[LOADING COGS]")
     cogs_dir = './cogs'
     
-    # Load top-level cogs (prioritize admin.py first for sync functionality)
-    priority_cogs = ['admin.py']
+    # Load top-level cogs
+    # Note: admin cogs are now in cogs/admin/ subdirectory
+    priority_cogs = []  # No priority cogs currently needed
     
     # Load priority cogs first
     for filename in priority_cogs:

@@ -4,6 +4,7 @@ from discord.ext import commands
 import aiosqlite
 import traceback
 import json
+from core.database import db_manager  # Use singleton instead of direct connections
 
 DB_PATH = "./data/database.db"
 class ApprovalView(discord.ui.View):
@@ -15,12 +16,11 @@ class ApprovalView(discord.ui.View):
 
     @discord.ui.button(label="Duyệt", style=discord.ButtonStyle.success, emoji="✅")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-        async with aiosqlite.connect(DB_PATH) as db:
-            try:
-                await db.execute("INSERT OR IGNORE INTO dictionary (word) VALUES (?)", (self.word,))
-            except: pass
-            await db.execute("DELETE FROM pending_words WHERE word = ?", (self.word,))
-            await db.commit()
+        try:
+            await db_manager.modify("INSERT OR IGNORE INTO dictionary (word) VALUES (?)", (self.word,))
+        except:
+            pass
+        await db_manager.modify("DELETE FROM pending_words WHERE word = ?", (self.word,))
         
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.green()
@@ -36,9 +36,7 @@ class ApprovalView(discord.ui.View):
 
     @discord.ui.button(label="Từ chối", style=discord.ButtonStyle.danger, emoji="✖️")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("DELETE FROM pending_words WHERE word = ?", (self.word,))
-            await db.commit()
+        await db_manager.modify("DELETE FROM pending_words WHERE word = ?", (self.word,))
         
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.red()

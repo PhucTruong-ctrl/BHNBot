@@ -9,6 +9,7 @@ import sqlite3
 import functools
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
+from contextlib import asynccontextmanager
 
 from configs.settings import DB_PATH, DB_TIMEOUT, DB_MAX_RETRIES, DB_RETRY_DELAY
 from core.logger import setup_logger
@@ -101,11 +102,12 @@ class DatabaseManager:
             self.db = await get_db_connection(self.db_path)
             logger.info("Persistent connection established.")
             
-            # PHASE 1 OPTIMIZATION: Enable WAL mode for concurrent access
+            # CRITICAL OPTIMIZATION: Enable WAL mode + BUSY TIMEOUT
             try:
                 await self.db.execute("PRAGMA journal_mode=WAL")
                 await self.db.execute("PRAGMA synchronous=NORMAL")
                 await self.db.execute("PRAGMA foreign_keys=ON")
+                await self.db.execute("PRAGMA busy_timeout=5000")  # Wait up to 5s if locked
                 
                 # Verify WAL is active
                 async with self.db.execute("PRAGMA journal_mode") as cursor:
@@ -114,6 +116,11 @@ class DatabaseManager:
                         logger.info("[OPTIMIZATION] WAL mode enabled - Ready for concurrent access")
                     else:
                         logger.warning(f"[OPTIMIZATION] Expected WAL mode, got: {mode[0] if mode else 'None'}")
+                
+                # Log busy_timeout confirmation
+                async with self.db.execute("PRAGMA busy_timeout") as cursor:
+                    timeout = await cursor.fetchone()
+                    logger.info(f"[OPTIMIZATION] Busy timeout set to {timeout[0]}ms")
                         
             except Exception as e:
                 logger.error(f"[OPTIMIZATION] Failed to enable WAL mode: {e}", exc_info=True)
@@ -231,6 +238,35 @@ class DatabaseManager:
         keys_to_delete = [k for k in self.cache if k.startswith(prefix)]
         for key in keys_to_delete:
             del self.cache[key]
+    
+    @asynccontextmanager
+    async def transaction(self):
+        """Safe transaction context manager with automatic COMMIT/ROLLBACK.
+        
+        Usage:
+            async with db_manager.transaction() as conn:
+                # Atomic operations here
+                await conn.execute("INSERT INTO ...", (...))
+                result = await conn.execute("SELECT ...").fetchone()
+                # Auto-COMMIT on success, auto-ROLLBACK on exception
+        
+        Raises:
+            Exception: Re-raises any exception after ROLLBACK
+        """
+        async with self.lock:
+            db = await self._get_db()
+            
+            # Start transaction with BEGIN IMMEDIATE (lock database immediately)
+            await db.execute("BEGIN IMMEDIATE")
+            
+            try:
+                yield db  # Allow caller to execute queries
+                await db.commit()
+                logger.debug("[DB] [TRANSACTION] COMMIT successful")
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"[DB] [TRANSACTION] ROLLBACK due to error: {e}", exc_info=True)
+                raise  # Re-raise after rollback
             
     async def close(self):
         """Close database connection"""

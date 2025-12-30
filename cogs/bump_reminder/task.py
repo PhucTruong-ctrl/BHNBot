@@ -9,6 +9,8 @@ import aiosqlite
 from datetime import datetime, timezone
 from typing import Optional
 from core.logger import setup_logger
+# Use DB Manager singleton instead of direct connection
+from core.database import db_manager
 
 from .constants import (
     DB_PATH,
@@ -84,43 +86,43 @@ class BumpReminderTask:
         logger.info("[BUMP_TASK] Starting check iteration")
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Load all guild configurations
-                try:
-                    configs = await BumpConfig.load_all(db)
-                except aiosqlite.Error as query_error:
-                    logger.error(
-                        f"[BUMP_TASK] Database query failed: {query_error}",
-                        exc_info=True
-                    )
-                    return
-                
-                if not configs:
-                    logger.debug("[BUMP_TASK] No guilds with bump reminder configured")
-                    return
-                
-                logger.info(
-                    f"[BUMP_TASK] Found {len(configs)} guild(s) with bump reminder configured"
+            # Use singleton db_manager instead of opening new connection
+            db = db_manager.db
+            if not db:
+                logger.error("[BUMP_TASK] Database not initialized")
+                return
+            
+            # Load all guild configurations
+            try:
+                configs = await BumpConfig.load_all(db)
+            except Exception as query_error:
+                logger.error(
+                    f"[BUMP_TASK] Database query failed: {query_error}",
+                    exc_info=True
                 )
-                
-                # Check each guild and send reminders
-                reminders_sent = 0
-                for config in configs:
-                    sent = await self._check_and_send_bump(db, config)
-                    if sent:
-                        reminders_sent += 1
-                
-                # Summary
-                if reminders_sent > 0:
-                    logger.info(f"[BUMP_TASK] Sent {reminders_sent} reminder(s) this iteration")
-                else:
-                    logger.debug("[BUMP_TASK] No reminders sent this iteration")
-        
-        except aiosqlite.Error as db_error:
-            logger.error(
-                f"[BUMP_TASK] Database connection failed: {db_error}",
-                exc_info=True
+                return
+            
+            if not configs:
+                logger.debug("[BUMP_TASK] No guilds with bump reminder configured")
+                return
+            
+            logger.info(
+                f"[BUMP_TASK] Found {len(configs)} guild(s) with bump reminder configured"
             )
+            
+            # Check each guild and send reminders
+            reminders_sent = 0
+            for config in configs:
+                sent = await self._check_and_send_bump(db, config)
+                if sent:
+                    reminders_sent += 1
+            
+            # Summary
+            if reminders_sent > 0:
+                logger.info(f"[BUMP_TASK] Sent {reminders_sent} reminder(s) this iteration")
+            else:
+                logger.debug("[BUMP_TASK] No reminders sent this iteration")
+        
         except Exception as e:
             logger.error(
                 f"[BUMP_TASK] Unexpected error in task loop: {e}",
@@ -294,6 +296,13 @@ class BumpReminderTask:
                     f"HTTP error when sending to #{channel.name}: {http_error}. "
                     f"Discord API might be down or rate limited.",
                     exc_info=True
+                )
+            except discord.errors.ClientConnectorDNSError as dns_error:
+                # CRITICAL FIX: Handle DNS errors gracefully (don't crash task)
+                logger.warning(
+                    f"[BUMP_FAILED] Guild {guild.name} ({guild_id}): "
+                    f"DNS resolution failure (transient network issue): {dns_error}. "
+                    f"Skipping this iteration, will retry next cycle."
                 )
             except Exception as send_error:
                 logger.error(

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from core.logger import setup_logger
 
 from .constants import DISBOARD_BOT_ID, BUMP_CONFIRM_PATTERNS, DB_PATH
+from core.database import db_manager  # Use singleton instead of direct connection
 
 logger = setup_logger("BumpDetector", "cogs/disboard.log")
 
@@ -117,48 +118,40 @@ class BumpDetector:
             guild: Guild where bump was detected
         """
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Check if guild has bump reminder configured
-                async with db.execute(
-                    "SELECT bump_channel_id FROM server_config WHERE guild_id = ?",
-                    (guild.id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-                
-                if not row or not row[0]:
-                    # Bump reminder not configured for this guild
-                    logger.debug(
-                        f"[BUMP_DETECT] Guild {guild.id} ({guild.name}): "
-                        f"Not configured, ignoring bump"
-                    )
-                    return
-                
-                # Update bump_start_time AND reset last_reminder_sent (UTC)
-                now_utc = datetime.now(timezone.utc).isoformat()
-                
-                try:
-                    await db.execute(
-                        "UPDATE server_config SET bump_start_time = ?, last_reminder_sent = NULL WHERE guild_id = ?",
-                        (now_utc, guild.id)
-                    )
-                    await db.commit()
-                    
-                    logger.info(
-                        f"[BUMP_DETECT] Guild {guild.name} ({guild.id}): "
-                        f"Detected successful bump, updated timer to {now_utc}"
-                    )
-                except Exception as commit_error:
-                    logger.error(
-                        f"[BUMP_DETECT] Guild {guild.id}: DB commit failed: {commit_error}",
-                        exc_info=True
-                    )
-                    raise
-        
-        except aiosqlite.Error as db_error:
-            logger.error(
-                f"[BUMP_DETECT] Guild {guild.id}: Database error: {db_error}",
-                exc_info=True
+            # Check if guild has bump reminder configured
+            row = await db_manager.fetchone(
+                "SELECT bump_channel_id FROM server_config WHERE guild_id = ?",
+                (guild.id,)
             )
+            
+            if not row or not row[0]:
+                # Bump reminder not configured for this guild
+                logger.debug(
+                    f"[BUMP_DETECT] Guild {guild.id} ({guild.name}): "
+                    f"Not configured, ignoring bump"
+                )
+                return
+            
+            # Update bump_start_time AND reset last_reminder_sent (UTC)
+            now_utc = datetime.now(timezone.utc).isoformat()
+            
+            try:
+                await db_manager.modify(
+                    "UPDATE server_config SET bump_start_time = ?, last_reminder_sent = NULL WHERE guild_id = ?",
+                    (now_utc, guild.id)
+                )
+                
+                logger.info(
+                    f"[BUMP_DETECT] Guild {guild.name} ({guild.id}): "
+                    f"Detected successful bump, updated timer to {now_utc}"
+                )
+            except Exception as commit_error:
+                logger.error(
+                    f"[BUMP_DETECT] Guild {guild.id}: DB commit failed: {commit_error}",
+                    exc_info=True
+                )
+                raise
+        
         except Exception as e:
             logger.error(
                 f"[BUMP_DETECT] Guild {guild.id}: Unexpected error: {e}",
