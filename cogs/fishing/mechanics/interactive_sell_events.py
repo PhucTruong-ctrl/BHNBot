@@ -187,7 +187,7 @@ def create_interactive_embed(event_data: Dict, base_value: int, fish_items: Dict
     description = event_data.get('description', '')
     
     # Format placeholders
-    total_fish = sum(fish_items.values())
+    total_fish = sum(item['quantity'] for item in fish_items.values())
     description = description.format(
         base_value=f"{base_value:,}",
         total_fish=total_fish

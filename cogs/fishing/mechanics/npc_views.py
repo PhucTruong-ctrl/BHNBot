@@ -248,7 +248,7 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'ngoc_trai', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + excluded.quantity
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
             """, (self.user_id, amt))
         
         elif reward_type == "worm":
@@ -258,7 +258,7 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'moicau', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + excluded.quantity
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
             """, (self.user_id, amt))
             
         elif reward_type == "vat_lieu_nang_cap":
@@ -268,7 +268,7 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'vat_lieu_nang_cap', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + excluded.quantity
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
             """, (self.user_id, amt))
             
         elif reward_type == "chest":
@@ -278,7 +278,7 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'ruong_kho_bau', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + excluded.quantity
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
             """, (self.user_id, amt))
 
 
