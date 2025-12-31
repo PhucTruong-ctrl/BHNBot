@@ -82,12 +82,17 @@ async def execute_cast_transaction(
     rod_config: dict,
     forced_event: Dict[str, Any] = None, # Passed from Cog (Pre-Roll)
     has_lucky_buff: bool = False,
-    is_boosted: bool = False
+    is_boosted: bool = False,
+    cooldown_multiplier: float = 1.0,
+    durability_multiplier: float = 1.0,
+    disaster_fine: int = 0,
+    bot_instance = None # For achievement checks
 ) -> Dict[str, Any]:
     """
     Phase 2: Atomic Execution of the cast.
     - Consumes bait (or auto-buys)
     - Applies forced_event effects (Bonus catch, etc)
+    - RESTORED: Applies Disasters (Fine) & Global Multipliers
     - Calculates Loot
     - Updates Durability
     - Returns detailed result dict
@@ -102,7 +107,8 @@ async def execute_cast_transaction(
         "used_worm": False,
         "rod_broken": False,
         "xp_gained": 0,
-        "money_gained": 0 
+        "money_gained": 0,
+        "fine_paid": 0
     }
 
     async with db_manager.transaction():
@@ -112,6 +118,15 @@ async def execute_cast_transaction(
             result["status"] = "broken_rod"
             result["rod_broken"] = True
             return result
+        
+        # RESTORED: Disaster Fine Logic
+        if disaster_fine > 0:
+            balance = await get_user_balance(user_id)
+            if balance >= disaster_fine:
+                await add_seeds(user_id, -disaster_fine, 'disaster_fine', 'fishing')
+                result["fine_paid"] = disaster_fine
+                # Stats? Maybe separate logging in Cog
+
 
         # 2. Bait Management
         inventory = await bot_inventory.get_all(user_id)
@@ -155,27 +170,25 @@ async def execute_cast_transaction(
         durability_loss = 1
         # Check Event Modifier
         if forced_event:
-            # If default durability loss is modified (e.g. protected)
-            # Or if event adds damage (e.g. Plastic Trap)
             evt_loss = forced_event.get("durability_loss", 0)
             if evt_loss != 0:
-                durability_loss += evt_loss # Could increase or decrease
+                durability_loss += evt_loss 
             
             if forced_event.get("custom_effect") == "restore_durability":
-                 # Actually negative loss or just set?
-                 # Assuming handler sets logic, but here base cost is 1.
                  pass
 
+        # Apply Global Multiplier
+        durability_loss = int(durability_loss * durability_multiplier)
+        
         # Apply Durability Check
-        # Ensure we don't heal unintendedly unless event says so
         final_loss = max(0, durability_loss)
         new_durability = max(0, current_durability - final_loss)
         
-        # Handle Durability Restore event logic explicitly if needed
+        # Handle Durability Restore event logic explicitly
         if forced_event and forced_event.get("custom_effect") == "restore_durability":
              restore_amt = forced_event.get("restore_amount", 20)
              new_durability = min(rod_config.get("durability", 100), new_durability + restore_amt)
-             final_loss = current_durability - new_durability # Negative implies gain
+             final_loss = current_durability - new_durability 
 
         await update_rod_data(user_id, new_durability)
         result["durability_loss"] = final_loss
@@ -217,8 +230,6 @@ async def execute_cast_transaction(
             
             # Event Bonus Chest
             if forced_event and forced_event.get("gain_items"):
-                 # direct item injection handled separately or here?
-                 # handler result has "gain_items". Merge it.
                  pass
 
         # Resolve actual items (RNG)
@@ -270,29 +281,27 @@ async def execute_cast_transaction(
                 add_item(k, v)
 
         # Update Inventory & XP
-        # We need to process "rac" into actual items? Or keep as "rac" key?
-        # Assuming inventory supports "rac" or specific keys.
-        # Logic says "rac" is generic.
-        
         for key, qty in final_items.items():
             if key == "rac": 
-                 # Handle random trash items logic if needed, or pass 'rac' if DB supports it
-                 # Usually trash is instantly converted or stored as specific trash items
                  pass 
             else:
                 await bot_inventory.modify(user_id, key, qty)
 
         # XP Update
         await increment_stat(user_id, "fishing", "exp", total_xp)
-        # Check level up? (Handled by listener usually)
         
         result["caught_items"] = final_items
         result["xp_gained"] = total_xp
-
+        
         # 5. Cooldown Setting
         cd = rod_config["cd"]
-        # Apply modifiers...
+        # Apply Global Multiplier
+        if cooldown_multiplier != 1.0:
+            cd *= cooldown_multiplier
+            if cd < 1: cd = 1
+            
         result["cooldown_end"] = time.time() + cd
         
         return result
+
 

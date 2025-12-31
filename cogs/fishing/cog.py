@@ -171,6 +171,14 @@ class FishingCog(commands.Cog):
 
             await asyncio.sleep(wait_time)
 
+            # Get Global Multipliers & Disaster State
+            cd_mul = self.global_event_manager.get_public_effect("cooldown_multiplier", 1.0)
+            dur_mul = self.global_event_manager.get_public_effect("durability_multiplier", 1.0)
+            
+            disaster_fine = 0
+            if getattr(self, "disaster_fine_amount", 0) > 0 and time.time() < getattr(self, "disaster_effect_end_time", 0):
+                disaster_fine = self.disaster_fine_amount
+
             # 6. TRANSACTION (Core Logic)
             result = await logic.execute_cast_transaction(
                 user_id=user.id,
@@ -179,7 +187,11 @@ class FishingCog(commands.Cog):
                 cog_instance=self,
                 rod_lvl=rod_lvl,
                 rod_config=rod_config,
-                forced_event=fishing_event if fishing_event["triggered"] else None
+                forced_event=fishing_event if fishing_event["triggered"] else None,
+                cooldown_multiplier=cd_mul,
+                durability_multiplier=dur_mul,
+                disaster_fine=disaster_fine,
+                bot_instance=self.bot
             )
 
             # 7. POST-PROCESS
@@ -212,15 +224,97 @@ class FishingCog(commands.Cog):
             )
             await channel.send(embed=res_embed)
             
-            # C. NPC EVENT
-            npc_data = await roll_npc_event(self, user.id, result)
-            if npc_data:
-                 npc_embed = embeds.create_event_embed(
-                     title=f"Gặp Gỡ: {npc_data['base_data']['name']}",
-                     description=npc_data['base_data']['description'] + "\n\n*(Tính năng tương tác đang phát triển...)*",
-                     event_type="neutral"
-                 )
-                 await channel.send(embed=npc_embed)
+            # ==================== NPC ENCOUNTER (RESTORED LEGACY) ====================
+            # Derive counts for checks
+            fish_only_items = {k: v for k, v in result["caught_items"].items() if k in logic.ALL_FISH}
+            num_fish = sum(fish_only_items.values())
+            
+            npc_triggered = False
+            npc_type = None
+            
+            # Check forced pending trigger
+            if hasattr(self, "pending_npc_event") and user.id in self.pending_npc_event:
+                npc_type = self.pending_npc_event.pop(user.id)
+                npc_triggered = True
+                logger.info(f"[NPC] Triggering pending NPC event: {npc_type} for user {user.id}")
+            
+            # Check random trigger (Access constant via module)
+            elif random.random() < constants.NPC_ENCOUNTER_CHANCE and num_fish > 0:
+                 npc_triggered = True
+        
+            if npc_triggered:
+                # If npc_type is NOT set (i.e. Random Trigger), roll for it now
+                if not npc_type:
+                    await asyncio.sleep(constants.NPC_ENCOUNTER_DELAY)
+            
+                    # Select random NPC based on weighted chances
+                    npc_pool = []
+                    for npc_key, npc_data in constants.NPC_ENCOUNTERS.items():
+                        npc_pool.extend([npc_key] * int(npc_data.get("chance", 0.1) * 100))
+                    
+                    if not npc_pool:
+                         npc_pool = list(constants.NPC_ENCOUNTERS.keys())
+
+                    npc_type = random.choice(npc_pool)
+            
+                # Use Adaptive Data based on Affinity
+                npc_data = await self._get_adaptive_npc_data(user.id, npc_type)
+    
+                # Get caught fish context
+                caught_fish_key = list(fish_only_items.keys())[0] if fish_only_items else list(logic.ALL_FISH.keys())[0]
+                
+                if caught_fish_key in logic.ALL_FISH:
+                    caught_fish_info = logic.ALL_FISH[caught_fish_key]
+                else:
+                    caught_fish_info = {"name": "Cá", "emoji": "🐟", "sell_price": 0}
+                    
+                caught_fish_ctx = {caught_fish_key: caught_fish_info}
+
+                # Build NPC embed
+                npc_title = f"⚠️ {npc_data['name']} - {username}!"
+                npc_desc = f"{npc_data['description']}\n\n**{username}**, {npc_data['question']}"
+                npc_embed = embeds.create_event_embed(
+                    title=npc_title,
+                    description=npc_desc,
+                    event_type="neutral"
+                )
+    
+                if npc_data.get("image_url"):
+                    npc_embed.set_image(url=npc_data["image_url"])
+    
+                # Add cost information
+                cost_text = ""
+                cost_val = npc_data.get("cost")
+                if cost_val == "fish":
+                    cost_text = f"💰 **Chi phí:** {caught_fish_info['emoji']} {caught_fish_info['name']}"
+                elif isinstance(cost_val, int):
+                    cost_text = f"💰 **Chi phí:** {cost_val} Hạt"
+                elif cost_val == "cooldown_5min":
+                    cost_text = f"💰 **Chi phí:** Mất lượt câu trong 5 phút"
+    
+                if cost_text:
+                    npc_embed.add_field(name="💸 Yêu Cầu", value=self.action_service.apply_display_glitch(cost_text), inline=False)
+    
+                # Send NPC message with INTERACTIVE VIEW
+                # Import locally or ensure global import
+                from .mechanics.npc_views import InteractiveNPCView
+                
+                npc_view = InteractiveNPCView(
+                    self, 
+                    user.id, 
+                    npc_type, 
+                    npc_data, 
+                    caught_fish_ctx, 
+                    channel
+                )
+        
+                # Track stats
+                await increment_stat(user.id, "fishing", "npc_events_triggered", 1)
+                await increment_stat(user.id, "fishing", f"{npc_type}_encounter", 1)
+        
+                npc_msg = await channel.send(content=f"<@{user.id}> 🔥 **SỰ KIỆN NPC!**", embed=npc_embed, view=npc_view)
+                npc_view.message = npc_msg
+
 
         except Exception as e:
             logger.error(f"FATAL FISH ACTION ERROR: {e}", exc_info=True)

@@ -504,7 +504,7 @@ async def _process_specific_event(cog, user_id: int, event_key: str, result_temp
         # handler returns a dict with keys like 'lose_worm', 'bonus_catch' etc.
         # We merge it into effect_data
         handler_result = await handler(
-            input_data={}, # Start empty
+            result={}, # Start empty
             event_data=event_data, 
             user_id=user_id, 
             cog=cog
