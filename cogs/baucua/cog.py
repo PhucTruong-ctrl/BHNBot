@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import asyncio
-from core.logger import setup_logger
+from database_manager import batch_update_seeds
 
 from .game_logic import GameManager
 from .statistics import StatisticsTracker
@@ -18,6 +18,7 @@ from .helpers import (
     create_summary_text
 )
 from .constants import BETTING_TIME_SECONDS
+from core.logger import setup_logger
 
 logger = setup_logger("BauCuaCog", "logs/cogs/baucua.log")
 

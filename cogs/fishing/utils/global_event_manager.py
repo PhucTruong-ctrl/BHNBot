@@ -425,7 +425,7 @@ class GlobalEventManager:
             if image: embed.set_image(url=image)
 
             # Get Configured Channels
-            rows = await db_manager.execute(
+            rows = await db_manager.fetch(
                 "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
             )
             
@@ -742,7 +742,7 @@ class GlobalEventManager:
     async def _broadcast_raid_update(self, embed):
         """Sends new status message and deletes the old one to prevent spam."""
         try:
-            rows = await db_manager.execute("SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
+            rows = await db_manager.fetch("SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
             
             # Initialize storage for message IDs if not exists
             if not hasattr(self, "raid_message_ids"):
@@ -938,7 +938,7 @@ class GlobalEventManager:
         
         # Broadcast
         try:
-            rows = await db_manager.execute(
+            rows = await db_manager.fetch(
                 "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
             )
             if not rows:
@@ -1060,7 +1060,7 @@ class GlobalEventManager:
             embed.set_footer(text="🎊 Cảm ơn tất cả mọi người đã đóng góp!")
         
         try:
-            rows = await db_manager.execute(
+            rows = await db_manager.fetch(
                 "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
             )
             for (cid,) in rows:
@@ -1104,7 +1104,7 @@ class GlobalEventManager:
                 view = MeteorWishView(self)
                 
                 # Broadcast to configured channels
-                rows = await db_manager.execute(
+                rows = await db_manager.fetch(
                     "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
                 )
                 if not rows:

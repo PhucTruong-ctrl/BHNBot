@@ -8,28 +8,36 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
-def parse_utc_datetime(iso_string: Optional[str]) -> Optional[datetime]:
-    """Parse ISO format string to timezone-aware UTC datetime.
+def parse_utc_datetime(value):
+    """Parse UTC datetime from ISO string or return datetime object directly.
+    
+    PostgreSQL/asyncpg returns datetime objects natively.
+    This function handles both for backward compatibility.
     
     Args:
-        iso_string: ISO format datetime string (may be naive or aware)
+        value: Either ISO format string (legacy) or datetime object (PostgreSQL)
         
     Returns:
         Timezone-aware datetime in UTC, or None if input is None
-        
-    Raises:
-        ValueError: If iso_string is invalid format
     """
-    if not iso_string:
+    if value is None:
         return None
     
-    dt = datetime.fromisoformat(iso_string)
+    # PostgreSQL already returns datetime objects
+    if isinstance(value, datetime):
+        # Ensure timezone-aware
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
     
-    # Ensure timezone-aware (assume UTC if naive)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+    # Legacy string format (for old SQLite data)
+    if isinstance(value, str):
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     
-    return dt
+    return None
 
 
 def validate_text_channel(channel) -> bool:

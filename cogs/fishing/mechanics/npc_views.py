@@ -126,12 +126,12 @@ class InteractiveNPCView(discord.ui.View):
                         if cost_type == "fish":
                             # Consume the caught fish
                             fish_key = list(self.caught_fish.keys())[0]
-                            cursor = await conn.execute(
+                            row = await conn.fetchrow(
                                 "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                 (self.user_id, fish_key)
                             )
-                            row = await cursor.fetchone()
-                            if not row or row[0] < 1:
+                            
+                            if not row or row['quantity'] < 1:
                                 raise ValueError("Cá đã bốc hơi đâu mất rồi!")
                                 
                             await conn.execute(
@@ -140,11 +140,11 @@ class InteractiveNPCView(discord.ui.View):
                             )
                             
                         elif isinstance(cost_type, int): # Money cost
-                            cursor = await conn.execute(
+                            row = await conn.fetchrow(
                                 "SELECT seeds FROM users WHERE user_id = ?", (self.user_id,)
                             )
-                            row = await cursor.fetchone()
-                            if not row or row[0] < cost_type:
+
+                            if not row or row['seeds'] < cost_type:
                                 raise ValueError(f"Không đủ tiền! Cần {cost_type} Hạt.")
                                 
                             await conn.execute(
@@ -248,8 +248,8 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'ngoc_trai', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
+            """, (self.user_id, amt))
         
         elif reward_type == "worm":
             amt = result.get("amount", 0)
@@ -258,8 +258,8 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'moicau', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
+            """, (self.user_id, amt))
             
         elif reward_type == "vat_lieu_nang_cap":
             amt = result.get("amount", 1)
@@ -268,8 +268,8 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'vat_lieu_nang_cap', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
+            """, (self.user_id, amt))
             
         elif reward_type == "chest":
                 amt = result.get("amount", 1)
@@ -278,8 +278,8 @@ class InteractiveNPCView(discord.ui.View):
                 INSERT INTO inventory (user_id, item_id, quantity) 
                 VALUES (?, 'ruong_kho_bau', ?)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = inventory.quantity + excluded.quantity
+            """, (self.user_id, amt))
 
 
         # POST-COMMIT EFFECTS

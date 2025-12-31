@@ -194,14 +194,13 @@ class InteractiveSellEventView(discord.ui.View):
                         if consume_items:
                             for fish_key, quantity in self.fish_items.items():
                                 # Check availability
-                                cursor = await conn.execute(
+                                row = await conn.fetchrow(
                                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                     (self.user_id, fish_key)
                                 )
-                                row = await cursor.fetchone()
                                 
-                                if not row or row[0] < quantity:
-                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row[0] if row else 0})")
+                                if not row or row['quantity'] < quantity:
+                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row['quantity'] if row else 0})")
                                 
                                 # Deduct
                                 await conn.execute(
@@ -233,6 +232,17 @@ class InteractiveSellEventView(discord.ui.View):
                 await interaction.followup.send("⚠️ Giao dịch bị hủy do hệ thống bận (DB Locked). Vui lòng thử lại!", ephemeral=True)
                 return
             
+            # Caches auto-managed by InventoryCache - no manual clearing needed
+            # CRITICAL FIX: Invalidate cache after sell (data already in DB)
+            # Option 1: Use modify() with delta=0 which reads from DB
+            # Option 2: Direct invalidate - simpler since transaction already committed
+            # We choose direct invalidate - next !tuido will re-fetch from DB
+            try:
+                 if hasattr(self.cog.bot, 'inventory'):
+                     await self.cog.bot.inventory.invalidate(self.user_id)
+            except Exception:
+                 pass
+
             # --- RAID BOSS CONTRIBUTION ---
             # Any money earned from sell events damages the boss
             if final_value > 0:
@@ -262,14 +272,15 @@ class InteractiveSellEventView(discord.ui.View):
                     )
                     logger.info(f"[INTERACTIVE_SELL] Applied buff {buff_type} ({duration}) to {self.user_id}")
             
-            # Clear caches
-            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
-            db_manager.clear_cache_by_prefix("leaderboard")
+            # Caches auto-managed by InventoryCache - no manual clearing needed
+            # CRITICAL FIX: Invalidate cache after sell (data already in DB)
+            # Option 1: Use modify() with delta=0 which reads from DB
+            # Option 2: Direct invalidate - simpler since transaction already committed
+            # We choose direct invalidate - next !tuido will re-fetch from DB
             
             # Track stats (event-specific)
             event_key = self.event_data.get('key', 'unknown')
-            await self._track_stats(event_key, choice_id, final_value > self.base_value)
+            await self._track_stats(event_key, choice_id, final_value > self.base_value, final_value)
             
             # Build result embed
             embed = self._build_result_embed(final_value, message, interaction.user.name)
@@ -562,13 +573,12 @@ class InteractiveSellEventView(discord.ui.View):
                             # Remove fish items
                             for fish_key, quantity in self.fish_items.items():
                                 # Check availability
-                                cursor = await conn.execute(
+                                row = await conn.fetchrow(
                                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                     (self.user_id, fish_key)
                                 )
-                                row = await cursor.fetchone()
                                 
-                                if not row or row[0] < quantity:
+                                if not row or row['quantity'] < quantity:
                                     raise ValueError(f"Timeout failed: Not enough {fish_key}")
                                 
                                 # Deduct
@@ -600,9 +610,12 @@ class InteractiveSellEventView(discord.ui.View):
                 logger.error(f"[INTERACTIVE_SELL] Timeout Handler DB Lock Timeout for user {self.user_id}")
                 return
             
-            # Clear caches
-            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+            # Caches auto-managed by InventoryCache - no manual clearing needed
+            try:
+                 if hasattr(self.cog.bot, 'inventory'):
+                     await self.cog.bot.inventory.invalidate(self.user_id)
+            except Exception:
+                 pass
             
             # Track timeout stat
             event_key = self.event_data.get('key', 'unknown')

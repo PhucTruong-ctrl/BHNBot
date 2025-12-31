@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
 from core.logger import setup_logger
-from database_manager import get_user_balance
-from core.database import add_seeds, batch_update_seeds  # Use CORE version with proper transaction handling, add_seeds
+from database_manager import get_user_balance, add_seeds, batch_update_seeds
 
 from ..core.game_manager import game_manager
 from ..core.table import Table, TableStatus

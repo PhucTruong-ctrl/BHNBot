@@ -129,9 +129,10 @@ async def legendary_hall_of_fame_action(cog, ctx_or_interaction, is_slash: bool)
     legendary_catches = {}
     try:
         # 1. Fetch standard legislative fish from fish_collection
-        rows = await db_manager.execute(
+        # Use fetch and ? placeholders
+        rows = await db_manager.fetch(
             "SELECT user_id, fish_id FROM fish_collection WHERE fish_id IN (?, ?, ?, ?, ?)",
-            ('thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz')
+            'thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz'
         )
         
         for user_id, fish_key in rows:
@@ -153,7 +154,7 @@ async def legendary_hall_of_fame_action(cog, ctx_or_interaction, is_slash: bool)
                 })
         
         # 2. Fetch "Cá Isekai" from inventory (it's an item, not in fish_collection)
-        isekai_rows = await db_manager.execute(
+        isekai_rows = await db_manager.fetch(
             "SELECT user_id FROM inventory WHERE item_id = 'ca_isekai' AND quantity > 0"
         )
         

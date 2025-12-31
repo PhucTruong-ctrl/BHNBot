@@ -173,17 +173,16 @@ class GenericActionView(discord.ui.View):
                             
                             if limit > 0:
                                 # CRITICAL FIX: Use event_key + DATE, not start_time
-                                # start_time changes on bump → limit reset bug
+                                # start_time changes on bump -> limit reset bug
                                 from datetime import datetime
                                 today = datetime.now().strftime("%Y-%m-%d")
                                 unique_limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}_{today}"
                                 logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} key={unique_limit_key} limit={limit}")
                                 
-                                cursor = await conn.execute(
-                                    "SELECT value FROM user_stats WHERE user_id = ? AND game_id = 'global_event' AND stat_key = ?",
+                                row = await conn.fetchrow(
+                                    "SELECT value FROM user_stats WHERE user_id = $1 AND game_id = 'global_event' AND stat_key = $2",
                                     (user_id, unique_limit_key)
                                 )
-                                row = await cursor.fetchone()
                                 current_usage = row[0] if row else 0
                                 logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} current_usage={current_usage}/{limit}")
                                 
@@ -196,20 +195,19 @@ class GenericActionView(discord.ui.View):
                             # A. Money Cost
                             money_cost = cost.get("money", 0)
                             if money_cost > 0:
-                                cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-                                row = await cursor.fetchone()
+                                row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
                                 current_bal = row[0] if row else 0
                                 
                                 if current_bal < money_cost:
                                      raise ValueError(f"Không đủ tiền! Cần {money_cost} Hạt.")
                                      
                                 await conn.execute(
-                                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                                    "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
                                     (money_cost, user_id)
                                 )
                                 # Manual Log for ACID Transaction
                                 await conn.execute(
-                                    "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                    "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
                                     (user_id, -money_cost, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
                                 )
                             
@@ -221,18 +219,17 @@ class GenericActionView(discord.ui.View):
                                 req_key = item_input.get("key")
                                 req_amt = item_input.get("amount", 1)
                                 if req_key and req_amt > 0:
-                                    cursor = await conn.execute(
-                                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                    row = await conn.fetchrow(
+                                        "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
                                         (user_id, req_key)
                                     )
-                                    row = await cursor.fetchone()
                                     start_qty = row[0] if row else 0
                                     
                                     if start_qty < req_amt:
                                         raise ValueError(f"Không đủ vật phẩm! Cần {req_amt} {req_key}.")
                                     
                                     await conn.execute(
-                                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                        "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
                                         (req_amt, user_id, req_key)
                                     )
 
@@ -254,31 +251,33 @@ class GenericActionView(discord.ui.View):
                                         raise ValueError(f"Không tìm thấy loại vật phẩm '{req_type}' trong hệ thống.")
 
                                     # 2. Check User Inventory for ANY of these keys
-                                    placeholders = ','.join('?' for _ in valid_keys)
-                                    query = f"SELECT item_id, quantity FROM inventory WHERE user_id = ? AND item_id IN ({placeholders})"
-                                    params = [user_id] + valid_keys
+                                    # AsyncPG Dynamic Placeholders ($2, $3, ...)
+                                    placeholders = ','.join(f"${i+2}" for i in range(len(valid_keys)))
+                                    query = f"SELECT item_id, quantity FROM inventory WHERE user_id = $1 AND item_id IN ({placeholders})"
                                     
-                                    cursor = await conn.execute(query, params)
-                                    rows = await cursor.fetchall()
+                                    # Params: user_id is $1, others follow
+                                    rows = await conn.fetch(query, user_id, *valid_keys)
                                     
-                                    total_qty = sum(r[1] for r in rows)
+                                    total_qty = sum(r['quantity'] for r in rows)
                                     if total_qty < req_amt:
                                         raise ValueError(f"Không đủ vật phẩm loại '{req_type}'! Cần {req_amt} (Có {total_qty}).")
                                     
                                     # 3. Deduct Items
                                     remaining_deduct = req_amt
-                                    for i_id, i_qty in rows:
+                                    for row in rows:
                                         if remaining_deduct <= 0: break
+                                        i_id = row['item_id']
+                                        i_qty = row['quantity']
                                         deduct_amt = min(remaining_deduct, i_qty)
                                         
                                         await conn.execute(
-                                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                            "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
                                             (deduct_amt, user_id, i_id)
                                         )
                                         remaining_deduct -= deduct_amt
                                     
                                     await conn.execute(
-                                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
+                                        "DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0", 
                                         (user_id,)
                                     )
 
@@ -324,11 +323,11 @@ class GenericActionView(discord.ui.View):
                                     # MUST use raw SQL - add_seeds() opens its own transaction!
                                     reason = f"event_reward_{rkey}" if rkey else f"event_reward_{self.manager.current_event['key']}"
                                     await conn.execute(
-                                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                        "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
                                         (ramount, user_id)
                                     )
                                     await conn.execute(
-                                        "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                        "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
                                         (user_id, ramount, reason, "fishing")
                                     )
                                     acquired_txt.append(f"{ramount:,} Hạt 💰")
@@ -348,9 +347,9 @@ class GenericActionView(discord.ui.View):
                             if limit > 0:
                                  await conn.execute(
                                     """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
-                                       VALUES (?, 'global_event', ?, 1)
+                                       VALUES ($1, 'global_event', $2, 1)
                                        ON CONFLICT(user_id, game_id, stat_key) 
-                                       DO UPDATE SET value = value + 1""",
+                                       DO UPDATE SET value = user_stats.value + 1""",
                                     (user_id, unique_limit_key)
                                 )
                             

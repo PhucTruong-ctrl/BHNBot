@@ -2,11 +2,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
-import aiosqlite
 
 from core.logger import setup_logger
 
-DB_PATH = "./data/database.db"
 logger = setup_logger("AdminCog", "cogs/admin.log")
 
 class AdminCog(commands.Cog):

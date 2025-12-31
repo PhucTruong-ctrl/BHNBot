@@ -445,8 +445,6 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     cog.dark_map_active[user_id] = False
                     cog.dark_map_casts[user_id] = 0
                     cog.dark_map_cast_count[user_id] = 0
-                    # [CACHE] Use bot.inventory.modify
-                    await cog.bot.inventory.modify(user_id, "ban_do_ham_am", -1)
                     return legendary
                 elif current_cast < 10:
                     # Casts 1-9: Random spawn chance
@@ -455,8 +453,6 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                         cog.dark_map_active[user_id] = False
                         cog.dark_map_casts[user_id] = 0
                         cog.dark_map_cast_count[user_id] = 0
-                        # [CACHE] Use bot.inventory.modify
-                        await cog.bot.inventory.modify(user_id, "ban_do_ham_am", -1)
                         return legendary
                 elif cog.dark_map_casts[user_id] <= 0:
                     # Map expired (should not happen with 10 casts, but safety check)
@@ -490,7 +486,7 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
         # Store the legendary fish using the insert function
         from database_manager import db_manager
         await db_manager.modify(
-            "INSERT OR IGNORE INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
+            "INSERT INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?) ON CONFLICT (user_id, fish_id) DO NOTHING",
             (user_id, legendary_key, 1)
         )
         

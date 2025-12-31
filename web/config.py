@@ -11,7 +11,10 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT_DIR, '.env'))
 
 # Database
-DATABASE_PATH = os.path.join(ROOT_DIR, "data", "database.db")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_NAME = os.getenv("DB_NAME", "discord_bot_db")
+DB_USER = os.getenv("DB_USER", "discord_bot")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "discord_bot_password")
 
 # Discord API
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")

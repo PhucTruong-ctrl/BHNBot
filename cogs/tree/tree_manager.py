@@ -417,7 +417,10 @@ class TreeManager:
                     )
                     if buff and buff[0]:
                         from datetime import datetime
-                        buff_until = datetime.fromisoformat(buff[0])
+                        buff_until = buff[0]
+                        # PostgreSQL returns datetime, legacy SQLite returns string
+                        if isinstance(buff_until, str):
+                            buff_until = datetime.fromisoformat(buff_until)
                         timestamp = int(buff_until.timestamp())
                         embed.add_field(
                             name="🌟 Buff Toàn Server",
