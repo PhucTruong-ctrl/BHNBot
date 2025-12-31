@@ -894,8 +894,7 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                 
                 if outcome == "win":
                     # Add to seed updates
-                    if uid not in seed_updates: seed_updates[uid] = 0
-                    seed_updates[uid] += payout
+                    seed_updates[uid] = seed_updates.get(uid, 0) + payout
                     result = "win"
                 elif outcome == "lose":
                     # No payout update needed (bet already deducted)

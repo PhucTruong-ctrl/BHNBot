@@ -32,10 +32,12 @@ class GameManager:
 
         # Check limit (Max 3 tables per channel)
         if len(self._channel_tables[channel_id]) >= 3:
+            print(f"[DEBUG_GAME_MANAGER] Channel {channel_id} limit reached. Active tables: {self._channel_tables[channel_id]}")
             return None
 
         # Check if user is already playing elsewhere
         if host_id in self._user_tables:
+            print(f"[DEBUG_GAME_MANAGER] User {host_id} already in table {self._user_tables[host_id]}")
             return None # User busy
 
         table_id = f"xd_{channel_id}_{int(time.time() * 1000)}"

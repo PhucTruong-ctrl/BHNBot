@@ -79,8 +79,8 @@ async def nangcap_action(ctx_or_interaction):
         try:
             async with db_manager.transaction() as conn:
                 # 1. Check Balance in DB (Atomically)
-                cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-                row = await cursor.fetchone()
+                # 1. Check Balance in DB (Atomically)
+                row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
                 balance = row[0] if row else 0
                 
                 if balance < cost:
@@ -96,7 +96,7 @@ async def nangcap_action(ctx_or_interaction):
                     
                     # Deduct
                     await conn.execute("UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?", (material_cost, user_id, "vat_lieu_nang_cap"))
-                    await conn.execute("DELETE FROM inventory WHERE user_id = ? AND collection_qty <= 0", (user_id,)) # Cleanup if needed, but 'quantity' is the col in inventory table? 
+                    await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0 AND item_id = ?", (user_id, "vat_lieu_nang_cap")) # Cleanup 
                     # WAIT: The table is 'inventory'. Column is 'quantity'.
                     await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0 AND item_id = ?", (user_id, "vat_lieu_nang_cap"))
 

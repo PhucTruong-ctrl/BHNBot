@@ -44,7 +44,7 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
         return None
 
 
-async def batch_update_seeds(updates: Dict[int, int]):
+async def batch_update_seeds(updates: Dict[int, int], reason: str = "batch_update", category: str = "system"):
     """Updates seed balances for multiple users in a single batch operation.
 
     NOTE: This is the OLD version without transaction logging.
@@ -52,14 +52,21 @@ async def batch_update_seeds(updates: Dict[int, int]):
 
     Args:
         updates (Dict[int, int]): A dictionary mapping user_id to the amount of seeds to add (can be negative).
-
-    Example:
-        >>> await batch_update_seeds({12345: 100, 67890: -50})
+        reason (str): Reason for the update.
+        category (str): Category for the update.
     """
-    sql = "UPDATE users SET seeds = seeds + ? WHERE user_id = ?"
-    params = [(amount, user_id) for user_id, amount in updates.items()]
-    
-    await db_manager.executemany(sql, params)
+    async with db_manager.transaction() as conn:
+        for user_id, amount in updates.items():
+            # Update balance
+            await conn.execute(
+                "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
+                amount, user_id
+            )
+            # Log transaction
+            await conn.execute(
+                "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, $3, $4, NOW())",
+                user_id, amount, reason, category
+            )
 
 
 # ==================== TREE QUERIES ====================
