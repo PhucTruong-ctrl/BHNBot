@@ -298,7 +298,47 @@ class ContributorData:
             logger.error(f"Error getting all-time contributors: {e}", exc_info=True)
             return []
             
-    # ... (add_contribution method skipped) ...
+    async def add_contribution(self, amount: int, exp: int) -> None:
+        """Add contribution and update database.
+        
+        Args:
+            amount: Amount of seeds/items contributing
+            exp: Experience points to add
+        """
+        try:
+            # Update local object
+            self.amount += amount
+            self.contribution_exp += exp
+            
+            # Update database
+            # Check if record exists first (UPSERT logic via SELECT then INSERT/UPDATE)
+            # Since we loaded it, it might exist, or might be new.
+            # But the load() method returns None if not found, and manager creates new instance.
+            # So we should use UPSERT (INSERT ... ON CONFLICT) or simple UPDATE/INSERT check.
+            
+            # Simple check since we are in asyncpg
+            row = await db_manager.fetchrow(
+                "SELECT 1 FROM tree_contributors WHERE user_id = ? AND guild_id = ? AND season = ?",
+                (self.user_id, self.guild_id, self.season)
+            )
+            
+            if row:
+                await db_manager.execute(
+                    """UPDATE tree_contributors 
+                       SET amount = amount + ?, contribution_exp = contribution_exp + ? 
+                       WHERE user_id = ? AND guild_id = ? AND season = ?""",
+                    (amount, exp, self.user_id, self.guild_id, self.season)
+                )
+            else:
+                await db_manager.execute(
+                    """INSERT INTO tree_contributors (user_id, guild_id, season, amount, contribution_exp)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (self.user_id, self.guild_id, self.season, self.amount, self.contribution_exp)
+                )
+                
+        except Exception as e:
+            logger.error(f"Error saving contribution: {e}", exc_info=True)
+            raise
 
 @dataclass
 class HarvestBuff:

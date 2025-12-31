@@ -192,20 +192,29 @@ class InteractiveSellEventView(discord.ui.View):
                     async with db_manager.transaction() as conn:
                         # 1. VERIFY & DEDUCT ITEMS
                         if consume_items:
-                            for fish_key, quantity in self.fish_items.items():
+                            for fish_key, item_data in self.fish_items.items():
+                                # Handle if item_data is int (quantity) or dict (metadata)
+                                if isinstance(item_data, dict):
+                                    qty_needed = item_data.get('quantity', 0)
+                                else:
+                                    qty_needed = item_data
+
+                                if qty_needed <= 0:
+                                    continue
+                                
                                 # Check availability
                                 row = await conn.fetchrow(
                                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                     (self.user_id, fish_key)
                                 )
                                 
-                                if not row or row['quantity'] < quantity:
-                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row['quantity'] if row else 0})")
+                                if not row or row['quantity'] < qty_needed:
+                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {qty_needed}, Có {row['quantity'] if row else 0})")
                                 
                                 # Deduct
                                 await conn.execute(
                                     "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                                    (quantity, self.user_id, fish_key)
+                                    (qty_needed, self.user_id, fish_key)
                                 )
                             
                             # Cleanup empty
@@ -571,20 +580,29 @@ class InteractiveSellEventView(discord.ui.View):
                         
                         if consume_items:
                             # Remove fish items
-                            for fish_key, quantity in self.fish_items.items():
+                            for fish_key, item_data in self.fish_items.items():
+                                # Handle if item_data is int (quantity) or dict (metadata)
+                                if isinstance(item_data, dict):
+                                    qty_needed = item_data.get('quantity', 0)
+                                else:
+                                    qty_needed = item_data
+
+                                if qty_needed <= 0:
+                                    continue
+
                                 # Check availability
                                 row = await conn.fetchrow(
                                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                     (self.user_id, fish_key)
                                 )
                                 
-                                if not row or row['quantity'] < quantity:
+                                if not row or row['quantity'] < qty_needed:
                                     raise ValueError(f"Timeout failed: Not enough {fish_key}")
                                 
                                 # Deduct
                                 await conn.execute(
                                     "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                                    (quantity, self.user_id, fish_key)
+                                    (qty_needed, self.user_id, fish_key)
                                 )
                             
                             await conn.execute(
