@@ -186,46 +186,52 @@ class InteractiveSellEventView(discord.ui.View):
                 consume_items = self.event_data.get('interactive', {}).get('consume_items', True)
             
             # ACID TRANSACTION - Use safe transaction() context
-            async with db_manager.transaction() as conn:
-                # 1. VERIFY & DEDUCT ITEMS
-                if consume_items:
-                    for fish_key, quantity in self.fish_items.items():
-                        # Check availability
-                        cursor = await conn.execute(
-                            "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                            (self.user_id, fish_key)
-                        )
-                        row = await cursor.fetchone()
+            # [TIMEOUT ADDED] Prevent deadlock
+            try:
+                async with asyncio.timeout(10.0):
+                    async with db_manager.transaction() as conn:
+                        # 1. VERIFY & DEDUCT ITEMS
+                        if consume_items:
+                            for fish_key, quantity in self.fish_items.items():
+                                # Check availability
+                                cursor = await conn.execute(
+                                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                    (self.user_id, fish_key)
+                                )
+                                row = await cursor.fetchone()
+                                
+                                if not row or row[0] < quantity:
+                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row[0] if row else 0})")
+                                
+                                # Deduct
+                                await conn.execute(
+                                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                    (quantity, self.user_id, fish_key)
+                                )
+                            
+                            # Cleanup empty
+                            await conn.execute(
+                                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
+                                (self.user_id,)
+                            )
                         
-                        if not row or row[0] < quantity:
-                            raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row[0] if row else 0})")
+                        # 2. UPDATE SEEDS
+                        if final_value != 0:
+                            await conn.execute(
+                                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                (final_value, self.user_id)
+                            )
+                            # Manual Log for ACID Transaction
+                            event_key = self.event_data.get('key', 'unknown')
+                            await conn.execute(
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                (self.user_id, final_value, f"interactive_sell_{event_key}", "fishing")
+                            )
                         
-                        # Deduct
-                        await conn.execute(
-                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                            (quantity, self.user_id, fish_key)
-                        )
-                    
-                    # Cleanup empty
-                    await conn.execute(
-                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
-                        (self.user_id,)
-                    )
-                
-                # 2. UPDATE SEEDS
-                if final_value != 0:
-                    await conn.execute(
-                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                        (final_value, self.user_id)
-                    )
-                    # Manual Log for ACID Transaction
-                    event_key = self.event_data.get('key', 'unknown')
-                    await conn.execute(
-                        "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                        (self.user_id, final_value, f"interactive_sell_{event_key}", "fishing")
-                    )
-                
-                # Transaction auto-commits on success
+                        # Transaction auto-commits on success
+            except asyncio.TimeoutError:
+                await interaction.followup.send("⚠️ Giao dịch bị hủy do hệ thống bận (DB Locked). Vui lòng thử lại!", ephemeral=True)
+                return
             
             # --- RAID BOSS CONTRIBUTION ---
             # Any money earned from sell events damages the boss
@@ -541,54 +547,58 @@ class InteractiveSellEventView(discord.ui.View):
         
         # Execute transaction
         try:
-            # ACQUIRE LOCK
-            async with db_manager.lock:
-                # ACID TRANSACTION - Use safe transaction() context
-                async with db_manager.transaction() as conn:
-                    consume_items = True
-                    if safest_choice and 'consume_items' in safest_choice:
-                        consume_items = safest_choice['consume_items']
-                    else:
-                        consume_items = self.event_data.get('interactive', {}).get('consume_items', True)
-                    
-                    if consume_items:
-                        # Remove fish items
-                        for fish_key, quantity in self.fish_items.items():
-                            # Check availability
-                            cursor = await conn.execute(
-                                "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                                (self.user_id, fish_key)
-                            )
-                            row = await cursor.fetchone()
+            # ACQUIRE LOCK REMOVED (transaction() handles it)
+            # [TIMEOUT ADDED] Prevent deadlock
+            try:
+                async with asyncio.timeout(10.0):
+                    async with db_manager.transaction() as conn:
+                        consume_items = True
+                        if safest_choice and 'consume_items' in safest_choice:
+                            consume_items = safest_choice['consume_items']
+                        else:
+                            consume_items = self.event_data.get('interactive', {}).get('consume_items', True)
+                        
+                        if consume_items:
+                            # Remove fish items
+                            for fish_key, quantity in self.fish_items.items():
+                                # Check availability
+                                cursor = await conn.execute(
+                                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                    (self.user_id, fish_key)
+                                )
+                                row = await cursor.fetchone()
+                                
+                                if not row or row[0] < quantity:
+                                    raise ValueError(f"Timeout failed: Not enough {fish_key}")
+                                
+                                # Deduct
+                                await conn.execute(
+                                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                    (quantity, self.user_id, fish_key)
+                                )
                             
-                            if not row or row[0] < quantity:
-                                raise ValueError(f"Timeout failed: Not enough {fish_key}")
-                            
-                            # Deduct
                             await conn.execute(
-                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                                (quantity, self.user_id, fish_key)
+                                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                                (self.user_id,)
                             )
                         
-                        await conn.execute(
-                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
-                            (self.user_id,)
-                        )
-                    
-                    # Add seeds
-                    if final_value != 0:
-                        await conn.execute(
-                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                            (final_value, self.user_id)
-                        )
-                        # Manual Log for ACID Transaction
-                        event_key = self.event_data.get('key', 'unknown')
-                        await conn.execute(
-                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (self.user_id, final_value, f"interactive_sell_timeout_{event_key}", "fishing")
-                        )
-                    
-                    # Transaction auto-commits on success
+                        # Add seeds
+                        if final_value != 0:
+                            await conn.execute(
+                                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                (final_value, self.user_id)
+                            )
+                            # Manual Log for ACID Transaction
+                            event_key = self.event_data.get('key', 'unknown')
+                            await conn.execute(
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                (self.user_id, final_value, f"interactive_sell_timeout_{event_key}", "fishing")
+                            )
+                        
+                        # Transaction auto-commits on success
+            except asyncio.TimeoutError:
+                logger.error(f"[INTERACTIVE_SELL] Timeout Handler DB Lock Timeout for user {self.user_id}")
+                return
             
             # Clear caches
             db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")

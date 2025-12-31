@@ -118,50 +118,56 @@ class InteractiveNPCView(discord.ui.View):
         
         try:
             # Use safe transaction context manager (auto-COMMIT on success, auto-ROLLBACK on exception)
-            async with db_manager.transaction() as conn:
-                # 1. PAY COST
-                if cost_type == "fish":
-                    # Consume the caught fish
-                    fish_key = list(self.caught_fish.keys())[0]
-                    cursor = await conn.execute(
-                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                        (self.user_id, fish_key)
-                    )
-                    row = await cursor.fetchone()
-                    if not row or row[0] < 1:
-                        raise ValueError("Cá đã bốc hơi đâu mất rồi!")
-                        
-                    await conn.execute(
-                        "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
-                        (self.user_id, fish_key)
-                    )
-                    
-                elif isinstance(cost_type, int): # Money cost
-                    cursor = await conn.execute(
-                        "SELECT seeds FROM users WHERE user_id = ?", (self.user_id,)
-                    )
-                    row = await cursor.fetchone()
-                    if not row or row[0] < cost_type:
-                        raise ValueError(f"Không đủ tiền! Cần {cost_type} Hạt.")
-                        
-                    await conn.execute(
-                        "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                        (cost_type, self.user_id)
-                    )
-                    # Manual Log for ACID Transaction
-                    await conn.execute(
-                        "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                        (self.user_id, -cost_type, f"npc_cost_{self.npc_key}", "fishing")
-                    )
+            # [TIMEOUT ADDED] Prevent deadlock
+            try:
+                async with asyncio.timeout(10.0):
+                    async with db_manager.transaction() as conn:
+                        # 1. PAY COST
+                        if cost_type == "fish":
+                            # Consume the caught fish
+                            fish_key = list(self.caught_fish.keys())[0]
+                            cursor = await conn.execute(
+                                "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                (self.user_id, fish_key)
+                            )
+                            row = await cursor.fetchone()
+                            if not row or row[0] < 1:
+                                raise ValueError("Cá đã bốc hơi đâu mất rồi!")
+                                
+                            await conn.execute(
+                                "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
+                                (self.user_id, fish_key)
+                            )
+                            
+                        elif isinstance(cost_type, int): # Money cost
+                            cursor = await conn.execute(
+                                "SELECT seeds FROM users WHERE user_id = ?", (self.user_id,)
+                            )
+                            row = await cursor.fetchone()
+                            if not row or row[0] < cost_type:
+                                raise ValueError(f"Không đủ tiền! Cần {cost_type} Hạt.")
+                                
+                            await conn.execute(
+                                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                                (cost_type, self.user_id)
+                            )
+                            # Manual Log for ACID Transaction
+                            await conn.execute(
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                (self.user_id, -cost_type, f"npc_cost_{self.npc_key}", "fishing")
+                            )
 
-                # 2. ROLL REWARDS
-                reward_pool = self.npc_data.get("rewards", {}).get("accept", [])
-                result = self._roll_outcome(reward_pool)
-                
-                # 3. APPLY REWARDS
-                msg_extra = await self._apply_outcome(result, conn)
-                
-                # Transaction auto-commits here when exiting context
+                        # 2. ROLL REWARDS
+                        reward_pool = self.npc_data.get("rewards", {}).get("accept", [])
+                        result = self._roll_outcome(reward_pool)
+                        
+                        # 3. APPLY REWARDS
+                        msg_extra = await self._apply_outcome(result, conn)
+                        
+                        # Transaction auto-commits here when exiting context
+            except asyncio.TimeoutError:
+                await interaction.followup.send("⚠️ Hệ thống đang bận (DB Locked). Mèo không thể xử lý yêu cầu!", ephemeral=True)
+                return
                 
             # After successful transaction, send result
             embed = discord.Embed(

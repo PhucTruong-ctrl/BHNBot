@@ -162,227 +162,234 @@ class GenericActionView(discord.ui.View):
         
         try:
             # ACID TRANSACTION - Use safe transaction() context
-            async with db_manager.transaction() as conn:
-                try:
-                    # 0. CHECK LIMIT (If Configured)
-                    limit = btn_config.get("limit_per_user", 0)
-                    logger.info(f"[GENERIC_VIEW] [LIMIT_DEBUG] user_id={user_id} limit_raw={limit} btn_config_keys={list(btn_config.keys())}")
-                    
-                    if limit > 0:
-                        # CRITICAL FIX: Use event_key + DATE, not start_time
-                        # start_time changes on bump → limit reset bug
-                        from datetime import datetime
-                        today = datetime.now().strftime("%Y-%m-%d")
-                        unique_limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}_{today}"
-                        logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} key={unique_limit_key} limit={limit}")
-                        
-                        cursor = await conn.execute(
-                            "SELECT value FROM user_stats WHERE user_id = ? AND game_id = 'global_event' AND stat_key = ?",
-                            (user_id, unique_limit_key)
-                        )
-                        row = await cursor.fetchone()
-                        current_usage = row[0] if row else 0
-                        logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} current_usage={current_usage}/{limit}")
-                        
-                        if current_usage >= limit:
-                            logger.warning(f"[GENERIC_VIEW] [LIMIT_BLOCKED] user_id={user_id} exceeded limit {current_usage}/{limit}")
-                            raise ValueError(f"⛔ Bạn đã đạt giới hạn hôm nay ({limit}/{limit})!")
-
-                    # 1. CHECK & PAY COST
-                    cost = btn_config.get("cost", {})
-                    # A. Money Cost
-                    money_cost = cost.get("money", 0)
-                    if money_cost > 0:
-                        cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-                        row = await cursor.fetchone()
-                        current_bal = row[0] if row else 0
-                        
-                        if current_bal < money_cost:
-                             raise ValueError(f"Không đủ tiền! Cần {money_cost} Hạt.")
-                             
-                        await conn.execute(
-                            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                            (money_cost, user_id)
-                        )
-                        # Manual Log for ACID Transaction
-                        await conn.execute(
-                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                            (user_id, -money_cost, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
-                        )
-                    
-                    # B. Item Cost (Barter)
-                    item_input = cost.get("item") # { "key": "trash_01", "amount": 1 }
-                    item_type_input = cost.get("item_type") # { "type": "trash", "amount": 10 }
-                    
-                    if item_input:
-                        req_key = item_input.get("key")
-                        req_amt = item_input.get("amount", 1)
-                        if req_key and req_amt > 0:
-                            cursor = await conn.execute(
-                                "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                                (user_id, req_key)
-                            )
-                            row = await cursor.fetchone()
-                            start_qty = row[0] if row else 0
+            # [TIMEOUT ADDED] Prevent deadlock if DB is busy/locked
+            try:
+                async with asyncio.timeout(10.0):
+                    async with db_manager.transaction() as conn:
+                        try:
+                            # 0. CHECK LIMIT (If Configured)
+                            limit = btn_config.get("limit_per_user", 0)
+                            logger.info(f"[GENERIC_VIEW] [LIMIT_DEBUG] user_id={user_id} limit_raw={limit} btn_config_keys={list(btn_config.keys())}")
                             
-                            if start_qty < req_amt:
-                                raise ValueError(f"Không đủ vật phẩm! Cần {req_amt} {req_key}.")
-                            
-                            await conn.execute(
-                                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                                (req_amt, user_id, req_key)
-                            )
-
-                    elif item_type_input:
-                        req_type = item_type_input.get("type")
-                        req_amt = item_type_input.get("amount", 10)
-                        
-                        if req_type and req_amt > 0:
-                            # 1. Load Item Definitions to find keys
-                            valid_keys = []
-                            try:
-                                # Import locally if needed or reuse ALL_ITEMS_DATA
-                                valid_keys = [k for k, v in ALL_ITEMS_DATA.items() if v.get("type") == req_type]
-                            except Exception as e:
-                                logger.error(f"Failed to filter items: {e}")
-                                raise ValueError("Lỗi hệ thống: Không tìm thấy vật phẩm.")
-                            
-                            if not valid_keys:
-                                raise ValueError(f"Không tìm thấy loại vật phẩm '{req_type}' trong hệ thống.")
-
-                            # 2. Check User Inventory for ANY of these keys
-                            placeholders = ','.join('?' for _ in valid_keys)
-                            query = f"SELECT item_id, quantity FROM inventory WHERE user_id = ? AND item_id IN ({placeholders})"
-                            params = [user_id] + valid_keys
-                            
-                            cursor = await conn.execute(query, params)
-                            rows = await cursor.fetchall()
-                            
-                            total_qty = sum(r[1] for r in rows)
-                            if total_qty < req_amt:
-                                raise ValueError(f"Không đủ vật phẩm loại '{req_type}'! Cần {req_amt} (Có {total_qty}).")
-                            
-                            # 3. Deduct Items
-                            remaining_deduct = req_amt
-                            for i_id, i_qty in rows:
-                                if remaining_deduct <= 0: break
-                                deduct_amt = min(remaining_deduct, i_qty)
+                            if limit > 0:
+                                # CRITICAL FIX: Use event_key + DATE, not start_time
+                                # start_time changes on bump → limit reset bug
+                                from datetime import datetime
+                                today = datetime.now().strftime("%Y-%m-%d")
+                                unique_limit_key = f"event_limit_{self.manager.current_event['key']}_{idx}_{today}"
+                                logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} key={unique_limit_key} limit={limit}")
                                 
-                                await conn.execute(
-                                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                                    (deduct_amt, user_id, i_id)
+                                cursor = await conn.execute(
+                                    "SELECT value FROM user_stats WHERE user_id = ? AND game_id = 'global_event' AND stat_key = ?",
+                                    (user_id, unique_limit_key)
                                 )
-                                remaining_deduct -= deduct_amt
-                            
-                            await conn.execute(
-                                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
-                                (user_id,)
-                            )
+                                row = await cursor.fetchone()
+                                current_usage = row[0] if row else 0
+                                logger.info(f"[GENERIC_VIEW] [LIMIT_CHECK] user_id={user_id} current_usage={current_usage}/{limit}")
+                                
+                                if current_usage >= limit:
+                                    logger.warning(f"[GENERIC_VIEW] [LIMIT_BLOCKED] user_id={user_id} exceeded limit {current_usage}/{limit}")
+                                    raise ValueError(f"⛔ Bạn đã đạt giới hạn hôm nay ({limit}/{limit})!")
 
-                    # 2. APPLY REWARDS
-                    rewards = btn_config.get("rewards", [])
-                    acquired_txt = []
-                    fail_msg = None  # Track fail message from first failed reward
-                    
-                    for r in rewards:
-                        # Rarity Check
-                        if random.random() > r.get("rate", 1.0):
-                            # Capture fail message if provided
-                            if not fail_msg and r.get("fail_msg"):
-                                fail_msg = r.get("fail_msg")
-                            continue
-                            
-                        rtype = r.get("type")
-                        rkey = r.get("key")
-                        ramount = r.get("amount", 1)
-                        
-                        if rtype == "item":
-                            # CRITICAL FIX: "seeds" is currency, not inventory item
-                            if rkey == "seeds":
-                                # MUST use raw SQL - add_seeds() opens its own transaction!
-                                reason = f"event_reward_{self.manager.current_event['key']}"
+                            # 1. CHECK & PAY COST
+                            cost = btn_config.get("cost", {})
+                            # A. Money Cost
+                            money_cost = cost.get("money", 0)
+                            if money_cost > 0:
+                                cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+                                row = await cursor.fetchone()
+                                current_bal = row[0] if row else 0
+                                
+                                if current_bal < money_cost:
+                                     raise ValueError(f"Không đủ tiền! Cần {money_cost} Hạt.")
+                                     
                                 await conn.execute(
-                                    "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                                    (ramount, user_id)
+                                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                                    (money_cost, user_id)
                                 )
+                                # Manual Log for ACID Transaction
                                 await conn.execute(
                                     "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                                    (user_id, ramount, reason, "fishing")
+                                    (user_id, -money_cost, f"event_buy_{btn_config.get('label', 'generic')}", "fishing")
                                 )
-                                acquired_txt.append(f"{ramount:,} Hạt 💰")
-                                logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event {self.manager.current_event['key']}")
-                            else:
-                                # Regular item
-                                await self.manager.bot.inventory.modify(user_id, rkey, ramount)
-                                name = self._get_item_name(rkey)
-                                acquired_txt.append(f"{ramount} {name}")
                             
-                        elif rtype == "money":
-                            # MUST use raw SQL - add_seeds() opens its own transaction!
-                            reason = f"event_reward_{rkey}" if rkey else f"event_reward_{self.manager.current_event['key']}"
-                            await conn.execute(
-                                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                                (ramount, user_id)
-                            )
-                            await conn.execute(
-                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                                (user_id, ramount, reason, "fishing")
-                            )
-                            acquired_txt.append(f"{ramount:,} Hạt 💰")
-                            logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event")
+                            # B. Item Cost (Barter)
+                            item_input = cost.get("item") # { "key": "trash_01", "amount": 1 }
+                            item_type_input = cost.get("item_type") # { "type": "trash", "amount": 10 }
                             
-                        elif rtype == "buff":
-                            duration = r.get("duration", 10)
-                            cog = self.manager.bot.get_cog("FishingCog")
-                            name = rkey
-                            if cog:
-                                await cog.emotional_state_manager.apply_emotional_state(user_id, rkey, duration)
-                                # Note: No .states dict anymore after DB refactor - use rkey as name
+                            if item_input:
+                                req_key = item_input.get("key")
+                                req_amt = item_input.get("amount", 1)
+                                if req_key and req_amt > 0:
+                                    cursor = await conn.execute(
+                                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                        (user_id, req_key)
+                                    )
+                                    row = await cursor.fetchone()
+                                    start_qty = row[0] if row else 0
+                                    
+                                    if start_qty < req_amt:
+                                        raise ValueError(f"Không đủ vật phẩm! Cần {req_amt} {req_key}.")
+                                    
+                                    await conn.execute(
+                                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                        (req_amt, user_id, req_key)
+                                    )
+
+                            elif item_type_input:
+                                req_type = item_type_input.get("type")
+                                req_amt = item_type_input.get("amount", 10)
                                 
-                            acquired_txt.append(f"Buff {name} ({duration}p)")
+                                if req_type and req_amt > 0:
+                                    # 1. Load Item Definitions to find keys
+                                    valid_keys = []
+                                    try:
+                                        # Import locally if needed or reuse ALL_ITEMS_DATA
+                                        valid_keys = [k for k, v in ALL_ITEMS_DATA.items() if v.get("type") == req_type]
+                                    except Exception as e:
+                                        logger.error(f"Failed to filter items: {e}")
+                                        raise ValueError("Lỗi hệ thống: Không tìm thấy vật phẩm.")
+                                    
+                                    if not valid_keys:
+                                        raise ValueError(f"Không tìm thấy loại vật phẩm '{req_type}' trong hệ thống.")
+
+                                    # 2. Check User Inventory for ANY of these keys
+                                    placeholders = ','.join('?' for _ in valid_keys)
+                                    query = f"SELECT item_id, quantity FROM inventory WHERE user_id = ? AND item_id IN ({placeholders})"
+                                    params = [user_id] + valid_keys
+                                    
+                                    cursor = await conn.execute(query, params)
+                                    rows = await cursor.fetchall()
+                                    
+                                    total_qty = sum(r[1] for r in rows)
+                                    if total_qty < req_amt:
+                                        raise ValueError(f"Không đủ vật phẩm loại '{req_type}'! Cần {req_amt} (Có {total_qty}).")
+                                    
+                                    # 3. Deduct Items
+                                    remaining_deduct = req_amt
+                                    for i_id, i_qty in rows:
+                                        if remaining_deduct <= 0: break
+                                        deduct_amt = min(remaining_deduct, i_qty)
+                                        
+                                        await conn.execute(
+                                            "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                            (deduct_amt, user_id, i_id)
+                                        )
+                                        remaining_deduct -= deduct_amt
+                                    
+                                    await conn.execute(
+                                        "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
+                                        (user_id,)
+                                    )
+
+                            # 2. APPLY REWARDS
+                            rewards = btn_config.get("rewards", [])
+                            acquired_txt = []
+                            fail_msg = None  # Track fail message from first failed reward
                             
-                    # 3. INCREMENT LIMIT COUNTER
-                    if limit > 0:
-                         await conn.execute(
-                            """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
-                               VALUES (?, 'global_event', ?, 1)
-                               ON CONFLICT(user_id, game_id, stat_key) 
-                               DO UPDATE SET value = value + 1""",
-                            (user_id, unique_limit_key)
-                        )
+                            for r in rewards:
+                                # Rarity Check
+                                if random.random() > r.get("rate", 1.0):
+                                    # Capture fail message if provided
+                                    if not fail_msg and r.get("fail_msg"):
+                                        fail_msg = r.get("fail_msg")
+                                    continue
+                                    
+                                rtype = r.get("type")
+                                rkey = r.get("key")
+                                ramount = r.get("amount", 1)
+                                
+                                if rtype == "item":
+                                    # CRITICAL FIX: "seeds" is currency, not inventory item
+                                    if rkey == "seeds":
+                                        # MUST use raw SQL - add_seeds() opens its own transaction!
+                                        reason = f"event_reward_{self.manager.current_event['key']}"
+                                        await conn.execute(
+                                            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                            (ramount, user_id)
+                                        )
+                                        await conn.execute(
+                                            "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                            (user_id, ramount, reason, "fishing")
+                                        )
+                                        acquired_txt.append(f"{ramount:,} Hạt 💰")
+                                        logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event {self.manager.current_event['key']}")
+                                    else:
+                                        # Regular item
+                                        await self.manager.bot.inventory.modify(user_id, rkey, ramount)
+                                        name = self._get_item_name(rkey)
+                                        acquired_txt.append(f"{ramount} {name}")
+                                    
+                                elif rtype == "money":
+                                    # MUST use raw SQL - add_seeds() opens its own transaction!
+                                    reason = f"event_reward_{rkey}" if rkey else f"event_reward_{self.manager.current_event['key']}"
+                                    await conn.execute(
+                                        "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                        (ramount, user_id)
+                                    )
+                                    await conn.execute(
+                                        "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                        (user_id, ramount, reason, "fishing")
+                                    )
+                                    acquired_txt.append(f"{ramount:,} Hạt 💰")
+                                    logger.info(f"[GENERIC_VIEW] User {user_id} got {ramount} seeds from event")
+                                    
+                                elif rtype == "buff":
+                                    duration = r.get("duration", 10)
+                                    cog = self.manager.bot.get_cog("FishingCog")
+                                    name = rkey
+                                    if cog:
+                                        await cog.emotional_state_manager.apply_emotional_state(user_id, rkey, duration)
+                                        # Note: No .states dict anymore after DB refactor - use rkey as name
+                                        
+                                    acquired_txt.append(f"Buff {name} ({duration}p)")
+                                    
+                            # 3. INCREMENT LIMIT COUNTER
+                            if limit > 0:
+                                 await conn.execute(
+                                    """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
+                                       VALUES (?, 'global_event', ?, 1)
+                                       ON CONFLICT(user_id, game_id, stat_key) 
+                                       DO UPDATE SET value = value + 1""",
+                                    (user_id, unique_limit_key)
+                                )
+                            
+                            # Transaction auto-commits on success (no manual commit needed)
+                            
+                            # 4. MESSAGE (Win or Loss)
+                            if acquired_txt:
+                                # WIN - Show success message
+                                msg = btn_config.get("message", "Thành công!")
+                                msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
+                                await interaction.followup.send(f"✅ {msg}", ephemeral=True)
+                                
+                                # PUBLIC BROADCAST (Only on win)
+                                public_msg = btn_config.get("public_message")
+                                if public_msg:
+                                    formatted_msg = public_msg.replace("{user}", f"<@{user_id}>")
+                                    reward_str = ", ".join(acquired_txt)
+                                    formatted_msg = formatted_msg.replace("{reward}", reward_str)
+                                    await interaction.channel.send(formatted_msg)
+                            else:
+                                # LOSS - Send ephemeral ACK first
+                                loss_msg = fail_msg or "⚠️ Bạn không nhận được gì cả... (Xui quá!)"
+                                await interaction.followup.send(f"❌ {loss_msg}", ephemeral=True)
+                                
+                                # Then PUBLIC SHAME for everyone to laugh
+                                public_loss_msg = f"😂 **<@{user_id}>** đã thua! {loss_msg}"
+                                await interaction.channel.send(public_loss_msg)
+                                
+                        except ValueError as ve:
+                            # Validation error (not enough items/money) - NOT a system error
+                            logger.warning(f"[GENERIC_VIEW] Validation failed for user {user_id}: {ve}")
+                            await interaction.followup.send(f"⚠️ {ve}", ephemeral=True)
+                            return  # Transaction auto-rollbacks, no need to raise
+            except asyncio.TimeoutError:
+                logger.error(f"[GENERIC_VIEW] [CRITICAL] DB Transaction Timeout for user {user_id}")
+                await interaction.followup.send("⚠️ Hệ thống đang bận (DB Locked). Vui lòng thử lại sau giây lát!", ephemeral=True)
+                return
                     
-                    # Transaction auto-commits on success (no manual commit needed)
-                    
-                    # 4. MESSAGE (Win or Loss)
-                    if acquired_txt:
-                        # WIN - Show success message
-                        msg = btn_config.get("message", "Thành công!")
-                        msg += "\n🎁 Nhận: " + ", ".join(acquired_txt)
-                        await interaction.followup.send(f"✅ {msg}", ephemeral=True)
-                        
-                        # PUBLIC BROADCAST (Only on win)
-                        public_msg = btn_config.get("public_message")
-                        if public_msg:
-                            formatted_msg = public_msg.replace("{user}", f"<@{user_id}>")
-                            reward_str = ", ".join(acquired_txt)
-                            formatted_msg = formatted_msg.replace("{reward}", reward_str)
-                            await interaction.channel.send(formatted_msg)
-                    else:
-                        # LOSS - Send ephemeral ACK first
-                        loss_msg = fail_msg or "⚠️ Bạn không nhận được gì cả... (Xui quá!)"
-                        await interaction.followup.send(f"❌ {loss_msg}", ephemeral=True)
-                        
-                        # Then PUBLIC SHAME for everyone to laugh
-                        public_loss_msg = f"😂 **<@{user_id}>** đã thua! {loss_msg}"
-                        await interaction.channel.send(public_loss_msg)
-                        
-                except ValueError as ve:
-                    # Validation error (not enough items/money) - NOT a system error
-                    logger.warning(f"[GENERIC_VIEW] Validation failed for user {user_id}: {ve}")
-                    await interaction.followup.send(f"⚠️ {ve}", ephemeral=True)
-                    return  # Transaction auto-rollbacks, no need to raise
-                    
-                except Exception as e:
+        except Exception as e:
                     # Real system errors only
                     logger.error(f"[GENERIC_VIEW] System error for user {user_id}: {type(e).__name__}: {e}", exc_info=True)
                     raise e

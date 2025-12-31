@@ -148,6 +148,11 @@ class FishingCog(commands.Cog):
         
         # Start Global Event Manager
         self.global_event_manager.start()
+
+        # ==================== WATCHDOG: LOCK MONITORING ====================
+        # Track when locks were acquired to detect deadlocks
+        self.lock_timestamps = {}  # {user_id: timestamp_float}
+        self.clean_stuck_locks.start()  # Start background task
         
         # Start state cleanup task (prevents memory leaks)
         self.cleanup_stale_state.start()
@@ -328,6 +333,33 @@ class FishingCog(commands.Cog):
     async def before_cleanup(self):
         """Wait for bot to be ready before starting cleanup task."""
         await self.bot.wait_until_ready()
+
+    @tasks.loop(seconds=60)
+    async def clean_stuck_locks(self):
+        """Watchdog: Force release locks held for too long (deadlock prevention)."""
+        current_time = time.time()
+        stuck_users = []
+        
+        # Identify stuck users
+        for user_id, timestamp in self.lock_timestamps.items():
+            duration = current_time - timestamp
+            if duration > 30:  # Lock held for > 30 seconds
+                stuck_users.append((user_id, duration))
+        
+        # Force release
+        for user_id, duration in stuck_users:
+            logger.warning(f"[WATCHDOG] Force releasing lock for {user_id} (Held for {duration:.1f}s)")
+            
+            # Remove timestamp FIRST to prevent loop
+            self.lock_timestamps.pop(user_id, None)
+            
+            # Replace lock object (Old lock is abandoned to the dead task)
+            # New requests will get a fresh lock
+            if user_id in self.user_locks:
+                self.user_locks[user_id] = asyncio.Lock()
+                
+            # Log for admin visibility
+            logger.error(f"[WATCHDOG] 🚨 DEADLOCK DETECTED & CLEARED for user_id={user_id}")
     
     async def _force_meteor_shower(self, user_id: int, channel):
         """Force trigger meteor shower for a specific user"""
@@ -575,7 +607,10 @@ class FishingCog(commands.Cog):
             # ACQUIRE LOCK BEFORE CHECKING COOLDOWN
             # This ensures only ONE execution per user passes through at a time
             async with self.user_locks[user_id]:
+                # [WATCHDOG] Track lock acquisition time
+                self.lock_timestamps[user_id] = time.time()
                 logger.info(f"[FISHING] [DEBUG] Lock acquired for {user_id}")
+                
                 try:
                     # --- CHECK COOLDOWN (Inside Lock) ---
                     remaining = await self.get_fishing_cooldown_remaining(user_id)
@@ -605,7 +640,6 @@ class FishingCog(commands.Cog):
                     # setting it in DB/memory provides double safety for distributed systems if ever expanded)
                 
                     # --- TRIGGER GLOBAL DISASTER (0.05% chance) ---
-                    # --- TRIGGER GLOBAL DISASTER (0.05% chance) ---
                     # Use timeout to prevent hang due to I/O blocking
                     try:
                         logger.info(f"[FISHING] [DEBUG] Checking global disaster for {user_id}")
@@ -632,22 +666,29 @@ class FishingCog(commands.Cog):
                         return
         
                     # --- LOGIC MỚI: AUTO-BUY MỒI NẾU CÓ ĐỦ TIỀN ---
-                    has_worm = inventory.get(ItemKeys.MOI, 0) > 0
-                    auto_bought = False  # Biến check xem có tự mua không
-
-                    # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
-                    if not has_worm:
-                        balance = await get_user_balance(user_id)
-                        if balance >= WORM_COST:
-                            # Tự động trừ tiền coi như mua mồi dùng ngay
-                            await add_seeds(user_id, -WORM_COST, 'auto_buy_worm', 'fishing')
-                            has_worm = True
-                            auto_bought = True
-                            logger.info(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} balance_before={balance} balance_after={balance - WORM_COST}")
-                        else:
-                            # Không có mồi, cũng không đủ tiền -> Chấp nhận câu rác
-                            has_worm = False
-                            logger.info(f"[FISHING] [NO_WORM_NO_MONEY] {username} (user_id={user_id}) has_worm=False balance={balance} < {WORM_COST}")
+                    # [WATCHDOG] Wrap Auto-Buy logic with timeout to prevent DB hangs
+                    try:
+                        async with asyncio.timeout(5.0):
+                            has_worm = inventory.get(ItemKeys.MOI, 0) > 0
+                            auto_bought = False  # Biến check xem có tự mua không
+        
+                            # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
+                            if not has_worm:
+                                balance = await get_user_balance(user_id)
+                                if balance >= WORM_COST:
+                                    # Tự động trừ tiền coi như mua mồi dùng ngay
+                                    await add_seeds(user_id, -WORM_COST, 'auto_buy_worm', 'fishing')
+                                    has_worm = True
+                                    auto_bought = True
+                                    logger.info(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} balance_before={balance} balance_after={balance - WORM_COST}")
+                                else:
+                                    # Không có mồi, cũng không đủ tiền -> Chấp nhận câu rác
+                                    has_worm = False
+                                    logger.info(f"[FISHING] [NO_WORM_NO_MONEY] {username} (user_id={user_id}) has_worm=False balance={balance} < {WORM_COST}")
+                    except asyncio.TimeoutError:
+                         logger.error(f"[FISHING] [CRITICAL] Auto-buy check timed out for {user_id} - assuming no worm")
+                         has_worm = False
+                         auto_bought = False
                     else:
                         # ==================== PASSIVE: NO BAIT LOSS (Level 7 - Chrono Rod) ====================
                         skip_worm_consumption = False
@@ -1962,6 +2003,8 @@ class FishingCog(commands.Cog):
                     # Re-raise to be handled by outer except
                     raise
                 finally:
+                    # [WATCHDOG] Cleanup timestamp
+                    self.lock_timestamps.pop(user_id, None)
                     logger.info(f"[FISHING] [DEBUG] Lock released for {user_id}")
             
             # ==================== SEND NPC VIEW (OUTSIDE LOCK) ====================
