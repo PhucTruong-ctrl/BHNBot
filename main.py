@@ -38,18 +38,8 @@ bot.owner_id = int(os.getenv("OWNER_ID", "0"))  # Load from .env
 bot.cogs_loaded = False  # Flag to track if cogs are already loaded
 
 # Command error handler with timeout monitoring
-@bot.event
-async def on_command_error(ctx, error):
-    """Handle command errors with timeout monitoring."""
-    # Track timeout errors
-    if isinstance(error, asyncio.TimeoutError):
-        timeout_monitor = get_timeout_monitor()
-        timeout_monitor.record_timeout(
-            context="command_execution",
-            user_id=ctx.author.id if ctx.author else None,
-            command=ctx.command.name if ctx.command else "unknown"
-        )
-        logger.error(f"[TIMEOUT] Command timeout: {ctx.command} by user {ctx.author.id}")
+# Command error handler is now managed by core.errors.ErrorHandler (Global Cog)
+# Timeout monitoring logic has been moved there.
 
 # Bot ready event
 @bot.event
@@ -99,6 +89,14 @@ async def load_cogs():
     
     # Load top-level cogs
     # Note: admin cogs are now in cogs/admin/ subdirectory
+    
+    # LOAD CORE EXTENSIONS FIRST
+    try:
+        await bot.load_extension('core.errors')
+        logger.info('Loaded: core.errors (Global Error Handler)')
+    except Exception as e:
+        logger.error(f'Error loading core.errors: {e}')
+
     priority_cogs = []  # No priority cogs currently needed
     
     # Load priority cogs first

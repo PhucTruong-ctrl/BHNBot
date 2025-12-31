@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
-
+from core import checks
 from core.logger import setup_logger
 
 logger = setup_logger("AdminCog", "cogs/admin.log")
@@ -63,7 +63,7 @@ class AdminCog(commands.Cog):
 
     # --- Sync Prefix Command ---
     @commands.command(name="sync", description="Sync slash commands (Owner Only)")
-    @commands.is_owner()
+    @checks.is_owner()
     async def sync_prefix(self, ctx, scope: str = "guild"):
         """Sync all slash commands via prefix command"""
         try:

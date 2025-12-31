@@ -97,3 +97,6 @@ ROD_LEVELS = {
 }
 # Discord Logging Configuration (read from .env)
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+ADMIN_IDS = [int(id_str) for id_str in os.getenv("ADMIN_IDS", "").split(",") if id_str.strip().isdigit()]
+if OWNER_ID and OWNER_ID not in ADMIN_IDS:
+    ADMIN_IDS.append(OWNER_ID)
