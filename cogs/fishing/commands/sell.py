@@ -168,6 +168,36 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
     
     logger.info(f"[SELL] User {user_id} selling {len(fish_to_sell)} fish types for {total_value} seeds")
     
+    # ===== STEP 1.5: CHECK INTERACTIVE EVENTS =====
+    try:
+        from ..mechanics.interactive_sell_events import check_interactive_event, create_interactive_view, create_interactive_embed
+        from ..constants import _sell_events_data
+        
+        event_trigger = await check_interactive_event(
+            user_id, 
+            fish_to_sell, 
+            total_value, 
+            _sell_events_data
+        )
+        
+        if event_trigger:
+            logger.info(f"[SELL] Interactive event triggered: {event_trigger.get('key')}")
+            
+            # Create View and Embed
+            view = create_interactive_view(event_trigger, cog, user_id, fish_to_sell, total_value, ctx_or_interaction)
+            embed = create_interactive_embed(event_trigger, total_value, fish_to_sell)
+            
+            if is_slash:
+                await ctx_or_interaction.followup.send(embed=embed, view=view)
+            else:
+                await ctx_or_interaction.reply(embed=embed, view=view)
+                
+            return # EXIT - View handles the rest
+            
+    except Exception as e:
+        logger.error(f"[SELL] Event check failed: {e}", exc_info=True)
+        # Continue to normal sell if event system fails
+    
     # ===== STEP 2-5: ATOMIC TRANSACTION =====
     try:
         async with db_manager.transaction() as conn:
@@ -176,39 +206,46 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
                 qty_to_sell = item_data['quantity']
                 
                 # Try to deduct - MUST return a row or transaction fails
+                # SQLite syntax: ? placeholders
+                # SQLite does not support RETURNING in older versions, but user says Linux/Python 3.10+ so likely sqlite3 3.35+ which supports RETURNING.
+                # Assuming RETURNING works. If not, we have to SELECT then UPDATE.
+                # Given strict ACID requirement, RETURNING is best.
                 result = await conn.fetchrow(
                     """
                     UPDATE inventory
-                    SET quantity = quantity - $1
-                    WHERE user_id = $2 AND item_id = $3 AND quantity >= $1
+                    SET quantity = quantity - ?
+                    WHERE user_id = ? AND item_id = ? AND quantity >= ?
                     RETURNING quantity
                     """,
-                    (qty_to_sell, user_id, fish_id)
+                    (qty_to_sell, user_id, fish_id, qty_to_sell)
                 )
                 
                 if result is None:
                     # CRITICAL FAILURE: Item not found or insufficient quantity
                     raise ValueError(f"Không đủ cá {fish_id}! (Cần {qty_to_sell}, database không tìm thấy)")
                 
-                logger.info(f"[SELL] Deducted {qty_to_sell}x {fish_id} from user {user_id}, remaining={result['quantity']}")
+                # Check quantity from result tuple (index 0)
+                # Since we fixed InventoryCache to use index 0, we do same here.
+                remaining_qty = result[0]
+                logger.info(f"[SELL] Deducted {qty_to_sell}x {fish_id} from user {user_id}, remaining={remaining_qty}")
                 
                 # Auto-delete if quantity reached 0
-                if result['quantity'] <= 0:
+                if remaining_qty <= 0:
                     await conn.execute(
-                        "DELETE FROM inventory WHERE user_id = $1 AND item_id = $2",
+                        "DELETE FROM inventory WHERE user_id = ? AND item_id = ?",
                         (user_id, fish_id)
                     )
                     logger.info(f"[SELL] Deleted depleted item {fish_id} for user {user_id}")
             
             # STEP 4: ADD MONEY (only if step 3 succeeded)
             await conn.execute(
-                "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
+                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
                 (total_value, user_id)
             )
             
             # Transaction log
             await conn.execute(
-                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
+                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
                 (user_id, total_value, 'sell_fish', 'fishing')
             )
             
