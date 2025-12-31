@@ -922,7 +922,11 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
 
 
         if seed_updates:
-            await batch_update_seeds(seed_updates, reason='xi_dach_win', category='xidach')
+            try:
+                await batch_update_seeds(seed_updates, reason='xi_dach_win', category='xidach')
+            except Exception as e:
+                logger.error(f"[FINISH_GAME] Batch update failed: {e}", exc_info=True)
+                await channel.send(f"⚠️ **Lỗi cộng tiền:** {e} (Hãy báo admin kiểm tra!)")
 
         try:
             # Build detailed text summary (Bau Cua Style)

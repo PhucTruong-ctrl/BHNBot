@@ -56,15 +56,10 @@ async def batch_update_seeds(updates: Dict[int, int]):
     Example:
         >>> await batch_update_seeds({12345: 100, 67890: -50})
     """
-    operations = [
-        (
-            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-            (amount, user_id)
-        )
-        for user_id, amount in updates.items()
-    ]
+    sql = "UPDATE users SET seeds = seeds + ? WHERE user_id = ?"
+    params = [(amount, user_id) for user_id, amount in updates.items()]
     
-    await db_manager.batch_modify(operations)
+    await db_manager.executemany(sql, params)
 
 
 # ==================== TREE QUERIES ====================

@@ -626,5 +626,14 @@ class InteractiveSellEventView(discord.ui.View):
                 f"value={final_value} choice={safest_choice.get('id', 'unknown')} consumed={consume_items}"
             )
             
+        except ValueError as ve:
+            # Race Condition: Items already sold or removed
+            logger.warning(f"[INTERACTIVE_SELL] Timeout warning: {ve}")
+            try:
+                await self.ctx.channel.send(f"⚠️ **Giao dịch tự động thất bại:** {ve} (Có thể bạn đã bán trước đó)", delete_after=10)
+            except:
+                pass
+            return
+
         except Exception as e:
             logger.error(f"[INTERACTIVE_SELL_TIMEOUT_ERROR] {e}", exc_info=True)
