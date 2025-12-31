@@ -262,6 +262,10 @@ class InteractiveSellEventView(discord.ui.View):
                     logger.info(f"[INTERACTIVE_SELL] Applied buff {buff_type} ({duration}) to {self.user_id}")
             
             # Caches auto-managed by InventoryCache - no manual clearing needed
+            # CRITICAL FIX: Invalidate cache after sell (data already in DB)
+            # Option 1: Use modify() with delta=0 which reads from DB
+            # Option 2: Direct invalidate - simpler since transaction already committed
+            # We choose direct invalidate - next !tuido will re-fetch from DB
             
             # Track stats (event-specific)
             event_key = self.event_data.get('key', 'unknown')

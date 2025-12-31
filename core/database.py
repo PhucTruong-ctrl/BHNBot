@@ -195,7 +195,7 @@ class DatabaseManager:
                 raise e
 
 
-    async def fetch(self, sql: str, *params_to_pass):
+    async def fetch(self, sql: str, *args):
         """Fetch all rows as Record objects (asyncpg native)."""
         if not self.pool:
             await self.connect()
@@ -288,7 +288,7 @@ class _TransactionProxy:
 
     async def modify(self, sql: str, parameters: Tuple = ()) -> str:
         """Alias for execute to maintain compatibility."""
-        return await self.execute(sql, *params_to_pass)
+        return await self.execute(sql, *args)
 
 # Global Instance
 db_manager = DatabaseManager()

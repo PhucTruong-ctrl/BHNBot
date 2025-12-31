@@ -246,40 +246,40 @@ class InteractiveNPCView(discord.ui.View):
             msg_extra = f"\n⚪ **Nhận:** {amt} Ngọc Trai"
             await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
-                VALUES (?, 'ngoc_trai', ?)
+                VALUES ($1, 'ngoc_trai', $2)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = quantity + $1
+            """, (self.user_id, amt))
         
         elif reward_type == "worm":
             amt = result.get("amount", 0)
             msg_extra = f"\n🪱 **Nhận:** {amt} Mồi Câu"
             await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
-                VALUES (?, 'moicau', ?)
+                VALUES ($1, 'moicau', $2)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = quantity + $1
+            """, (self.user_id, amt))
             
         elif reward_type == "vat_lieu_nang_cap":
             amt = result.get("amount", 1)
             msg_extra = f"\n⚙️ **Nhận:** {amt} Vật Liệu"
             await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
-                VALUES (?, 'vat_lieu_nang_cap', ?)
+                VALUES ($1, 'vat_lieu_nang_cap', $2)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = quantity + $1
+            """, (self.user_id, amt))
             
         elif reward_type == "chest":
                 amt = result.get("amount", 1)
                 msg_extra = f"\n🎁 **Nhận:** {amt} Rương Kho Báu"
                 await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, quantity) 
-                VALUES (?, 'ruong_kho_bau', ?)
+                VALUES ($1, 'ruong_kho_bau', $2)
                 ON CONFLICT(user_id, item_id) 
-                DO UPDATE SET quantity = quantity + ?
-            """, (self.user_id, amt, amt))
+                DO UPDATE SET quantity = quantity + $1
+            """, (self.user_id, amt))
 
 
         # POST-COMMIT EFFECTS

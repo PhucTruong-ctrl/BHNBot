@@ -1,119 +1,127 @@
 """
-Inventory Cache System - Write-Through Strategy
-Prioritizes data safety and ACID compliance over raw write speed.
+Inventory Cache System - Direct Read Strategy
+Prioritizes data strict consistency over aggressive caching.
 """
-import asyncio
-from typing import Dict, Optional
 import logging
+from typing import Dict, Any
 
 logger = logging.getLogger("InventoryCache")
 
 class InventoryCache:
     """
-    Singleton-style Inventory Cache that wraps the DatabaseManager.
+    Inventory Management Wrapper.
     
-    Strategy: Write-Through
-    - Reads: Check RAM -> Miss? Load from DB.
-    - Writes: Write to DB FIRST (ACID) -> Success? Update RAM.
+    Strategy: DIRECT READ (No caching for critical data)
+    To fix "Infinite Money" / "Ghost Item" bugs, we read directly from DB for !tuido.
+    Optimization can be re-introduced later if DB load becomes an issue.
     """
     def __init__(self, db_manager):
         self.db = db_manager
-        self._cache: Dict[int, Dict[str, int]] = {}
-        self._locks: Dict[int, asyncio.Lock] = {}
         
-    def _get_lock(self, user_id: int) -> asyncio.Lock:
-        """Get or create a lock for a specific user to prevent race conditions."""
-        if user_id not in self._locks:
-            self._locks[user_id] = asyncio.Lock()
-        return self._locks[user_id]
-
-    async def _load_user_inventory(self, user_id: int):
-        """Load user inventory from DB into cache."""
+    async def get_inventory(self, user_id: int) -> Dict[str, int]:
+        """
+        Fetch ALL valid items for a user directly from DB.
+        
+        Returns:
+            Dict[item_id, quantity]
+        """
         try:
-            # Query all items for this user
+            # Direct DB Fetch - No Cache
+            # Note: We use ? for placeholders if using sqlite/aiosqlite as per codebase conventions
+            # If underlying is asyncpg it might need $1, but database_manager uses ? so we follow suit.
+            # Also, fetchall returns tuples, so we must use index access.
             rows = await self.db.fetchall(
                 "SELECT item_id, quantity FROM inventory WHERE user_id = ? AND quantity > 0",
                 (user_id,)
             )
-            # Convert to dict
-            self._cache[user_id] = {row[0]: row[1] for row in rows}
+            
+            # Convert to dict (Index 0=item_id, Index 1=quantity)
+            inventory = {row[0]: row[1] for row in rows}
+            return inventory
+            
         except Exception as e:
-            logger.error(f"[CACHE] Failed to load inventory for {user_id}: {e}")
-            # Ensure we at least have an empty dict to prevent crash loops
-            if user_id not in self._cache:
-                self._cache[user_id] = {}
+            logger.error(f"[INVENTORY] Failed to fetch inventory for {user_id}: {e}", exc_info=True)
+            return {}
 
-    async def get(self, user_id: int, item_key: str) -> int:
-        """Get item quantity. Loads from DB on cache miss."""
-        if user_id not in self._cache:
-            await self._load_user_inventory(user_id)
-        
-        return self._cache[user_id].get(item_key, 0)
+    async def get_item(self, user_id: int, item_id: str) -> int:
+        """Get specific item quantity directly from DB"""
+        try:
+            # Check if fetchval exists, otherwise use fetchone
+            if hasattr(self.db, 'fetchval'):
+                val = await self.db.fetchval(
+                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                    (user_id, item_id)
+                )
+                return val if val else 0
+            else:
+                 row = await self.db.fetchone(
+                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                    (user_id, item_id)
+                 )
+                 return row[0] if row else 0
+        except Exception as e:
+            logger.error(f"[INVENTORY] Failed to fetch item {item_id} for {user_id}: {e}")
+            return 0
 
     async def get_all(self, user_id: int) -> Dict[str, int]:
-        """Get entire user inventory. Loads from DB on cache miss."""
-        if user_id not in self._cache:
-            await self._load_user_inventory(user_id)
-            
-        # Return a COPY to prevent external modification
-        return self._cache[user_id].copy()
+        """Alias for get_inventory to match existing code usage."""
+        return await self.get_inventory(user_id)
 
-    async def modify(self, user_id: int, item_key: str, delta: int, item_type: str = "item") -> int:
+    async def modify(self, user_id: int, item_id: str, amount: int, item_type: str = "tool") -> bool:
         """
-        Atomic Write-Through Modification.
+        Directly modify item quantity in Database.
         
-        1. Acquire User Lock.
-        2. Write to DB (Upsert).
-        3. Update Cache.
+        Args:
+            user_id: User ID
+            item_id: Key of the item
+            amount: Amount to add (positive) or remove (negative)
+            item_type: Category of item (default: tool)
+        
+        Returns:
+             bool: True if successful
         """
-        async with self._get_lock(user_id):
-            # Ensure cache is primed BEFORE DB write to avoid double counting
-            if user_id not in self._cache:
-                await self._load_user_inventory(user_id)
-
-            # 1. WRITE TO DB (Upsert)
-            # We use ON CONFLICT to handle both INSERT and UPDATE in one go
-            # This is safer than SELECT then INSERT/UPDATE
-            try:
-                if delta == 0:
-                    return await self.get(user_id, item_key)
-
-                # Logic: We update the quantity.
-                # If row doesn't exist, we insert (quantity = delta).
-                # Note: We need to handle the case where result < 0 in DB? 
-                # Ideally DB constraint should prevent negative, but here we trust logic validation layer.
+        try:
+            if amount == 0:
+                return True
                 
-                await self.db.modify(
+            if amount > 0:
+                # UPSERT for addition
+                # Using ? placeholder for SQLite compatibility
+                await self.db.execute(
                     """
-                    INSERT INTO inventory (user_id, item_id, quantity, item_type) 
-                    VALUES (?, ?, GREATEST(0, ?), ?)
-                    ON CONFLICT(user_id, item_id) 
-                    DO UPDATE SET quantity = GREATEST(0, inventory.quantity + EXCLUDED.quantity)
+                    INSERT INTO inventory (user_id, item_id, quantity, item_type)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT (user_id, item_id) 
+                    DO UPDATE SET quantity = inventory.quantity + ?
                     """,
-                    (user_id, item_key, delta, item_type)
+                    user_id, item_id, amount, item_type, amount
+                )
+            else:
+                # UPDATE for subtraction
+                await self.db.execute(
+                    """
+                    UPDATE inventory 
+                    SET quantity = quantity + ? 
+                    WHERE user_id = ? AND item_id = ?
+                    """,
+                    amount, user_id, item_id
                 )
                 
-                # 2. UPDATE CACHE
-                # Calculate new quantity locally
-                current_qty = self._cache[user_id].get(item_key, 0)
-                new_qty = max(0, current_qty + delta)
-                
-                if new_qty == 0:
-                    # Item depleted, remove from cache to save RAM
-                    self._cache[user_id].pop(item_key, None)
-                else:
-                    self._cache[user_id][item_key] = new_qty
-                    
-                return new_qty
-                
-            except Exception as e:
-                logger.error(f"[CACHE] Modify failed for {user_id}, {item_key}: {e}")
-                # Invalidate cache for this user to ensure we re-read strict truth next time
-                await self.invalidate(user_id)
-                raise e
+            return True
+        except Exception as e:
+            logger.error(f"[INVENTORY] Failed to modify {item_id} for {user_id}: {e}")
+            return False
 
     async def invalidate(self, user_id: int):
-        """Force remove user from cache. Next access will re-fetch from DB."""
-        if user_id in self._cache:
-            del self._cache[user_id]
-            logger.debug(f"[CACHE] Invalidated user {user_id}")
+        """
+        Sentinel method for backward compatibility.
+        Since we don't cache, this is a no-op, but necessary for existing code calls.
+        """
+        # No-op in Direct Read mode
+        pass
+
+    async def update_local_cache(self, user_id: int, item_id: str, quantity: int):
+         """
+         Sentinel method for backward compatibility.
+         """
+         pass

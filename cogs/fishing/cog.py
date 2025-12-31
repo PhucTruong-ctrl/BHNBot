@@ -95,22 +95,33 @@ class FishingCog(commands.Cog):
         # self.lucky_buff_users = {} -> Migrated to DB
         self.avoid_event_users = {} # Keep as RAM (session based?) or migrate? For now keep.
         
-        # Initialize Global Event Manager
-        self.global_event_manager = GlobalEventManager(self.bot)
-        # self.legendary_buff_users = {}  -> Migrated to DB
+        
+        # Initialize Inventory Cache System (Direct DB Read)
+        # We attach it to bot globally so other cogs (like economy) can use it if needed
+        # but also keep a ref here for convenience.
+        from core.inventory_cache import InventoryCache
+        if not hasattr(self.bot, 'inventory'):
+             self.bot.inventory = InventoryCache(db_manager)
+        self.inventory = self.bot.inventory
+        
+        
+        # Initialize Emotional State Manager
+        self.emotional_state_manager = EmotionalStateManager()
+        
+        # Initialize Locks
+        self.user_locks = {}
         
         # Initialize Global Event Manager
         self.global_event_manager = GlobalEventManager(self.bot)
+
+        # self.legendary_buff_users = {}  -> Migrated to DB
+        
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
         self.guaranteed_catch_users = {}  # {user_id: True} - Keep RAM for now (tinh cau win)
         
         # User locks removed in favor of DB transactions
         # self.user_locks = {}  -> Removed
-        
-        # Emotional state tracking (delegated to EmotionalStateManager)
-        # Manager is now stateless/DB-backed
-        self.emotional_state_manager = EmotionalStateManager()
-        # self.emotional_states = ... REMOVED
+
         
         # Legendary summoning tracking (sacrifice count now persisted in database)
         self.dark_map_active = {}  # {user_id: True/False} - For Cthulhu Non
@@ -1997,6 +2008,11 @@ class FishingCog(commands.Cog):
                         channel
                     )
 
+                    # CRITICAL FIX: Skip NPC if user is selling to prevent race condition
+                    if user_id in self.sell_processing:
+                        logger.info(f"[NPC] Skipped NPC {npc_type} for user {user_id} (currently selling)")
+                        return
+
                     npc_msg = await channel.send(content=f"<@{user_id}> 🔥 **SỰ KIỆN NPC!**", embed=npc_embed, view=npc_view)
                     npc_view.message = npc_msg
                     logger.info(f"[NPC] Sent NPC View for {npc_type} to user {user_id} (OUTSIDE lock)")
@@ -2057,16 +2073,9 @@ class FishingCog(commands.Cog):
         await self._sell_fish_action(ctx, fish_types)
     
     async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None):
-        try:
         """Sell all fish or specific types logic. Delegate to commands module."""
-            logger.info(f"[DEBUG] _sell_fish_action START: fish_types={fish_types}")
         logger.info("[DEBUG] Delegating to _sell_fish_impl")
-        result = await _sell_fish_impl(self, ctx_or_interaction, fish_types)
-            logger.info(f"[DEBUG] _sell_fish_impl completed")
-            return result
-        except Exception as e:
-            logger.error(f"[SELL] [CRITICAL] Exception in _sell_fish_action: {e}", exc_info=True)
-            raise
+        return await _sell_fish_impl(self, ctx_or_interaction, fish_types)
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")
     @app_commands.describe(amount="Số lượng rương muốn mở (mặc định 1)")
