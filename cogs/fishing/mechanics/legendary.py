@@ -445,8 +445,6 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     cog.dark_map_active[user_id] = False
                     cog.dark_map_casts[user_id] = 0
                     cog.dark_map_cast_count[user_id] = 0
-                    # [CACHE] Use bot.inventory.modify
-                    await cog.bot.inventory.modify(user_id, "ban_do_ham_am", -1)
                     return legendary
                 elif current_cast < 10:
                     # Casts 1-9: Random spawn chance
@@ -455,8 +453,6 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                         cog.dark_map_active[user_id] = False
                         cog.dark_map_casts[user_id] = 0
                         cog.dark_map_cast_count[user_id] = 0
-                        # [CACHE] Use bot.inventory.modify
-                        await cog.bot.inventory.modify(user_id, "ban_do_ham_am", -1)
                         return legendary
                 elif cog.dark_map_casts[user_id] <= 0:
                     # Map expired (should not happen with 10 casts, but safety check)

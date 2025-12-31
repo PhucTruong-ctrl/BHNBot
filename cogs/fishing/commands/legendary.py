@@ -129,9 +129,9 @@ async def legendary_hall_of_fame_action(cog, ctx_or_interaction, is_slash: bool)
     legendary_catches = {}
     try:
         # 1. Fetch standard legislative fish from fish_collection
-        # Use fetch and $n placeholders
+        # Use fetch and ? placeholders
         rows = await db_manager.fetch(
-            "SELECT user_id, fish_id FROM fish_collection WHERE fish_id IN ($1, $2, $3, $4, $5)",
+            "SELECT user_id, fish_id FROM fish_collection WHERE fish_id IN (?, ?, ?, ?, ?)",
             'thuong_luong', 'ca_ngan_ha', 'ca_phuong_hoang', 'cthulhu_con', 'ca_voi_52hz'
         )
         

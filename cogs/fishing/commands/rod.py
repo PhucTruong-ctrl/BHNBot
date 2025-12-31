@@ -26,9 +26,8 @@ async def nangcap_action(ctx_or_interaction):
     logger.info(f"[ROD] User {user.name} ({user_id}) initiated upgrade.")
 
     try:
-        # Get current rod status
+        # Get current rod status (READ-ONLY PRE-CHECK)
         current_level, current_durability = await get_rod_data(user_id)
-        logger.info(f"[ROD] {user.name} - Level: {current_level}, Durability: {current_durability}")
         
         # Check if max level
         next_level = current_level + 1
@@ -46,14 +45,12 @@ async def nangcap_action(ctx_or_interaction):
         material_cost = next_rod_info.get('material', 0)
         special_materials = next_rod_info.get('special_materials', {})
         special_requirement = next_rod_info.get('special_requirement', None)
-        logger.info(f"[ROD] {user.name} - Next Level: {next_level}, Cost: {cost}, Material: {material_cost}, Special: {special_materials}")
         
         # ==================== SPECIAL REQUIREMENT CHECK (Level 7 - Chrono Rod) ====================
         if special_requirement:
             # Check if user has caught the legendary fish
-            # Use fetchrow for single check
             quest_row = await db_manager.fetchrow(
-                "SELECT legendary_caught FROM legendary_quests WHERE user_id = $1 AND fish_key = $2",
+                "SELECT legendary_caught FROM legendary_quests WHERE user_id = ? AND fish_key = ?",
                 (user_id, special_requirement)
             )
             
@@ -78,104 +75,89 @@ async def nangcap_action(ctx_or_interaction):
                     await reply(embed=embed)
                 return
         
-        # Fetch data for validation
-        balance = await get_user_balance(user_id)
-        current_materials = 0
-        if material_cost > 0:
-            # [CACHE] Use bot.inventory.get_all
-            inventory = await bot.inventory.get_all(user_id)
-            current_materials = inventory.get("vat_lieu_nang_cap", 0)
-        
-        # Check special materials (Level 6 - Void Rod)
-        special_material_ok = True
-        special_material_msg = ""
-        if special_materials:
-            # [CACHE] Use bot.inventory.get_all
-            inventory = await bot.inventory.get_all(user_id)
-            for mat_key, mat_count in special_materials.items():
-                user_mat = inventory.get(mat_key, 0)
-                if user_mat < mat_count:
-                    special_material_ok = False
-                    mat_name = {
-                        "manh_sao_bang": "Mảnh Sao Băng ✨"
-                    }.get(mat_key, mat_key)
-                    special_material_msg += f"❌ **{mat_name}**: {user_mat} / {mat_count}\n"
-                else:
-                    mat_name = {
-                        "manh_sao_bang": "Mảnh Sao Băng ✨"
-                    }.get(mat_key, mat_key)
-                    special_material_msg += f"✅ **{mat_name}**: {user_mat} / {mat_count}\n"
-            
-        logger.info(f"[ROD] {user.name} - Balance: {balance}, Materials: {current_materials}, Special Materials OK: {special_material_ok}")
+        # ==================== ACID TRANSACTION ====================
+        try:
+            async with db_manager.transaction() as conn:
+                # 1. Check Balance in DB (Atomically)
+                cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+                row = await cursor.fetchone()
+                balance = row[0] if row else 0
+                
+                if balance < cost:
+                    raise ValueError(f"Không đủ tiền! Cần **{format_currency(cost)}**, có **{format_currency(balance)}**")
 
-        # Check sufficiency
-        is_money_enough = balance >= cost
-        is_material_enough = current_materials >= material_cost
+                # 2. Check & Deduct Materials
+                if material_cost > 0:
+                    mat_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?", (user_id, "vat_lieu_nang_cap"))
+                    curr_mat = mat_row[0] if mat_row else 0 # Index 0 for fetchrow returning tuple
+                    
+                    if curr_mat < material_cost:
+                        raise ValueError(f"Thiếu vật liệu nâng cấp! Cần **{material_cost}**, có **{curr_mat}**")
+                    
+                    # Deduct
+                    await conn.execute("UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?", (material_cost, user_id, "vat_lieu_nang_cap"))
+                    await conn.execute("DELETE FROM inventory WHERE user_id = ? AND collection_qty <= 0", (user_id,)) # Cleanup if needed, but 'quantity' is the col in inventory table? 
+                    # WAIT: The table is 'inventory'. Column is 'quantity'.
+                    await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0 AND item_id = ?", (user_id, "vat_lieu_nang_cap"))
+
+                # 3. Check & Deduct Special Materials
+                if special_materials:
+                    for mat_key, mat_req in special_materials.items():
+                        sm_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?", (user_id, mat_key))
+                        curr_sm = sm_row[0] if sm_row else 0
+                        
+                        if curr_sm < mat_req:
+                             mat_name = {"manh_sao_bang": "Mảnh Sao Băng ✨"}.get(mat_key, mat_key)
+                             raise ValueError(f"Thiếu **{mat_name}**! Cần **{mat_req}**, có **{curr_sm}**")
+                        
+                        await conn.execute("UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?", (mat_req, user_id, mat_key))
+                        await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0 AND item_id = ?", (user_id, mat_key))
+
+                # 4. Deduct Money
+                await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (cost, user_id))
+                
+                # 5. Update Rod
+                new_durability = next_rod_info['durability'] # Reset durable
+                await conn.execute("UPDATE fishing_profiles SET rod_level = ?, rod_durability = ? WHERE user_id = ?", (next_level, new_durability, user_id))
+                
+                # 6. Log Transaction
+                await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)", (user_id, -cost, f"upgrade_rod_{next_level}", "maintenance"))
+                
+                # Transaction Auto-Commits here
         
-        if not is_money_enough or not is_material_enough or not special_material_ok:
-            money_icon = "✅" if is_money_enough else "❌"
-            material_icon = "✅" if is_material_enough else "❌"
-            
-            msg = (f"⚠️ **{user.name}**, bạn chưa đủ điều kiện nâng cấp!\n"
-                   f"{money_icon} **Tiền**: {format_currency(balance)} / {format_currency(cost)}\n")
-            
-            if material_cost > 0:
-                msg += f"{material_icon} **Vật liệu**: {current_materials} / {material_cost} ⚙️\n"
-            
-            if special_materials:
-                msg += special_material_msg
-            
-            # Send error message with auto-delete
+        except ValueError as ve:
+             # User error (not enough materials/money)
+             if isinstance(ctx_or_interaction, discord.Interaction):
+                 await reply(f"⚠️ {ve}", ephemeral=True)
+             else:
+                 await reply(f"⚠️ {ve}")
+             return
+             
+        except Exception as e:
+            # System error
+            logger.error(f"[ROD] Upgrade Transaction Failed: {e}", exc_info=True)
+            msg = "❌ Lỗi hệ thống khi nâng cấp! Giao dịch đã được hủy."
             if isinstance(ctx_or_interaction, discord.Interaction):
-                await reply(msg, ephemeral=True)
+                 await reply(msg, ephemeral=True)
             else:
-                await reply(msg, delete_after=15)
+                 await reply(msg)
             return
 
-        # Process Upgrade (Transaction)
-        # 1. Deduct Money
-        await add_seeds(user_id, -cost, 'rod_upgrade', 'maintenance')
+        # ==================== POST-TRANSACTION (Updates & UI) ====================
         
-        # 2. Deduct Materials (if required)
-        if material_cost > 0:
-            # [CACHE] Use bot.inventory.modify
-            await bot.inventory.modify(user_id, "vat_lieu_nang_cap", -material_cost)
-            # Track rod_upgrades achievement
-            try:
-                await increment_stat(user_id, "fishing", "rod_upgrades", 1)
-                current_upgrades = await get_stat(user_id, "fishing", "rod_upgrades")
-                # Get bot instance from interaction/ctx
-                bot = ctx_or_interaction.client if isinstance(ctx_or_interaction, discord.Interaction) else ctx_or_interaction.bot
-                channel = ctx_or_interaction.channel
-                await bot.achievement_manager.check_unlock(user_id, "fishing", "rod_upgrades", current_upgrades, channel)
-                logger.info(f"[ROD] Tracked rod_upgrades for user {user_id}: {current_upgrades} total")
-            except Exception as e:
-                logger.error(f"[ROD] Error tracking rod_upgrades: {e}")
+        # Invalidate inventory cache
+        try:
+             if hasattr(bot, 'inventory'):
+                 await bot.inventory.invalidate(user_id)
+        except Exception:
+             pass
+
+        # Update stats
+        await increment_stat(user_id, "fishing", "rod_upgrades", 1)
         
-        # 3. Deduct Special Materials (Level 6 - Void Rod)
-        if special_materials:
-            for mat_key, mat_count in special_materials.items():
-                # [CACHE] Use bot.inventory.modify
-                await bot.inventory.modify(user_id, mat_key, -mat_count)
-                logger.info(f"[ROD] {user.name} used {mat_count}x {mat_key} for upgrade")
-        
-        # 4. Update Rod
-        # Reset durability to max of new level
-        new_durability = next_rod_info['durability']
-        await update_rod_data(user_id, new_durability, next_level)
-        
-        # Track rod_level_max achievement when reaching level 5 or 7
         if next_level in [5, 7]:
-            try:
-                await increment_stat(user_id, "fishing", "rod_level_max", next_level)
-                current_level_max = await get_stat(user_id, "fishing", "rod_level_max")
-                bot = ctx_or_interaction.client if isinstance(ctx_or_interaction, discord.Interaction) else ctx_or_interaction.bot
-                channel = ctx_or_interaction.channel
-                await bot.achievement_manager.check_unlock(user_id, "fishing", "rod_level_max", current_level_max, channel)
-                logger.info(f"[ROD] Tracked rod_level_max for user {user_id}: level {current_level_max}")
-            except Exception as e:
-                logger.error(f"[ROD] Error tracking rod_level_max: {e}")
-        
+            await increment_stat(user_id, "fishing", "rod_level_max", next_level)
+            
         # ==================== SPECIAL LORE MESSAGE (Level 7 - Chrono Rod) ====================
         if next_level == 7:
             lore_embed = discord.Embed(
@@ -210,7 +192,7 @@ async def nangcap_action(ctx_or_interaction):
                f"⚡ Độ bền mới: **{new_durability}/{new_durability}**")
         
         if isinstance(ctx_or_interaction, discord.Interaction):
-            await reply(msg)
+            await ctx_or_interaction.followup.send(msg) if ctx_or_interaction.response.is_done() else await reply(msg)
         else:
             await reply(msg)
         

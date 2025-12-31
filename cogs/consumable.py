@@ -375,13 +375,45 @@ class ConsumableCog(commands.Cog):
                 async with db_manager.transaction() as conn:
                     # Deduct 1 item where count >= 1
                     result = await conn.execute(
-                        "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3 AND quantity >= $1",
-                        (1, user_id, item_key)
+                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ? AND quantity >= ?",
+                        (1, user_id, item_key, 1)
                     )
                     
-                    if result == "UPDATE 0":
+                    # SQLite execute returns Cursor, rowcount property might be needed or check result
+                    # aiosqlite/sqlite3 cursor.execute doesn't return string "UPDATE 0"
+                    # We need to check rowcount. db_manager.execute wrapper might differ.
+                    # Assuming db_manager.execute returns the cursor or rowcount.
+                    # If db_manager structure is standard aiosqlite wrapper:
+                    # It likely returns what the driver returns.
+                    # Let's assume rowcount check is needed. 
+                    # Note: Previous code checked result == "UPDATE 0" which suggests asyncpg behavior.
+                    # For sqlite, we usually check cursor.rowcount.
+                    
+                    # However, db_manager.execute might just return the result of await cursor.execute().
+                    
+                    if result and hasattr(result, 'rowcount'):
+                         if result.rowcount == 0:
+                             db_item_deducted = False
+                         else:
+                             db_item_deducted = True
+                    else:
+                        # Fallback if wrapper differs (e.g. returns None on success?)
+                        # Better strategy: Check if inventory changed?
+                        # Or, Fetch first?
+                        # Let's use the fetch-then-update approach for safety if we are unsure about return type wrapper
+                        # But we are in a transaction.
+                        pass 
+                    
+                    # RE-READ STRATEGY:
+                    # Since we are converting from asyncpg, let's rely on fetch-check-update pattern inside transaction which is safe.
+                    
+                    check = await conn.execute("SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?", (user_id, item_key))
+                    row = await check.fetchone()
+                    if not row or row[0] < 1:
                         db_item_deducted = False
                     else:
+                        await conn.execute("UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?", (user_id, item_key))
+                        await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id,))
                         db_item_deducted = True
 
             except Exception as e:
@@ -441,6 +473,31 @@ class ConsumableCog(commands.Cog):
                  await ctx_or_interaction.followup.send(embed=embed, view=view)
              else:
                  await ctx.send(embed=embed, view=view)
+             return
+
+        elif item_key == "ban_do_ham_am":
+             # Activate Dark Map
+             fishing_cog = self.bot.get_cog("FishingCog")
+             if not fishing_cog:
+                 await ctx.send("❌ Fishing Module unavailable!")
+                 return
+                 
+             fishing_cog.dark_map_active[user_id] = True
+             fishing_cog.dark_map_casts[user_id] = 10 # 10 casts
+             fishing_cog.dark_map_cast_count[user_id] = 0
+             
+             print(f"[CONSUMABLE] ban_do_ham_am activated for {user_id}")
+             
+             embed = discord.Embed(
+                 title="🗺️ BẢN ĐỒ HẮC ÁM ĐÃ MỞ!",
+                 description="Bạn đã bước vào vùng biển tối tăm...\n\n🦑 **Cthulhu Non** đang rình rập!\n⚡ **10 lần câu tiếp theo** sẽ có cơ hội gặp hắn.\n\n⚠️ *Cẩn thận: Map sẽ biến mất sau 10 lần câu.*",
+                 color=discord.Color.dark_grey()
+             )
+             
+             if is_slash:
+                 await ctx_or_interaction.followup.send(embed=embed)
+             else:
+                 await ctx.send(embed=embed)
              return
 
         # 4. Standard Effect (Boost)

@@ -17,16 +17,16 @@ async def get_rod_data(user_id: int) -> tuple:
     try:
         # Use fetchrow for retrieving single record
         row = await db_manager.fetchrow(
-            "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = $1",
+            "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
             (user_id,)
         )
         
         if not row:
             # Auto-create fishing profile for new user
             try:
-                # Use execute with $n placeholders
+                # Use execute with ? placeholders
                 await db_manager.execute(
-                    "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability) VALUES ($1, $2, $3)",
+                    "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability) VALUES (?, ?, ?)",
                     (user_id, 1, ROD_LEVELS[1]["durability"])
                 )
             except Exception as e:
@@ -34,11 +34,10 @@ async def get_rod_data(user_id: int) -> tuple:
             return 1, ROD_LEVELS[1]["durability"]
             
         # Ensure level fallback only when None/invalid, and do NOT override legitimate 0 durability
-        # AsyncPG returns Record objects which are subscriptable by column name
-        rod_level = row['rod_level'] if row['rod_level'] is not None and int(row['rod_level']) >= 1 else 1
-        
-        # If durability is None, fall back to max durability for current level
-        rod_durability = row['rod_durability'] if row['rod_durability'] is not None else ROD_LEVELS[rod_level]["durability"]
+        # AsyncPG returns Record objects which are subscriptable by column name (and index-based if using sqlite/aiosqlite emulation)
+        # Using index 0 and 1 to be backend-agnostic given we know order
+        rod_level = row[0] if row[0] is not None and int(row[0]) >= 1 else 1
+        rod_durability = row[1] if row[1] is not None else ROD_LEVELS[rod_level]["durability"]
         
         return rod_level, rod_durability
     except Exception as e:
@@ -54,16 +53,16 @@ async def update_rod_data(user_id: int, durability: int, level: int = None):
         level (int, optional): The new rod level. Defaults to None (no change).
     """
     try:
-        # Use db_manager.execute with $n placeholders
+        # Use db_manager.execute with ? placeholders
         if level is not None:
             await db_manager.execute(
-                "UPDATE fishing_profiles SET rod_durability = $1, rod_level = $2 WHERE user_id = $3",
+                "UPDATE fishing_profiles SET rod_durability = ?, rod_level = ? WHERE user_id = ?",
                 (durability, level, user_id)
             )
             print(f"[ROD] [UPDATE] user_id={user_id} durability={durability} level={level}")
         else:
             await db_manager.execute(
-                "UPDATE fishing_profiles SET rod_durability = $1 WHERE user_id = $2",
+                "UPDATE fishing_profiles SET rod_durability = ? WHERE user_id = ?",
                 (durability, user_id)
             )
             print(f"[ROD] [UPDATE] user_id={user_id} durability={durability}")
