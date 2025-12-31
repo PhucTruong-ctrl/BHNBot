@@ -31,7 +31,7 @@ class InventoryCache:
         """Load user inventory from DB into cache."""
         try:
             # Query all items for this user
-            rows = await self.db.execute(
+            rows = await self.db.fetchall(
                 "SELECT item_id, quantity FROM inventory WHERE user_id = ? AND quantity > 0",
                 (user_id,)
             )
@@ -86,11 +86,11 @@ class InventoryCache:
                 await self.db.modify(
                     """
                     INSERT INTO inventory (user_id, item_id, quantity, item_type) 
-                    VALUES (?, ?, MAX(0, ?), ?)
+                    VALUES (?, ?, GREATEST(0, ?), ?)
                     ON CONFLICT(user_id, item_id) 
-                    DO UPDATE SET quantity = MAX(0, inventory.quantity + ?)
+                    DO UPDATE SET quantity = GREATEST(0, inventory.quantity + EXCLUDED.quantity)
                     """,
-                    (user_id, item_key, delta, item_type, delta)
+                    (user_id, item_key, delta, item_type)
                 )
                 
                 # 2. UPDATE CACHE

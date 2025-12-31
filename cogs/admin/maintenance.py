@@ -46,40 +46,13 @@ class Maintenance(commands.Cog):
         3. Optimize database structure
         """
         try:
-            db = self.bot.db.db
-            if not db:
-                logger.warning("[MAINTENANCE] Database not initialized, skipping checkpoint")
-                return
-            
-            # Get WAL file size before checkpoint
-            wal_path = Path(f"{self.bot.db.db_path}-wal")
-            wal_size_before = wal_path.stat().st_size / 1024 if wal_path.exists() else 0
-            
-            # Perform checkpoint (TRUNCATE = aggressive, resets WAL to 0)
-            cursor = await db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            result = await cursor.fetchone()
-            
-            # Get WAL file size after checkpoint
-            wal_size_after = wal_path.stat().st_size / 1024 if wal_path.exists() else 0
-            
-            # Log results  
-            if result:
-                busy, checkpointed, _ = result
-                logger.info(
-                    f"[WAL_CHECKPOINT] ✅ Completed: "
-                    f"{checkpointed} pages synced, "
-                    f"WAL: {wal_size_before:.1f}KB → {wal_size_after:.1f}KB"
-                )
-                
-                # Warning if WAL is still large after checkpoint
-                if wal_size_after > 5120:  # 5MB
-                    logger.warning(
-                        f"[WAL_CHECKPOINT] ⚠️  WAL file still large ({wal_size_after/1024:.1f}MB) after checkpoint"
-                    )
-            
-            # Optimize database structure (rebuild indexes, update stats)
-            await db.execute("PRAGMA optimize")
-            logger.info("[MAINTENANCE] ✅ Database optimization completed")
+            # POSTGRES COMPATIBILITY: WAL Checkpoint is for SQLite only.
+            # Since we migrated to Postgres, this task is no longer needed but kept for structure.
+            # db = self.bot.db
+            # if not db:
+            #     logger.warning("[MAINTENANCE] Database not initialized, skipping checkpoint")
+            #     return
+            pass
             
         except Exception as e:
             logger.error(f"[WAL_CHECKPOINT] ❌ Failed: {e}", exc_info=True)

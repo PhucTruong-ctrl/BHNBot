@@ -1,30 +1,31 @@
 """Automatic Database Backup System
 
-Backs up database.db every 4 hours and maintains maximum 6 backups.
+Backs up PostgreSQL database every 4 hours and maintains maximum 6 backups.
 Oldest backups are automatically deleted when limit is exceeded.
 
-Uses SQLite backup API for WAL-safe backups.
+Uses pg_dump for reliable backups.
 """
 import discord
+import asyncio
 from discord.ext import commands, tasks
-import sqlite3
+import subprocess
+import os
 from pathlib import Path
 from datetime import datetime
 from core.logger import setup_logger
 
 logger = setup_logger("BACKUP", "cogs/database.log")
 
-DB_PATH = "./data/database.db"
+# Configuration (defaults match docker/local setup)
 BACKUP_DIR = "./data/backups/auto"
 MAX_BACKUPS = 6
 BACKUP_INTERVAL_HOURS = 4
-
 
 class DatabaseBackupCog(commands.Cog):
     """Automatic database backup system.
     
     Runs background task every 4 hours to:
-    1. Create timestamped backup of database.db
+    1. Create timestamped backup of PostgreSQL DB
     2. Clean up old backups (keep only 6 most recent)
     """
     
@@ -45,52 +46,76 @@ class DatabaseBackupCog(commands.Cog):
     
     @tasks.loop(hours=BACKUP_INTERVAL_HOURS)
     async def auto_backup_task(self):
-        """Backup database every 4 hours using SQLite backup API (WAL-safe).
+        """Backup database every 4 hours using pg_dump.
         
-        Creates timestamped copy of database.db and deletes oldest backups
+        Creates timestamped dump and deletes oldest backups
         if total count exceeds MAX_BACKUPS.
         """
         try:
             # Step 1: Cleanup old backups first (before creating new one)
             self._cleanup_old_backups()
             
-            # Step 2: Create new backup using SQLite backup API (WAL-safe)
+            # Step 2: Create new backup using pg_dump
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = Path(BACKUP_DIR) / f"database_auto_{timestamp}.db"
+            backup_filename = f"postgres_auto_{timestamp}.dump"
+            backup_path = Path(BACKUP_DIR) / backup_filename
             
-            # Use SQLite backup API (handles WAL files properly)
-            source = sqlite3.connect(DB_PATH)
-            destination = sqlite3.connect(str(backup_path))
+            # Prepare Environment for Password (avoid warning/process hang)
+            env = os.environ.copy()
+            # Try getting pass from env, fallback to default if not set
+            pg_pass = os.getenv("DB_PASS", "discord_bot_password") 
+            env["PGPASSWORD"] = pg_pass
             
-            with destination:
-                source.backup(destination)
+            # Connection details
+            db_host = os.getenv("DB_HOST", "localhost")
+            db_port = os.getenv("DB_PORT", "5432")
+            db_user = os.getenv("DB_USER", "discord_bot")
+            db_name = os.getenv("DB_NAME", "discord_bot_db")
             
-            destination.close()
-            source.close()
+            # Command: pg_dump -h host -p port -U user -F c -f file dbname
+            cmd = [
+                "pg_dump",
+                "-h", db_host,
+                "-p", db_port,
+                "-U", db_user,
+                "-F", "c",          # Custom format (compressed, suitable for pg_restore)
+                "-f", str(backup_path),
+                db_name
+            ]
             
-            # Optional: Checkpoint WAL after successful backup
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
-                conn.close()
-            except:
-                pass  # Non-critical
+            logger.info(f"[BACKUP] Starting backup for {db_name}...")
             
-            # Log success with file size
-            backup_size = backup_path.stat().st_size / 1024  # KB
-            logger.info(
-                f"[BACKUP] ✅ Created WAL-safe auto-backup: {backup_path.name} "
-                f"({backup_size:.1f} KB)"
+            # Execute subprocess
+            # run_in_executor is recommended for blocking I/O, but subprocess.run is fast enough usually.
+            # However, for huge DBs, use asyncio.create_subprocess_exec would be better.
+            # Given requirement for non-blocking I/O:
+            
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                env=env,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
             
-        except FileNotFoundError:
-            logger.error(f"[BACKUP] ❌ Source database not found: {DB_PATH}")
-        except PermissionError as e:
-            logger.error(f"[BACKUP] ❌ Permission denied: {e}")
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                error_msg = stderr.decode()
+                logger.error(f"[BACKUP] pg_dump failed: {error_msg}")
+                raise Exception(f"pg_dump failed with code {process.returncode}")
+            
+            # Log success with file size
+            if backup_path.exists():
+                backup_size = backup_path.stat().st_size / 1024  # KB
+                logger.info(
+                    f"[BACKUP] ✅ Created PostgreSQL backup: {backup_path.name} "
+                    f"({backup_size:.1f} KB)"
+                )
+            else:
+                logger.error("[BACKUP] Backup file not found after success code?")
+            
         except Exception as e:
             logger.error(f"[BACKUP] ❌ Failed to create auto-backup: {e}")
-            import traceback
-            traceback.print_exc()
     
     @auto_backup_task.before_loop
     async def before_backup(self):
@@ -99,32 +124,28 @@ class DatabaseBackupCog(commands.Cog):
         logger.info("[BACKUP] Bot ready, auto-backup task initialized")
     
     def _cleanup_old_backups(self):
-        """Delete oldest backups if count exceeds MAX_BACKUPS.
-        
-        Keeps only the MAX_BACKUPS most recent backup files.
-        Files are sorted by modification time (oldest first).
-        """
-        # Get all auto-backup files sorted by modification time
-        backup_files = sorted(
-            Path(BACKUP_DIR).glob("database_auto_*.db"),
-            key=lambda p: p.stat().st_mtime  # Sort by modification time
-        )
-        
-        # Delete oldest files if we have too many
-        deleted_count = 0
-        while len(backup_files) >= MAX_BACKUPS:
-            oldest = backup_files.pop(0)
-            try:
-                oldest.unlink()
-                deleted_count += 1
-                logger.info(f"[BACKUP] 🗑️  Deleted old backup: {oldest.name}")
-            except Exception as e:
-                logger.error(f"[BACKUP] Failed to delete {oldest.name}: {e}")
-        
-        if deleted_count > 0:
-            logger.info(f"[BACKUP] Cleaned up {deleted_count} old backup(s)")
-
+        """Delete oldest backups to maintain MAX_BACKUPS limit."""
+        try:
+            backups = sorted(Path(BACKUP_DIR).glob("postgres_auto_*.dump"))
+            
+            if len(backups) >= MAX_BACKUPS:
+                # Calculate how many to remove
+                to_remove_count = len(backups) - MAX_BACKUPS + 1 
+                # (+1 because we are about to create a new one? No, usually keep space for new one)
+                # Logic: If 6 backups exist, and max is 6. We delete 1 to make room for 7th? 
+                # Or delete after creation? Code deletes BEFORE creation.
+                # So if we have 6, we delete 1 -> 5. Create new -> 6. Correct.
+                
+                to_remove = backups[:to_remove_count]
+                
+                for backup in to_remove:
+                    try:
+                        backup.unlink()
+                        logger.info(f"[BACKUP] Removed old backup: {backup.name}")
+                    except Exception as e:
+                        logger.warning(f"[BACKUP] Failed to remove {backup.name}: {e}")
+        except Exception as e:
+            logger.error(f"[BACKUP] Cleanup error: {e}")
 
 async def setup(bot):
-    """Load the DatabaseBackupCog."""
     await bot.add_cog(DatabaseBackupCog(bot))

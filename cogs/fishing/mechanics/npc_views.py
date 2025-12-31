@@ -126,34 +126,34 @@ class InteractiveNPCView(discord.ui.View):
                         if cost_type == "fish":
                             # Consume the caught fish
                             fish_key = list(self.caught_fish.keys())[0]
-                            cursor = await conn.execute(
-                                "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                            row = await conn.fetchrow(
+                                "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
                                 (self.user_id, fish_key)
                             )
-                            row = await cursor.fetchone()
-                            if not row or row[0] < 1:
+                            
+                            if not row or row['quantity'] < 1:
                                 raise ValueError("Cá đã bốc hơi đâu mất rồi!")
                                 
                             await conn.execute(
-                                "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
+                                "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = $1 AND item_id = $2",
                                 (self.user_id, fish_key)
                             )
                             
                         elif isinstance(cost_type, int): # Money cost
-                            cursor = await conn.execute(
-                                "SELECT seeds FROM users WHERE user_id = ?", (self.user_id,)
+                            row = await conn.fetchrow(
+                                "SELECT seeds FROM users WHERE user_id = $1", (self.user_id,)
                             )
-                            row = await cursor.fetchone()
-                            if not row or row[0] < cost_type:
+
+                            if not row or row['seeds'] < cost_type:
                                 raise ValueError(f"Không đủ tiền! Cần {cost_type} Hạt.")
                                 
                             await conn.execute(
-                                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                                "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
                                 (cost_type, self.user_id)
                             )
                             # Manual Log for ACID Transaction
                             await conn.execute(
-                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
                                 (self.user_id, -cost_type, f"npc_cost_{self.npc_key}", "fishing")
                             )
 

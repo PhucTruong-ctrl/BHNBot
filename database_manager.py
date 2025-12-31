@@ -27,7 +27,7 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
     try:
         user = await db_manager.fetchone(
             "SELECT user_id, username, seeds FROM users WHERE user_id = ?",
-            (user_id,)
+            (user_id)
         )
         
         if not user:
@@ -36,7 +36,6 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
                 "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0)",
                 (user_id, username)
             )
-            db_manager.clear_cache_by_prefix("leaderboard")
             user = (user_id, username, 0)
         
         return user
@@ -66,8 +65,6 @@ async def batch_update_seeds(updates: Dict[int, int]):
     ]
     
     await db_manager.batch_modify(operations)
-    db_manager.clear_cache_by_prefix("balance_")
-    db_manager.clear_cache_by_prefix("leaderboard")
 
 
 # ==================== TREE QUERIES ====================
@@ -83,10 +80,7 @@ async def get_tree_data(guild_id: int) -> Optional[tuple]:
     """
     result = await db_manager.fetchone(
         "SELECT current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = ?",
-        (guild_id,),
-        use_cache=True,
-        cache_key=f"tree_{guild_id}",
-        cache_ttl=60  # Short TTL for dynamic data
+        (guild_id),
     )
     return result
 
@@ -97,17 +91,13 @@ async def update_tree_progress(guild_id: int, level: int, progress: int, total: 
         "UPDATE server_tree SET current_level = ?, current_progress = ?, total_contributed = ? WHERE guild_id = ?",
         (level, progress, total, guild_id)
     )
-    db_manager.clear_cache_by_prefix(f"tree_{guild_id}")
 
 
 async def get_top_contributors(guild_id: int, limit: int = 3) -> List[tuple]:
     """Get top tree contributors with caching"""
-    result = await db_manager.execute(
+    result = await db_manager.fetchall(
         "SELECT user_id, amount FROM tree_contributors WHERE guild_id = ? ORDER BY amount DESC LIMIT ?",
         (guild_id, limit),
-        use_cache=True,
-        cache_key=f"top_contributors_{guild_id}",
-        cache_ttl=300
     )
     return result
 
@@ -156,7 +146,6 @@ async def _remove_item_unsafe(user_id: int, item_id: str, quantity: int = 1) -> 
             (new_quantity, user_id, item_id)
         )
     
-    db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
     return True
 
 
@@ -174,10 +163,7 @@ async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
     """
     result = await db_manager.fetchone(
         f"SELECT {field} FROM server_config WHERE guild_id = ?",
-        (guild_id,),
-        use_cache=True,
-        cache_key=f"config_{guild_id}_{field}",
-        cache_ttl=300
+        (guild_id),
     )
     return result[0] if result else None
 
@@ -191,10 +177,9 @@ async def set_server_config(guild_id: int, field: str, value: Any):
         value (Any): The value to set.
     """
     await db_manager.modify(
-        f"INSERT OR REPLACE INTO server_config (guild_id, {field}) VALUES (?, ?)",
+        f"INSERT INTO server_config (guild_id, {field}) VALUES (?, ?) ON CONFLICT (guild_id) DO UPDATE SET {field} = EXCLUDED.{field}",
         (guild_id, value)
     )
-    db_manager.clear_cache_by_prefix(f"config_{guild_id}")
 
 
 async def get_rod_data(user_id: int) -> tuple[int, int]:
@@ -208,10 +193,7 @@ async def get_rod_data(user_id: int) -> tuple[int, int]:
     """
     result = await db_manager.fetchone(
         "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"rod_{user_id}",
-        cache_ttl=300
+        (user_id),
     )
     return result if result else (1, 30) # Default level 1, 30 durability
 
@@ -234,18 +216,14 @@ async def get_or_create_user_new(user_id: int, username: str) -> Optional[tuple]
     """
     user = await db_manager.fetchone(
         "SELECT * FROM users WHERE user_id = ?",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"user_new_{user_id}",
-        cache_ttl=300
+        (user_id),
     )
     
     if not user:
         await db_manager.modify(
-            "INSERT OR IGNORE INTO users (user_id, username, seeds) VALUES (?, ?, 0)",
+            "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0) ON CONFLICT (user_id) DO NOTHING",
             (user_id, username)
         )
-        db_manager.clear_cache_by_prefix(f"user_new_{user_id}")
     
     return user
 
@@ -254,10 +232,7 @@ async def get_user_seeds_new(user_id: int) -> int:
     """Get user seeds from new 'users' table"""
     result = await db_manager.fetchone(
         "SELECT seeds FROM users WHERE user_id = ?",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"seeds_{user_id}",
-        cache_ttl=300
+        (user_id),
     )
     return result[0] if result else 0
 
@@ -268,17 +243,13 @@ async def add_seeds_new(user_id: int, amount: int):
         "UPDATE users SET seeds = seeds + ?, last_active = CURRENT_TIMESTAMP WHERE user_id = ?",
         (amount, user_id)
     )
-    db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
 
 
 async def get_leaderboard_new(limit: int = 10) -> List[tuple]:
     """Get top players by seeds (new schema)"""
-    result = await db_manager.execute(
+    result = await db_manager.fetchall(
         "SELECT user_id, username, seeds FROM users ORDER BY seeds DESC LIMIT ?",
-        (limit,),
-        use_cache=True,
-        cache_key="leaderboard_top_new",
-        cache_ttl=300
+        (limit),
     )
     return result
 
@@ -310,7 +281,6 @@ async def increment_stat(user_id: int, game_id: str, stat_key: str, amount: int 
             (user_id, game_id, stat_key, amount)
         )
     
-    db_manager.clear_cache_by_prefix(f"stat_{user_id}_{game_id}_{stat_key}")
 
 
 async def get_stat(user_id: int, game_id: str, stat_key: str, default: int = 0) -> int:
@@ -328,9 +298,6 @@ async def get_stat(user_id: int, game_id: str, stat_key: str, default: int = 0) 
     result = await db_manager.fetchone(
         "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?",
         (user_id, game_id, stat_key),
-        use_cache=True,
-        cache_key=f"stat_{user_id}_{game_id}_{stat_key}",
-        cache_ttl=600
     )
     return result[0] if result else default
 
@@ -346,12 +313,9 @@ async def get_all_stats(user_id: int, game_id: str = None) -> Dict[str, int]:
         Dict[str, int]: A dictionary mapping stat_key to value.
     """
     if game_id:
-        result = await db_manager.execute(
+        result = await db_manager.fetchall(
             "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = ?",
             (user_id, game_id),
-            use_cache=True,
-            cache_key=f"all_stats_{user_id}_{game_id}",
-            cache_ttl=600
         )
 
 # ==================== GLOBAL EVENT PERSISTENCE ====================
@@ -371,7 +335,7 @@ async def get_global_state(event_key: str, default: dict = None) -> dict:
     
     result = await db_manager.fetchone(
         "SELECT state_data FROM global_event_state WHERE event_key = ?",
-        (event_key,)
+        (event_key)
     )
     
     if result:
@@ -393,7 +357,7 @@ async def set_global_state(event_key: str, state_data: dict):
     try:
         json_str = json.dumps(state_data)
         await db_manager.modify(
-            "INSERT OR REPLACE INTO global_event_state (event_key, state_data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+            "INSERT INTO global_event_state (event_key, state_data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (event_key) DO UPDATE SET state_data = EXCLUDED.state_data, updated_at = CURRENT_TIMESTAMP",
             (event_key, json_str)
         )
     except Exception as e:
@@ -413,9 +377,6 @@ async def get_stat_leaderboard(game_id: str, stat_key: str, limit: int = 10) -> 
         LIMIT ?
         """,
         (game_id, stat_key, limit),
-        use_cache=True,
-        cache_key=f"leaderboard_{game_id}_{stat_key}",
-        cache_ttl=300
     )
     return result
 
@@ -436,10 +397,7 @@ async def get_fishing_profile(user_id: int) -> Optional[tuple]:
     """
     result = await db_manager.fetchone(
         "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"fishing_{user_id}",
-        cache_ttl=300
+        (user_id),
     )
     
     # If profile exists, return it
@@ -458,7 +416,7 @@ async def get_fishing_profile(user_id: int) -> Optional[tuple]:
         # Try fetching again
         result = await db_manager.fetchone(
             "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
-            (user_id,)
+            (user_id)
         )
         return result if result else (1, 30, 0)
 
@@ -482,7 +440,6 @@ async def update_fishing_profile(user_id: int, rod_level: int = None, rod_durabi
         params.append(user_id)
         query = f"UPDATE fishing_profiles SET {', '.join(updates)} WHERE user_id = ?"
         await db_manager.modify(query, tuple(params))
-        db_manager.clear_cache_by_prefix(f"fishing_{user_id}")
 
 
 # ----- FISH COLLECTION OPERATIONS -----
@@ -511,7 +468,6 @@ async def add_fish(user_id: int, fish_id: str, quantity: int = 1):
             (user_id, fish_id, quantity)
         )
     
-    db_manager.clear_cache_by_prefix(f"collection_{user_id}")
 
 
 async def get_fish_collection(user_id: int) -> Dict[str, int]:
@@ -523,12 +479,9 @@ async def get_fish_collection(user_id: int) -> Dict[str, int]:
     Returns:
         Dict[str, int]: A dictionary mapping fish_id to quantity caught.
     """
-    result = await db_manager.execute(
+    result = await db_manager.fetchall(
         "SELECT fish_id, quantity FROM fish_collection WHERE user_id = ? AND quantity > 0",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"collection_{user_id}",
-        cache_ttl=600
+        (user_id),
     )
     return {row[0]: row[1] for row in result}
 
@@ -564,7 +517,6 @@ async def remove_fish(user_id: int, fish_id: str, quantity: int = 1) -> bool:
             (new_quantity, user_id, fish_id)
         )
     
-    db_manager.clear_cache_by_prefix(f"collection_{user_id}")
     return True
 
 
@@ -581,9 +533,6 @@ async def get_fish_count(user_id: int, fish_id: str) -> int:
     result = await db_manager.fetchone(
         "SELECT 1 FROM fish_collection WHERE user_id = ? AND fish_id = ?",
         (user_id, fish_id),
-        use_cache=True,
-        cache_key=f"fish_{user_id}_{fish_id}",
-        cache_ttl=600
     )
     return 1 if result else 0
 
@@ -628,7 +577,7 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
         await db.execute("BEGIN")
         
         # Step 1: Check user exists and has enough seeds
-        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id))
         row = await cursor.fetchone()
         
         if not row:
@@ -654,8 +603,6 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
         
         # Commit transaction
         await db.commit()
-        db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
-        db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
         
         return True, "Mua thành công!"
         
@@ -698,7 +645,7 @@ async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, st
         await db.execute("BEGIN")
         
         # Check balance
-        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id))
         row = await cursor.fetchone()
         
         if not row or row[0] < upgrade_cost:
@@ -716,11 +663,9 @@ async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, st
             UPDATE fishing_profiles 
             SET rod_level = rod_level + 1, rod_durability = 30
             WHERE user_id = ?
-        """, (user_id,))
+        """, (user_id))
         
         await db.commit()
-        db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
-        db_manager.clear_cache_by_prefix(f"fishing_{user_id}")
         
         return True, "Nâng cấp cần câu thành công!"
         
@@ -749,7 +694,7 @@ async def create_fishing_profile(user_id: int) -> bool:
     try:
         existing = await db_manager.fetchone(
             "SELECT user_id FROM fishing_profiles WHERE user_id = ?",
-            (user_id,)
+            (user_id)
         )
         
         if existing:
@@ -758,10 +703,9 @@ async def create_fishing_profile(user_id: int) -> bool:
         # Create default profile
         await db_manager.modify(
             "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability, exp) VALUES (?, 1, 30, 0)",
-            (user_id,)
+            (user_id)
         )
         
-        db_manager.clear_cache_by_prefix(f"fishing_{user_id}")
         return True
         
     except Exception as e:
@@ -781,10 +725,7 @@ async def get_or_create_fishing_profile(user_id: int) -> Optional[tuple]:
     # Try to get existing profile
     result = await db_manager.fetchone(
         "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"fishing_{user_id}",
-        cache_ttl=300
+        (user_id),
     )
     
     if result:
@@ -816,7 +757,7 @@ async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]
         await db.execute("BEGIN")
         
         # Check balance
-        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id))
         row = await cursor.fetchone()
         
         if not row or row[0] < repair_cost:
@@ -832,7 +773,7 @@ async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]
         # Repair rod
         await db.execute(
             "UPDATE fishing_profiles SET rod_durability = 30 WHERE user_id = ?",
-            (user_id,)
+            (user_id)
         )
         
         # Track stat
@@ -853,8 +794,6 @@ async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]
             )
         
         await db.commit()
-        db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
-        db_manager.clear_cache_by_prefix(f"fishing_{user_id}")
         
         return True, "Sửa cần câu thành công!"
         
@@ -902,7 +841,7 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
             )
             
         # 2. Cleanup zero quantity items
-        await db.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id,))
+        await db.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id))
         
         # 3. Add money
         await db.execute(
@@ -913,8 +852,6 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
         await db.commit()
         
         # Clear caches
-        db_manager.clear_cache_by_prefix(f"inventory_{user_id}")
-        db_manager.clear_cache_by_prefix(f"balance_{user_id}")
         
         return True, "Giao dịch thành công!"
         
@@ -931,12 +868,13 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
 async def save_user_buff(user_id: int, buff_type: str, duration_type: str, end_time: float = 0, remaining_count: int = 0):
     """Save or update a user buff."""
     await db_manager.modify(
-        """INSERT OR REPLACE INTO user_buffs 
+        """INSERT INTO user_buffs 
            (user_id, buff_type, duration_type, end_time, remaining_count) 
-           VALUES (?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT (user_id, buff_type) 
+           DO UPDATE SET duration_type = EXCLUDED.duration_type, end_time = EXCLUDED.end_time, remaining_count = EXCLUDED.remaining_count""",
         (user_id, buff_type, duration_type, end_time, remaining_count)
     )
-    db_manager.clear_cache_by_prefix(f"buffs_{user_id}")
 
 async def get_user_buffs(user_id: int) -> Dict[str, dict]:
     """Get all active buffs for a user.
@@ -944,12 +882,9 @@ async def get_user_buffs(user_id: int) -> Dict[str, dict]:
     Returns:
         Dict: {buff_type: {data}}
     """
-    results = await db_manager.execute(
+    results = await db_manager.fetchall(
         "SELECT buff_type, duration_type, end_time, remaining_count FROM user_buffs WHERE user_id = ?",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"buffs_{user_id}",
-        cache_ttl=60
+        (user_id),
     )
     
     buffs = {}
@@ -979,7 +914,6 @@ async def remove_user_buff(user_id: int, buff_type: str):
         "DELETE FROM user_buffs WHERE user_id = ? AND buff_type = ?",
         (user_id, buff_type)
     )
-    db_manager.clear_cache_by_prefix(f"buffs_{user_id}")
 
 
 async def get_collection(user_id: int) -> Dict[str, int]:
@@ -991,12 +925,9 @@ async def get_collection(user_id: int) -> Dict[str, int]:
     Returns:
         Dict[str, int]: A dictionary of {stat_key: value}.
     """
-    rows = await db_manager.execute(
+    rows = await db_manager.fetchall(
         "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = 'fishing'",
-        (user_id,),
-        use_cache=True,
-        cache_key=f"collection_{user_id}",
-        cache_ttl=60
+        (user_id),
     )
     
     if not rows:

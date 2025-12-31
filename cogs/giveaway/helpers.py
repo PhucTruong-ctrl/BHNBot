@@ -2,7 +2,7 @@ import json
 import random
 import discord
 from database_manager import db_manager, get_rod_data, get_user_balance
-from core.database import get_db_connection
+
 from core.logger import setup_logger
 from .constants import COLOR_GIVEAWAY, EMOJI_WINNER
 from .models import Giveaway
@@ -19,58 +19,51 @@ async def join_giveaway_transaction(giveaway_id: int, user_id: int, cost: int) -
     
     Returns: (success: bool, message: str)
     """
-    db = await get_db_connection()
     try:
-        await db.execute("BEGIN")
-        
-        # 1. Check if already joined (Lock row for upgrade? No, insert lock)
-        cursor = await db.execute(
-            "SELECT 1 FROM giveaway_participants WHERE giveaway_id = ? AND user_id = ?", 
-            (giveaway_id, user_id)
-        )
-        if await cursor.fetchone():
-            await db.rollback()
-            return False, "Bạn đã tham gia giveaway này rồi!"
+        async with db_manager.transaction() as conn:
+            # 1. Check if already joined
+            # Note: We use row locking indirectly if needed, but INSERT will fail on unique constraint anyway if one exists.
+            # However, we do a check first for user feedback.
+            row = await conn.fetchrow(
+                "SELECT 1 FROM giveaway_participants WHERE giveaway_id = $1 AND user_id = $2", 
+                giveaway_id, user_id
+            )
+            if row:
+                return False, "Bạn đã tham gia giveaway này rồi!"
 
-        # 2. Check Balance & Deduct (if cost > 0)
-        if cost > 0:
-            cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-            row = await cursor.fetchone()
-            
-            if not row or row[0] < cost:
-                await db.rollback()
-                return False, f"Không đủ tiền! Cần {cost} Hạt."
+            # 2. Check Balance & Deduct (if cost > 0)
+            if cost > 0:
+                row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE", user_id)
                 
-            await db.execute(
-                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                (cost, user_id)
-            )
-            # Manual Log for ACID Transaction
-            await db.execute(
-                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (user_id, -cost, f"join_giveaway_{giveaway_id}", "giveaway")
-            )
+                if not row or row['seeds'] < cost:
+                    return False, f"Không đủ tiền! Cần {cost} Hạt."
+                    
+                await conn.execute(
+                    "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
+                    cost, user_id
+                )
+                
+                # Manual Log for ACID Transaction
+                await conn.execute(
+                    "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, $3, $4, NOW())",
+                    user_id, -cost, f"join_giveaway_{giveaway_id}", "giveaway"
+                )
 
-        # 3. Insert Participant
-        await db.execute(
-            "INSERT INTO giveaway_participants (giveaway_id, user_id) VALUES (?, ?)",
-            (giveaway_id, user_id)
-        )
-        
-        await db.commit()
-        
-        # Clear caches
-        if cost > 0:
-            db_manager.clear_cache_by_prefix(f"balance_{user_id}")
-        
-        return True, "Tham gia thành công!"
-        
+            # 3. Insert Participant
+            await conn.execute(
+                "INSERT INTO giveaway_participants (giveaway_id, user_id) VALUES ($1, $2)",
+                giveaway_id, user_id
+            )
+            
+            # Clear caches (outside transaction logic effectively, but good to do here if successful)
+            if cost > 0:
+                db_manager.clear_cache_by_prefix(f"balance_{user_id}")
+            
+            return True, "Tham gia thành công!"
+            
     except Exception as e:
-        await db.rollback()
         logger.error(f"Transaction error (join_giveaway): {e}", exc_info=True)
         return False, "Lỗi hệ thống khi xử lý giao dịch!"
-    finally:
-        await db.close()
 
 async def get_valid_invites(user_id: int) -> int:
     """Count valid invites for a user"""

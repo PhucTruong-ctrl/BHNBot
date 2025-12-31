@@ -10,8 +10,7 @@ import time
 from typing import Dict, Optional
 from core.logger import setup_logger
 from core.logger import setup_logger
-from database_manager import get_user_balance, add_seeds, get_or_create_user
-from core.database import batch_update_seeds
+from database_manager import get_user_balance, add_seeds, get_or_create_user, batch_update_seeds
 
 from .constants import (
     ANIMAL_LIST,

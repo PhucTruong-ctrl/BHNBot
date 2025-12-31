@@ -194,37 +194,36 @@ class InteractiveSellEventView(discord.ui.View):
                         if consume_items:
                             for fish_key, quantity in self.fish_items.items():
                                 # Check availability
-                                cursor = await conn.execute(
-                                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                row = await conn.fetchrow(
+                                    "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
                                     (self.user_id, fish_key)
                                 )
-                                row = await cursor.fetchone()
                                 
-                                if not row or row[0] < quantity:
-                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row[0] if row else 0})")
+                                if not row or row['quantity'] < quantity:
+                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row['quantity'] if row else 0})")
                                 
                                 # Deduct
                                 await conn.execute(
-                                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                    "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
                                     (quantity, self.user_id, fish_key)
                                 )
                             
                             # Cleanup empty
                             await conn.execute(
-                                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", 
+                                "DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0", 
                                 (self.user_id,)
                             )
                         
                         # 2. UPDATE SEEDS
                         if final_value != 0:
                             await conn.execute(
-                                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
                                 (final_value, self.user_id)
                             )
                             # Manual Log for ACID Transaction
                             event_key = self.event_data.get('key', 'unknown')
                             await conn.execute(
-                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
                                 (self.user_id, final_value, f"interactive_sell_{event_key}", "fishing")
                             )
                         
@@ -262,10 +261,7 @@ class InteractiveSellEventView(discord.ui.View):
                     )
                     logger.info(f"[INTERACTIVE_SELL] Applied buff {buff_type} ({duration}) to {self.user_id}")
             
-            # Clear caches
-            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
-            db_manager.clear_cache_by_prefix("leaderboard")
+            # Caches auto-managed by InventoryCache - no manual clearing needed
             
             # Track stats (event-specific)
             event_key = self.event_data.get('key', 'unknown')
@@ -562,36 +558,35 @@ class InteractiveSellEventView(discord.ui.View):
                             # Remove fish items
                             for fish_key, quantity in self.fish_items.items():
                                 # Check availability
-                                cursor = await conn.execute(
-                                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                                row = await conn.fetchrow(
+                                    "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
                                     (self.user_id, fish_key)
                                 )
-                                row = await cursor.fetchone()
                                 
-                                if not row or row[0] < quantity:
+                                if not row or row['quantity'] < quantity:
                                     raise ValueError(f"Timeout failed: Not enough {fish_key}")
                                 
                                 # Deduct
                                 await conn.execute(
-                                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                                    "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
                                     (quantity, self.user_id, fish_key)
                                 )
                             
                             await conn.execute(
-                                "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                                "DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0",
                                 (self.user_id,)
                             )
                         
                         # Add seeds
                         if final_value != 0:
                             await conn.execute(
-                                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                                "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
                                 (final_value, self.user_id)
                             )
                             # Manual Log for ACID Transaction
                             event_key = self.event_data.get('key', 'unknown')
                             await conn.execute(
-                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
+                                "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
                                 (self.user_id, final_value, f"interactive_sell_timeout_{event_key}", "fishing")
                             )
                         
@@ -600,9 +595,7 @@ class InteractiveSellEventView(discord.ui.View):
                 logger.error(f"[INTERACTIVE_SELL] Timeout Handler DB Lock Timeout for user {self.user_id}")
                 return
             
-            # Clear caches
-            db_manager.clear_cache_by_prefix(f"inventory_{self.user_id}")
-            db_manager.clear_cache_by_prefix(f"balance_{self.user_id}")
+            # Caches auto-managed by InventoryCache - no manual clearing needed
             
             # Track timeout stat
             event_key = self.event_data.get('key', 'unknown')

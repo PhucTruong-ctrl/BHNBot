@@ -1,13 +1,13 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import aiosqlite
+
 from PIL import Image, ImageDraw, ImageFont
 import io
 import asyncio
 import functools
 
-DB_PATH = "./data/database.db"
+
 from core.logger import setup_logger
 
 logger = setup_logger("GeneralCog", "cogs/general.log")
@@ -36,7 +36,7 @@ class General(commands.Cog):
         # Database latency
         db_start = time.time()
         try:
-            from core.database import db_manager
+            from database_manager import db_manager
             await db_manager.fetchone("SELECT 1")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")

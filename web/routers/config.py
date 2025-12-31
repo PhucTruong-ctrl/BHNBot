@@ -75,7 +75,11 @@ async def update_config(config: GameConfig) -> Dict[str, Any]:
     timestamp = str(int(time.time()))
     # Use global_event_state as a KV store for system signals
     await execute(
-        "INSERT OR REPLACE INTO global_event_state (event_key, state_data, updated_at) VALUES ('last_config_update', ?, CURRENT_TIMESTAMP)", 
+        """
+        INSERT INTO global_event_state (event_key, state_data, updated_at) 
+        VALUES ('last_config_update', $1, CURRENT_TIMESTAMP)
+        ON CONFLICT (event_key) DO UPDATE SET state_data = $1, updated_at = CURRENT_TIMESTAMP
+        """, 
         (timestamp,)
     )
     

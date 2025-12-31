@@ -27,23 +27,22 @@ class BumpConfig:
     last_reminder_sent: Optional[str]  # ISO format UTC string
     
     @staticmethod
-    async def load_all(db: aiosqlite.Connection) -> List['BumpConfig']:
+    async def load_all(db) -> List['BumpConfig']:
         """Load all guild configurations with bump reminders enabled.
         
         Args:
-            db: Active aiosqlite database connection
+            db: DatabaseManager instance
             
         Returns:
             List of BumpConfig objects for guilds with bump_channel_id set
             
         Raises:
-            aiosqlite.Error: If database query fails
+            Exception: If database query fails
         """
-        async with db.execute(
+        rows = await db.fetchall(
             "SELECT guild_id, bump_channel_id, bump_start_time, last_reminder_sent "
             "FROM server_config WHERE bump_channel_id IS NOT NULL"
-        ) as cursor:
-            rows = await cursor.fetchall()
+        )
         
         return [
             BumpConfig(
@@ -68,11 +67,11 @@ class BumpConfig:
             aiosqlite.Error: If database update fails
         """
         bump_time_iso = bump_time.isoformat()
-        await db.execute(
+        await db.modify(
             "UPDATE server_config SET bump_start_time = ?, last_reminder_sent = NULL WHERE guild_id = ?",
             (bump_time_iso, self.guild_id)
         )
-        await db.commit()
+        # PostgreSQL auto-commits, no manual commit needed
         self.bump_start_time = bump_time_iso
         self.last_reminder_sent = None
     
@@ -89,11 +88,11 @@ class BumpConfig:
             aiosqlite.Error: If database update fails
         """
         reminder_time_iso = reminder_time.isoformat()
-        await db.execute(
+        await db.modify(
             "UPDATE server_config SET last_reminder_sent = ? WHERE guild_id = ?",
             (reminder_time_iso, self.guild_id)
         )
-        await db.commit()
+        # PostgreSQL auto-commits, no manual commit needed
         self.last_reminder_sent = reminder_time_iso
     
     async def initialize_bump_time(self, db: aiosqlite.Connection) -> None:
@@ -108,9 +107,9 @@ class BumpConfig:
             aiosqlite.Error: If database update fails
         """
         now_utc = datetime.now(timezone.utc).isoformat()
-        await db.execute(
+        await db.modify(
             "UPDATE server_config SET bump_start_time = ? WHERE guild_id = ?",
             (now_utc, self.guild_id)
         )
-        await db.commit()
+        # PostgreSQL auto-commits, no manual commit needed
         self.bump_start_time = now_utc

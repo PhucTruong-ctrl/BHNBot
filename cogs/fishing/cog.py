@@ -104,8 +104,8 @@ class FishingCog(commands.Cog):
         self.sell_processing = {}  # {user_id: timestamp} - Prevent duplicate sell commands
         self.guaranteed_catch_users = {}  # {user_id: True} - Keep RAM for now (tinh cau win)
         
-        # User locks to prevent concurrent fishing operations
-        self.user_locks = {}  # {user_id: asyncio.Lock}
+        # User locks removed in favor of DB transactions
+        # self.user_locks = {}  -> Removed
         
         # Emotional state tracking (delegated to EmotionalStateManager)
         # Manager is now stateless/DB-backed
@@ -149,10 +149,6 @@ class FishingCog(commands.Cog):
         # Start Global Event Manager
         self.global_event_manager.start()
 
-        # ==================== WATCHDOG: LOCK MONITORING ====================
-        # Track when locks were acquired to detect deadlocks
-        self.lock_timestamps = {}  # {user_id: timestamp_float}
-        self.clean_stuck_locks.start()  # Start background task
         
         # Start state cleanup task (prevents memory leaks)
         self.cleanup_stale_state.start()
@@ -297,25 +293,6 @@ class FishingCog(commands.Cog):
             # Clean expired legendary buff - Migrated to DB, no cleanup needed here
             pass
             
-            # MEMORY LEAK FIX: Clean inactive user locks (older than 24h)
-            # Track last lock usage
-            if not hasattr(self, '_lock_last_used'):
-                self._lock_last_used = {}
-            
-            # Find locks not used in 24 hours
-            cutoff_time = current_time - 86400  # 24 hours
-            inactive_locks = [
-                uid for uid in list(self.user_locks.keys())
-                if self._lock_last_used.get(uid, 0) < cutoff_time
-            ]
-            
-            for uid in inactive_locks:
-                if uid in self.user_locks:
-                    del self.user_locks[uid]
-                if uid in self._lock_last_used:
-                    del self._lock_last_used[uid]
-                cleaned_count += 1
-            
             # Clean old sell_processing entries (older than 5 minutes)
             old_sell = [uid for uid, t in list(self.sell_processing.items()) 
                        if current_time - t > 300]
@@ -334,32 +311,7 @@ class FishingCog(commands.Cog):
         """Wait for bot to be ready before starting cleanup task."""
         await self.bot.wait_until_ready()
 
-    @tasks.loop(seconds=60)
-    async def clean_stuck_locks(self):
-        """Watchdog: Force release locks held for too long (deadlock prevention)."""
-        current_time = time.time()
-        stuck_users = []
-        
-        # Identify stuck users
-        for user_id, timestamp in self.lock_timestamps.items():
-            duration = current_time - timestamp
-            if duration > 30:  # Lock held for > 30 seconds
-                stuck_users.append((user_id, duration))
-        
-        # Force release
-        for user_id, duration in stuck_users:
-            logger.warning(f"[WATCHDOG] Force releasing lock for {user_id} (Held for {duration:.1f}s)")
-            
-            # Remove timestamp FIRST to prevent loop
-            self.lock_timestamps.pop(user_id, None)
-            
-            # Replace lock object (Old lock is abandoned to the dead task)
-            # New requests will get a fresh lock
-            if user_id in self.user_locks:
-                self.user_locks[user_id] = asyncio.Lock()
-                
-            # Log for admin visibility
-            logger.error(f"[WATCHDOG] 🚨 DEADLOCK DETECTED & CLEARED for user_id={user_id}")
+
     
     async def _force_meteor_shower(self, user_id: int, channel):
         """Force trigger meteor shower for a specific user"""
@@ -597,19 +549,12 @@ class FishingCog(commands.Cog):
             await get_or_create_user(user_id, username)
 
             # ==================== FIX: COOLDOWN BYPASS & RACE CONDITIONS ====================
-            # Initialize lock if not exists
-            if user_id not in self.user_locks:
-                self.user_locks[user_id] = asyncio.Lock()
-            
-            # [DEBUG] Trace execution
-            logger.info(f"[FISHING] [DEBUG] Acquiring lock for {user_id}")
+            # Initialize lock if not exists - REMOVED
 
-            # ACQUIRE LOCK BEFORE CHECKING COOLDOWN
-            # This ensures only ONE execution per user passes through at a time
-            async with self.user_locks[user_id]:
-                # [WATCHDOG] Track lock acquisition time
-                self.lock_timestamps[user_id] = time.time()
-                logger.info(f"[FISHING] [DEBUG] Lock acquired for {user_id}")
+            # START DATABASE TRANSACTION
+            # Replaces legacy asyncio.Lock to handle concurrency via DB serialization
+            async with db_manager.transaction() as conn:
+                logger.info(f"[FISHING] [DEBUG] Transaction started for {user_id}")
                 
                 try:
                     # --- CHECK COOLDOWN (Inside Lock) ---
@@ -2003,8 +1948,6 @@ class FishingCog(commands.Cog):
                     # Re-raise to be handled by outer except
                     raise
                 finally:
-                    # [WATCHDOG] Cleanup timestamp
-                    self.lock_timestamps.pop(user_id, None)
                     logger.info(f"[FISHING] [DEBUG] Lock released for {user_id}")
             
             # ==================== SEND NPC VIEW (OUTSIDE LOCK) ====================
@@ -2114,9 +2057,16 @@ class FishingCog(commands.Cog):
         await self._sell_fish_action(ctx, fish_types)
     
     async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None):
+        try:
         """Sell all fish or specific types logic. Delegate to commands module."""
+            logger.info(f"[DEBUG] _sell_fish_action START: fish_types={fish_types}")
         logger.info("[DEBUG] Delegating to _sell_fish_impl")
-        return await _sell_fish_impl(self, ctx_or_interaction, fish_types)
+        result = await _sell_fish_impl(self, ctx_or_interaction, fish_types)
+            logger.info(f"[DEBUG] _sell_fish_impl completed")
+            return result
+        except Exception as e:
+            logger.error(f"[SELL] [CRITICAL] Exception in _sell_fish_action: {e}", exc_info=True)
+            raise
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")
     @app_commands.describe(amount="Số lượng rương muốn mở (mặc định 1)")
@@ -2548,22 +2498,26 @@ class FishingCog(commands.Cog):
     
     async def get_tree_boost_status(self, guild_id: int) -> bool:
         """Check if server has tree harvest boost active (from level 6 harvest or if tree at level 5+)."""
+        from datetime import datetime
+        
         try:
             # Check harvest buff timer first (primary source - set when harvest level 6)
             row = await db_manager.fetchone(
-                "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                (guild_id,)
+                "SELECT harvest_buff_until FROM server_config WHERE guild_id = $1",
+                (int(guild_id),)
             )
             if row and row[0]:
-                from datetime import datetime
-                buff_until = datetime.fromisoformat(row[0])
+                buff_until = row[0]
+                # PostgreSQL returns datetime, legacy SQLite returns string
+                if isinstance(buff_until, str):
+                    buff_until = datetime.fromisoformat(buff_until)
                 if datetime.now() < buff_until:
                     return True  # Harvest buff is active
             
             # Fallback: Check if tree is at level 5+ (persistent bonus)
             tree_row = await db_manager.fetchone(
-                "SELECT current_level FROM server_tree WHERE guild_id = ?",
-                (guild_id,)
+                "SELECT current_level FROM server_tree WHERE guild_id = $1",
+                (int(guild_id),)
             )
             if tree_row and tree_row[0] >= 5:
                 return True
@@ -2590,7 +2544,7 @@ class FishingCog(commands.Cog):
         await self.bot.inventory.modify(user_id, item_id, 1)
         try:
             await db_manager.modify(
-                "UPDATE inventory SET item_type = ? WHERE user_id = ? AND item_id = ?",
+                "UPDATE inventory SET item_type = $1 WHERE user_id = $2 AND item_id = $3",
                 (item_type, user_id, item_id)
             )
         except Exception as e:

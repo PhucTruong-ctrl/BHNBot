@@ -94,7 +94,7 @@ class AchievementManager:
             # 1. Save to database
             try:
                 await db_manager.modify(
-                    "INSERT OR IGNORE INTO user_achievements (user_id, achievement_key) VALUES (?, ?)",
+                    "INSERT INTO user_achievements (user_id, achievement_key) VALUES (?, ?) ON CONFLICT (user_id, achievement_key) DO NOTHING",
                     (user_id, achievement_key)
                 )
                 print(f"[ACHIEVEMENT] Successfully inserted {achievement_key} for user {user_id}")

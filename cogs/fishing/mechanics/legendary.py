@@ -490,7 +490,7 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
         # Store the legendary fish using the insert function
         from database_manager import db_manager
         await db_manager.modify(
-            "INSERT OR IGNORE INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
+            "INSERT INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?) ON CONFLICT (user_id, fish_id) DO NOTHING",
             (user_id, legendary_key, 1)
         )
         

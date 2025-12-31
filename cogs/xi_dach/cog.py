@@ -17,6 +17,7 @@ from .constants import MIN_BET, TURN_TIMEOUT
 # Should be:
 from .core.game_manager import game_manager
 from .core.table import Table
+from database_manager import batch_update_seeds
 from .core.player import Player
 from .statistics import StatisticsTracker
 

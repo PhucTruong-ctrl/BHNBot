@@ -56,7 +56,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
     async def check_giveaways_task(self):
         try:
             now = discord.utils.utcnow()
-            active_gas = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
+            active_gas = await db_manager.fetchall("SELECT * FROM giveaways WHERE status = 'active'")
             for row in active_gas:
                 try:
                     ga = Giveaway.from_db(row)
@@ -90,7 +90,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
             logger.info("[GIVEAWAY_RESTORE] Starting background view restoration...")
                 
             # 1. Restore Active Giveaways Views & Cleanup Orphaned
-            active_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'active'")
+            active_giveaways = await db_manager.fetchall("SELECT * FROM giveaways WHERE status = 'active'")
             count = 0
             orphaned_count = 0
             
@@ -136,7 +136,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
             logger.info(f"Restored {count} active giveaway views. Cleaned up {orphaned_count} orphaned giveaways.")
 
         # 2. Restore Ended Giveaway Result Views (for reroll/end functionality)
-            ended_giveaways = await db_manager.execute("SELECT * FROM giveaways WHERE status = 'ended'")
+            ended_giveaways = await db_manager.fetchall("SELECT * FROM giveaways WHERE status = 'ended'")
             result_count = 0
             for row in ended_giveaways:
                 try:
@@ -146,8 +146,8 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                     current_winners = ga.winners
                     if not current_winners:
                     # Fallback: get from participants (LIMIT to winners_count)
-                        participants = await db_manager.execute(
-                            "SELECT user_id FROM giveaway_participants WHERE giveaway_id = ? ORDER BY id LIMIT ?",
+                        participants = await db_manager.fetchall(
+                            "SELECT user_id FROM giveaway_participants WHERE giveaway_id = $1 ORDER BY id LIMIT $2",
                             (ga.message_id, ga.winners_count)
                         )
                         current_winners = [row[0] for row in participants]
@@ -309,7 +309,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
         # user_invites: inviter_id, joined_user_id, is_valid, created_at
         try:
             await db_manager.modify(
-                "INSERT OR IGNORE INTO user_invites (inviter_id, joined_user_id, is_valid) VALUES (?, ?, ?)",
+                "INSERT INTO user_invites (inviter_id, joined_user_id, is_valid) VALUES (?, ?, ?) ON CONFLICT (inviter_id, joined_user_id) DO NOTHING",
                 (inviter.id, member.id, 1 if is_valid else 0)
             )
         except Exception as e:

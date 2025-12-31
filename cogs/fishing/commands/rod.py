@@ -51,12 +51,13 @@ async def nangcap_action(ctx_or_interaction):
         # ==================== SPECIAL REQUIREMENT CHECK (Level 7 - Chrono Rod) ====================
         if special_requirement:
             # Check if user has caught the legendary fish
-            legendary_quest = await db_manager.execute(
-                "SELECT legendary_caught FROM legendary_quests WHERE user_id = ? AND fish_key = ?",
+            # Use fetchrow for single check
+            quest_row = await db_manager.fetchrow(
+                "SELECT legendary_caught FROM legendary_quests WHERE user_id = $1 AND fish_key = $2",
                 (user_id, special_requirement)
             )
             
-            if not legendary_quest or not legendary_quest[0][0]:
+            if not quest_row or not quest_row['legendary_caught']:
                 # Show special requirement message
                 fish_name_map = {
                     "ca_ngan_ha": "Cá Ngân Hà 🌌"

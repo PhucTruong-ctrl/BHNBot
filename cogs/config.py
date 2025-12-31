@@ -1,12 +1,16 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import aiosqlite
 import traceback
 import json
-from core.database import db_manager  # Use singleton instead of direct connections
+
+from database_manager import db_manager  # Use singleton instead of direct connections
+from core.logger import setup_logger
+
+logger = setup_logger("ConfigCog", "cogs/config.log")
 
 DB_PATH = "./data/database.db"
+
 class ApprovalView(discord.ui.View):
     def __init__(self, bot, word, suggester_id):
         super().__init__(timeout=1800)  # 30 min for word approval
@@ -17,10 +21,16 @@ class ApprovalView(discord.ui.View):
     @discord.ui.button(label="Duyệt", style=discord.ButtonStyle.success, emoji="✅")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
-            await db_manager.modify("INSERT OR IGNORE INTO dictionary (word) VALUES (?)", (self.word,))
-        except:
+            # Postgres: $1
+            await db_manager.execute(
+                "INSERT INTO dictionary (word) VALUES ($1) ON CONFLICT DO NOTHING",
+                (self.word,)
+            )
+        except Exception as e:
+            logger.error(f"Error approving word: {e}")
             pass
-        await db_manager.modify("DELETE FROM pending_words WHERE word = ?", (self.word,))
+            
+        await db_manager.execute("DELETE FROM pending_words WHERE word = $1", (self.word,))
         
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.green()
@@ -36,7 +46,7 @@ class ApprovalView(discord.ui.View):
 
     @discord.ui.button(label="Từ chối", style=discord.ButtonStyle.danger, emoji="✖️")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await db_manager.modify("DELETE FROM pending_words WHERE word = ?", (self.word,))
+        await db_manager.execute("DELETE FROM pending_words WHERE word = $1", (self.word,))
         
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.red()
@@ -90,37 +100,35 @@ class ConfigCog(commands.Cog):
                         return
             
             # Check for Tree channel
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    tree_row = await cursor.fetchone()
-                
-                async with db.execute(
-                    "SELECT noitu_channel_id FROM server_config WHERE guild_id = ?", 
-                    (guild_id,)
-                ) as cursor:
-                    noitu_row = await cursor.fetchone()
+            # Postgres: $1 placeholder, fetchrow returns Row or None
+            tree_row = await db_manager.fetchrow(
+                "SELECT tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = $1",
+                (int(guild_id),)
+            )
+            
+            noitu_row = await db_manager.fetchrow(
+                "SELECT noitu_channel_id FROM server_config WHERE guild_id = $1", 
+                (int(guild_id),)
+            )
             
             # Check if current channel is tree channel
-            if tree_row and tree_row[0] and channel_id == tree_row[0]:
+            if tree_row and tree_row['tree_channel_id'] and channel_id == tree_row['tree_channel_id']:
                 # This is the tree channel - refresh the tree message
                 tree_cog = self.bot.get_cog("Tree")
                 if tree_cog:
                     # Delete old pinned message if it exists
-                    if tree_row[1]:
+                    if tree_row['tree_message_id']:
                         try:
-                            channel = self.bot.get_channel(tree_row[0])
+                            channel = self.bot.get_channel(tree_row['tree_channel_id'])
                             if channel:
-                                message = await channel.fetch_message(tree_row[1])
+                                message = await channel.fetch_message(tree_row['tree_message_id'])
                                 if message:
                                     await message.delete()
                         except Exception as e:
                             logger.error(f"Unexpected error: {e}")
                     
                     # Create and pin new message with same data
-                    await tree_cog.update_or_create_pin_message(guild_id, tree_row[0])
+                    await tree_cog.update_or_create_pin_message(guild_id, tree_row['tree_channel_id'])
                     msg = "Đã làm mới tin nhắn cây"
                 else:
                     msg = "Ko tìm thấy tree cog"
@@ -132,7 +140,7 @@ class ConfigCog(commands.Cog):
                 return
             
             # Check for NoiTu game in current channel
-            if not noitu_row or not noitu_row[0]:
+            if not noitu_row or not noitu_row['noitu_channel_id']:
                 msg = "Kênh này ko có game nào hoạt động"
                 if isinstance(response_obj, commands.Context):
                     await response_obj.send(msg, delete_after=3)
@@ -140,7 +148,7 @@ class ConfigCog(commands.Cog):
                     await response_obj.followup.send(msg)
                 return
 
-            noitu_channel_id = noitu_row[0]
+            noitu_channel_id = noitu_row['noitu_channel_id']
 
             # Check if current channel matches noitu game channel
             if channel_id == noitu_channel_id:
@@ -216,69 +224,82 @@ class ConfigCog(commands.Cog):
             guild_id = interaction.guild.id
             
             print(f"CONFIG [Guild {guild_id}] Setting channels")
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get old config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
-                    row = await cursor.fetchone()
-                old_logs = row[0] if row else None
-                old_noitu = row[1] if row else None
-                old_fishing = row[2] if row else None
+            # Postgres: No context manager needed for updates
+            
+            # Get old config
+            row = await db_manager.fetchrow(
+                "SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = $1", 
+                (int(guild_id),)
+            )
+            old_logs = row['logs_channel_id'] if row else None
+            old_noitu = row['noitu_channel_id'] if row else None
+            old_fishing = row['fishing_channel_id'] if row else None
 
-                # Merge
-                new_logs = kenh_logs.id if kenh_logs else old_logs
-                new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
-                new_fishing = kenh_fishing.id if kenh_fishing else old_fishing
+            # Merge
+            new_logs = kenh_logs.id if kenh_logs else old_logs
+            new_noitu = kenh_noitu.id if kenh_noitu else old_noitu
+            new_fishing = kenh_fishing.id if kenh_fishing else old_fishing
+            
+            # Handle tree channel
+            if kenh_cay:
+                new_tree = kenh_cay.id
                 
-                # Validate: một kênh không được có nhiều hơn 1 game
-                # (Không còn cần validate với kênh sói)
-                
-                # Handle tree channel
-                if kenh_cay:
-                    new_tree = kenh_cay.id
-                    
-                    # Get tree cog
-                    tree_cog = self.bot.get_cog("Tree")
-                    if tree_cog:
-                        # Create or update pinned message
-                        await tree_cog.update_or_create_pin_message(guild_id, kenh_cay.id)
-                else:
-                    new_tree = None
-                
-                # Save using UPSERT
-                from datetime import datetime
-                
-                # Prepare bump_start_time for new bump channel
-                bump_start_time = datetime.now().isoformat() if kenh_bump else None
-                new_bump = kenh_bump.id if kenh_bump else None
-                new_log_bot = kenh_log_bot.id if kenh_log_bot else None
-                new_ping_user = log_ping_user.id if log_ping_user else None
-                new_log_level = log_level.upper() if log_level else None
-                
-                await db.execute("""
-                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, bump_channel_id, bump_start_time, log_discord_channel_id, log_ping_user_id, log_discord_level) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                # Get tree cog
+                tree_cog = self.bot.get_cog("Tree")
+                if tree_cog:
+                    # Create or update pinned message
+                    await tree_cog.update_or_create_pin_message(guild_id, kenh_cay.id)
+            else:
+                new_tree = None
+            
+            # Save using UPSERT
+            from datetime import datetime
+            
+            # Prepare bump_start_time for new bump channel
+            bump_start_time = datetime.now() if kenh_bump else None
+            new_bump = kenh_bump.id if kenh_bump else None
+            new_log_bot = kenh_log_bot.id if kenh_log_bot else None
+            new_ping_user = log_ping_user.id if log_ping_user else None
+            new_log_level = log_level.upper() if log_level else None
+            
+            # Postgres UPSERT syntax
+            # Note: Postgres doesn't support 'CASE WHEN excluded.bump_channel_id ...' inside ON CONFLICT DO UPDATE cleanly alias 
+            # as SQLite does if referencing `excluded` in complex ways without strict typing.
+            # But the syntax is generally compatible.
+            # However, `bump_start_time` logic:
+            # CASE WHEN excluded.bump_channel_id IS NOT NULL THEN excluded.bump_start_time ELSE server_config.bump_start_time END
+            
+            await db_manager.execute("""
+                INSERT INTO server_config (
+                    guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, 
+                    bump_channel_id, bump_start_time, log_discord_channel_id, 
+                    log_ping_user_id, log_discord_level
+                ) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT(guild_id) DO UPDATE SET
+                    logs_channel_id = COALESCE(EXCLUDED.logs_channel_id, server_config.logs_channel_id),
+                    noitu_channel_id = COALESCE(EXCLUDED.noitu_channel_id, server_config.noitu_channel_id),
+                    fishing_channel_id = COALESCE(EXCLUDED.fishing_channel_id, server_config.fishing_channel_id),
+                    bump_channel_id = COALESCE(EXCLUDED.bump_channel_id, server_config.bump_channel_id),
+                    bump_start_time = CASE WHEN EXCLUDED.bump_channel_id IS NOT NULL THEN EXCLUDED.bump_start_time ELSE server_config.bump_start_time END,
+                    log_discord_channel_id = COALESCE(EXCLUDED.log_discord_channel_id, server_config.log_discord_channel_id),
+                    log_ping_user_id = COALESCE(EXCLUDED.log_ping_user_id, server_config.log_ping_user_id),
+                    log_discord_level = COALESCE(EXCLUDED.log_discord_level, server_config.log_discord_level)
+            """, (
+                int(guild_id), new_logs, new_noitu, new_fishing, new_bump, 
+                bump_start_time, new_log_bot, new_ping_user, new_log_level
+            ))
+            
+            if kenh_cay:
+                # UPSERT for server_tree
+                await db_manager.execute("""
+                    INSERT INTO server_tree (guild_id, tree_channel_id)
+                    VALUES ($1, $2)
                     ON CONFLICT(guild_id) DO UPDATE SET
-                        logs_channel_id = COALESCE(excluded.logs_channel_id, logs_channel_id),
-                        noitu_channel_id = COALESCE(excluded.noitu_channel_id, noitu_channel_id),
-                        fishing_channel_id = COALESCE(excluded.fishing_channel_id, fishing_channel_id),
-                        bump_channel_id = COALESCE(excluded.bump_channel_id, bump_channel_id),
-                        bump_start_time = CASE WHEN excluded.bump_channel_id IS NOT NULL THEN excluded.bump_start_time ELSE bump_start_time END,
-                        log_discord_channel_id = COALESCE(excluded.log_discord_channel_id, log_discord_channel_id),
-                        log_ping_user_id = COALESCE(excluded.log_ping_user_id, log_ping_user_id),
-                        log_discord_level = COALESCE(excluded.log_discord_level, log_discord_level)
-                """, (guild_id, new_logs, new_noitu, new_fishing, new_bump, bump_start_time, new_log_bot, new_ping_user, new_log_level))
-                
-                if kenh_cay:
-                    # UPSERT for server_tree
-                    await db.execute("""
-                        INSERT INTO server_tree (guild_id, tree_channel_id)
-                        VALUES (?, ?)
-                        ON CONFLICT(guild_id) DO UPDATE SET
-                            tree_channel_id = excluded.tree_channel_id
-                    """, (guild_id, kenh_cay.id))
-                
-                await db.commit()
-                print(f"CONFIG_SAVED [Guild {guild_id}]")
+                        tree_channel_id = EXCLUDED.tree_channel_id
+                """, (int(guild_id), kenh_cay.id))
+            
+            print(f"CONFIG_SAVED [Guild {guild_id}]")
 
             msg = "✅ Setup ok:\n"
             if kenh_noitu: msg += f"📝 Nối Từ: {kenh_noitu.mention}\n"
@@ -350,64 +371,62 @@ class ConfigCog(commands.Cog):
         guild_id = ctx.guild.id
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get current config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
-                    row = await cursor.fetchone()
-                
-                current_logs = row[0] if row else None
-                current_noitu = row[1] if row else None
-                current_fishing = row[2] if row else None
-                
-                # Update based on key
-                if key == "kenh_noitu":
-                    new_logs, new_noitu, new_fishing = current_logs, channel.id, current_fishing
-                    msg_key = "Nối Từ"
-                elif key == "kenh_logs":
-                    new_logs, new_noitu, new_fishing = channel.id, current_noitu, current_fishing
-                    msg_key = "Logs"
-                elif key == "kenh_fishing":
-                    new_logs, new_noitu, new_fishing = current_logs, current_noitu, channel.id
-                    msg_key = "Câu Cá"
-                else:
-                    await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_fishing")
-                    return
-                
-                # Save using UPSERT to preserve other columns (bump_channel_id, exclude_chat, etc.)
-                # This fixes the bug where !config would reset bump settings to NULL
-                await db.execute("""
-                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) 
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(guild_id) DO UPDATE SET
-                        logs_channel_id = excluded.logs_channel_id,
-                        noitu_channel_id = excluded.noitu_channel_id,
-                        fishing_channel_id = excluded.fishing_channel_id
-                """, (guild_id, new_logs, new_noitu, new_fishing))
-                
-                await db.commit()
-                
-                # Get channel mention for confirmation
-                channel_mention = f"<#{channel.id}>"
-                
-                await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
-                print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention}")
-                
-                # Start game if setting kenh_noitu
-                if key == "kenh_noitu":
-                    game_cog = self.bot.get_cog("GameNoiTu")
-                    if game_cog:
-                        # Stop old game if channel changed
-                        if current_noitu and current_noitu != channel.id:
-                            if guild_id in game_cog.games:
-                                del game_cog.games[guild_id]
-                                # Also clean up lock
-                                if guild_id in game_cog.game_locks:
-                                    del game_cog.game_locks[guild_id]
-                                print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {current_noitu}")
-                        
-                        # Start new game
-                        await game_cog.start_new_round(guild_id, channel)
-                        print(f"GAME_START [Guild {guild_id}] Started new game at channel {channel.id}")
+            # Get current config
+            row = await db_manager.fetchrow(
+                "SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = $1", 
+                (int(guild_id),)
+            )
+            
+            current_logs = row['logs_channel_id'] if row else None
+            current_noitu = row['noitu_channel_id'] if row else None
+            current_fishing = row['fishing_channel_id'] if row else None
+            
+            # Update based on key
+            if key == "kenh_noitu":
+                new_logs, new_noitu, new_fishing = current_logs, channel.id, current_fishing
+                msg_key = "Nối Từ"
+            elif key == "kenh_logs":
+                new_logs, new_noitu, new_fishing = channel.id, current_noitu, current_fishing
+                msg_key = "Logs"
+            elif key == "kenh_fishing":
+                new_logs, new_noitu, new_fishing = current_logs, current_noitu, channel.id
+                msg_key = "Câu Cá"
+            else:
+                await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_fishing")
+                return
+            
+            # Save using UPSERT to preserve other columns (bump_channel_id, exclude_chat, etc.)
+            await db_manager.execute("""
+                INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id) 
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT(guild_id) DO UPDATE SET
+                    logs_channel_id = EXCLUDED.logs_channel_id,
+                    noitu_channel_id = EXCLUDED.noitu_channel_id,
+                    fishing_channel_id = EXCLUDED.fishing_channel_id
+            """, (int(guild_id), new_logs, new_noitu, new_fishing))
+            
+            # Get channel mention for confirmation
+            channel_mention = f"<#{channel.id}>"
+            
+            await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
+            print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention}")
+            
+            # Start game if setting kenh_noitu
+            if key == "kenh_noitu":
+                game_cog = self.bot.get_cog("GameNoiTu")
+                if game_cog:
+                    # Stop old game if channel changed
+                    if current_noitu and current_noitu != channel.id:
+                        if guild_id in game_cog.games:
+                            del game_cog.games[guild_id]
+                            # Also clean up lock
+                            if guild_id in game_cog.game_locks:
+                                del game_cog.game_locks[guild_id]
+                            print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {current_noitu}")
+                    
+                    # Start new game
+                    await game_cog.start_new_round(guild_id, channel)
+                    print(f"GAME_START [Guild {guild_id}] Started new game at channel {channel.id}")
                 
         except Exception as e:
             import traceback
@@ -438,52 +457,51 @@ class ConfigCog(commands.Cog):
         guild_id = interaction.guild.id
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                # Get current exclude list
-                async with db.execute(
-                    "SELECT exclude_chat_channels FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
+            # Get current exclude list
+            row = await db_manager.fetchrow(
+                "SELECT exclude_chat_channels FROM server_config WHERE guild_id = $1",
+                (int(guild_id),)
+            )
+            
+            excluded = []
+            if row and row['exclude_chat_channels']:
+                try:
+                    excluded = json.loads(row['exclude_chat_channels'])
+                except Exception as e:
+                    excluded = []
+            
+            if action == "add":
+                if channel.id in excluded:
+                    await interaction.followup.send(
+                        f"⚠️ Kênh {channel.mention} đã trong danh sách loại trừ rồi",
+                        ephemeral=True
+                    )
+                    return
                 
-                excluded = []
-                if row and row[0]:
-                    try:
-                        excluded = json.loads(row[0])
-                    except Exception as e:
-                        excluded = []
+                excluded.append(channel.id)
+                msg = f"✅ Thêm {channel.mention} vào danh sách loại trừ"
+            
+            else:  # remove
+                if channel.id not in excluded:
+                    await interaction.followup.send(
+                        f"⚠️ Kênh {channel.mention} không trong danh sách loại trừ",
+                        ephemeral=True
+                    )
+                    return
                 
-                if action == "add":
-                    if channel.id in excluded:
-                        await interaction.followup.send(
-                            f"⚠️ Kênh {channel.mention} đã trong danh sách loại trừ rồi",
-                            ephemeral=True
-                        )
-                        return
-                    
-                    excluded.append(channel.id)
-                    msg = f"✅ Thêm {channel.mention} vào danh sách loại trừ"
-                
-                else:  # remove
-                    if channel.id not in excluded:
-                        await interaction.followup.send(
-                            f"⚠️ Kênh {channel.mention} không trong danh sách loại trừ",
-                            ephemeral=True
-                        )
-                        return
-                    
-                    excluded.remove(channel.id)
-                    msg = f"✅ Xoá {channel.mention} khỏi danh sách loại trừ"
-                
-                # Update database
-                await db.execute(
-                    "INSERT OR REPLACE INTO server_config (guild_id, exclude_chat_channels) VALUES (?, ?)",
-                    (guild_id, json.dumps(excluded))
-                )
-                await db.commit()
-                
-                await interaction.followup.send(msg, ephemeral=True)
-                print(f"[EXCLUDE] {interaction.user.name} {action}ed {channel.name}")
+                excluded.remove(channel.id)
+                msg = f"✅ Xoá {channel.mention} khỏi danh sách loại trừ"
+            
+            # Update database
+            # Postgres: UPSERT or UPDATE
+            # Since server_config might not exist, we should use UPSERT (INSERT ... ON CONFLICT)
+            await db_manager.execute("""
+                INSERT INTO server_config (guild_id, exclude_chat_channels) VALUES ($1, $2)
+                ON CONFLICT(guild_id) DO UPDATE SET exclude_chat_channels = EXCLUDED.exclude_chat_channels
+            """, (int(guild_id), json.dumps(excluded)))
+            
+            await interaction.followup.send(msg, ephemeral=True)
+            print(f"[EXCLUDE] {interaction.user.name} {action}ed {channel.name}")
         
         except Exception as e:
             traceback.print_exc()
@@ -501,17 +519,15 @@ class ConfigCog(commands.Cog):
         guild_id = interaction.guild.id
         
         try:
-            async with aiosqlite.connect(DB_PATH) as db:
-                async with db.execute(
-                    "SELECT exclude_chat_channels FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
+            row = await db_manager.fetchrow(
+                "SELECT exclude_chat_channels FROM server_config WHERE guild_id = $1",
+                (int(guild_id),)
+            )
             
             excluded = []
-            if row and row[0]:
+            if row and row['exclude_chat_channels']:
                 try:
-                    excluded = json.loads(row[0])
+                    excluded = json.loads(row['exclude_chat_channels'])
                 except Exception as e:
                     excluded = []
             

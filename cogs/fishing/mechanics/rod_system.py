@@ -15,29 +15,31 @@ async def get_rod_data(user_id: int) -> tuple:
         tuple: A tuple containing (rod_level, rod_durability).
     """
     try:
-        # Use database_manager for proper connection pooling
-        row = await db_manager.execute(
-            "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
+        # Use fetchrow for retrieving single record
+        row = await db_manager.fetchrow(
+            "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = $1",
             (user_id,)
         )
-        
-        # db_manager.execute returns list of rows, get first one
-        row = row[0] if row else None
         
         if not row:
             # Auto-create fishing profile for new user
             try:
-                await db_manager.modify(
-                    "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability) VALUES (?, ?, ?)",
+                # Use execute with $n placeholders
+                await db_manager.execute(
+                    "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability) VALUES ($1, $2, $3)",
                     (user_id, 1, ROD_LEVELS[1]["durability"])
                 )
             except Exception as e:
                 print(f"[ROD] Error creating fishing profile for {user_id}: {e}")
             return 1, ROD_LEVELS[1]["durability"]
+            
         # Ensure level fallback only when None/invalid, and do NOT override legitimate 0 durability
-        rod_level = row[0] if row[0] is not None and int(row[0]) >= 1 else 1
+        # AsyncPG returns Record objects which are subscriptable by column name
+        rod_level = row['rod_level'] if row['rod_level'] is not None and int(row['rod_level']) >= 1 else 1
+        
         # If durability is None, fall back to max durability for current level
-        rod_durability = row[1] if row[1] is not None else ROD_LEVELS[rod_level]["durability"]
+        rod_durability = row['rod_durability'] if row['rod_durability'] is not None else ROD_LEVELS[rod_level]["durability"]
+        
         return rod_level, rod_durability
     except Exception as e:
         print(f"[ROD] Error getting rod data: {e}")
@@ -52,16 +54,16 @@ async def update_rod_data(user_id: int, durability: int, level: int = None):
         level (int, optional): The new rod level. Defaults to None (no change).
     """
     try:
-        # Use database_manager for proper connection pooling
+        # Use db_manager.execute with $n placeholders
         if level is not None:
-            await db_manager.modify(
-                "UPDATE fishing_profiles SET rod_durability = ?, rod_level = ? WHERE user_id = ?",
+            await db_manager.execute(
+                "UPDATE fishing_profiles SET rod_durability = $1, rod_level = $2 WHERE user_id = $3",
                 (durability, level, user_id)
             )
             print(f"[ROD] [UPDATE] user_id={user_id} durability={durability} level={level}")
         else:
-            await db_manager.modify(
-                "UPDATE fishing_profiles SET rod_durability = ? WHERE user_id = ?",
+            await db_manager.execute(
+                "UPDATE fishing_profiles SET rod_durability = $1 WHERE user_id = $2",
                 (durability, user_id)
             )
             print(f"[ROD] [UPDATE] user_id={user_id} durability={durability}")

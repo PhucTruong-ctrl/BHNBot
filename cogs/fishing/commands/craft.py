@@ -171,7 +171,7 @@ async def chetao_action(cog, ctx_or_interaction, item_key: str, is_slash: bool):
         user_id = ctx_or_interaction.author.id
     
     # Check lag debuff
-    if cog.check_emotional_state(user_id, "lag"):
+    if await cog.check_emotional_state(user_id, "lag"):
         await asyncio.sleep(3)
         logger.info(f"[CRAFT] {user_id} experienced lag delay (3s)")
     

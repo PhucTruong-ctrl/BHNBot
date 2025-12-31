@@ -4,14 +4,14 @@ from discord.ext import commands, tasks
 import importlib
 import sys
 import logging
-from core.database import DatabaseManager
+from database_manager import db_manager
 import configs.settings as settings
 
 class SystemMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.logger = logging.getLogger("SystemMonitor")
-        self.db = DatabaseManager()
+        self.db = db_manager
         self.last_config_time = 0
         self.monitor_config_changes.start()
 

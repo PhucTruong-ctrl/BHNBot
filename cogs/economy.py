@@ -1,7 +1,6 @@
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import aiosqlite
 from datetime import datetime, time
 import random
 import asyncio
@@ -16,8 +15,6 @@ from database_manager import (
 from core.logger import setup_logger
 
 logger = setup_logger("EconomyCog", "cogs/economy.log")
-
-DB_PATH = "./data/database.db"
 
 # Constants
 DAILY_BONUS = 10  # Seeds received from /chao
@@ -58,7 +55,8 @@ class EconomyCog(commands.Cog):
         Returns:
             tuple: User data.
         """
-        return await get_or_create_user(user_id, username)
+        # Ensure strict integer type
+        return await get_or_create_user(int(user_id), username)
 
     async def is_harvest_buff_active(self, guild_id: int) -> bool:
         """Checks if the 24h harvest buff is active for the guild.
@@ -70,24 +68,30 @@ class EconomyCog(commands.Cog):
             bool: True if buff is active and not expired.
         """
         try:
-            result = await db_manager.fetchone(
-                "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                (guild_id,),
+            # Postgres: $1 placeholder
+            result = await db_manager.fetchrow(
+                "SELECT harvest_buff_until FROM server_config WHERE guild_id = $1",
+                (int(guild_id),),
                 use_cache=True,
                 cache_key=f"harvest_buff_{guild_id}",
                 cache_ttl=60
             )
             
-            if not result or not result[0]:
+            if not result or not result['harvest_buff_until']:
                 return False
             
-            buff_until = datetime.fromisoformat(result[0])
+            # Postgres returns native datetime, no need for fromisoformat
+            buff_until = result['harvest_buff_until']
             return datetime.now() < buff_until
         except Exception as e:
             return False
 
     async def add_seeds_local(self, user_id: int, amount: int, reason: str = 'generic_reward', category: str = 'system'):
         """Add seeds to user"""
+        # Ensure strict types
+        user_id = int(user_id)
+        amount = int(amount)
+        
         balance_before = await get_user_balance(user_id)
         # Ensure reasons are consistent
         await add_seeds(user_id, amount, reason, category)
@@ -99,11 +103,11 @@ class EconomyCog(commands.Cog):
 
     async def get_user_balance_local(self, user_id: int) -> int:
         """Get user balance (seeds only)"""
-        return await get_user_balance(user_id)
+        return await get_user_balance(int(user_id))
 
     async def get_leaderboard_local(self, limit: int = 10) -> list:
         """Get top players by seeds"""
-        return await get_leaderboard(limit)
+        return await get_leaderboard(int(limit))
 
     async def update_last_daily(self, user_id: int):
         """Updates the timestamp of the last daily reward claim.
@@ -111,28 +115,31 @@ class EconomyCog(commands.Cog):
         Args:
             user_id (int): The Discord user ID.
         """
-        await db_manager.modify(
-            "UPDATE users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = ?",
-            (user_id,)
+        # Postgres: $1 placeholder, CURRENT_TIMESTAMP works fine
+        await db_manager.execute(
+            "UPDATE users SET last_daily = CURRENT_TIMESTAMP WHERE user_id = $1",
+            (int(user_id),)
         )
         db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
 
     async def update_last_chat_reward(self, user_id: int):
         """Update last chat reward time"""
-        await db_manager.modify(
-            "UPDATE users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = ?",
-            (user_id,)
+        await db_manager.execute(
+            "UPDATE users SET last_chat_reward = CURRENT_TIMESTAMP WHERE user_id = $1",
+            (int(user_id),)
         )
         db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
 
     async def get_last_daily(self, user_id: int) -> datetime:
         """Get last daily reward time"""
-        result = await db_manager.fetchone(
-            "SELECT last_daily FROM users WHERE user_id = ?",
-            (user_id,)
+        # Postgres: $1 placeholder
+        result = await db_manager.fetchrow(
+            "SELECT last_daily FROM users WHERE user_id = $1",
+            (int(user_id),)
         )
-        if result and result[0]:
-            return datetime.fromisoformat(result[0])
+        if result and result['last_daily']:
+            # Native datetime object from asyncpg
+            return result['last_daily']
         return None
 
     def is_daily_window(self) -> bool:
@@ -143,9 +150,10 @@ class EconomyCog(commands.Cog):
     async def get_excluded_channels(self, guild_id: int) -> list:
         """Get list of excluded channels for a guild"""
         try:
-            result = await db_manager.fetchone(
-                "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = ?",
-                (guild_id,),
+            # Postgres: $1 placeholder
+            result = await db_manager.fetchrow(
+                "SELECT logs_channel_id, exclude_chat_channels FROM server_config WHERE guild_id = $1",
+                (int(guild_id),),
                 use_cache=True,
                 cache_key=f"excluded_channels_{guild_id}",
                 cache_ttl=600
@@ -153,17 +161,17 @@ class EconomyCog(commands.Cog):
             
             excluded = []
             if result:
-                if result[0]:  # logs_channel_id
-                    excluded.append(result[0])
+                if result['logs_channel_id']:
+                    excluded.append(result['logs_channel_id'])
                 
-                # Parse exclude_chat_channels (JSON format)
-                if result[1]:
+                # Parse exclude_chat_channels (JSON format stored as TEXT in DB for now)
+                if result['exclude_chat_channels']:
                     try:
                         import json
-                        parsed = json.loads(result[1])
+                        parsed = json.loads(result['exclude_chat_channels'])
                         excluded.extend(parsed)
                     except Exception as e:
-                        logger.error(f"Unexpected error: {e}")
+                        logger.error(f"Unexpected error parsing exclude_chat_channels: {e}")
             
             return excluded
         except Exception as e:
@@ -667,7 +675,6 @@ class EconomyCog(commands.Cog):
             logger.error(f"[ECONOMY] Voice reward error: {e}", exc_info=True)
 
 
-
     @voice_reward_task.before_loop
     async def before_voice_reward_task(self):
         """Wait for bot to be ready before starting task"""
@@ -692,13 +699,13 @@ class EconomyCog(commands.Cog):
             logger.info("[WELFARE] Starting weekly welfare distribution...")
             
             # Get poor users who were active in last 7 days
-            # Active = has last_chat_reward or last_daily within 7 days
-            poor_users = await db_manager.fetchall(
+            # Postgres: NOW() - INTERVAL '7 days'
+            poor_users = await db_manager.fetch(
                 """SELECT user_id, seeds, username FROM users 
                    WHERE seeds < 1000 
                    AND (
-                       last_chat_reward > datetime('now', '-7 days')
-                       OR last_daily > datetime('now', '-7 days')
+                       last_chat_reward > NOW() - INTERVAL '7 days'
+                       OR last_daily > NOW() - INTERVAL '7 days'
                    )
                    ORDER BY seeds ASC
                    LIMIT 50""",  # Cap at 50 users to prevent abuse
@@ -713,7 +720,12 @@ class EconomyCog(commands.Cog):
             total_distributed = 0
             recipients = []
             
-            for user_id, balance, username in poor_users:
+            # asyncpg rows operate like dictionaries/tuples
+            for row in poor_users:
+                user_id = row['user_id']
+                balance = row['seeds']
+                username = row['username']
+                
                 await add_seeds(user_id, welfare_amount, 'weekly_welfare', 'system')
                 total_distributed += welfare_amount
                 recipients.append((username or f"User#{user_id}", balance, balance + welfare_amount))

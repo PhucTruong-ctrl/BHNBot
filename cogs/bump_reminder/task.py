@@ -87,7 +87,7 @@ class BumpReminderTask:
         
         try:
             # Use singleton db_manager instead of opening new connection
-            db = db_manager.db
+            db = db_manager
             if not db:
                 logger.error("[BUMP_TASK] Database not initialized")
                 return

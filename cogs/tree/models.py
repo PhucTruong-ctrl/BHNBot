@@ -359,7 +359,10 @@ class HarvestBuff:
             if not row or not row[0]:
                 return False
             
-            buff_until = datetime.fromisoformat(row[0])
+            buff_until = row[0]
+            # PostgreSQL returns datetime, legacy SQLite returns string
+            if isinstance(buff_until, str):
+                buff_until = datetime.fromisoformat(buff_until)
             return datetime.now() < buff_until
         except Exception as e:
             logger.error(f"Error checking harvest buff: {e}", exc_info=True)

@@ -5,7 +5,7 @@ from discord.ext import commands
 import discord
 import random
 import random
-# [CACHE] Removed legacy imports
+from database_manager import db_manager, get_user_balance
 from .fishing.utils.consumables import CONSUMABLE_ITEMS, get_consumable_info, is_consumable
 from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
 
@@ -43,7 +43,8 @@ class MemoryGameView(discord.ui.View):
                 if self.clicked == self.sequence:
                     # Win
                     from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
-                    await set_has_tinh_cau(self.user_id, False)  # Mất tinh cầu
+                    # Item already deducted at start
+                    
                     # Set buff for guaranteed catch
                     self.bot.get_cog("FishingCog").guaranteed_catch_users[self.user_id] = True
                     print(f"[CONSUMABLE] Tinh cau success for {self.user_id}")
@@ -56,7 +57,7 @@ class MemoryGameView(discord.ui.View):
                 else:
                     # Lose
                     from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
-                    await set_has_tinh_cau(self.user_id, False)  # Mất tinh cầu
+                    # Item already deducted at start
                     await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
                     print(f"[CONSUMABLE] Tinh cau failure for {self.user_id}")
                     username = self.user.display_name if self.user else "Unknown"
@@ -78,7 +79,7 @@ class MemoryGameView(discord.ui.View):
     async def on_timeout(self):
         if len(self.clicked) < len(self.sequence):
             from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
-            await set_has_tinh_cau(self.user_id, False)  # Mất tinh cầu
+            # Item already deducted
             await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
             print(f"[CONSUMABLE] Tinh cau timeout failure for {self.user_id}")
             username = self.user.display_name if self.user else "Unknown"
@@ -205,8 +206,7 @@ class PhoenixEggView(discord.ui.View):
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            # [CACHE] Use bot.inventory.modify
-            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
+            # Item already deducted
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -223,8 +223,7 @@ class PhoenixEggView(discord.ui.View):
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            # [CACHE] Use bot.inventory.modify
-            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
+            # Item already deducted
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -241,8 +240,7 @@ class PhoenixEggView(discord.ui.View):
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_last_play
         
         try:
-            # [CACHE] Use bot.inventory.modify
-            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
+            # Item already deducted
             await set_phoenix_last_play(self.user_id)
             
             embed = discord.Embed(
@@ -278,8 +276,7 @@ class PhoenixEggView(discord.ui.View):
         from .fishing.mechanics.legendary_quest_helper import set_phoenix_buff, set_phoenix_last_play
         
         try:
-            # [CACHE] Use bot.inventory.modify
-            await self.bot.inventory.modify(self.user_id, "long_vu_lua", -1)
+            # Item already deducted
             await set_phoenix_buff(self.user_id, self.energy)  # Store energy value
             await set_phoenix_last_play(self.user_id)
             
@@ -357,151 +354,97 @@ class ConsumableCog(commands.Cog):
         
         item_info = get_consumable_info(item_key)
         
-        # Check inventory
-        # [CACHE] Use bot.inventory.get_all
-        inventory = await self.bot.inventory.get_all(user_id)
-        quantity = inventory.get(item_key, 0)
+        # =================================================================================================
+        # CORE TRANSACTION LOGIC (ACID)
+        # We deduct item FIRST.
+        # =================================================================================================
         
-        if quantity < 1:
-            error_msg = f"❌ Bạn không có **{item_info['name']}**!"
-            print(f"[CONSUMABLE] Quantity check failed for {item_key} - quantity: {quantity}")
+        db_item_deducted = False
+        
+        # SPECIAL CASE: Tinh Cau is a QUEST FLAG, not an Inventory Item (Legacy)
+        if item_key == "tinh_cau":
+             from .fishing.mechanics.legendary_quest_helper import has_tinh_cau, set_has_tinh_cau
+             if await has_tinh_cau(user_id):
+                 await set_has_tinh_cau(user_id, False) # Consume it
+                 db_item_deducted = True
+             else:
+                 db_item_deducted = False
+        else:
+            # Standard Inventory Item
+            try:
+                async with db_manager.transaction() as conn:
+                    # Deduct 1 item where count >= 1
+                    result = await conn.execute(
+                        "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3 AND quantity >= $1",
+                        (1, user_id, item_key)
+                    )
+                    
+                    if result == "UPDATE 0":
+                        db_item_deducted = False
+                    else:
+                        db_item_deducted = True
+
+            except Exception as e:
+                logger.error(f"[CONSUMABLE] Transaction check failed for {item_key}: {e}")
+                db_item_deducted = False
+
+        if not db_item_deducted:
+            if item_key == "tinh_cau":
+                 error_msg = "❌ Bạn không có **Tinh Cầu Không Gian** (hoặc đã sử dụng)!"
+            else:
+                 error_msg = f"❌ Bạn không đủ **{item_info['name']}** để sử dụng!"
+                 
             if is_slash:
                 await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
             else:
-                await ctx_or_interaction.send(error_msg)
+                await ctx.send(error_msg)
             return
+
+        # If we got here, ITEM IS CONSUMED.
+        # Now we execute the effect.
         
-        print(f"[CONSUMABLE] Quantity check passed for {item_key} - quantity: {quantity}")
-        
-        # Check if legendary fish already caught
-        legendary_checks = {
-            "tinh_cau": "ca_ngan_ha",
-            "long_vu_lua": "ca_phuong_hoang",
-            "ban_do_ham_am": "cthulhu_con",
-            "may_do_song": "ca_voi_52hz"
-        }
-        legendary_messages = {
-            "ca_ngan_ha": "🌌 **KẾT NỐI VÔ HIỆU!**\n\n\"Tinh Cầu Không Gian lóe sáng rồi vụt tắt. Các vì sao thì thầm rằng định mệnh đã an bài. Sinh vật huyền bí từ dải ngân hà đang bơi lội trong bể cá của bạn rồi, cánh cổng không gian sẽ không mở ra lần thứ hai.\"",
-            "ca_phuong_hoang": "🔥 **NGỌN LỬA ĐÃ AN BÀI!**\n\n\"Chiếc lông vũ chỉ tỏa ra hơi ấm nhẹ rồi nguội lạnh. Loài chim lửa bất tử chỉ tái sinh một lần duy nhất với người xứng đáng. Bạn đã sở hữu sức mạnh của nó, không cần phải thực hiện nghi lễ thêm lần nào nữa.\"",
-            "cthulhu_con": "🌑 **TIẾNG GỌI TỪ VỰC THẲM**\n\n\"Bạn nhìn vào bản đồ nhưng các ký tự bỗng nhiên nhảy múa và biến mất... Cổ Thần đã thức giấc và đáp lại lời kêu gọi của bạn từ trước. Đừng cố gắng nhìn sâu vào bóng tối nữa, hoặc bạn sẽ phát điên đấy!\"",
-            "ca_voi_52hz": "📡 **TẦN SỐ ĐÃ ĐƯỢC KẾT NỐI**\n\n\"Máy dò sóng chỉ phát ra những tiếng rè tĩnh lặng... Tần số 52Hz cô đơn nhất đại dương không còn lạc lõng nữa, vì nó đã tìm thấy bạn. Không còn tín hiệu nào khác để dò tìm.\""
-        }
-        if item_key in legendary_checks:
-            fish_key = legendary_checks[item_key]
-            if await is_legendary_caught(user_id, fish_key):
-                error_msg = legendary_messages[fish_key]
-                print(f"[CONSUMABLE] Legendary check failed for {item_key} - {fish_key} already caught")
-                if is_slash:
-                    await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
-                else:
-                    await ctx_or_interaction.send(error_msg)
-                return
-        
-        print(f"[CONSUMABLE] Legendary check passed for {item_key}")
-        
-        # Special handling for tinh_cau
+        # 3. Special Logic Routing (Consumed already)
         if item_key == "tinh_cau":
-            from .fishing.mechanics.legendary_quest_helper import has_tinh_cau, get_tinh_cau_cooldown
-            import datetime
-            
-            # Check if user has tinh cau
-            if not await has_tinh_cau(user_id):
-                error_msg = "❌ Bạn không có **Tinh Cầu Không Gian**!"
-                print(f"[CONSUMABLE] Tinh cau check failed - not crafted")
-                if is_slash:
-                    await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
-                else:
-                    await ctx_or_interaction.send(error_msg)
-                return
-            
-            # Check cooldown
-            cooldown_time = await get_tinh_cau_cooldown(user_id)
-            if cooldown_time:
-                # Check if 10 minutes have passed
-                # Check if 10 minutes have passed
-                cooldown_datetime = datetime.datetime.fromisoformat(cooldown_time)
-                now = datetime.datetime.now()
-                if (now - cooldown_datetime).total_seconds() < 600:  # 10 minutes
-                    remaining = 600 - (now - cooldown_datetime).total_seconds()
-                    minutes = int(remaining // 60)
-                    seconds = int(remaining % 60)
-                    error_msg = f"⏰ **Cooldown đang hoạt động!** Còn {minutes} phút {seconds} giây."
-                    if is_slash:
-                        await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
-                    else:
-                        await ctx_or_interaction.send(error_msg)
-                    return
-            
-            # Start memory game
+            # ... Game Logic ...
             sequence = random.sample(MEMORY_SYMBOLS, 4)
             shuffled = sequence.copy()
-            random.shuffle(shuffled)
+            while shuffled == sequence: # Ensure shuffled
+                random.shuffle(shuffled)
+                
             button_labels = ["A", "B", "C", "D"]
             buttons = {button_labels[i]: shuffled[i] for i in range(4)}
             
             embed = discord.Embed(
                 title=f"🌌 {user.display_name} - TRIỆU HỒI CÁ NGÂN HÀ",
-                description=f"Hãy nối các vì sao theo thứ tự đúng trong 10 giây!\n\n**Mẫu:** {' ➡️ '.join(sequence)}\n\n**Tiến độ:** ? ➡️ ? ➡️ ? ➡️ ?",
+                description=f"Hãy nối các vì sao theo thứ tự đúng trong 10 giây! (Đã tiêu thụ 1 Tinh Cầu)\n\n**Mẫu:** {' ➡️ '.join(sequence)}\n\n**Tiến độ:** ? ➡️ ? ➡️ ? ➡️ ?",
                 color=discord.Color.blue()
             )
             
             view = MemoryGameView(user_id, sequence, buttons, self.bot, ctx_or_interaction.channel if not is_slash else ctx_or_interaction.channel, user)
             
             if is_slash:
-                await ctx_or_interaction.followup.send(embed=embed, view=view, ephemeral=False)
+                await ctx_or_interaction.followup.send(embed=embed, view=view)
             else:
-                await ctx_or_interaction.send(embed=embed, view=view)
+                await ctx.send(embed=embed, view=view)
             return
-        
-        # Special handling for long_vu_lua
-        if item_key == "long_vu_lua":
-            # Check if user has long vu lua in inventory
-            # [CACHE] Use bot.inventory.get_all
-            inventory = await self.bot.inventory.get_all(user_id)
-            quantity = inventory.get("long_vu_lua", 0)
-            if quantity < 1:
-                error_msg = "❌ Bạn không có **Lông Vũ Lửa**!"
-                print(f"[CONSUMABLE] Long vu lua check failed - quantity: {quantity}")
-                if is_slash:
-                    await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
-                else:
-                    await ctx_or_interaction.send(error_msg)
-                return
-            
-            print(f"[CONSUMABLE] Starting long_vu_lua game for {user_id}")
-            
-            # Create Phoenix Egg View
-            view = PhoenixEggView(user_id, self.bot, ctx_or_interaction.channel if not is_slash else ctx_or_interaction.channel, user)
-            
-            # Create initial embed
-            embed = view._make_embed()
-            
-            if is_slash:
-                await ctx_or_interaction.followup.send(embed=embed, view=view, ephemeral=False)
-            else:
-                await ctx_or_interaction.send(embed=embed, view=view)
-            return
-        
-        # Use the item - remove from inventory (for regular items)
-        try:
-            # [CACHE] Use bot.inventory.modify
-            await self.bot.inventory.modify(user_id, item_key, -1)
-            success = True
-        except Exception as e:
-            logger.error(f"[CONSUMABLE] Error using item {item_key}: {e}")
-            success = False
 
-        if not success:
-            error_msg = "❌ Lỗi khi sử dụng vật phẩm!"
-            if is_slash:
-                await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
-            else:
-                await ctx_or_interaction.send(error_msg)
-            return
-        
-        print(f"[CONSUMABLE] Removed {item_key} from {user_id}")
-        
-        # Store active boost for this user (for normal consumables)
+        elif item_key == "long_vu_lua":
+             # ... Phoenix Game ...
+             # Note: Original code checked long_vu_lua again via inventory.get.
+             # We just consumed it. So we proceed.
+             print(f"[CONSUMABLE] Starting long_vu_lua game for {user_id}")
+             
+             view = PhoenixEggView(user_id, self.bot, ctx_or_interaction.channel if not is_slash else ctx_or_interaction.channel, user)
+             embed = view._make_embed()
+             
+             if is_slash:
+                 await ctx_or_interaction.followup.send(embed=embed, view=view)
+             else:
+                 await ctx.send(embed=embed, view=view)
+             return
+
+        # 4. Standard Effect (Boost)
+        # Store active boost for this user
         self.active_boosts[user_id] = {
             "item_key": item_key,
             "effect_type": item_info["effect_type"],
@@ -510,14 +453,13 @@ class ConsumableCog(commands.Cog):
         
         print(f"[CONSUMABLE] Applied effect for {item_key} to {user_id}")
         
-        # Send success message
         embed = discord.Embed(
             title=f"✅ Đã Sử Dụng {item_info['name']}",
             description="Vật phẩm đã được kích hoạt thành công!",
             color=discord.Color.green()
         )
         embed.add_field(name="📖 Mô tả", value=item_info["description"], inline=False)
-        embed.add_field(name="📦 Còn lại", value=f"x{quantity - 1}", inline=False)
+        embed.add_field(name="📦 Tình trạng", value="Đã sử dụng 1 cái", inline=False) # We don't know exact remaining without query, safe generic msg
         embed.add_field(
             name="⏱️ Thời gian hiệu lực",
             value="Có hiệu lực cho lần câu cá huyền thoại tiếp theo",
@@ -527,7 +469,7 @@ class ConsumableCog(commands.Cog):
         if is_slash:
             await ctx_or_interaction.followup.send(embed=embed, ephemeral=True)
         else:
-            await ctx_or_interaction.send(embed=embed)
+            await ctx.send(embed=embed)
 
 
 
