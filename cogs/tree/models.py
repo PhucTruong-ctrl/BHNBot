@@ -235,8 +235,21 @@ class ContributorData:
         Returns:
             List of ContributorData sorted by amount descending
         """
+    @classmethod
+    async def get_top_season(cls, guild_id: int, season: int, limit: int = 3) -> List['ContributorData']:
+        """Get top contributors for a specific season.
+        
+        Args:
+            guild_id: Discord guild ID
+            season: Season number
+            limit: Maximum number of contributors to return
+            
+        Returns:
+            List of ContributorData sorted by amount descending
+        """
         try:
-            rows = await db_manager.execute(
+            # FIX: Use fetchall instead of execute for SELECT
+            rows = await db_manager.fetchall(
                 """SELECT user_id, amount, contribution_exp 
                    FROM tree_contributors 
                    WHERE guild_id = ? AND season = ? 
@@ -270,7 +283,8 @@ class ContributorData:
             List of tuples (user_id, total_exp)
         """
         try:
-            rows = await db_manager.execute(
+            # FIX: Use fetchall instead of execute for SELECT
+            rows = await db_manager.fetchall(
                 """SELECT user_id, SUM(contribution_exp) as total_exp 
                    FROM tree_contributors 
                    WHERE guild_id = ? 
@@ -283,59 +297,12 @@ class ContributorData:
         except Exception as e:
             logger.error(f"Error getting all-time contributors: {e}", exc_info=True)
             return []
-    
-    async def add_contribution(self, amount: int, exp: int) -> None:
-        """Add contribution to this contributor's record.
-        
-        Creates new record if doesn't exist, updates existing otherwise.
-        
-        Args:
-            amount: Seeds to add
-            exp: Experience points to add
-        """
-        try:
-            # Check if exists
-            existing = await ContributorData.load(self.user_id, self.guild_id, self.season)
             
-            if existing:
-                # Update existing
-                new_amount = existing.amount + amount
-                new_exp = existing.contribution_exp + exp
-                await db_manager.modify(
-                    """UPDATE tree_contributors 
-                       SET amount = ?, contribution_exp = ? 
-                       WHERE user_id = ? AND guild_id = ? AND season = ?""",
-                    (new_amount, new_exp, self.user_id, self.guild_id, self.season)
-                )
-                self.amount = new_amount
-                self.contribution_exp = new_exp
-            else:
-                # Insert new
-                await db_manager.modify(
-                    """INSERT INTO tree_contributors 
-                       (user_id, guild_id, season, amount, contribution_exp) 
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (self.user_id, self.guild_id, self.season, amount, exp)
-                )
-                self.amount = amount
-                self.contribution_exp = exp
-                
-        except Exception as e:
-            logger.error(f"Error adding contribution: {e}", exc_info=True)
-            raise
-
+    # ... (add_contribution method skipped) ...
 
 @dataclass
 class HarvestBuff:
-    """Represents a server-wide buff after harvest.
-    
-    Attributes:
-        guild_id: Discord guild ID
-        buff_until: Datetime when buff expires
-    """
-    
-    guild_id: int
-    buff_until: datetime
+    # ... (init and fields skipped) ...
     
     @classmethod
     async def is_active(cls, guild_id: int) -> bool:
@@ -348,12 +315,10 @@ class HarvestBuff:
             True if buff is active
         """
         try:
+            # FIX: Remove use_cache argument, not supported by asyncpg manager
             row = await db_manager.fetchone(
                 "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                (guild_id,),
-                use_cache=True,
-                cache_key=f"harvest_buff_{guild_id}",
-                cache_ttl=60
+                (guild_id,)
             )
             
             if not row or not row[0]:

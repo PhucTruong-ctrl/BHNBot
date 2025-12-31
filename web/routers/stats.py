@@ -2,10 +2,12 @@
 BHNBot Admin Panel - Statistics Router
 
 Endpoints for economy and game statistics.
+Rewritten for PostgreSQL compatibility.
 """
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List
+from fastapi import APIRouter, HTTPException, Query
+from typing import Dict, Any, List, Optional
 import math
+from datetime import datetime, timedelta
 
 from ..database import fetchall, fetchone
 
@@ -36,17 +38,9 @@ def calculate_gini(balances: List[int]) -> float:
 
 @router.get("/economy")
 async def get_economy_stats() -> Dict[str, Any]:
-    """Get economy statistics.
-    
-    Returns:
-        - total_seeds: Total seeds in circulation
-        - total_users: Number of users
-        - top_10: Top 10 richest users
-        - gini_index: Wealth inequality measure
-        - median_balance: Median user balance
-    """
-    # Get total seeds and user count
-    total = await fetchone("SELECT SUM(seeds) as total, COUNT(*) as count FROM users")
+    """Get economy statistics."""
+    # Postgres: Use COALESCE to handle NULL sums if table is empty
+    total_data = await fetchone("SELECT COALESCE(SUM(seeds), 0)::BIGINT as total, COUNT(*) as count FROM users")
     
     # Get all balances for Gini calculation
     all_balances = await fetchall("SELECT seeds FROM users WHERE seeds > 0")
@@ -62,8 +56,8 @@ async def get_economy_stats() -> Dict[str, Any]:
     )
     
     return {
-        "total_seeds": total["total"] or 0,
-        "total_users": total["count"] or 0,
+        "total_seeds": total_data["total"] if total_data else 0,
+        "total_users": total_data["count"] if total_data else 0,
         "top_10": top_10,
         "gini_index": calculate_gini(balances),
         "median_balance": median,
@@ -77,7 +71,7 @@ async def get_module_stats() -> Dict[str, Any]:
     
     # Fishing stats
     fishing_catches = await fetchone(
-        "SELECT COALESCE(SUM(quantity), 0) as total FROM fish_collection"
+        "SELECT COALESCE(SUM(quantity), 0)::BIGINT as total FROM fish_collection"
     )
     fishing_users = await fetchone(
         "SELECT COUNT(DISTINCT user_id) as count FROM fish_collection"
@@ -86,43 +80,47 @@ async def get_module_stats() -> Dict[str, Any]:
     # Bầu Cua stats from user_stats
     baucua_stats = await fetchone(
         """SELECT 
-            COALESCE(SUM(CASE WHEN stat_key = 'baucua_played' THEN value END), 0) as games,
-            COALESCE(SUM(CASE WHEN stat_key = 'baucua_total_won' THEN value END), 0) as won,
-            COALESCE(SUM(CASE WHEN stat_key = 'baucua_total_lost' THEN value END), 0) as lost
+            COALESCE(SUM(CASE WHEN stat_key = 'baucua_played' THEN value END), 0)::BIGINT as games,
+            COALESCE(SUM(CASE WHEN stat_key = 'baucua_total_won' THEN value END), 0)::BIGINT as won,
+            COALESCE(SUM(CASE WHEN stat_key = 'baucua_total_lost' THEN value END), 0)::BIGINT as lost
         FROM user_stats WHERE game_id = 'baucua'"""
     )
     
     # Nối Từ stats
     noitu_stats = await fetchone(
         """SELECT 
-            COALESCE(SUM(CASE WHEN stat_key = 'correct_words' THEN value END), 0) as words,
+            COALESCE(SUM(CASE WHEN stat_key = 'correct_words' THEN value END), 0)::BIGINT as words,
             COUNT(DISTINCT user_id) as users
         FROM user_stats WHERE game_id = 'noitu'"""
     )
     
     # Inventory stats
     inventory_stats = await fetchone(
-        "SELECT COUNT(*) as items, SUM(quantity) as total FROM inventory"
+        "SELECT COUNT(*) as items, COALESCE(SUM(quantity), 0)::BIGINT as total FROM inventory"
     )
     
+    # Helper to check for None/Empty logic results
+    def safe_get(data, key, default=0):
+        return data[key] if data and data.get(key) is not None else default
+
     return {
         "fishing": {
-            "total_catches": fishing_catches["total"] if fishing_catches else 0,
-            "active_users": fishing_users["count"] if fishing_users else 0,
+            "total_catches": safe_get(fishing_catches, "total"),
+            "active_users": safe_get(fishing_users, "count"),
         },
         "baucua": {
-            "total_games": baucua_stats["games"] if baucua_stats else 0,
-            "total_won": baucua_stats["won"] if baucua_stats else 0,
-            "total_lost": baucua_stats["lost"] if baucua_stats else 0,
-            "house_profit": (baucua_stats["lost"] - baucua_stats["won"]) if baucua_stats else 0,
+            "total_games": safe_get(baucua_stats, "games"),
+            "total_won": safe_get(baucua_stats, "won"),
+            "total_lost": safe_get(baucua_stats, "lost"),
+            "house_profit": (safe_get(baucua_stats, "lost") - safe_get(baucua_stats, "won")),
         },
         "noitu": {
-            "total_words": noitu_stats["words"] if noitu_stats else 0,
-            "active_users": noitu_stats["users"] if noitu_stats else 0,
+            "total_words": safe_get(noitu_stats, "words"),
+            "active_users": safe_get(noitu_stats, "users"),
         },
         "inventory": {
-            "unique_items": inventory_stats["items"] if inventory_stats else 0,
-            "total_quantity": inventory_stats["total"] if inventory_stats else 0,
+            "unique_items": safe_get(inventory_stats, "items"),
+            "total_quantity": safe_get(inventory_stats, "total"),
         }
     }
 
@@ -130,18 +128,18 @@ async def get_module_stats() -> Dict[str, Any]:
 @router.get("/distribution")
 async def get_wealth_distribution() -> Dict[str, Any]:
     """Get wealth distribution for pie chart."""
-    # Group users by wealth brackets
+    # Group users by wealth brackets (Adjusted for 1.5M economy)
     brackets = await fetchall(
         """SELECT 
             CASE 
-                WHEN seeds < 100 THEN 'Nghèo (<100)'
-                WHEN seeds < 500 THEN 'Bình dân (100-500)'
-                WHEN seeds < 2000 THEN 'Trung lưu (500-2K)'
-                WHEN seeds < 10000 THEN 'Giàu (2K-10K)'
-                ELSE 'Đại gia (>10K)'
+                WHEN seeds < 1000 THEN 'Nghèo (<1K)'
+                WHEN seeds < 10000 THEN 'Bình dân (1K-10K)'
+                WHEN seeds < 50000 THEN 'Trung lưu (10K-50K)'
+                WHEN seeds < 100000 THEN 'Giàu (50K-100K)'
+                ELSE 'Đại gia (>100K)'
             END as bracket,
             COUNT(*) as count,
-            SUM(seeds) as total_seeds
+            COALESCE(SUM(seeds), 0)::BIGINT as total_seeds
         FROM users
         GROUP BY bracket
         ORDER BY MIN(seeds)"""
@@ -150,37 +148,46 @@ async def get_wealth_distribution() -> Dict[str, Any]:
     return {
         "brackets": brackets,
         "chart_data": [
-            {"name": b["bracket"], "value": b["total_seeds"], "count": b["count"]}
+            {
+                "name": b["bracket"], 
+                "value": b["total_seeds"], 
+                "count": b["count"]
+            }
             for b in brackets
         ]
     }
+
 
 @router.get("/advanced")
 async def get_advanced_stats() -> Dict[str, Any]:
     """Get advanced economy analytics."""
     
     # 1. Active Circulation Supply (Users active in last 7 days)
+    # Using Postgres native logic: NOW() - INTERVAL '7 days'
     active_supply_data = await fetchone(
-        """SELECT SUM(seeds) as total FROM users 
-           WHERE last_daily >= datetime('now', '-7 days') 
-           OR last_chat_reward >= datetime('now', '-7 days')"""
+        """SELECT COALESCE(SUM(seeds), 0)::BIGINT as total FROM users 
+           WHERE last_daily >= NOW() - INTERVAL '7 days'
+           OR last_chat_reward >= NOW() - INTERVAL '7 days'"""
     )
-    active_supply = active_supply_data['total'] or 0
+    active_supply = active_supply_data['total'] if active_supply_data else 0
+
+    # Total Supply
+    total_supply_data = await fetchone("SELECT COALESCE(SUM(seeds), 0)::BIGINT as total FROM users")
+    total_supply = total_supply_data['total'] if total_supply_data else 1
+    if total_supply == 0: total_supply = 1 # Avoid div by zero
     
-    # Total Supply for Whale calc
-    total_supply_data = await fetchone("SELECT SUM(seeds) as total FROM users")
-    total_supply = total_supply_data['total'] or 1
-    
-    # 2. Whale Alert (> 5% of Total Supply)
-    whale_threshold = total_supply * 0.05
+    # 2. Whale Alert (> 2% of Total Supply) - Adjusted to show more top players
+    # FIX: AsyncPG returns Decimal for SUM(), must cast for float math
+    whale_threshold = float(total_supply) * 0.02
     whales = await fetchall(
-        "SELECT user_id, username, seeds FROM users WHERE seeds > ?", (whale_threshold,)
+        "SELECT user_id, username, seeds FROM users WHERE seeds > $1 ORDER BY seeds DESC LIMIT 5", 
+        (whale_threshold,)
     )
     
-    # 3. Sink/Faucet Breakdown (Heuristic Estimate)
-    # We aggregate ALL-TIME stats from user_stats
+    # 3. Sink/Faucet Breakdown
+    # Ensure COALESCE for sums to avoid NoneType errors
     stats = await fetchall(
-        """SELECT stat_key, SUM(value) as val FROM user_stats 
+        """SELECT stat_key, COALESCE(SUM(value), 0)::BIGINT as val FROM user_stats 
            WHERE stat_key IN (
              'baucua_total_won', 'baucua_total_lost', 
              'total_money_earned', 
@@ -191,15 +198,14 @@ async def get_advanced_stats() -> Dict[str, Any]:
     
     s_map = {row['stat_key']: row['val'] for row in stats}
     
-    # Config-based estimates (Hardcoded here for estimation, ideally sync with config)
+    # Constants (estimates)
     WORM_COST = 3
-    REPAIR_COST = 500 # Avg
-    UPGRADE_COST = 5000 # Avg
+    REPAIR_COST = 500
+    UPGRADE_COST = 5000
     
     faucet_breakdown = [
         {"name": "Bầu Cua Won", "value": s_map.get('baucua_total_won', 0)},
         {"name": "Fishing/Other Earned", "value": s_map.get('total_money_earned', 0)},
-        # Daily is NOT tracked in user_stats currently, big missing piece.
     ]
     
     sink_breakdown = [
@@ -221,32 +227,25 @@ async def get_advanced_stats() -> Dict[str, Any]:
 
 @router.get("/cashflow")
 async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
-    """Get cash flow statistics grouped by category and reason.
+    """Get cash flow statistics grouped by category and reason."""
     
-    Args:
-        days: Number of days to look back (default 30)
-    """
-    # 1. Fetch Aggregated Data
+    # Postgres specific: Use make_interval for clean integer handling
     query = """
         SELECT 
             category,
             reason,
-            SUM(amount) as net_amount,
+            COALESCE(SUM(amount), 0)::BIGINT as net_amount,
             COUNT(*) as count,
-            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as total_in,
-            SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END) as total_out
+            COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0)::BIGINT as total_in,
+            COALESCE(SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END), 0)::BIGINT as total_out
         FROM transaction_logs
-        WHERE created_at >= datetime('now', ?)
+        WHERE created_at >= NOW() - make_interval(days := $1)
         GROUP BY category, reason
         ORDER BY category, net_amount DESC
     """
     
-    # Calculate time parameter string properly
-    time_param = f"-{days} days"
+    rows = await fetchall(query, (days,))
     
-    rows = await fetchall(query, (time_param,))
-    
-    # 2. Process Data structure
     categories = {}
     summary = {"total_in": 0, "total_out": 0, "net": 0, "transaction_count": 0}
     
@@ -277,7 +276,6 @@ async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
         c["out"] += row["total_out"]
         c["count"] += row["count"]
         
-        # append reason detail
         c["reasons"].append({
             "reason": reason,
             "net": row["net_amount"],
@@ -303,25 +301,21 @@ async def export_dashboard_data() -> Any:
     except ImportError:
         raise HTTPException(status_code=500, detail="Libraries pandas/openpyxl not installed.")
 
-    # 1. Fetch Data
-    
-    # Overview (Re-using logic, ideally should refactor to shared service helper but calling directly here for speed)
+    # Fetch Data
     economy = await get_economy_stats()
     modules = await get_module_stats()
     dist = await get_wealth_distribution()
     
-    # Top 100 Richest
     top_100 = await fetchall(
         "SELECT user_id, username, seeds FROM users ORDER BY seeds DESC LIMIT 100"
     )
     
-    # Inventory Summary
     inventory = await fetchall(
-        """SELECT item_id, SUM(quantity) as total_qty, COUNT(DISTINCT user_id) as owners 
+        """SELECT item_id, COALESCE(SUM(quantity), 0) as total_qty, COUNT(DISTINCT user_id) as owners 
            FROM inventory GROUP BY item_id ORDER BY total_qty DESC"""
     )
 
-    # 2. Create Excel
+    # Create Excel
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         

@@ -40,7 +40,8 @@ async def list_users(
     where_clause = ""
     params = []
     if search:
-        where_clause = "WHERE username LIKE ? OR CAST(user_id AS TEXT) LIKE ?"
+        # POSTGRES: Use ILIKE for case-insensitive search
+        where_clause = "WHERE username ILIKE $1 OR CAST(user_id AS TEXT) ILIKE $2"
         params = [f"%{search}%", f"%{search}%"]
     
     # Get total count
