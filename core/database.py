@@ -201,12 +201,12 @@ class DatabaseManager:
             await self.connect()
 
         # Support legacy tuple passing
-        if len(parameters) == 1 and isinstance(parameters[0], (tuple, list)):
-            parameters = parameters[0]
+        if len(args) == 1 and isinstance(args[0], (tuple, list)):
+            args = args[0]
 
         sql = self._convert_sql_params(sql)
         async with self.pool.acquire() as conn:
-            return await conn.fetch(sql, *parameters)
+            return await conn.fetch(sql, *args)
 
     async def modify(self, sql: str, parameters: Tuple = ()) -> str:
         """Alias for execute (legacy compatibility)."""
