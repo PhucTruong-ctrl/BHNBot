@@ -110,6 +110,13 @@ def init_database():
         print("✓ Added log_discord_channel_id column to server_config table")
     except sqlite3.OperationalError:
         pass
+
+    # Add charm_rank_role_id column if not exists
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN charm_rank_role_id INTEGER")
+        print("✓ Added charm_rank_role_id column to server_config table")
+    except sqlite3.OperationalError:
+        pass
     
     c.execute('''CREATE TABLE IF NOT EXISTS server_tree (
                     guild_id INTEGER PRIMARY KEY,

@@ -79,3 +79,14 @@ GIFT_MESSAGES = {
         "💌 **{sender}** gửi **{receiver}**. 'Check mail... à nhầm, check thiệp đi bạn hiền.'"
     ]
 }
+
+# Gift Charm Values
+# Default: 10 if not listed
+GIFT_CHARM_VALUES = {
+    "cafe": 5,        # Common
+    "flower": 10,     # Uncommon
+    "chocolate": 15,  # Uncommon
+    "card": 20,       # Rare
+    "gift": 30,       # Epic
+    "ring": 100       # Legendary (Marry me!)
+}

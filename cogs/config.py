@@ -193,7 +193,8 @@ class ConfigCog(commands.Cog):
                          kenh_bump: discord.TextChannel = None,
                          kenh_log_bot: discord.TextChannel = None,
                          log_ping_user: discord.Member = None,
-                         log_level: str = None):
+                         log_level: str = None,
+                         role_charm_rank: discord.Role = None):
         
         # 1. Check permission
         if not interaction.user.guild_permissions.administrator:
@@ -209,7 +210,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, role_charm_rank]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -218,11 +219,12 @@ class ConfigCog(commands.Cog):
             print(f"CONFIG [Guild {guild_id}] Setting channels")
             async with aiosqlite.connect(DB_PATH) as db:
                 # Get old config
-                async with db.execute("SELECT logs_channel_id, noitu_channel_id, fishing_channel_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
+                async with db.execute("SELECT logs_channel_id, noitu_channel_id, fishing_channel_id, charm_rank_role_id FROM server_config WHERE guild_id = ?", (guild_id,)) as cursor:
                     row = await cursor.fetchone()
                 old_logs = row[0] if row else None
                 old_noitu = row[1] if row else None
                 old_fishing = row[2] if row else None
+                old_charm_role = row[3] if row and len(row) > 3 else None
 
                 # Merge
                 new_logs = kenh_logs.id if kenh_logs else old_logs
@@ -253,10 +255,11 @@ class ConfigCog(commands.Cog):
                 new_log_bot = kenh_log_bot.id if kenh_log_bot else None
                 new_ping_user = log_ping_user.id if log_ping_user else None
                 new_log_level = log_level.upper() if log_level else None
+                new_charm_role = role_charm_rank.id if role_charm_rank else old_charm_role
                 
                 await db.execute("""
-                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, bump_channel_id, bump_start_time, log_discord_channel_id, log_ping_user_id, log_discord_level) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO server_config (guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, bump_channel_id, bump_start_time, log_discord_channel_id, log_ping_user_id, log_discord_level, charm_rank_role_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(guild_id) DO UPDATE SET
                         logs_channel_id = COALESCE(excluded.logs_channel_id, logs_channel_id),
                         noitu_channel_id = COALESCE(excluded.noitu_channel_id, noitu_channel_id),
@@ -265,8 +268,9 @@ class ConfigCog(commands.Cog):
                         bump_start_time = CASE WHEN excluded.bump_channel_id IS NOT NULL THEN excluded.bump_start_time ELSE bump_start_time END,
                         log_discord_channel_id = COALESCE(excluded.log_discord_channel_id, log_discord_channel_id),
                         log_ping_user_id = COALESCE(excluded.log_ping_user_id, log_ping_user_id),
-                        log_discord_level = COALESCE(excluded.log_discord_level, log_discord_level)
-                """, (guild_id, new_logs, new_noitu, new_fishing, new_bump, bump_start_time, new_log_bot, new_ping_user, new_log_level))
+                        log_discord_level = COALESCE(excluded.log_discord_level, log_discord_level),
+                        charm_rank_role_id = COALESCE(excluded.charm_rank_role_id, charm_rank_role_id)
+                """, (guild_id, new_logs, new_noitu, new_fishing, new_bump, bump_start_time, new_log_bot, new_ping_user, new_log_level, new_charm_role))
                 
                 if kenh_cay:
                     # UPSERT for server_tree
@@ -289,6 +293,7 @@ class ConfigCog(commands.Cog):
             if kenh_log_bot: msg += f"🤖 Log Bot: {kenh_log_bot.mention}\n"
             if log_ping_user: msg += f"🔔 Ping User: {log_ping_user.mention}\n"
             if log_level: msg += f"📊 Log Level: {log_level.upper()}\n"
+            if role_charm_rank: msg += f"👑 Role Top Charm: {role_charm_rank.mention}\n"
             
             await interaction.followup.send(msg)
             
