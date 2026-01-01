@@ -64,6 +64,12 @@ class VIPManager:
                 # Deduct Money
                 await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (price, user_id))
                 
+                # [MANDATORY] Transaction Log
+                await conn.execute("""
+                    INSERT INTO transaction_logs (user_id, amount, reason, category) 
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, -price, f"buy_vip_tier_{tier}", "luxury"))
+
                 # Check existing subscription
                 # Note: conn is aiosqlite Connection, so execute returns a generic cursor context
                 async with conn.execute("SELECT tier_level, expiry_date FROM vip_subscriptions WHERE user_id = ?", (user_id,)) as cursor:
