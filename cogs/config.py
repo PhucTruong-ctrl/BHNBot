@@ -85,7 +85,7 @@ class ConfigCog(commands.Cog):
             werewolf_cog = self.bot.get_cog("WerewolfCog")
             if werewolf_cog:
                 werewolf_manager = werewolf_cog.manager
-                game = werewolf_manager.get_game(guild_id)
+                game = await werewolf_manager.get_game(guild_id)
                 
                 if game and not game.is_finished:
                     # Found an active werewolf game
