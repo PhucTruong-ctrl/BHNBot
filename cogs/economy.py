@@ -271,6 +271,10 @@ class EconomyCog(commands.Cog):
             legendary_fish_caught=legendary_caught
         )
         
+        # [VIP] Apply Custom Style
+        from cogs.aquarium.core.vip import vip_manager
+        await vip_manager.apply_vip_style(embed, target_user.id)
+
         await interaction.followup.send(embed=embed, ephemeral=False)
 
     @commands.command(name="tuido", description="Xem số hạt và túi đồ")
@@ -282,7 +286,6 @@ class EconomyCog(commands.Cog):
         seeds = await self.get_user_balance_local(target_user.id)
         
         # Get inventory
-        from database_manager import get_stat
         # [CACHE] Use new inventory system
         inventory = await self.bot.inventory.get_all(target_user.id)
         
@@ -307,6 +310,7 @@ class EconomyCog(commands.Cog):
         legendary_caught = []
         try:
             from cogs.fishing.constants import LEGENDARY_FISH_KEYS
+            from database_manager import get_stat
             for fish_key in LEGENDARY_FISH_KEYS:
                 caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
                 if caught and caught > 0:
@@ -324,6 +328,10 @@ class EconomyCog(commands.Cog):
             legendary_fish_caught=legendary_caught
         )
         
+        # [VIP] Apply Custom Style
+        from cogs.aquarium.core.vip import vip_manager
+        await vip_manager.apply_vip_style(embed, target_user.id)
+
         await ctx.send(embed=embed)
 
     async def leaderboard(self, interaction: discord.Interaction):

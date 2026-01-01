@@ -327,4 +327,99 @@ class HousingManager:
             logger.error(f"[DASHBOARD_REFRESH] Error: {e}")
             return False
 
+    @staticmethod
+    async def visit_home(visitor_id: int, host_id: int) -> Dict:
+        """
+        Process a home visit.
+        Returns Dict with: success, message, rewards (list of str), stats (visitors_count)
+        """
+        import datetime
+        import random
+        from ..constants import TRASH_ITEM_IDS
+        
+        try:
+            today_str = datetime.date.today().isoformat()
+            
+            # 1. Check Self Visit
+            if visitor_id == host_id:
+                return {"success": False, "message": "Bạn không thể tự thăm nhà mình để nhận quà (Nhưng có thể ngắm thoải mái)."}
+
+            # 2. Check Daily Limit (5 visits/day)
+            # Count distinct hosts visited today
+            rows_count = await db_manager.execute(
+                "SELECT COUNT(DISTINCT host_id) FROM home_visits WHERE visitor_id = ? AND date(visited_at) = ?",
+                (visitor_id, today_str)
+            )
+            daily_visits = rows_count[0][0]
+            if daily_visits >= 5:
+                # Check if this specific host was already visited (allow re-visit but no reward?)
+                # User said "5 nhà KHÁC NHÂU".
+                # Design spec says limit 5 rewards.
+                # If over limit, just allow visiting without reward.
+                pass 
+            
+            # 3. Check if already visited THIS host today
+            rows_exist = await db_manager.execute(
+                "SELECT 1 FROM home_visits WHERE visitor_id = ? AND host_id = ? AND date(visited_at) = ?",
+                (visitor_id, host_id, today_str)
+            )
+            already_visited = bool(rows_exist and rows_exist[0])
+            
+            reward_items = []
+            
+            # 4. Processing
+            if not already_visited and daily_visits < 5:
+                # Valid for reward!
+                
+                # A. Host Reward: +1 Charm
+                await db_manager.execute(
+                    "UPDATE users SET charm_point = charm_point + 1 WHERE user_id = ?",
+                    (host_id,)
+                )
+                
+                # B. Visitor Reward: 20% Chance
+                if random.random() < 0.20:
+                    # Roll Table
+                    roll = random.random()
+                    if roll < 0.05: # 5% of 20% = 1% total -> Leaf Coin
+                         await db_manager.execute(
+                            "UPDATE users SET leaf_coin = leaf_coin + 1 WHERE user_id = ?",
+                            (visitor_id,)
+                         )
+                         reward_items.append("1 Xu Lá 🍀 (Hiếm!)")
+                    else:
+                        # Trash or Bait
+                        # Simple: Give 1 random trash
+                        trash_id = random.choice(TRASH_ITEM_IDS)
+                        
+                        # Trash/Bait are in 'inventory' table (misc items).
+                        await db_manager.execute(
+                            """
+                            INSERT INTO inventory (user_id, item_id, quantity) VALUES (?, ?, 1)
+                            ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + 1
+                            """,
+                            (visitor_id, trash_id)
+                        )
+                        reward_items.append(f"1 {trash_id} 🗑️")
+
+                # C. Log Visit
+                await db_manager.execute(
+                    "INSERT INTO home_visits (visitor_id, host_id) VALUES (?, ?)",
+                    (visitor_id, host_id)
+                )
+                
+                msg = "Ghé thăm thành công! Chủ nhà nhận được +1 Charm."
+                if reward_items:
+                    msg += f"\n🎁 Bạn nhặt được: {', '.join(reward_items)}"
+            else:
+                msg = "Ghé thăm lại (Không nhận quà hôm nay nữa)."
+                if daily_visits >= 5:
+                    msg = "Bạn đã hết lượt nhận quà thăm nhà hôm nay (5/5)."
+
+            return {"success": True, "message": msg, "rewards": reward_items}
+
+        except Exception as e:
+            logger.error(f"[VISIT_ERROR] {e}", exc_info=True)
+            return {"success": False, "message": "Lỗi khi ghé thăm."}
+
 housing_manager = HousingManager()

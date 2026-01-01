@@ -65,6 +65,21 @@ def init_database():
                     PRIMARY KEY (visitor_id, host_id, visited_at)
                 )''')
 
+    # 7b. PROJECT AQUARIUM: VIP SYSTEM (Phase 2.4)
+    c.execute('''CREATE TABLE IF NOT EXISTS vip_subscriptions (
+                    user_id INTEGER PRIMARY KEY,
+                    tier_level INTEGER, -- 1=Silver, 2=Gold, 3=Diamond
+                    start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    expiry_date DATETIME,
+                    custom_footer TEXT,
+                    auto_renew BOOLEAN DEFAULT 0
+                )''')
+    # Index for fast expiry check
+    try:
+        c.execute("CREATE INDEX IF NOT EXISTS idx_vip_expiry ON vip_subscriptions(expiry_date)")
+    except:
+        pass
+
 
     # 7. MODULE: SHARED PETS
     c.execute('''CREATE TABLE IF NOT EXISTS shared_pets (

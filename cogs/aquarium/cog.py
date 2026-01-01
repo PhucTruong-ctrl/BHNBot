@@ -67,6 +67,49 @@ class AquariumCog(commands.Cog):
         )
         await ctx.send(embed=embed)
 
+    # ==================== SOCIAL COMMANDS ====================
+    @app_commands.command(name="thamnha", description="🏠 Ghé thăm nhà hàng xóm (Cơ hội nhận quà!)")
+    async def thamnha(self, interaction: discord.Interaction, user: discord.User):
+        """Visit another user's home."""
+        await interaction.response.defer()
+        
+        # 1. Check if Target has house
+        if not await housing_manager.has_house(user.id):
+             return await interaction.followup.send(f"❌ **{user.display_name}** chưa có nhà (Họ là người vô gia cư?)")
+        
+        # 2. Process Visit
+        # Note: can visit self, but HousingManager handles logic (no reward)
+        result = await housing_manager.visit_home(interaction.user.id, user.id)
+        
+        # 3. Prepare House View
+        # We want to show the house visuals too
+        slots = await housing_manager.get_slots(user.id)
+        inventory = await housing_manager.get_inventory(user.id)
+        stats = await housing_manager.calculate_home_stats(user.id)
+        visuals = render_engine.generate_view(slots)
+        
+        dashboard = create_aquarium_dashboard(
+            user_name=user.display_name,
+            user_avatar=user.display_avatar.url,
+            view_visuals=visuals,
+            stats=stats,
+            inventory_count=len(inventory)
+        )
+        
+        # 4. Result Embed
+        msg_color = 0x2ecc71 if result["success"] else 0xe74c3c
+        if "lại" in result["message"] or "không thể" in result["message"]:
+            msg_color = 0x95a5a6 # Grey if already visited/self
+            
+        embed_result = discord.Embed(
+            description=result["message"],
+            color=msg_color
+        )
+        embed_result.set_author(name=f"{interaction.user.display_name} đang ghé thăm {user.display_name}", icon_url=interaction.user.display_avatar.url)
+        
+        # Send both: Result + Dashboard
+        await interaction.followup.send(embeds=[embed_result, dashboard])
+
     # ==================== HOUSING COMMANDS ====================
     @nha_group.command(name="khoitao", description="Nhận đất và xây hồ cá riêng!")
     async def nha_khoitao(self, interaction: discord.Interaction):
@@ -227,6 +270,42 @@ class AquariumCog(commands.Cog):
         except Exception as e:
             logger.error(f"[AUTO_BUMP_ERROR] {e}")
 
+
+
+    # ==================== VIP SYSTEM ====================
+
+    @app_commands.command(name="thuongluu", description="Hệ thống V.I.P Thành Viên")
+    async def vip_system(self, interaction: discord.Interaction):
+        """Mở menu đăng ký thành viên"""
+        from .ui.views import VIPSubscriptionView
+        from .core.vip import vip_manager
+        
+        # Check current status
+        current_vip = await vip_manager.get_vip_data(interaction.user.id)
+        
+        desc = "Chào mừng đến với CLB Thượng Lưu!\nHãy chọn gói thành viên để hưởng đặc quyền."
+        color = 0x2b2d31
+        
+        if current_vip:
+            tier_colors = {
+                1: "⚪ Bạc (Silver)",
+                2: "🟡 Vàng (Gold)",
+                3: "💎 Kim Cương (Diamond)"
+            }
+            tier_name = tier_colors.get(current_vip['tier'], "Unknown")
+            
+            desc = f"**Bạn đang là thành viên: {tier_name}**\n⏳ Hết hạn: `{current_vip['expiry']}`\n\nBạn có thể gia hạn hoặc nâng cấp bên dưới."
+            color = 0xf1c40f # Gold
+
+        embed = discord.Embed(
+            title="💎 Hệ Thống Thành Viên (VIP)",
+            description=desc,
+            color=color
+        )
+        embed.set_image(url="https://media.discordapp.net/attachments/123/vip_banner.png") # Placeholder
+        
+        view = VIPSubscriptionView(interaction.user.id)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(AquariumCog(bot))

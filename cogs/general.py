@@ -318,9 +318,17 @@ class General(commands.Cog):
             # Create profile card image
             profile_img = await self._create_profile_card_new(target_user, seeds, rank)
             
-            # Send as file
+            from .aquarium.core.vip import vip_manager
+
+            # Create base embed
+            embed = discord.Embed(color=0x2b2d31) # Default Dark Grey
+            await vip_manager.apply_vip_style(embed, target_user.id)
+
+            # Send as file with Embed
             file = discord.File(profile_img, filename="profile.png")
-            await interaction.followup.send(file=file)
+            embed.set_image(url="attachment://profile.png")
+            
+            await interaction.followup.send(file=file, embed=embed)
         
         except Exception as e:
             await interaction.followup.send(f"Lỗi tạo profile: {e}")
@@ -347,9 +355,16 @@ class General(commands.Cog):
             # Create profile card image
             profile_img = await self._create_profile_card_new(target_user, seeds, rank)
             
+            from .aquarium.core.vip import vip_manager
+            
+            # Create base embed
+            embed = discord.Embed(color=0x2b2d31)
+            await vip_manager.apply_vip_style(embed, target_user.id)
+
             # Send as file
             file = discord.File(profile_img, filename="profile.png")
-            await ctx.send(file=file)
+            embed.set_image(url="attachment://profile.png")
+            await ctx.send(file=file, embed=embed)
         
         except Exception as e:
             await ctx.send(f"Lỗi tạo profile: {e}")

@@ -285,3 +285,77 @@ class DoneButton(ui.Button):
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id: return
         await interaction.response.edit_message(content="✅ Đã lưu thiết kế!", view=None)
+
+# ==================== VIP VIEWS ====================
+from ..core.vip import vip_manager, VIP_PRICES, VIP_NAMES, VIP_COLORS
+
+class VIPSubscriptionView(ui.View):
+    def __init__(self, user_id: int):
+        super().__init__(timeout=180)
+        self.user_id = user_id
+        self.add_item(VIPSubscriptionSelect(user_id))
+    
+class VIPSubscriptionSelect(ui.Select):
+    def __init__(self, user_id: int):
+        options = []
+        for tier, price in VIP_PRICES.items():
+            name = VIP_NAMES[tier]
+            emoji = "🥈" if tier == 1 else "🥇" if tier == 2 else "💎"
+            desc = f"Giá: {price:,} Seeds/tháng"
+            if tier == 1: desc += " | Màu Bạc"
+            elif tier == 2: desc += " | Màu Vàng + Auto-Sell"
+            elif tier == 3: desc += " | Màu Kim Cương + Auto-Recycle"
+            
+            options.append(discord.SelectOption(
+                label=name,
+                value=str(tier),
+                description=desc,
+                emoji=emoji
+            ))
+            
+        super().__init__(placeholder="Chọn gói thành viên...", min_values=1, max_values=1, options=options)
+        self.user_id = user_id
+        
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id: return
+        
+        tier = int(self.values[0])
+        price = VIP_PRICES[tier]
+        name = VIP_NAMES[tier]
+        
+        embed = discord.Embed(
+            title=f"👑 Xác nhận đăng ký: {name}",
+            description=f"Bạn có chắc chắn muốn đăng ký gói **{name}**?\n\n"
+                        f"💰 **Giá:** {price:,} Seeds\n"
+                        f"⏳ **Thời hạn:** 30 ngày\n\n"
+                        f"*Quyền lợi sẽ được kích hoạt ngay lập tức.*",
+            color=VIP_COLORS[tier]
+        )
+        
+        view = VIPConfirmView(self.user_id, tier)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+class VIPConfirmView(ui.View):
+    def __init__(self, user_id: int, tier: int):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.tier = tier
+    
+    @ui.button(label="Xác Nhận Thanh Toán", style=discord.ButtonStyle.green, emoji="💳")
+    async def confirm(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.user_id: return
+        await interaction.response.defer()
+        
+        success, msg = await vip_manager.subscribe(self.user_id, self.tier)
+        
+        embed = interaction.message.embeds[0]
+        embed.title = "Kết quả giao dịch"
+        embed.description = msg
+        embed.color = discord.Color.green() if success else discord.Color.red()
+        
+        await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=None)
+    
+    @ui.button(label="Hủy", style=discord.ButtonStyle.grey, emoji="❌")
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.user_id: return
+        await interaction.response.edit_message(content="Đã hủy giao dịch.", embed=None, view=None)
