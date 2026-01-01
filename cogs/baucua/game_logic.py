@@ -413,7 +413,7 @@ class GameManager:
             return
         
         try:
-            await batch_update_seeds(payouts, reason='baucua_payout', category='baucua')
+            await batch_update_seeds(payouts)
             logger.info(f"[RESULTS] Batch updated seeds for {len(payouts)} users")
         except Exception as e:
             logger.error(f"Error batch updating seeds: {e}", exc_info=True)

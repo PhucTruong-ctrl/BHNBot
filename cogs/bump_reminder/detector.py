@@ -12,6 +12,7 @@ from database_manager import db_manager
 from core.logger import setup_logger
 from database_manager import db_manager
 from .constants import DISBOARD_BOT_ID, BUMP_CONFIRM_PATTERNS
+from datetime import datetime, timezone
 
 logger = setup_logger("BumpDetector", "cogs/disboard.log")
 

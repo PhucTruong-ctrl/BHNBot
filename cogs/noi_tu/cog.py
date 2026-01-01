@@ -63,7 +63,7 @@ class GameNoiTu(commands.Cog):
             # Initialize games
             logger.info("Auto-initializing games for configured servers")
             try:
-                rows = await db_manager.execute("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL")
+                rows = await db_manager.fetchall("SELECT guild_id, noitu_channel_id FROM server_config WHERE noitu_channel_id IS NOT NULL")
                 
                 if not rows:
                     logger.info("⚠️  No NoiTu channels configured in database")
@@ -552,7 +552,7 @@ class GameNoiTu(commands.Cog):
                 return
             
             # Get top 3 players based on correct words
-            rows = await db_manager.execute(
+            rows = await db_manager.fetchall(
                 "SELECT user_id, value FROM user_stats WHERE game_id = 'noitu' AND stat_key = 'correct_words' ORDER BY value DESC LIMIT 3"
             )
             
