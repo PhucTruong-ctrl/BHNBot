@@ -125,8 +125,13 @@ class GenericActionView(discord.ui.View):
     def create_callback(self, idx):
         async def callback(interaction: discord.Interaction):
             logger.info(f"[GENERIC_VIEW] [CALLBACK_TRIGGERED] User {interaction.user.id} clicked button {idx}")
-            # Defer to prevent Timeout
-            await interaction.response.defer(ephemeral=True)
+            try:
+                # Defer to prevent Timeout
+                await interaction.response.defer(ephemeral=True)
+            except (discord.NotFound, discord.HTTPException) as e:
+                logger.warning(f"[GENERIC_VIEW] Failed to defer interaction for user {interaction.user.id}: {e}")
+                return
+
             logger.info(f"[GENERIC_VIEW] [DEFERRED] Calling _handle_click for user {interaction.user.id}")
             await self._handle_click(interaction, idx)
         return callback
