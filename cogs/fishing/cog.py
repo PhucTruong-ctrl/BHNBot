@@ -1821,7 +1821,7 @@ class FishingCog(commands.Cog):
 
                     # ==================== EMBED CREATION (VIP / STANDARD) ====================
                     # Import VIP Engine
-                    from ..aquarium.logic.vip import VIPEngine
+                    from cogs.aquarium.logic.vip import VIPEngine
                     
                     # Get User Object (for avatar/id)
                     user_obj = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
@@ -1837,14 +1837,21 @@ class FishingCog(commands.Cog):
 
                     if vip_data:
                         # --- VIP STYLE ---
-                        # Use Factory: Items in Description (Bordered), Rod in Field
-                        # Pass items_value as description
-                        embed = await VIPEngine.create_vip_embed(user_obj, title, items_value, vip_data)
+                        # Use Factory for base (title, color, footer)
+                        # Empty description, use fields for content (same layout as standard)
+                        embed = await VIPEngine.create_vip_embed(user_obj, title, "", vip_data)
                         
-                        # Add Rod Info at bottom
+                        # Field 1: Rod Info (Top)
                         embed.add_field(
                             name="🎣 Cần Câu",
                             value=self.apply_display_glitch(rod_field_value),
+                            inline=False
+                        )
+                        
+                        # Field 2: Caught Items (Bottom)
+                        embed.add_field(
+                            name="🐟 Đã Câu Được",
+                            value=items_value,
                             inline=False
                         )
                     else:
