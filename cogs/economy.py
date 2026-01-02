@@ -271,12 +271,18 @@ class EconomyCog(commands.Cog):
         
         # Create embed using new module
         from cogs.fishing.commands.inventory_display import create_inventory_embed
-        embed = create_inventory_embed(
+        
+        # Get VIP Data
+        from cogs.aquarium.logic.vip import VIPEngine
+        vip_data = await VIPEngine.get_vip_data(target_user.id)
+        
+        embed = await create_inventory_embed(
             user=target_user,
             seeds=seeds,
             inventory=inventory,
             rod_data=rod_data,
-            legendary_fish_caught=legendary_caught
+            legendary_fish_caught=legendary_caught,
+            vip_data=vip_data
         )
         
         await interaction.followup.send(embed=embed, ephemeral=False)
@@ -324,12 +330,18 @@ class EconomyCog(commands.Cog):
         
         # Create embed using new module
         from cogs.fishing.commands.inventory_display import create_inventory_embed
-        embed = create_inventory_embed(
+
+        # Get VIP Data
+        from cogs.aquarium.logic.vip import VIPEngine
+        vip_data = await VIPEngine.get_vip_data(target_user.id)
+
+        embed = await create_inventory_embed(
             user=target_user,
             seeds=seeds,
             inventory=inventory,
             rod_data=rod_data,
-            legendary_fish_caught=legendary_caught
+            legendary_fish_caught=legendary_caught,
+            vip_data=vip_data
         )
         
         await ctx.send(embed=embed)

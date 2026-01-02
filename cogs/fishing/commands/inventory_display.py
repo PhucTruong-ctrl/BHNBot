@@ -13,7 +13,7 @@ from typing import Dict, Optional
 
 
 
-def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_data: Optional[Dict] = None, legendary_fish_caught: Optional[list] = None) -> discord.Embed:
+def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_data: Optional[Dict] = None, legendary_fish_caught: Optional[list] = None, vip_data: Optional[Dict] = None) -> discord.Embed:
     """Create modern inventory embed.
     
     Args:
@@ -22,6 +22,7 @@ def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_
         inventory: Dictionary of items {item_key: quantity}
         rod_data: Optional dict with rod info {name, level, durability, max_durability}
         legendary_fish_caught: Optional list of caught legendary fish keys
+        vip_data: Optional VIP data for styling
         
     Returns:
         discord.Embed: Formatted inventory embed
@@ -30,15 +31,59 @@ def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_
     from cogs.fishing.constants import ALL_FISH, ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
     from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
     from configs.item_constants import ItemKeys
+    from cogs.aquarium.logic.vip import VIPEngine
     
-    # Create embed
-    embed = discord.Embed(
-        title=f"🎒 {user.display_name} - Túi Đồ",
-        color=discord.Color.blue()
-    )
+    # Create embed using VIP Factory if available, else standard
+    title = f"🎒 {user.display_name} - Túi Đồ"
+    description = "" # Inventory has no top description usually, or we can add one.
     
-    # Set user avatar
-    embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
+    # For Factory, we need async... wait. Factory is async `create_vip_embed`.
+    # But this function `create_inventory_embed` is sync.
+    # CRITICAL: We cannot await inside a sync function.
+    # Options:
+    # 1. Make this function async (requires updating `economy.py`).
+    # 2. Use `apply_vip_style` (which is async... wait, `apply_vip_style` is async too in new `vip.py`?).
+    # `vip.py` line 101: `async def apply_vip_style`.
+    # EVERYTHING in `vip.py` is async because it might fetch DB.
+    # BUT if we pass `vip_data`, we don't need to fetch DB.
+    # `create_vip_embed` (line 101 in new file) calls `get_vip_data` if not provided.
+    # If provided, it just builds embed.
+    # DOES IT AWAIT anything else?
+    # `create_vip_embed` checks TIER_CONFIG (sync).
+    # It constructs embed (sync).
+    # It returns embed.
+    # IT does NOT need to be async if `vip_data` is provided?
+    # Line 105 in new `vip.py`: `async def create_vip_embed`. It is defined as async.
+    # If I change `inventory_display.py` to use it, `create_inventory_embed` MUST be async.
+    
+    # Conclusion: I MUST Update `create_inventory_embed` to be ASYNC.
+    # And update `economy.py` to await it.
+    
+    pass # Placeholder for thought process.
+    
+    # Since I'm editing the file content here, I will make it async.
+    
+async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_data: Optional[Dict] = None, legendary_fish_caught: Optional[list] = None, vip_data: Optional[Dict] = None) -> discord.Embed:
+    # ... imports ...
+    from cogs.fishing.constants import ALL_FISH, ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
+    from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
+    from configs.item_constants import ItemKeys
+    from cogs.aquarium.logic.vip import VIPEngine
+
+    title = f"🎒 {user.display_name} - Túi Đồ"
+    
+    if vip_data:
+        # Use factory (await it)
+        embed = await VIPEngine.create_vip_embed(user, title, "", vip_data)
+        # Fix description if factory sets one (it sets border empty lines)
+        # We might want to keep description empty if no text?
+        # create_vip_embed sets description to borders. Good.
+    else:
+        embed = discord.Embed(
+            title=title,
+            color=discord.Color.blue()
+        )
+        embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
     
     # ==================== ROD INFO ====================
     if rod_data:
@@ -207,7 +252,7 @@ def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_
             trash_text = " | ".join(trash_parts)
             if len(trash_items) > 3:
                 trash_text += f"\n_...+{len(trash_items) - 3} loại khác_"
-            trash_text += f"\n└ **Tổng: {total_trash} items**"
+            trash_text += f"\n└ **Tổng: {total_trash} rác**"
             
             embed.add_field(
                 name=f"🗑️ Rác ({len(trash_items)})",

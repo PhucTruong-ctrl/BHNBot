@@ -89,28 +89,33 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
         logger.info(f"[SELL] Loading fish data from JSON file")
         
         # Try multiple possible paths
+        # Try multiple possible paths
+        # Update: Fixed path to match server environment
         possible_paths = [
-            "/home/phuctruong/BHNBot/data/fishing_data.json",
-            "/home/phuctruong/BHNBot/cogs/fishing/data/fishing_data.json",
-            os.path.join(os.path.dirname(__file__), "../data/fishing_data.json"),
+            "/home/phuctruong/Work/BHNBot/data/fishing_data.json",  # Correct Absolute Path (found via find)
+            "data/fishing_data.json", # Relative to CWD
+            os.path.join(os.path.dirname(__file__), "../../../data/fishing_data.json"), # Relative to file
         ]
         
         fish_data = {}
         for path in possible_paths:
             if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    raw_data = json.load(f)
-                    
-                # Parse nested structure: {"fishing_data": {"fish": [...]}}
-                if "fishing_data" in raw_data and "fish" in raw_data["fishing_data"]:
-                    fish_list = raw_data["fishing_data"]["fish"]
-                    # Convert array to dict keyed by fish 'key'
-                    fish_data = {fish['key']: fish for fish in fish_list if 'key' in fish}
-                    logger.info(f"[SELL] Loaded {len(fish_data)} fish from {path}")
-                else:
-                    logger.error(f"[SELL] Invalid JSON structure in {path}")
-                break
-        
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        raw_data = json.load(f)
+                        
+                    # Parse nested structure: {"fishing_data": {"fish": [...]}}
+                    if "fishing_data" in raw_data and "fish" in raw_data["fishing_data"]:
+                        fish_list = raw_data["fishing_data"]["fish"]
+                        # Convert array to dict keyed by fish 'key'
+                        fish_data = {fish['key']: fish for fish in fish_list if 'key' in fish}
+                        logger.info(f"[SELL] Loaded {len(fish_data)} fish from {path}")
+                    else:
+                        logger.error(f"[SELL] Invalid JSON structure in {path}")
+                    break
+                except Exception as json_err:
+                     logger.error(f"[SELL] JSON Parse error in {path}: {json_err}")
+
         if not fish_data:
             raise FileNotFoundError("Could not find or parse fishing_data.json")
             
@@ -284,34 +289,67 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
         logger.warning(f"[SELL] Failed to invalidate cache: {e}")
     
     # ===== STEP 7: SEND INVOICE UI =====
-    # Build invoice embed
-    embed = discord.Embed(
-        title=f"🏪 SẠP CÁ {username.upper()} - HÓA ĐƠN",
-        description=f"📍 **Địa điểm:** Chợ Cá Bên Hiên Nhà\n⏰ **Thời gian:** <t:{int(discord.utils.utcnow().timestamp())}:f>",
-        color=discord.Color.green()
-    )
-    
-    # Item details
-    details = ""
-    for fish_id, item_data in fish_to_sell.items():
-        emoji = fish_data.get(fish_id, {}).get('emoji', '🐟')
-        name = item_data['name']
-        qty = item_data['quantity']
-        price = item_data['price']
-        line_total = qty * price
-        details += f"{emoji} **{name}** x{qty} = {line_total} Hạt\n"
-    
-    embed.add_field(name="📋 Chi Tiết Đơn Hàng", value=details, inline=False)
-    embed.add_field(name="📊 Tổng Kết", value=f"💵 **Tổng Gốc:** {total_value} Hạt", inline=False)
-    embed.add_field(name="🏁 TỔNG NHẬN", value=f"# +{total_value} Hạt", inline=False)
-    embed.set_footer(text="Cảm ơn quý khách đã ủng hộ sạp cá! 🐟💸")
-    
-    if is_slash:
-        await ctx_or_interaction.followup.send(embed=embed)
-    else:
-        await ctx_or_interaction.reply(embed=embed)
-    
-    logger.info(f"[SELL] [COMPLETE] Invoice sent to user {user_id}")
+    try:
+        # Determine Theme based on VIP Tier
+        from cogs.aquarium.logic.vip import VIPEngine, TIER_CONFIG
+        
+        vip_data = await VIPEngine.get_vip_data(user_id)
+        vip_tier = vip_data['tier'] if vip_data else 0
+        tier_config = TIER_CONFIG.get(vip_tier)
+        
+        if tier_config:
+            merchant_name = tier_config['merchant']
+            location = tier_config['location']
+            # Don't add prefix here - create_vip_embed will add it
+            title = f"{merchant_name.upper()} {username.upper()} - HÓA ĐƠN"
+        else:
+            # Default (Civilian Tier 0)
+            title = f"🏪 SẠP CÁ {username.upper()} - HÓA ĐƠN"
+            location = "Chợ Cá Bên Hiên Nhà"
+        
+        description = f"📍 **Địa điểm:** {location}\n⏰ **Thời gian:** <t:{int(discord.utils.utcnow().timestamp())}:f>"
+        
+        # Use Factory Method for base style
+        if tier_config:
+            # Pass raw title/desc to factory
+            embed = await VIPEngine.create_vip_embed(ctx_or_interaction.user if is_slash else ctx_or_interaction.author, title, description, vip_data)
+        else:
+            embed = discord.Embed(
+                title=title,
+                description=description,
+                color=discord.Color.green()
+            )
+            embed.set_footer(text="Cảm ơn quý khách đã ủng hộ sạp cá! 🐟💸")
+
+        # Item details
+        details = ""
+        for fish_id, item_data in fish_to_sell.items():
+            emoji = fish_data.get(fish_id, {}).get('emoji', '🐟')
+            name = item_data['name']
+            qty = item_data['quantity']
+            price = item_data['price']
+            line_total = qty * price
+            details += f"{emoji} **{name}** x{qty} = {line_total} Hạt\n"
+        
+        embed.add_field(name="📋 Chi Tiết Đơn Hàng", value=details, inline=False)
+        embed.add_field(name="📊 Tổng Kết", value=f"💵 **Tổng Gốc:** {total_value} Hạt", inline=False)
+        embed.add_field(name="🏁 TỔNG NHẬN", value=f"# +{total_value} Hạt", inline=False)
+        
+        if is_slash:
+            await ctx_or_interaction.followup.send(embed=embed)
+        else:
+            await ctx_or_interaction.reply(embed=embed)
+        
+        logger.info(f"[SELL] [COMPLETE] Invoice sent to user {user_id}")
+        
+    except Exception as e:
+        logger.error(f"[SELL] [INVOICE_ERROR] Failed to send invoice: {e}", exc_info=True)
+        # Fallback: Send simple text confirmation
+        msg = f"✅ Đã bán cá thành công! +{total_value} Hạt"
+        if is_slash:
+            await ctx_or_interaction.followup.send(msg)
+        else:
+            await ctx_or_interaction.reply(msg)
 
 
 # Export for use in cog

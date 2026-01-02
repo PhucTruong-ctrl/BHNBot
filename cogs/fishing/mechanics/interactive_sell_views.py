@@ -192,20 +192,26 @@ class InteractiveSellEventView(discord.ui.View):
                     async with db_manager.transaction() as conn:
                         # 1. VERIFY & DEDUCT ITEMS
                         if consume_items:
-                            for fish_key, quantity in self.fish_items.items():
+                            for fish_key, item_data in self.fish_items.items():
+                                # Extract quantity correctly (Handle both int and dict input)
+                                if isinstance(item_data, dict):
+                                    qty_to_deduct = item_data.get('quantity', 0)
+                                else:
+                                    qty_to_deduct = item_data
+                                
                                 # Check availability
                                 row = await conn.fetchrow(
                                     "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
                                     (self.user_id, fish_key)
                                 )
                                 
-                                if not row or row['quantity'] < quantity:
-                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {quantity}, Có {row['quantity'] if row else 0})")
+                                if not row or row['quantity'] < qty_to_deduct:
+                                    raise ValueError(f"Không đủ cá {fish_key}! (Cần {qty_to_deduct}, Có {row['quantity'] if row else 0})")
                                 
                                 # Deduct
                                 await conn.execute(
                                     "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                                    (quantity, self.user_id, fish_key)
+                                    (qty_to_deduct, self.user_id, fish_key)
                                 )
                             
                             # Cleanup empty

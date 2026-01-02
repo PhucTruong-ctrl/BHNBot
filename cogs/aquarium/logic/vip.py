@@ -1,14 +1,56 @@
 
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict, List
 from datetime import datetime, timedelta
 import logging
 import discord
+import random
 
 from core.database import db_manager # SQLite
 from ..models import VIPSubscription # Postgres
 from ..constants import VIP_PRICES, VIP_NAMES, VIP_COLORS
 
 logger = logging.getLogger("VIPEngine")
+
+# --- VIP CONFIGURATION ---
+VIP_QUOTES = [
+    "Nhà giàu câu cá chill hoi.",
+    "Tiền nhiều để làm gì? Để câu cá.",
+    "Đại gia dân chơi, cá cắn câu liền.",
+    "Rich kid đi câu, cá tự dính.",
+    "Vip pro max, câu là dính.",
+    "Đẳng cấp thượng lưu, cá tự nguyện hiến thân.",
+    "Bên ngoài đẹp trai, bên trong nhiều tiền.",
+    "Câu cá bằng tiền, không cần mồi.",
+    "Két sắt không đáy, tiền tiêu không hết.",
+    "Đại gia phố biển, tiêu tiền như nước."
+]
+
+TIER_CONFIG = {
+    1: {
+        "prefix": "🥈 [BẠC]",
+        "color": 0xBDC3C7,
+        "border": "◽", # White medium square
+        "merchant": "Cửa Hàng Hải Sản",
+        "location": "Siêu Thị Hải Sản Cao Cấp",
+        "footer_icon": None
+    },
+    2: {
+        "prefix": "🥇 [VÀNG]",
+        "color": 0xF1C40F,
+        "border": "🔸", # Small orange diamond
+        "merchant": "Nhà Hàng 5 Sao",
+        "location": "Chuỗi Nhà Hàng Quốc Tế",
+        "footer_icon": None 
+    },
+    3: {
+        "prefix": "💎 [KIM CƯƠNG]",
+        "color": 0x3498DB,
+        "border": "💎",
+        "merchant": "Tập Đoàn Xuất Khẩu",
+        "location": "Sàn Giao Dịch Thủy Sản Quốc Tế",
+        "footer_icon": "https://cdn.discordapp.com/emojis/123456789.png" # Placeholder or use User Avatar
+    }
+}
 
 class VIPEngine:
     """Manages VIP subscriptions and styling (Hybrid)."""
@@ -24,7 +66,6 @@ class VIPEngine:
             return False, "Gói không hợp lệ."
 
         # 1. READ: Check Balance (SQLite)
-        # execute -> fetchone [Postgres]
         rows = await db_manager.fetchone("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
         balance = rows[0] if rows else 0
         
@@ -33,31 +74,6 @@ class VIPEngine:
 
         try:
             # 2. WRITE: SQLite Transaction (Deduct)
-            operations = []
-            
-            # Use raw SQL since direct batch_modify is available
-            # Assuming bank uses 'balance' column in 'users' table (based on setup_data.py)
-            # Legacy vip logic used 'seeds' column? 
-            # Check setup_data.py: "users" table has "balance" (integer).
-            # Legacy code in diff used 'seeds'. I need to be careful.
-            # user_rules says "Domain: Fishing game with economy".
-            # Usually balance/seeds.
-            # I will trust 'balance' as per standard or check diff again.
-            # Diff line 1648: "SELECT seeds, vip_tier FROM users".
-            # Hmm, user's setup_data.py might verify this.
-            # I will check setup_data.py quickly if possible, OR assume 'balance' if 'seeds' column doesn't exist.
-            # But let's check `setup_data.py` previously read.
-            # In `main.py`, it loads `from core.database import db_manager`.
-            
-            # Let's perform a Safe Check.
-            # I'll stick to 'balance' as that's standard for this bot (from my memory/logs).
-            # Wait, `setup_data.py` (which I saw earlier in user state) might have schema.
-            # Diff says `seeds`.
-            # I'll use `balance` because `market.py` used `balance`.
-            # Wait, `market.py` in previous step line 115 used `balance`.
-            
-            # OK, using `balance`.
-            
             await db_manager.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (price, user_id))
             
             # 3. WRITE: Postgres Transaction (VIP)
@@ -71,9 +87,6 @@ class VIPEngine:
             )
             
             if not created:
-                # Upgrade/Extend logic
-                # Always reset to today? Or add? 
-                # Diff said: "Always reset time and set tier".
                 sub.tier_level = tier
                 sub.start_date = start_date
                 sub.expiry_date = expiry_date
@@ -98,23 +111,92 @@ class VIPEngine:
         return None
 
     @staticmethod
-    async def apply_vip_style(embed: discord.Embed, user_id: int):
-        """Mutates embed to apply VIP styling."""
-        # 1. Guard Colors
-        if embed.color in [discord.Color.red(), discord.Color.green()]:
+    async def create_vip_embed(
+        user: discord.User, 
+        title: str, 
+        description: str, 
+        vip_data: Optional[Dict] = None
+    ) -> discord.Embed:
+        """Factory method to create a Premium VIP Embed."""
+        
+        # If no VIP data provided, fetch it
+        if vip_data is None:
+            vip_data = await VIPEngine.get_vip_data(user.id)
+            
+        tier = vip_data['tier'] if vip_data else 0
+        config = TIER_CONFIG.get(tier)
+        
+        # --- NON-VIP / EXPIRED USER ---
+        if not config:
+            # Return standard embed
+            embed = discord.Embed(
+                title=title,
+                description=description,
+                color=discord.Color.blue() # Default blue
+            )
+            embed.set_footer(text=f"{user.name} • Member", icon_url=user.display_avatar.url)
+            return embed
+
+        # --- VIP VISUALS ---
+        
+        # 1. Prefix Title
+        # e.g. "💎 [KIM CƯƠNG] KẾT QUẢ CÂU CÁ"
+        # Strip existing emojis if needed/requested, but usually title passed is clean or contains base info
+        clean_title = title.replace("🎣", "").strip() 
+        final_title = f"{config['prefix']} {clean_title.upper()}"
+        
+        # 3. Create Embed
+        embed = discord.Embed(
+            title=final_title,
+            description=description,
+            color=discord.Color(config['color'])
+        )
+        
+        # 4. Premium Footer
+        # Add merchant location if applicable (e.g. for Sell events)
+        # Or random quote
+        footer_text = random.choice(VIP_QUOTES)
+        
+        # Combine with custom user footer if valid (Tier 2+)
+        if tier >= 2 and vip_data.get('footer'):
+             footer_text = f"{vip_data['footer']} | {footer_text}"
+
+        embed.set_footer(text=footer_text, icon_url=user.display_avatar.url)
+        
+        # 5. Thumbnail (Optional - maybe user avatar or tier icon)
+        # embed.set_thumbnail(url=...) 
+        
+        return embed
+
+    @staticmethod
+    async def apply_vip_style(embed: discord.Embed, user: discord.User):
+        """Mutates embed to apply VIP styling (Legacy Support)."""
+        # Guard Colors
+        if embed.color in [discord.Color.red(), discord.Color.green(), discord.Color.dark_red()]:
             return
 
-        vip = await VIPEngine.get_vip_data(user_id)
+        vip = await VIPEngine.get_vip_data(user.id)
         if not vip:
             return
 
         tier = vip['tier']
-        
-        # 2. Apply Color
-        if tier in VIP_COLORS:
-            embed.color = discord.Color(VIP_COLORS[tier])
+        config = TIER_CONFIG.get(tier)
+        if not config:
+            return
 
-        # 3. Apply Footer
-        if tier >= 2 and vip['footer']:
-            icon_url = embed.footer.icon_url or discord.Embed.Empty
-            embed.set_footer(text=vip['footer'], icon_url=icon_url)
+        # Apply Color
+        embed.color = discord.Color(config['color'])
+
+        # Apply Title Prefix if not present
+        if embed.title and config['prefix'] not in embed.title:
+            embed.title = f"{config['prefix']} {embed.title}"
+
+        # Apply Footer
+        if tier >= 1:
+            # Random quote
+            quote = random.choice(VIP_QUOTES)
+            if tier >= 2 and vip['footer']:
+                quote = vip['footer']
+            
+            icon = user.display_avatar.url
+            embed.set_footer(text=quote, icon_url=icon)
