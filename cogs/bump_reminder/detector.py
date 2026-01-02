@@ -134,7 +134,7 @@ class BumpDetector:
                 return
             
             # Update bump_start_time AND reset last_reminder_sent (UTC)
-            now_utc = datetime.now(timezone.utc).isoformat()
+            now_utc = datetime.now(timezone.utc)
             
             try:
                 await db_manager.modify(

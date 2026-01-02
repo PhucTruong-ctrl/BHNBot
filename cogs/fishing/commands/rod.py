@@ -50,7 +50,7 @@ async def nangcap_action(ctx_or_interaction):
         if special_requirement:
             # Check if user has caught the legendary fish
             quest_row = await db_manager.fetchrow(
-                "SELECT legendary_caught FROM legendary_quests WHERE user_id = ? AND fish_key = ?",
+                "SELECT legendary_caught FROM legendary_quests WHERE user_id = $1 AND fish_key = $2",
                 (user_id, special_requirement)
             )
             
@@ -79,49 +79,47 @@ async def nangcap_action(ctx_or_interaction):
         try:
             async with db_manager.transaction() as conn:
                 # 1. Check Balance in DB (Atomically)
-                cursor = await conn.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-                row = await cursor.fetchone()
-                balance = row[0] if row else 0
+                # fetchrow returns a Record, access by index or column name
+                row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
+                balance = row['seeds'] if row else 0
                 
                 if balance < cost:
                     raise ValueError(f"Không đủ tiền! Cần **{format_currency(cost)}**, có **{format_currency(balance)}**")
 
                 # 2. Check & Deduct Materials
                 if material_cost > 0:
-                    mat_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?", (user_id, "vat_lieu_nang_cap"))
-                    curr_mat = mat_row[0] if mat_row else 0 # Index 0 for fetchrow returning tuple
+                    mat_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2", (user_id, "vat_lieu_nang_cap"))
+                    curr_mat = mat_row['quantity'] if mat_row else 0
                     
                     if curr_mat < material_cost:
                         raise ValueError(f"Thiếu vật liệu nâng cấp! Cần **{material_cost}**, có **{curr_mat}**")
                     
                     # Deduct
-                    await conn.execute("UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?", (material_cost, user_id, "vat_lieu_nang_cap"))
-                    await conn.execute("DELETE FROM inventory WHERE user_id = ? AND collection_qty <= 0", (user_id,)) # Cleanup if needed, but 'quantity' is the col in inventory table? 
-                    # WAIT: The table is 'inventory'. Column is 'quantity'.
-                    await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0 AND item_id = ?", (user_id, "vat_lieu_nang_cap"))
+                    await conn.execute("UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3", (material_cost, user_id, "vat_lieu_nang_cap"))
+                    await conn.execute("DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0 AND item_id = $2", (user_id, "vat_lieu_nang_cap"))
 
                 # 3. Check & Deduct Special Materials
                 if special_materials:
                     for mat_key, mat_req in special_materials.items():
-                        sm_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?", (user_id, mat_key))
-                        curr_sm = sm_row[0] if sm_row else 0
+                        sm_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2", (user_id, mat_key))
+                        curr_sm = sm_row['quantity'] if sm_row else 0
                         
                         if curr_sm < mat_req:
                              mat_name = {"manh_sao_bang": "Mảnh Sao Băng ✨"}.get(mat_key, mat_key)
                              raise ValueError(f"Thiếu **{mat_name}**! Cần **{mat_req}**, có **{curr_sm}**")
                         
-                        await conn.execute("UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?", (mat_req, user_id, mat_key))
-                        await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0 AND item_id = ?", (user_id, mat_key))
+                        await conn.execute("UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3", (mat_req, user_id, mat_key))
+                        await conn.execute("DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0 AND item_id = $2", (user_id, mat_key))
 
                 # 4. Deduct Money
-                await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (cost, user_id))
+                await conn.execute("UPDATE users SET seeds = seeds - $1 WHERE user_id = $2", (cost, user_id))
                 
                 # 5. Update Rod
                 new_durability = next_rod_info['durability'] # Reset durable
-                await conn.execute("UPDATE fishing_profiles SET rod_level = ?, rod_durability = ? WHERE user_id = ?", (next_level, new_durability, user_id))
+                await conn.execute("UPDATE fishing_profiles SET rod_level = $1, rod_durability = $2 WHERE user_id = $3", (next_level, new_durability, user_id))
                 
                 # 6. Log Transaction
-                await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)", (user_id, -cost, f"upgrade_rod_{next_level}", "maintenance"))
+                await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)", (user_id, -cost, f"upgrade_rod_{next_level}", "maintenance"))
                 
                 # Transaction Auto-Commits here
         
