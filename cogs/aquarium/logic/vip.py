@@ -24,8 +24,9 @@ class VIPEngine:
             return False, "Gói không hợp lệ."
 
         # 1. READ: Check Balance (SQLite)
-        rows = await db_manager.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-        balance = rows[0][0] if rows else 0
+        # execute -> fetchone [Postgres]
+        rows = await db_manager.fetchone("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
+        balance = rows[0] if rows else 0
         
         if balance < price:
             return False, f"Bạn không đủ tiền! Cần {price:,} Hạt Giống."

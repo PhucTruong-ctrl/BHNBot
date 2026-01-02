@@ -189,6 +189,7 @@ class ConfigCog(commands.Cog):
         kenh_fishing="Kênh thông báo sự kiện câu cá (Fishing Channel)",
         kenh_bump="Kênh nhắc bump Disboard",
         kenh_log_bot="Kênh gửi log lỗi bot lên Discord",
+        kenh_aquarium="Kênh Forum Làng Chài (Hồ Cá)",
         log_ping_user="Người nhận ping khi có lỗi ERROR/CRITICAL",
         log_level="Mức độ log gửi lên Discord (INFO/WARNING/ERROR/CRITICAL)"
     )
@@ -200,6 +201,7 @@ class ConfigCog(commands.Cog):
                          kenh_fishing: discord.TextChannel = None,
                          kenh_bump: discord.TextChannel = None,
                          kenh_log_bot: discord.TextChannel = None,
+                         kenh_aquarium: discord.ForumChannel = None,
                          log_ping_user: discord.Member = None,
                          log_level: str = None):
         
@@ -217,7 +219,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -261,6 +263,7 @@ class ConfigCog(commands.Cog):
             new_log_bot = kenh_log_bot.id if kenh_log_bot else None
             new_ping_user = log_ping_user.id if log_ping_user else None
             new_log_level = log_level.upper() if log_level else None
+            new_aquarium = kenh_aquarium.id if kenh_aquarium else None
             
             # Postgres UPSERT syntax
             # Note: Postgres doesn't support 'CASE WHEN excluded.bump_channel_id ...' inside ON CONFLICT DO UPDATE cleanly alias 
@@ -273,9 +276,10 @@ class ConfigCog(commands.Cog):
                 INSERT INTO server_config (
                     guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, 
                     bump_channel_id, bump_start_time, log_discord_channel_id, 
-                    log_ping_user_id, log_discord_level
+                    log_ping_user_id, log_discord_level,
+                    aquarium_forum_channel_id
                 ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     logs_channel_id = COALESCE(EXCLUDED.logs_channel_id, server_config.logs_channel_id),
                     noitu_channel_id = COALESCE(EXCLUDED.noitu_channel_id, server_config.noitu_channel_id),
@@ -284,10 +288,12 @@ class ConfigCog(commands.Cog):
                     bump_start_time = CASE WHEN EXCLUDED.bump_channel_id IS NOT NULL THEN EXCLUDED.bump_start_time ELSE server_config.bump_start_time END,
                     log_discord_channel_id = COALESCE(EXCLUDED.log_discord_channel_id, server_config.log_discord_channel_id),
                     log_ping_user_id = COALESCE(EXCLUDED.log_ping_user_id, server_config.log_ping_user_id),
-                    log_discord_level = COALESCE(EXCLUDED.log_discord_level, server_config.log_discord_level)
+                    log_discord_level = COALESCE(EXCLUDED.log_discord_level, server_config.log_discord_level),
+                    aquarium_forum_channel_id = COALESCE(EXCLUDED.aquarium_forum_channel_id, server_config.aquarium_forum_channel_id)
             """, (
                 int(guild_id), new_logs, new_noitu, new_fishing, new_bump, 
-                bump_start_time, new_log_bot, new_ping_user, new_log_level
+                bump_start_time, new_log_bot, new_ping_user, new_log_level,
+                new_aquarium
             ))
             
             if kenh_cay:
@@ -308,6 +314,7 @@ class ConfigCog(commands.Cog):
             if kenh_fishing: msg += f"🎣 Câu Cá: {kenh_fishing.mention}\n"
             if kenh_bump: msg += f"⏰ Bump Disboard: {kenh_bump.mention}\n"
             if kenh_log_bot: msg += f"🤖 Log Bot: {kenh_log_bot.mention}\n"
+            if kenh_aquarium: msg += f"🐟 Hồ Cá (Forum): {kenh_aquarium.mention}\n"
             if log_ping_user: msg += f"🔔 Ping User: {log_ping_user.mention}\n"
             if log_level: msg += f"📊 Log Level: {log_level.upper()}\n"
             

@@ -5,11 +5,13 @@ import subprocess
 import logging
 from discord.ext import commands
 from dotenv import load_dotenv
-from core.achievement_system import AchievementManager
 
-# Load biến môi trường từ file .env
+# Load env vars FIRST
 load_dotenv()
 
+from core.achievement_system import AchievementManager
+
+# 1. SETUP LOGGING
 from core.logger import setup_logger
 from core.timeout_monitor import get_monitor as get_timeout_monitor
 from core.database import db_manager

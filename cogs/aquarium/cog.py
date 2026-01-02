@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord import app_commands
 import logging
 
+from core.database import db_manager
 from .logic.housing import HousingEngine
 from .logic.market import MarketEngine
 from .logic.render import RenderEngine
@@ -107,16 +108,24 @@ class AquariumCog(commands.Cog):
         if await HousingEngine.has_house(user_id):
             return await interaction.followup.send("❌ Bạn đã có nhà rồi! Đừng tham lam!", ephemeral=True)
         
-        if not AQUARIUM_FORUM_CHANNEL_ID:
-            return await interaction.followup.send(f"❌ Chưa cấu hình Forum Channel! Báo Admin set id.", ephemeral=True)
+        
+        # [Postgres via db_manager]
+        row = await db_manager.fetchrow(
+            "SELECT aquarium_forum_channel_id FROM server_config WHERE guild_id = $1",
+            (interaction.guild_id,)
+        )
+        forum_id = row['aquarium_forum_channel_id'] if row else None
 
-        forum_channel = self.bot.get_channel(AQUARIUM_FORUM_CHANNEL_ID)
+        if not forum_id:
+            return await interaction.followup.send(f"❌ Chưa cấu hình Forum Channel! Báo Admin dùng `/config set kenh_aquarium`.", ephemeral=True)
+
+        forum_channel = self.bot.get_channel(forum_id)
         if not forum_channel:
             # Try fetch
             try:
-                forum_channel = await self.bot.fetch_channel(AQUARIUM_FORUM_CHANNEL_ID)
+                forum_channel = await self.bot.fetch_channel(forum_id)
             except:
-                 return await interaction.followup.send(f"❌ Lỗi Config: Không tìm thấy kênh Làng Chài (ID: {AQUARIUM_FORUM_CHANNEL_ID}).", ephemeral=True)
+                return await interaction.followup.send(f"❌ Lỗi Config: Không tìm thấy kênh Làng Chài (ID: {forum_id}).", ephemeral=True)
         
         # Create Embed
         initial_slots = [None] * 5
@@ -202,10 +211,10 @@ class AquariumCog(commands.Cog):
         
         embed = discord.Embed(
             title=f"🛋️ Thiết Kế Nội Thất",
-            description="Chọn vị trí (1-5) và vật phẩm để đặt.\n*Nhấn 'Lưu' để cập nhật ra thread ngoài.*",
+            description=f"Chọn vị trí (1-5) và vật phẩm để đặt.\n*Nhấn 'Lưu' để cập nhật ra thread ngoài.*\n\n{visuals}",
             color=0x9b59b6
         )
-        embed.add_field(name="🖼️ Bể Cá & Nội Thất", value=visuals, inline=False)
+        # embed.add_field(name="🖼️ Bể Cá & Nội Thất", value=visuals, inline=False)
         embed.set_footer(text=f"Kho: {len(inventory)} loại vật phẩm")
         
         from .ui.views import DecorPlacementView

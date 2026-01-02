@@ -22,9 +22,10 @@ class MarketEngine:
         Recycle all trash from SQLite Inventory -> Leaf Coins in Postgres.
         Returns: (Success, Message, TrashCount, CoinsGained)
         """
-        # 1. [SQLite] Scan Inventory
-        rows = await db_manager.execute(
-            "SELECT item_id, quantity FROM inventory WHERE user_id = ?", 
+        # 1. [Postgres] Scan Inventory
+        # execute -> fetchall for SELECT
+        rows = await db_manager.fetchall(
+            "SELECT item_id, quantity FROM inventory WHERE user_id = $1", 
             (user_id,)
         )
         user_trash = {row[0]: row[1] for row in rows if row[0] in TRASH_ITEM_IDS and row[1] > 0}
@@ -107,8 +108,10 @@ class MarketEngine:
             else:
                 # [SQLite]
                 # Check balance first
-                rows = await db_manager.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-                balance = rows[0][0] if rows else 0
+                # [Postgres via db_manager]
+                # Check balance first
+                rows = await db_manager.fetchone("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
+                balance = rows[0] if rows else 0
                 if balance < price:
                     return False, f"Không đủ Hạt Giống! (Cần {price})"
                 
