@@ -424,9 +424,9 @@ class GlobalEventManager:
             embed = discord.Embed(title=title, description=description, color=color)
             if image: embed.set_image(url=image)
 
-            # Get Configured Channels
+            # Get Configured Channels (DISTINCT to prevent duplicate spam)
             rows = await db_manager.fetch(
-                "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
+                "SELECT DISTINCT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
             )
             
             if not rows: return
@@ -742,7 +742,7 @@ class GlobalEventManager:
     async def _broadcast_raid_update(self, embed):
         """Sends new status message and deletes the old one to prevent spam."""
         try:
-            rows = await db_manager.fetch("SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
+            rows = await db_manager.fetch("SELECT DISTINCT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL")
             
             # Initialize storage for message IDs if not exists
             if not hasattr(self, "raid_message_ids"):
@@ -939,7 +939,7 @@ class GlobalEventManager:
         # Broadcast
         try:
             rows = await db_manager.fetch(
-                "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
+                "SELECT DISTINCT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
             )
             if not rows:
                 return
@@ -1103,9 +1103,9 @@ class GlobalEventManager:
                 
                 view = MeteorWishView(self)
                 
-                # Broadcast to configured channels
+                # Broadcast to configured channels (DISTINCT)
                 rows = await db_manager.fetch(
-                    "SELECT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
+                    "SELECT DISTINCT fishing_channel_id FROM server_config WHERE fishing_channel_id IS NOT NULL"
                 )
                 if not rows:
                     logger.warning("[MINI_GAME] No fishing_channel configured in DB! Cannot send Meteor.")

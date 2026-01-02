@@ -29,7 +29,7 @@
                 "game_type": "button_spam",
                 "view_type": "MeteorWishView",
                 "bump_interval_seconds": 300,
-                "spawn_interval": [10, 25],
+                "spawn_interval": [300, 600],
                 "min_stars": 8,
                 "max_stars": 20,
                 "star_lifetime": 8
