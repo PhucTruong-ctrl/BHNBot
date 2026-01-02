@@ -321,7 +321,7 @@ async def export_dashboard_data() -> Any:
         
         # Sheet 1: Overview
         overview_data = {
-            "Metric": ["Total Seeds", "Total Users", "Active Users", "Gini Index", "Median Balance"],
+            "Metric": ["Total Hạt", "Total Users", "Active Users", "Gini Index", "Median Balance"],
             "Value": [
                 economy['total_seeds'], 
                 economy['total_users'], 

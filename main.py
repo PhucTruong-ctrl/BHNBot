@@ -14,6 +14,7 @@ from core.logger import setup_logger
 from core.timeout_monitor import get_monitor as get_timeout_monitor
 from core.database import db_manager
 from core.inventory_cache import InventoryCache
+from core.orm import init_tortoise # Phase 1: Postgres ORM
 
 # 1. SETUP LOGGING
 setup_logger("Main", "main.log")
@@ -33,7 +34,7 @@ bot = commands.Bot(
 # 3. ATTACH DATABASE & INVENTORY CACHE
 bot.db = db_manager
 bot.inventory = InventoryCache(bot.db) # Singleton Injection
-bot.achievement_manager = None # Will be set in setup_hooks.getenv("OWNER_ID", "0"))  # Load from .env
+bot.achievement_manager = None # Will be set in setup_hooks
 bot.owner_id = int(os.getenv("OWNER_ID", "0"))  # Load from .env
 bot.cogs_loaded = False  # Flag to track if cogs are already loaded
 
@@ -56,6 +57,10 @@ async def on_command_error(ctx, error):
 async def on_ready():
     logger.info(f'Login successfully as: {bot.user} (ID: {bot.user.id})')
     logger.info('------')
+    
+    # [PHASE 1] Initialize Postgres ORM
+    await init_tortoise()
+
     # Set trạng thái cho bot
     await bot.change_presence(activity=discord.Game(name="Cuộn len bên hiên nhà 🧶"))
     
@@ -138,7 +143,7 @@ async def load_cogs():
                          'legendary.py', 'models.py', 'rod_system.py', 'views.py', 'consumables.py', 
                          'glitch.py', 'legendary_quest_helper.py', 'detector.py', 'task.py',
                          'statistics.py', 'game_logic.py', 'tree_manager.py', 'contributor_manager.py',
-                         'game.py', 'card_renderer.py'}
+                         'game.py', 'card_renderer.py', 'utils.py'}
             
             # Load additional module files in subdirectory (for noi_tu: noitu.py, add_word.py)
             for filename in os.listdir(subdir_path):

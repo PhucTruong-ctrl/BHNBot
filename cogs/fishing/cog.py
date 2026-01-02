@@ -2176,22 +2176,8 @@ class FishingCog(commands.Cog):
     async def bonphan_prefix(self, ctx):
         await self._use_phan_bon_action(ctx)
     
-    @app_commands.command(name="taiche", description="Tái chế rác - 10 rác → 1 phân bón")
-    @app_commands.describe(
-        action="Để trống để xem thông tin"
-    )
-    async def recycle_trash_slash(self, interaction: discord.Interaction, action: str = None):
-        """Recycle trash via slash command"""
-        await self._recycle_trash_action(interaction, action)
-    
-    @commands.command(name="taiche", description="Tái chế rác - 10 rác → 1 phân bón")
-    async def recycle_trash_prefix(self, ctx, action: str = None):
-        """Recycle trash via prefix command"""
-        await self._recycle_trash_action(ctx, action)
-    
-    async def _recycle_trash_action(self, ctx_or_interaction, action: str = None):
-        """Recycle trash logic. Delegate to bucket module."""
-        return await _recycle_trash_impl(self, ctx_or_interaction, action)
+    # Legacy taiche removed - Moved to cogs.aquarium
+    # @app_commands.command(name="taiche") ... removed
 
     async def _use_phan_bon_action(self, ctx_or_interaction):
         """Use phan_bon logic. Delegate to bucket module."""

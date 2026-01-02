@@ -329,5 +329,5 @@ def get_contribution_exp(contribution_type: str, amount: int) -> int:
         # Phan bon: amount is already the exp (50-100)
         return amount
     else:
-        # Seeds: 1 seed = 1 exp
+        # Hạt: 1 seed = 1 exp
         return amount

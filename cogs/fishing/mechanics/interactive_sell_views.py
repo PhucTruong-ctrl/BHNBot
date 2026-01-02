@@ -460,7 +460,7 @@ class InteractiveSellEventView(discord.ui.View):
         """Build result embed showing outcome.
         
         Args:
-            final_value: Seeds earned
+            final_value: Hạt earned
             message: Outcome message
             username: User's display name
             

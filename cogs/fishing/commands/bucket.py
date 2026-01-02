@@ -152,7 +152,7 @@ async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):
     # 6. Process Rewards & Batch DB Update
     loot_messages = []
     
-    # A. Add Seeds
+    # A. Add Hạt
     if total_seeds > 0:
         await add_seeds(user_id, total_seeds, 'chest_open', 'item_usage')
         loot_messages.append(f"💰 **+{total_seeds:,} Hạt**")

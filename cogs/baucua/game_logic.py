@@ -125,7 +125,7 @@ class GameManager:
         
         Args:
             user_id: Discord user ID
-            amount: Seeds to add (negative to deduct)
+            amount: Hạt to add (negative to deduct)
         """
         # Ensure user exists
         await get_or_create_user(user_id, f"User#{user_id}")

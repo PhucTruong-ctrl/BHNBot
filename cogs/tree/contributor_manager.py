@@ -43,7 +43,7 @@ class ContributorManager:
         """Add contribution to user's record for current season.
         
         Experience calculation:
-        - Seeds: 1 hạt = 1 exp
+        - Hạt: 1 hạt = 1 exp
         - Phan bon: amount = exp (50-100 range)
         
         Args:

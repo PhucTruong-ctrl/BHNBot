@@ -17,14 +17,14 @@ from core.logger import setup_logger
 logger = setup_logger("EconomyCog", "cogs/economy.log")
 
 # Constants
-DAILY_BONUS = 10  # Seeds received from /chao
+DAILY_BONUS = 10  # Hạt received from /chao
 DAILY_WINDOW_START = 5  # 5 AM
 DAILY_WINDOW_END = 12  # 12 AM
 CHAT_REWARD_MIN = 1
 CHAT_REWARD_MAX = 3
 CHAT_REWARD_COOLDOWN = 60  # seconds
 VOICE_REWARD_INTERVAL = 10  # minutes
-VOICE_REWARD = 2  # Seeds per 10 minutes in voice
+VOICE_REWARD = 2  # Hạt per 10 minutes in voice
 
 class EconomyCog(commands.Cog):
     """Cog handling the economy system.
