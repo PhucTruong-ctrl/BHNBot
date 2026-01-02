@@ -13,16 +13,73 @@ logger = logging.getLogger("VIPEngine")
 
 # --- VIP CONFIGURATION ---
 VIP_QUOTES = [
-    "Nhà giàu câu cá chill hoi.",
-    "Tiền nhiều để làm gì? Để câu cá.",
-    "Đại gia dân chơi, cá cắn câu liền.",
-    "Rich kid đi câu, cá tự dính.",
-    "Vip pro max, câu là dính.",
-    "Đẳng cấp thượng lưu, cá tự nguyện hiến thân.",
-    "Bên ngoài đẹp trai, bên trong nhiều tiền.",
-    "Câu cá bằng tiền, không cần mồi.",
-    "Két sắt không đáy, tiền tiêu không hết.",
-    "Đại gia phố biển, tiêu tiền như nước."
+    # Wealth & Status
+    "Tiền nhiều để làm gì? Để flex.",
+    "Ngân hàng gọi em là VIP.",
+    "Két sắt không đáy, vibe không giới hạn.",
+    "Rich mindset, broke wallet không quen.",
+    "Đại gia phố Discord.",
+    "Hỏi sao giàu? Vì chăm chỉ... chơi bot.",
+    "Tiền là công cụ, flex là nghệ thuật.",
+    "Bạn nghèo là do chưa mua VIP thôi.",
+    
+    # Gen Z Lifestyle
+    "Slay everyday, VIP all the way.",
+    "Living rent-free in your head.",
+    "Main character energy.",
+    "Delulu is the solulu.",
+    "Chilling như tỷ phú.",
+    "No thoughts, head VIP.",
+    "Understood the assignment.",
+    "Nói ít, flex nhiều.",
+    
+    # Meme References (2020-2025)
+    "Gigachad energy 💪",
+    "We're so back.",
+    "It's giving... wealthy.",
+    "POV: You're rich.",
+    "Just like me fr fr.",
+    "He's just like me for real.",
+    "Ừ thì skill issue.",
+    "Cope harder.",
+    "L + ratio + VIP.",
+    
+    # Self-Deprecating Humor
+    "Giàu mà tâm hồn vẫn nghèo.",
+    "Nhiều tiền nhưng ít não.",
+    "VIP nhưng IQ vẫn âm.",
+    "Flex thôi chứ thực ra cũng bình thường.",
+    "Giàu có nhưng cô đơn.",
+    
+    # Random Funny
+    "Ngày mai ăn gì nhỉ?",
+    "Anh em mình ai đó chuyển nhầm 5tr?",
+    "Lương về liền hết, VIP remain.",
+    "Broke but make it VIP.",
+    "Ngày xưa nghèo, giờ nghèo có VIP.",
+    "Vẫn ăn mì tôm nhưng là mì tôm VIP.",
+    
+    # Motivational (But Gen Z)
+    "Hustle in silence, flex in Discord.",
+    "Grindset sigma male.",
+    "Wake up, get bag, repeat.",
+    "Passive income go brrr.",
+    "NFT hết tiền, còn VIP thôi.",
+    "Crypto xuống, tinh thần lên.",
+    
+    # Premium Vibes
+    "Sang chảnh từ trong trứng nước.",
+    "Đẳng cấp thượng lưu Discord.",
+    "VIP card never expires.",
+    "Membership có giá, đẳng cấp vô giá.",
+    "Bạn bình thường, tôi extraordinary.",
+    "Khác biệt từng pixel.",
+    
+    # Short & Punchy
+    "Built different.",
+    "Simply better.",
+    "Just VIP things.",
+    "Upgrade your life."
 ]
 
 TIER_CONFIG = {
