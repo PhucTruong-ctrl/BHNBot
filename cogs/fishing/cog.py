@@ -1908,9 +1908,11 @@ class FishingCog(commands.Cog):
                     # *** APPLY GLITCH TO FOOTER ***
                     # The durability_status variable is no longer used directly in the footer,
                     # as the rod info is now in a dedicated field.
-                    footer_text = f"Tổng câu được: {total_catches} vật{boost_text}"
-                    footer_text = self.apply_display_glitch(footer_text)
-                    embed.set_footer(text=footer_text)
+                    # IMPORTANT: Don't overwrite VIP footer (which has random quotes)
+                    if not vip_data:
+                        footer_text = f"Tổng câu được: {total_catches} vật{boost_text}"
+                        footer_text = self.apply_display_glitch(footer_text)
+                        embed.set_footer(text=footer_text)
         
                     # Create view with sell button if there are fish to sell
                     view = None
