@@ -202,6 +202,9 @@ def create_interactive_embed(event_data: Dict, base_value: int, fish_items: Dict
     # Add choices as fields
     choices = event_data.get('interactive', {}).get('choices', [])
     for choice in choices:
+        # Calculate total weight for normalization
+        total_weight = sum(o.get('weight', 1.0) for o in choice['outcomes'])
+        
         # Show outcomes briefly
         outcome_text = []
         for outcome in choice['outcomes']:
@@ -210,12 +213,23 @@ def create_interactive_embed(event_data: Dict, base_value: int, fish_items: Dict
             flat = outcome.get('flat', 0)
             msg = outcome.get('message', '')
             
-            prob = int(weight * 100) if len(choice['outcomes']) > 1 else 100
+            # Safe probability calculation
+            if total_weight > 0:
+                prob = int((weight / total_weight) * 100)
+            else:
+                prob = 0
+            
+            # Only show explanation text (first sentence) to keep embed clean
+            # The 'message' often contains the result description which might be long
+            short_msg = msg.split('.')[0] if msg else ""
+            if "!" in short_msg: short_msg = short_msg.split('!')[0] + "!"
             
             if mul != 1.0:
-                outcome_text.append(f"{prob}%: x{mul} {msg}")
+                outcome_text.append(f"{prob}%: x{mul} {short_msg}")
             elif flat != 0:
-                outcome_text.append(f"{prob}%: {flat:+d} {msg}")
+                outcome_text.append(f"{prob}%: {flat:+d} {short_msg}")
+            elif prob < 100: # Show probability for base outcome if there are multiple
+                 outcome_text.append(f"{prob}%: Giữ nguyên")
         
         embed.add_field(
             name=choice['label'],

@@ -298,7 +298,38 @@ class ContributorData:
             logger.error(f"Error getting all-time contributors: {e}", exc_info=True)
             return []
             
-    # ... (add_contribution method skipped) ...
+    async def add_contribution(self, amount: int, exp: int) -> None:
+        """Add contribution to this data object and database.
+        
+        Args:
+            amount: Amount of seeds/items contributing
+            exp: Experience points to add
+        """
+        try:
+            self.amount += amount
+            self.contribution_exp += exp
+            
+            # Update database
+            # Use UPSERT logic (INSERT ... ON CONFLICT DO UPDATE)
+            # Since we loaded it, it might exist, but safer to use upsert if new
+            # For simplicity, since we loaded it, likely exists. But let's check.
+            
+            # Postgres UPSERT:
+            await db_manager.execute(
+                """
+                INSERT INTO tree_contributors (user_id, guild_id, season, amount, contribution_exp)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (user_id, guild_id, season) 
+                DO UPDATE SET 
+                    amount = tree_contributors.amount + $4,
+                    contribution_exp = tree_contributors.contribution_exp + $5
+                """,
+                (self.user_id, self.guild_id, self.season, amount, exp)
+            )
+            
+        except Exception as e:
+            logger.error(f"Error adding contribution: {e}", exc_info=True)
+            raise
 
 @dataclass
 class HarvestBuff:
