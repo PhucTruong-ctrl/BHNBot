@@ -273,7 +273,7 @@ class EconomyCog(commands.Cog):
         from cogs.fishing.commands.inventory_display import create_inventory_embed
         
         # Get VIP Data
-        from cogs.aquarium.logic.vip import VIPEngine
+        from core.services.vip_service import VIPEngine
         vip_data = await VIPEngine.get_vip_data(target_user.id)
         
         embed = await create_inventory_embed(
@@ -332,7 +332,7 @@ class EconomyCog(commands.Cog):
         from cogs.fishing.commands.inventory_display import create_inventory_embed
 
         # Get VIP Data
-        from cogs.aquarium.logic.vip import VIPEngine
+        from core.services.vip_service import VIPEngine
         vip_data = await VIPEngine.get_vip_data(target_user.id)
 
         embed = await create_inventory_embed(

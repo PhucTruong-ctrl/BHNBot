@@ -9,23 +9,27 @@ from typing import Dict, List, Tuple
 from .constants import ANIMALS, MAX_BET_AMOUNT
 
 
-def create_betting_embed(end_timestamp: int) -> discord.Embed:
+async def create_betting_embed(user: discord.User, end_timestamp: int) -> discord.Embed:
     """Create embed for betting phase with Discord auto-updating countdown.
+    
+    Applies VIP styling if user has active subscription.
     
     Uses Discord timestamp format `<t:TIMESTAMP:R>` which auto-updates
     client-side without requiring message edits.
     
     Args:
+        user: Discord user (for VIP styling)
         end_timestamp: Unix timestamp when betting phase ends
         
     Returns:
         Discord embed ready to display
     """
-    embed = discord.Embed(
-        title="🎰 BẦU CUA TÔM CÁ GÀ NAI 🎰",
-        description=f"⏳ **Hết hạn cược:** <t:{end_timestamp}:R>",
-        color=discord.Color.blue()
-    )
+    from core.services.vip_service import VIPEngine
+    
+    title = "🎰 BẦU CUA TÔM CÁ GÀ NAI"  # Keep emoji, factory adds tier prefix
+    description = f"⏳ **Hết hạn cược:** <t:{end_timestamp}:R>"
+    
+    embed = await VIPEngine.create_vip_embed(user, title, description)
     
     embed.add_field(
         name="💡 Cách chơi",

@@ -208,7 +208,7 @@ class TreeCog(commands.Cog):
         tree_data = await TreeData.load(guild_id)
         
         # Create main embed
-        embed = await create_tree_embed(tree_data)
+        embed = await create_tree_embed(interaction.user, tree_data)
         
         # Add buff info if active
         if await HarvestBuff.is_active(guild_id):

@@ -28,7 +28,7 @@ from .commands.collection import _view_collection_impl_v2
 
 
 from .views import FishSellView
-from cogs.aquarium.logic.vip import VIPEngine
+from core.services.vip_service import VIPEngine
 from .mechanics.glitch import apply_display_glitch as global_apply_display_glitch, set_glitch_state
 
 # Import new modular mechanics
@@ -1442,7 +1442,7 @@ class FishingCog(commands.Cog):
                     if trash_count > 0:
                         # CHECK VIP TIER 3 FOR AUTO-RECYCLE
                         # This avoids filling inventory with trash
-                        from ..aquarium.logic.vip import VIPEngine
+                        from core.services.vip_service import VIPEngine
                         vip_data = await VIPEngine.get_vip_data(user_id)
                         vip_tier = vip_data['tier'] if vip_data else 0
                         
@@ -1821,7 +1821,7 @@ class FishingCog(commands.Cog):
 
                     # ==================== EMBED CREATION (VIP / STANDARD) ====================
                     # Import VIP Engine
-                    from cogs.aquarium.logic.vip import VIPEngine
+                    from core.services.vip_service import VIPEngine
                     
                     # Get User Object (for avatar/id)
                     user_obj = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
@@ -2486,7 +2486,7 @@ class FishingCog(commands.Cog):
             # It implies ALL VIPs or specific tier.
             # Safe bet: Tier 2 (Platinum) usually has convenience perks.
             # Let's check VIPEngine.
-            from ..aquarium.logic.vip import VIPEngine
+            from core.services.vip_service import VIPEngine
             vip_data = await VIPEngine.get_vip_data(user_id)
             vip_tier = vip_data['tier'] if vip_data else 0
             

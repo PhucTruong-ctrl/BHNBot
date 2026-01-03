@@ -31,7 +31,7 @@ def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict, rod_
     from cogs.fishing.constants import ALL_FISH, ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
     from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
     from configs.item_constants import ItemKeys
-    from cogs.aquarium.logic.vip import VIPEngine
+    from core.services.vip_service import VIPEngine
     
     # Create embed using VIP Factory if available, else standard
     title = f"🎒 {user.display_name} - Túi Đồ"
@@ -68,7 +68,7 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
     from cogs.fishing.constants import ALL_FISH, ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
     from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
     from configs.item_constants import ItemKeys
-    from cogs.aquarium.logic.vip import VIPEngine
+    from core.services.vip_service import VIPEngine
 
     title = f"🎒 {user.display_name} - Túi Đồ"
     

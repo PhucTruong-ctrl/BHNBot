@@ -43,15 +43,18 @@ def create_progress_bar(progress: int, requirement: int, length: int = PROGRESS_
     return "".join(bar_parts)
 
 
-async def create_tree_embed(tree_data: TreeData) -> discord.Embed:
-    """Create main tree display embed.
+async def create_tree_embed(user: discord.User, tree_data: TreeData) -> discord.Embed:
+    """Create main tree display embed with VIP styling.
     
     Args:
+        user: Discord user (for VIP styling)
         tree_data: TreeData instance with current state
         
     Returns:
         Discord embed showing tree status
     """
+    from core.services.vip_service import VIPEngine
+    
     level_reqs = tree_data.get_level_requirements()
     req = level_reqs.get(tree_data.current_level + 1, level_reqs[6])
     
@@ -68,11 +71,15 @@ async def create_tree_embed(tree_data: TreeData) -> discord.Embed:
             f"{tree_data.current_progress}/{req} Hạt • Tổng: {tree_data.total_contributed}"
         )
     
-    embed = discord.Embed(
-        title="Cây Bên Hiên Nhà",
-        description=TREE_DESCRIPTIONS.get(tree_data.current_level, "..."),
-        color=discord.Color.green()
+    title = "Cây Bên Hiên Nhà"
+    description = TREE_DESCRIPTIONS.get(tree_data.current_level, "...")
+    
+    # Use VIP styling with custom footer (preserve tree progress info)
+    embed = await VIPEngine.create_vip_embed(
+        user, title, description, 
+        footer_text=footer_text  # Override VIP quote with tree stats
     )
+    
     embed.set_image(url=TREE_IMAGES.get(tree_data.current_level, TREE_IMAGES[1]))
     embed.add_field(
         name=f"Trạng thái: {TREE_NAMES.get(tree_data.current_level, '???')}",
@@ -86,12 +93,11 @@ async def create_tree_embed(tree_data: TreeData) -> discord.Embed:
         value="Bấm nút dưới đây để góp hạt cho cây!",
         inline=False
     )
-    embed.set_footer(text=footer_text)
     
     return embed
 
 
-def create_contribution_success_embed(
+async def create_contribution_success_embed(
     user: discord.User,
     amount: int,
     new_progress: int,
@@ -128,20 +134,24 @@ def create_contribution_success_embed(
     else:
         value_per_item = 0
 
-    embed = discord.Embed(
-        description=f"**{user.name}** đã xài **{quantity}** {item_name}",
-        color=discord.Color.green()
-    )
+    from core.services.vip_service import VIPEngine
     
-    # Title with Icon (mapped from action_title if needed, or just use string)
+    # Title with Icon
     if "Phân" in item_name:
         icon = "🌾"
-        title = "Bón Phân Cho Cây!"
+        title_text = "Bón Phân Cho Cây"
     else:
         icon = "🌱"
-        title = "Góp Hạt Cho Cây!"
-        
-    embed.set_author(name=f"{icon} {title}")
+        title_text = "Góp Hạt Cho Cây"
+    
+    description = f"**{user.name}** đã xài **{quantity}** {item_name}"
+    
+    # Use VIP styling (no custom footer, let VIP quotes show)
+    embed = await VIPEngine.create_vip_embed(user, title_text, description)
+    
+    # Override color if leveled up
+    if leveled_up and new_level:
+        embed.color = discord.Color.gold()
     
     # Field 1: Total EXP
     embed.add_field(
@@ -171,7 +181,6 @@ def create_contribution_success_embed(
             value=f"**{TREE_NAMES.get(new_level, 'Cây Thần')}** - Cấp {new_level}/6",
             inline=False
         )
-        embed.color = discord.Color.gold()
     
     return embed
 

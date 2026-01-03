@@ -291,7 +291,7 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
     # ===== STEP 7: SEND INVOICE UI =====
     try:
         # Determine Theme based on VIP Tier
-        from cogs.aquarium.logic.vip import VIPEngine, TIER_CONFIG
+        from core.services.vip_service import VIPEngine, TIER_CONFIG
         
         vip_data = await VIPEngine.get_vip_data(user_id)
         vip_tier = vip_data['tier'] if vip_data else 0

@@ -8,7 +8,7 @@ from core.database import db_manager
 from .logic.housing import HousingEngine
 from .logic.market import MarketEngine
 from .logic.render import RenderEngine
-from .logic.vip import VIPEngine
+from core.services.vip_service import VIPEngine
 from .ui.embeds import create_aquarium_dashboard
 from .ui.views import DecorShopView, VIPSubscriptionView
 from .constants import AQUARIUM_FORUM_CHANNEL_ID

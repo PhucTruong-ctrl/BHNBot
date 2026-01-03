@@ -4,7 +4,7 @@ from discord import ui
 from ..logic.market import MarketEngine
 from ..logic.housing import HousingEngine
 from ..logic.render import RenderEngine
-from ..logic.vip import VIPEngine
+from core.services.vip_service import VIPEngine
 from ..constants import DECOR_ITEMS, FENG_SHUI_SETS, VIP_PRICES, VIP_NAMES, VIP_COLORS, VIP_PRICES
 
 # ==================== MAIN DASHBOARD VIEW ====================

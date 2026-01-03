@@ -88,7 +88,10 @@ class BauCuaCog(commands.Cog):
             # Send betting interface
             import time
             end_timestamp = int(time.time() + BETTING_TIME_SECONDS)
-            embed = create_betting_embed(end_timestamp)
+            
+            # Extract user for VIP styling
+            user = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
+            embed = await create_betting_embed(user, end_timestamp)
             view = BauCuaBetView(self.game_manager, game_state.game_id)
             self.active_views[channel_id] = view  # Store for cleanup
             
