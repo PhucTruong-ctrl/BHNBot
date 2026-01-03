@@ -1,0 +1,101 @@
+{
+  "_metadata": {
+    "description": "VIP Premium Consumables - Tier-locked items with special effects",
+    "version": "1.0.0",
+    "last_updated": "2026-01-03"
+  },
+  "items": {
+    "cham_long_dich": {
+      "key": "cham_long_dich",
+      "type": "consumable",
+      "category": "vip_premium",
+      "tier_required": 2,
+      "name": "Chấm Long Dịch",
+      "emoji": "🍷",
+      "description": "Rượu long não quý tộc - Tăng số cá bắt được lên 3-5 con trong lần câu tiếp theo",
+      "price": {
+        "buy": 200,
+        "sell": 0
+      },
+      "buy_price": 200,
+      "sell_price": 0,
+      "flags": {
+        "buyable": true,
+        "vip_only": true
+      },
+      "effect_type": "multi_catch",
+      "effect_value": {
+        "min_fish": 3,
+        "max_fish": 5
+      },
+      "usage_mode": "manual",
+      "activation_command": "/sudung cham_long_dich",
+      "duration_seconds": 300,
+      "daily_limit": 5,
+      "stackable": false,
+      "rarity": "vip_gold"
+    },
+    "luoi_than_thanh": {
+      "key": "luoi_than_thanh",
+      "type": "consumable",
+      "category": "vip_premium",
+      "tier_required": 3,
+      "name": "Lưới Thần Thánh",
+      "emoji": "🕸️",
+      "description": "Lưới dệt từ tơ thiên tằm - Bắt được 5-10 cá rare ngẫu nhiên",
+      "price": {
+        "buy": 500,
+        "sell": 0
+      },
+      "buy_price": 500,
+      "sell_price": 0,
+      "flags": {
+        "buyable": true,
+        "vip_only": true
+      },
+      "effect_type": "guarantee_rare_multi",
+      "effect_value": {
+        "min_rare": 5,
+        "max_rare": 10,
+        "rarity_pool": "rare"
+      },
+      "usage_mode": "auto_prompt",
+      "activation_trigger": "on_fishing_cast",
+      "prompt_message": "Dùng Lưới Thần Thánh? (Còn {remaining}/{limit})",
+      "daily_limit": 3,
+      "stackable": false,
+      "rarity": "vip_diamond"
+    }
+  },
+  "usage_modes": {
+    "manual": {
+      "description": "User must use /sudung [item] to activate buff",
+      "activation": "command_based",
+      "duration": "time_limited"
+    },
+    "auto_prompt": {
+      "description": "Bot detects item in inventory and prompts user during fishing",
+      "activation": "event_triggered",
+      "duration": "instant"
+    },
+    "passive": {
+      "description": "Always active while in inventory",
+      "activation": "ownership_based",
+      "duration": "permanent"
+    }
+  },
+  "tier_requirements": {
+    "1": {
+      "tier_name": "Bạc",
+      "unlocks": []
+    },
+    "2": {
+      "tier_name": "Vàng",
+      "unlocks": ["cham_long_dich"]
+    },
+    "3": {
+      "tier_name": "Kim Cương",
+      "unlocks": ["luoi_than_thanh"]
+    }
+  }
+}

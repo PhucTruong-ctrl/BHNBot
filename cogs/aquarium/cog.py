@@ -10,7 +10,7 @@ from .logic.market import MarketEngine
 from .logic.render import RenderEngine
 from core.services.vip_service import VIPEngine
 from .ui.embeds import create_aquarium_dashboard
-from .ui.views import DecorShopView, VIPSubscriptionView
+from .ui.views import DecorShopView
 from .constants import AQUARIUM_FORUM_CHANNEL_ID
 
 logger = logging.getLogger("AquariumCog")
@@ -263,29 +263,6 @@ class AquariumCog(commands.Cog):
                     await refresh_aquarium_dashboard(owner_id, self.bot)
         except Exception as e:
             logger.error(f"[AUTO_BUMP_ERROR] {e}")
-
-    # ==================== VIP SYSTEM ====================
-    @app_commands.command(name="thuongluu", description="Hệ thống V.I.P Thành Viên")
-    async def vip_system(self, interaction: discord.Interaction):
-        """Mở menu đăng ký thành viên"""
-        vip_data = await VIPEngine.get_vip_data(interaction.user.id)
-        
-        desc = "Chào mừng đến với CLB Thượng Lưu!\nHãy chọn gói thành viên để hưởng đặc quyền."
-        color = 0x2b2d31
-        
-        if vip_data:
-            tier_name = {1: "Bạc", 2: "Vàng", 3: "Kim Cương"}.get(vip_data['tier'], "Unknown")
-            desc = f"**Bạn đang là thành viên: {tier_name}**\n⏳ Hết hạn: `{vip_data['expiry']}`\n\nBạn có thể gia hạn hoặc nâng cấp bên dưới."
-            color = 0xf1c40f
-
-        embed = discord.Embed(
-            title="💎 Hệ Thống Thành Viên (VIP)",
-            description=desc,
-            color=color
-        )
-        
-        view = VIPSubscriptionView(interaction.user.id)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(AquariumCog(bot))

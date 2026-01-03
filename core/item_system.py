@@ -140,6 +140,14 @@ class ItemSystem:
         
         # Sort by buy price
         return sorted(shop_items, key=lambda x: x["price"].get("buy", 0))
+    
+    def get_vip_items(self) -> List[dict]:
+        """Get VIP-only premium items (tier-locked)."""  
+        vip_items = []
+        for item in self.items.values():
+            if "tier_required" in item:
+                vip_items.append(item)
+        return sorted(vip_items, key=lambda x: (x.get("tier_required", 0), x.get("buy_price", 0)))
 
     def get_protected_items(self) -> set:
         """Get set of protected items that cannot be auto-sold."""

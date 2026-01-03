@@ -126,6 +126,24 @@ class ShopCog(commands.Cog):
         
         item_info = all_items[item_key]
         
+        #  Check VIP tier requirement for premium items
+        if 'tier_required' in item_info:
+            from core.services.vip_service import VIPEngine
+            
+            user_id = interaction.user.id
+            vip_data = await VIPEngine.get_vip_data(user_id)
+            current_tier = vip_data['tier'] if vip_data else 0
+            required_tier = item_info['tier_required']
+            
+            if current_tier < required_tier:
+                tier_names = {1: "Bạc 🥈", 2: "Vàng 🥇", 3: "Kim Cương 💎"}
+                await interaction.followup.send(
+                    f"❌ Vật phẩm này yêu cầu **VIP {tier_names[required_tier]}**!\n"
+                    f"Tier hiện tại: {tier_names.get(current_tier, 'Không có')}",
+                    ephemeral=True
+                )
+                return
+        
         # Check if legendary item already obtained
         if item_key == ItemKeys.MAY_DO_SONG:
             user_id = interaction.user.id # Define user_id early
@@ -247,6 +265,23 @@ class ShopCog(commands.Cog):
                 return
         
         item_info = all_items[item_key]
+        
+        # Check VIP tier requirement
+        if 'tier_required' in item_info:
+            from core.services.vip_service import VIPEngine
+            
+            user_id = ctx.author.id
+            vip_data = await VIPEngine.get_vip_data(user_id)
+            current_tier = vip_data['tier'] if vip_data else 0
+            required_tier = item_info['tier_required']
+            
+            if current_tier < required_tier:
+                tier_names = {1: "Bạc 🥈", 2: "Vàng 🥇", 3: "Kim Cương 💎"}
+                await ctx.send(
+                    f"❌ Vật phẩm này yêu cầu **VIP {tier_names[required_tier]}**!\n"
+                    f"Tier hiện tại: {tier_names.get(current_tier, 'Không có')}"
+                )
+                return
         
         # Check if legendary item already obtained
         user_id = ctx.author.id
@@ -439,6 +474,30 @@ class ShopCog(commands.Cog):
         
         if categories["commemorative"]:
             embed.add_field(name="🏆 Vật Phẩm Kỉ Niệm", value="".join(categories["commemorative"]), inline=False)
+        
+        # VIP ONLY Section
+        vip_items = item_system.get_vip_items()
+        if vip_items:
+            tier_emoji_map = {1: "🥈", 2: "🥇", 3: "💎"}
+            vip_lines = []
+            
+            for item in vip_items:
+                tier = item.get('tier_required', 1)
+                tier_badge = tier_emoji_map.get(tier, "💎")
+                price = item.get('buy_price', 0)
+                key = item.get('key', 'unknown')
+                
+                line = (f"{tier_badge} {item.get('emoji', '❓')} **{item['name']}** "
+                        f"(`{key}`) - {price} Hạt\n"
+                        f"    💬 {item.get('description', 'N/A')}\n"
+                        f"    🎯 Yêu cầu: VIP Tier {tier}\n")
+                vip_lines.append(line)
+            
+            embed.add_field(
+                name="💎 VIP ONLY",
+                value="".join(vip_lines),
+                inline=False
+            )
         
         embed.add_field(
             name="📖 CÁCH MUA (Khuyên dùng Key)",
