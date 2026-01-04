@@ -1,0 +1,33 @@
+MEMORY COMPRESSION BLOCK:
+  description: "Session focused on refactoring Aquarium and Tree commands to integrate VIP Auto-features (Visit/Water) into main commands (/thamnha, /gophat) and removing standalone auto commands. Fixed SyntaxErrors in view files."
+  timestamp: "2026-01-04T22:44:36+07:00"
+  
+  critical_decisions:
+    - "Refactor /thamnha: Made 'user' optional. If None -> Opens Auto-Visit Manager (AutoVisitView). If User -> Manual visit + random reward (10-30 seeds)."
+    - "Refactor /gophat: Made 'amount' optional. If None -> Opens Tree Care Menu (AutoWaterView). If Amount -> Manual contribution."
+    - "Delete Commands: Removed '/nha auto' and '/tuoi auto' to reduce command clutter."
+    - "Views Implementation: Created 'AutoVisitView' (Aquarium) and 'AutoWaterView' (Tree). Both handle 50k/30-day subscriptions."
+    - "AutoWaterView UX: Added 'Góp Hạt (Tuỳ ý)' button to 'AutoWaterView' to allow manual contribution via Modal from the menu."
+
+  current_code_state:
+    files:
+      cogs/aquarium/cog.py:
+        - "Updated 'thamnha' command signature and logic."
+        - "Removed 'nha_auto' command."
+        - "Imported 'AutoVisitView'."
+      cogs/aquarium/ui/views.py:
+        - "Added 'AutoVisitView' class."
+        - "FIXED: SyntaxError (removed invalid backslashes before triple quotes)."
+      cogs/tree/cog.py:
+        - "Updated 'contribute_tree' ('gophat') signature and logic."
+        - "Removed 'tuoi_auto' command."
+        - "Imported 'AutoWaterView'."
+      cogs/tree/views.py:
+        - "Added 'AutoWaterView' class with 'subscribe' and 'manual_contribute' buttons."
+        - "FIXED: Removed double-escaped newlines ('\\\\n' -> '\\n') in embed description."
+
+  pending_tasks:
+    - "Restart Bot: User needs to restart to apply SyntaxError fixes and load 'cogs.aquarium.cog' correctly."
+    - "Verify /thamnha: Test both manual visit (@user) and menu (no args)."
+    - "Verify /gophat: Test both manual contribution (amount) and menu (no args, check buttons)."
+    - "Database Verification: Ensure 'vip_auto_tasks' table receives 'auto_visit' and 'auto_water' entries upon subscription."

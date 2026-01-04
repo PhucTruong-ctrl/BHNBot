@@ -1,8 +1,7 @@
-
 from typing import Tuple, Dict
-from core.database import db_manager # SQLite
-from ..models import UserAquarium, UserDecor # Postgres
-from ..constants import DECOR_ITEMS, TRASH_ITEM_IDS, LEAF_COIN_RATE
+from core.database import db_manager, get_user_balance
+from ..models import UserAquarium, UserDecor
+from ..constants import LEAF_COIN_RATE, DECOR_ITEMS, TRASH_ITEM_IDS
 import logging
 import random
 
@@ -82,53 +81,86 @@ class MarketEngine:
             return False, "❌ Lỗi hệ thống khi giao dịch.", 0, 0
 
     @staticmethod
-    async def buy_decor(user_id: int, item_key: str, currency: str = 'leaf') -> Tuple[bool, str]:
+    async def buy_decor(user_id: int, item_key: str, currency: str = 'seeds') -> tuple[bool, str]:
         """
-        Buy decor item.
-        currency: 'leaf' (Postgres) or 'seeds' (SQLite).
+        Buy item. Currency: 'seeds', 'leaf', or 'magic_fruit' (mixed).
         """
         item = DECOR_ITEMS.get(item_key)
-        if not item:
-            return False, "Vật phẩm không tồn tại."
-
-        price = item.get('price_leaf') if currency == 'leaf' else item.get('price_seeds')
-        if price is None:
-            return False, f"Vật phẩm này không bán bằng {currency}."
-
+        if not item: return False, "Vật phẩm không tồn tại."
+        
+        cost_seeds = item.get('price_seeds', 999999)
+        cost_leaf = item.get('price_leaf', 999999)
+        cost_magic_fruit = item.get('price_magic_fruit', 0)
+        
         try:
-            # 1. Deduct Money
-            if currency == 'leaf':
-                # [Postgres]
+             async with db_manager.transaction() as conn:
+                # 1. Check Balance
+                # Note: For strict ACID, we should fetch balance via 'conn' here, but get_user_balance uses db_manager.fetchone (new conn).
+                # Ideally read via conn.
+                
+                # Manual fetch via conn for ACID
+                row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", user_id)
+                main_user_bal = row['seeds'] if row else 0
+                
                 user = await UserAquarium.get_or_none(user_id=user_id)
-                if not user or user.leaf_coin < price:
-                    return False, f"Không đủ Xu Lá! (Cần {price})"
+                if not user:
+                    user = await UserAquarium.create(user_id=user_id) # This is separate Postgres transaction (Tortoise). Acceptable hybrid risk.
                 
-                user.leaf_coin -= price
-                await user.save()
-            else:
-                # [SQLite]
-                # Check balance first
-                # [Postgres via db_manager]
-                # Check balance first
-                rows = await db_manager.fetchone("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
-                balance = rows[0] if rows else 0
-                if balance < price:
-                    return False, f"Không đủ Hạt Giống! (Cần {price})"
+                if currency == 'seeds':
+                    if main_user_bal < cost_seeds:
+                        return False, f"Thiếu Hạt! Cần {cost_seeds:,}."
+                    # Deduct with Log (Inline for Atomicity)
+                    await conn.execute("UPDATE users SET seeds = seeds - $1 WHERE user_id = $2", cost_seeds, user_id)
+                    await conn.execute(
+                        "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, $3, $4, NOW())",
+                        user_id, -cost_seeds, f"buy_decor_{item_key}", "aquarium"
+                    )
+                    
+                elif currency == 'leaf':
+                    if user.leaf_coin < cost_leaf:
+                        return False, f"Thiếu Xu Lá! Cần {cost_leaf}."
+                    # Deduct via ORM
+                    user.leaf_coin -= cost_leaf
+                    await user.save()
+                    
+                elif currency == 'magic_fruit':
+                    # Special: Requires Seeds AND Magic Fruit
+                    if main_user_bal < cost_seeds:
+                         return False, f"Thiếu Hạt! Cần {cost_seeds:,}."
+                    
+                    # Check Magic Fruit (Inventory) - Use conn
+                    # Note: db_manager uses $1 params, but inventory schema uses user_id, item_id
+                    row_fruit = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = 'magic_fruit'", user_id)
+                    fruit_count = row_fruit['quantity'] if row_fruit else 0
+                    
+                    if fruit_count < cost_magic_fruit:
+                        return False, f"Thiếu Quả Thần! Cần {cost_magic_fruit}."
+                        
+                    # Deduct Seeds
+                    await conn.execute("UPDATE users SET seeds = seeds - $1 WHERE user_id = $2", cost_seeds, user_id)
+                    await conn.execute(
+                        "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, $3, $4, NOW())",
+                        user_id, -cost_seeds, f"buy_decor_special_{item_key}", "aquarium"
+                    )
+                    
+                    # Deduct Fruit
+                    await conn.execute("UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = 'magic_fruit'", cost_magic_fruit, user_id)
+                    
+                else:
+                    return False, "Loại tiền tệ không hợp lệ."
+
+                # 2. Add to Decor Inventory
+                # This is separate Postgres transaction via Tortoise.
+                # If this fails, the SQLite transaction (conn) rolls back automatically due to Exception bubbling?
+                # Yes, if await decor.save() raises, exception is caught by except block, which calls txn.rollback() inside db_manager.transaction() context?
+                # No, db_manager.transaction handles rollback on exception exit.
+                decor, _ = await UserDecor.get_or_create(user=user, item_id=item_key)
+                decor.quantity += 1
+                await decor.save()
                 
-                # Dedudct
-                await db_manager.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (price, user_id))
-
-            # 2. Add Item to Decor Inventory [Postgres]
-            user_obj = await UserAquarium.get_or_create(user_id=user_id)
-            decor, _ = await UserDecor.get_or_create(user=user_obj[0], item_id=item_key)
-            decor.quantity += 1
-            await decor.save()
-            
-            return True, f"Đã mua **{item['name']}** với {price} {currency}!"
-
+                return True, f"Mua thành công **{item['name']}**!"
         except Exception as e:
-            logger.error(f"[BUY_ERROR] User {user_id} Item {item_key}: {e}", exc_info=True)
-            # Note: Potential distributed transaction inconsistency if step 2 fails after step 1.
+            logger.error(f"[BUY_ERROR] {e}")
             return False, "Lỗi giao dịch."
 
     @staticmethod

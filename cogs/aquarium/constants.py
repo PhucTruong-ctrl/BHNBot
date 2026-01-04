@@ -40,6 +40,7 @@ DECOR_ITEMS = {
         "name": "Rương Kho Báu", 
         "price_seeds": 50000, 
         "price_leaf": 200, 
+        "price_magic_fruit": 1, 
         "icon": "⚱️", 
         "type": "floor", 
         "desc": "Chứa đầy bí mật. (+10 Charm)",
@@ -89,23 +90,50 @@ DECOR_ITEMS = {
         "type": "floor", 
         "desc": "Hào quang chói lóa. (+50 Charm)",
         "set": "hoang_gia"
+    },
+    # Phase 3: Future Tech (Tier 3)
+    "hologram_shark": {
+        "name": "Cá Mập Hologram",
+        "price_seeds": 500000,
+        "price_leaf": 2000,
+        "icon": "🦈",
+        "type": "fish",
+        "desc": "Công nghệ 4.0. (+80 Charm)",
+        "set": "tuong_lai"
+    },
+    "cyber_coral": {
+        "name": "San Hô Cyber",
+        "price_seeds": 150000,
+        "price_leaf": 800,
+        "icon": "👾",
+        "type": "water",
+        "desc": "Phát sáng RGB. (+40 Charm)",
+        "set": "tuong_lai"
     }
 }
 
 # Feng Shui Sets (Bonuses)
-# Logic: If user has ALL required items in their slots (any order), apply bonus.
 FENG_SHUI_SETS = {
     "dai_duong": {
-        "name": "🌊 Hơi Thở Đại Dương",
+        "name": "🌊 Rạn San Hô (Tier 1)",
         "required": ["san_ho", "rong_bien", "ca_map", "den_neon"],
-        "bonus_desc": "Tăng 20% sản lượng Xu Lá khi tái chế.",
-        "icon": "🌊"
+        "bonus_desc": "Tăng 5% Hạt nhận từ Cây Server (/thuhoach).",
+        "icon": "🌊",
+        "tier": 1
     },
     "hoang_gia": {
-        "name": "👑 Kho Báu Hoàng Gia",
+        "name": "👑 Kho Báu Cổ Đại (Tier 2)",
         "required": ["ruong_vang", "lau_dai_cat", "ngoc_trai_khong_lo", "mo_neo"],
-        "bonus_desc": "Giảm 10% giá mua nội thất.",
-        "icon": "👑"
+        "bonus_desc": "Tăng 10% giá trị bán cá (/ban).",
+        "icon": "👑",
+        "tier": 2
+    },
+    "tuong_lai": {
+        "name": "🚀 Công Nghệ Tương Lai (Tier 3)",
+        "required": ["hologram_shark", "cyber_coral"],
+        "bonus_desc": "Nhận 200 Hạt mỗi ngày (Passive).",
+        "icon": "🚀",
+        "tier": 3
     }
 }
 

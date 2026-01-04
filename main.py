@@ -94,6 +94,14 @@ async def on_ready():
         logger.info("✓ Phase 2.2 tables ensured")
     except Exception as e:
         logger.error(f"Failed to ensure Phase 2.2 tables: {e}")
+
+    # Ensure Phase 3 tables (VIP Content - Themes)
+    try:
+        from database_manager import ensure_phase3_tables
+        await ensure_phase3_tables()
+        logger.info("✓ Phase 3 tables ensured")
+    except Exception as e:
+        logger.error(f"Failed to ensure Phase 3 tables: {e}")
     
     # Attach Discord logging handler (reads config from database)
     try:

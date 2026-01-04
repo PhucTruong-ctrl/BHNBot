@@ -131,17 +131,46 @@ class DecorConfirmView(ui.View):
         super().__init__(timeout=60)
         self.user_id = user_id
         self.item_key = item_key
-    
-    @ui.button(label="Mua bằng Hạt", style=discord.ButtonStyle.green, emoji="💰")
-    async def buy_seeds(self, interaction: discord.Interaction, button: ui.Button):
+        
+        # Check Item Logic
+        item = DECOR_ITEMS.get(item_key)
+        cost_magic = item.get('price_magic_fruit', 0)
+        
+        if cost_magic > 0:
+            # Special Item (Seeds + Fruit)
+            cost_seeds = item.get('price_seeds', 0)
+            btn = ui.Button(
+                label=f"Đổi ({cost_seeds:,} Hạt + {cost_magic} Quả)", 
+                style=discord.ButtonStyle.danger, 
+                emoji="🍎"
+            )
+            btn.callback = self.buy_special
+            self.add_item(btn)
+        else:
+            # Standard Item
+            btn_seeds = ui.Button(label="Mua bằng Hạt", style=discord.ButtonStyle.green, emoji="💰")
+            btn_seeds.callback = self.buy_seeds
+            self.add_item(btn_seeds)
+
+            btn_leaf = ui.Button(label="Mua bằng Xu Lá", style=discord.ButtonStyle.blurple, emoji="🍃")
+            btn_leaf.callback = self.buy_leaf
+            self.add_item(btn_leaf)
+
+        # Back Button always present
+        btn_back = ui.Button(label="Quay lại", style=discord.ButtonStyle.secondary, emoji="↩️")
+        btn_back.callback = self.back
+        self.add_item(btn_back)
+
+    async def buy_seeds(self, interaction: discord.Interaction):
         await self._buy(interaction, 'seeds')
 
-    @ui.button(label="Mua bằng Xu Lá", style=discord.ButtonStyle.blurple, emoji="🍃")
-    async def buy_leaf(self, interaction: discord.Interaction, button: ui.Button):
+    async def buy_leaf(self, interaction: discord.Interaction):
         await self._buy(interaction, 'leaf')
+        
+    async def buy_special(self, interaction: discord.Interaction):
+        await self._buy(interaction, 'magic_fruit')
 
-    @ui.button(label="Quay lại", style=discord.ButtonStyle.secondary, emoji="↩️")
-    async def back(self, interaction: discord.Interaction, button: ui.Button):
+    async def back(self, interaction: discord.Interaction):
          if interaction.user.id != self.user_id: return
          embed = discord.Embed(title="🏪 Cửa Hàng Nội Thất", description="Chọn món khác nào...", color=0xe67e22)
          await interaction.response.edit_message(embed=embed, view=DecorShopView(self.user_id))
@@ -351,3 +380,55 @@ class VIPConfirmView(ui.View):
             await interaction.followup.send(f"✅ {msg}", ephemeral=True)
         else:
             await interaction.followup.send(f"❌ {msg}", ephemeral=True)
+
+# ==================== AUTO VISIT VIEW ====================
+class AutoVisitView(ui.View):
+    """View manage Auto-Visit Subscription."""
+    def __init__(self, user_id: int):
+        super().__init__(timeout=120)
+        self.user_id = user_id
+
+    @ui.button(label="Đăng Ký (50k/tháng)", style=discord.ButtonStyle.success, emoji="✅")
+    async def subscribe(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.user_id: return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # 1. Payment
+        COST = 50000
+        DURATION_DAYS = 30
+        
+        from database_manager import get_user_balance, add_seeds, db_manager
+        
+        balance = await get_user_balance(interaction.user.id)
+        if balance < COST:
+            await interaction.followup.send(f"❌ Không đủ hạt! Cần {COST:,} hạt.", ephemeral=True)
+            return
+            
+        await add_seeds(interaction.user.id, -COST, "vip_autovisit", "service")
+        
+        # 2. Register
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        expiry = (now + timedelta(days=DURATION_DAYS)).isoformat()
+        
+        await db_manager.execute(
+            """
+            INSERT INTO vip_auto_tasks (user_id, task_type, expires_at, last_run_at)
+            VALUES (?, 'auto_visit', ?, ?)
+            ON CONFLICT(user_id, task_type) DO UPDATE SET
+                expires_at = ?,
+                last_run_at = ?
+            """,
+            (interaction.user.id, expiry, now.isoformat(), expiry, now.isoformat())
+        )
+        
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.description = f"✅ **Đăng ký thành công!**\n\nBot sẽ tự động thăm 5 nhà hàng xóm mỗi ngày.\nNhận 100 seeds/ngày.\nThời hạn: 30 ngày."
+        embed.clear_fields()
+        
+        # Update view to disable button
+        for child in self.children: child.disabled = True
+        
+        await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=self)

@@ -11,7 +11,7 @@ from .tree_manager import TreeManager
 from .contributor_manager import ContributorManager
 from .models import TreeData, HarvestBuff
 from .helpers import create_tree_embed, format_contributor_list, format_all_time_contributors
-from .views import ContributeModal
+from .views import ContributeModal, AutoWaterView
 
 logger = setup_logger("TreeCog", "logs/cogs/tree.log")
 
@@ -201,87 +201,53 @@ class TreeCog(commands.Cog):
     # Create Group
     tuoi_group = app_commands.Group(name="tuoi", description="Các lệnh chăm sóc cây")
 
-    @tuoi_group.command(name="auto", description="[VIP 3] Đăng ký tự động tưới (50k/tháng)")
-    async def tuoi_auto(self, interaction: discord.Interaction):
-        """Register for Auto-Watering (Tier 3 Only)."""
-        await interaction.response.defer(ephemeral=True)
-        
-        # 1. Check VIP
-        vip = await VIPEngine.get_vip_data(interaction.user.id)
-        if not vip or vip['tier'] < 3:
-            await interaction.followup.send("❌ Chỉ dành cho VIP 💎 [KIM CƯƠNG]!", ephemeral=True)
-            return
 
-        # 2. Check Existing
-        row = await db_manager.fetchone(
-            "SELECT expires_at FROM vip_auto_tasks WHERE user_id = ? AND task_type = 'auto_water'",
-            (interaction.user.id,)
-        )
-        
-        now = datetime.now()
-        
-        if row and row[0]:
-            expires = datetime.fromisoformat(row[0])
-            if expires > now:
-                remaining = expires - now
-                days = remaining.days
-                await interaction.followup.send(
-                    f"✅ Bạn đang đăng ký tự động tưới! Hết hạn sau: {days} ngày.",
-                    ephemeral=True
-                )
-                return
-        
-        # 3. Payment
-        COST = 50000
-        DURATION_DAYS = 30
-        
-        from database_manager import get_user_balance, add_seeds
-        
-        balance = await get_user_balance(interaction.user.id)
-        if balance < COST:
-            await interaction.followup.send(f"❌ Không đủ hạt! Cần {COST:,} hạt.", ephemeral=True)
-            return
-            
-        await add_seeds(interaction.user.id, -COST, "vip_autowater", "service")
-        
-        # 4. Register
-        expiry = (now + timedelta(days=DURATION_DAYS)).isoformat()
-        
-        await db_manager.execute(
-            """
-            INSERT INTO vip_auto_tasks (user_id, task_type, expires_at, last_run_at)
-            VALUES (?, 'auto_water', ?, ?)
-            ON CONFLICT(user_id, task_type) DO UPDATE SET
-                expires_at = ?,
-                last_run_at = ?
-            """,
-            (interaction.user.id, expiry, now.isoformat(), expiry, now.isoformat())
-        )
-        
-        await interaction.followup.send(
-            f"✅ Đăng ký thành công! Bot sẽ tự tưới (100xp/ngày) trong 30 ngày. Đã trừ {COST:,} hạt.",
-            ephemeral=True
-        )
 
-    @app_commands.command(name="gophat", description="Góp Hạt nuôi cây server")
-    @app_commands.describe(amount="Số hạt muốn góp (tuỳ chọn)")
+    @app_commands.command(name="gophat", description="Góp Hạt nuôi cây & Đăng ký Auto Tưới")
+    @app_commands.describe(amount="Số hạt muốn góp (Mặc định: Mở menu)")
     async def contribute_tree(
         self,
         interaction: discord.Interaction,
         amount: Optional[int] = None
     ):
-        """Contribute seeds to the community tree.
+        """Contribute seeds or open Tree Care Menu."""
         
-        If amount is not provided, shows modal for custom input.
-        
-        Args:
-            interaction: Discord interaction
-            amount: Optional number of seeds to contribute
-        """
+        # --- MENU & AUTO-WATER (No Amount) ---
         if amount is None:
-            # Show modal for custom input
-            modal = ContributeModal(self.tree_manager)
-            await interaction.response.send_modal(modal)
+            await interaction.response.defer(ephemeral=True)
+            
+            # Check Status
+            row = await db_manager.fetchone(
+                "SELECT expires_at FROM vip_auto_tasks WHERE user_id = ? AND task_type = 'auto_water'",
+                (interaction.user.id,)
+            )
+            
+            status_text = "⚪ **Chưa đăng ký**"
+            is_active = False
+            
+            if row and row[0]:
+                expires = datetime.fromisoformat(row[0])
+                if expires > datetime.now():
+                    is_active = True
+                    status_text = f"✅ **Đang hoạt động** (Hết hạn: <t:{int(expires.timestamp())}:R>)"
+            
+            embed = discord.Embed(
+                title="🌳 Chăm Sóc Cây Thần",
+                description=f"Bạn muốn làm gì?\n\n**Trạng thái Auto-Tưới:**\n{status_text}\n\n*Auto-Tưới: 100 XP/ngày (50k/tháng)*",
+                color=0x2ecc71
+            )
+            
+            view = AutoWaterView(interaction.user.id, self.tree_manager)
+            
+            # If active, disable subscribe button? Or keep it for extension?
+            # For simplicity, keeping it enabled or disabled based on logic in view?
+            # View is fresh. Logic in view is barebones. 
+            # I can just send view. 
+            
+            await interaction.followup.send(embed=embed, view=view)
+            return
+
+        # --- MANUAL CONTRIBUTION ---
         else:
             # SECURITY FIX #5: Validate amount range
             from .constants import MAX_CONTRIBUTION

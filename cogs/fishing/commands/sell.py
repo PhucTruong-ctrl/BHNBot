@@ -204,6 +204,24 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
         logger.error(f"[SELL] Event check failed: {e}", exc_info=True)
         # Continue to normal sell if event system fails
     
+    # ===== STEP 1.75: CHECK SET BONUSES (Phase 3) =====
+    bonus_amount = 0
+    bonus_percent = 0
+    try:
+        from cogs.aquarium.logic.housing import HousingEngine
+        active_sets = await HousingEngine.get_active_sets(user_id)
+        
+        # Check 'hoang_gia' set (Tier 2) - +10% Sell Value
+        if any(s.get('tier') == 2 for s in active_sets):
+            bonus_percent = 0.10
+            bonus_amount = int(total_value * bonus_percent)
+            logger.info(f"[SELL] User {user_id} has Royal Set bonus (+{bonus_amount})")
+            
+    except Exception as e:
+        logger.error(f"[SELL] Set Bonus check failed: {e}", exc_info=True)
+        
+    final_total_value = total_value + bonus_amount
+
     # ===== STEP 2-5: ATOMIC TRANSACTION =====
     try:
         async with db_manager.transaction() as conn:
@@ -246,16 +264,16 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
             # STEP 4: ADD MONEY (only if step 3 succeeded)
             await conn.execute(
                 "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-                (total_value, user_id)
+                (final_total_value, user_id)
             )
             
             # Transaction log
             await conn.execute(
                 "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                (user_id, total_value, 'sell_fish', 'fishing')
+                (user_id, final_total_value, 'sell_fish', 'fishing')
             )
             
-            logger.info(f"[SELL] Added {total_value} seeds to user {user_id}")
+            logger.info(f"[SELL] Added {final_total_value} seeds (Base: {total_value}, Bonus: {bonus_amount}) to user {user_id}")
         
         # STEP 5: Transaction auto-commits here
         logger.info(f"[SELL] [SUCCESS] Transaction committed for user {user_id}")
@@ -333,8 +351,12 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
             details += f"{emoji} **{name}** x{qty} = {line_total} Hạt\n"
         
         embed.add_field(name="📋 Chi Tiết Đơn Hàng", value=details, inline=False)
-        embed.add_field(name="📊 Tổng Kết", value=f"💵 **Tổng Gốc:** {total_value} Hạt", inline=False)
-        embed.add_field(name="🏁 TỔNG NHẬN", value=f"# +{total_value} Hạt", inline=False)
+        embed.add_field(name="📊 Tổng Kết", value=f"💵 **Tổng Gốc:** {total_value:,} Hạt", inline=False)
+        
+        if bonus_amount > 0:
+             embed.add_field(name="👑 Buff Hoàng Gia", value=f"Active Set: **Kho Báu Cổ Đại**\nBonus: +10% (+{bonus_amount:,} Hạt)", inline=False)
+             
+        embed.add_field(name="🏁 TỔNG NHẬN", value=f"# +{final_total_value:,} Hạt", inline=False)
         
         if is_slash:
             await ctx_or_interaction.followup.send(embed=embed)

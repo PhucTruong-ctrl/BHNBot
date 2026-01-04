@@ -270,11 +270,21 @@ class TreeManager:
                     logger.info(f"[REFUND] user_id={user_id} seed_change=+{amount} reason=tree_maxed")
                     return
                 
-                # Update tree progress
+                # Calculate XP Bonus (VIP Tier 1+)
+                vip_bonus_exp = 0
+                from core.services.vip_service import VIPEngine
+                vip_data = await VIPEngine.get_vip_data(user_id)
+                
+                if vip_data and vip_data['tier'] >= 1:
+                    vip_bonus_exp = int(amount * 0.1)
+                
+                total_exp_added = amount + vip_bonus_exp
+                
+                # Update tree progress with Total EXP
                 level_reqs = tree_data.get_level_requirements()
                 req = level_reqs.get(tree_data.current_level + 1, level_reqs[6])
-                new_progress = tree_data.current_progress + amount
-                new_total = tree_data.total_contributed + amount
+                new_progress = tree_data.current_progress + total_exp_added
+                new_total = tree_data.total_contributed + total_exp_added
                 new_level = tree_data.current_level
                 leveled_up = False
                 
@@ -292,12 +302,15 @@ class TreeManager:
                 tree_data.total_contributed = new_total
                 await tree_data.save()
                 
-                # Track contribution
+                # Track contribution (Pass Total EXP as amount if type is seeds, or handle inside?)
+                # If we pass total_exp_added, ContributorManager will see it as "seeds".
+                # Standard logic: 1 seed = 1 exp.
+                # So passing total_exp_added works for ranking.
                 await self.contributor_manager.add_contribution(
                     user_id,
                     guild_id,
                     tree_data.season,
-                    amount,
+                    total_exp_added,
                     contribution_type="seeds"
                 )
                 
@@ -311,8 +324,31 @@ class TreeManager:
                     new_level=new_level,
                     item_name="Hạt",
                     quantity=amount,
-                    action_title="Góp Hạt Cho Cây!"
+                    action_title="Góp Hạt Cho Cây!",
+                    bonus_exp=vip_bonus_exp
                 )
+                
+                # Phase 3: Magic Fruit Drop (VIP 2+ only)
+                # 5% chance
+                # Using fetched vip_data
+                if vip_data and vip_data['tier'] >= 2:
+                    import random
+                    if random.random() < 0.05: # 5% Chance
+                        # Give Item
+                        if hasattr(self.bot, 'inventory'):
+                             # Assuming InventoryCache singleton
+                             await self.bot.inventory.add_item(user_id, "magic_fruit", 1)
+                        else:
+                             # Fallback to direct DB
+                             await db_manager.execute(
+                                 "INSERT INTO inventory (user_id, item_id, quantity) VALUES (?, 'magic_fruit', 1) "
+                                 "ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + 1",
+                                 (user_id,)
+                             )
+                        
+                        embed.description += "\n\n🍎 **QUẢ THẦN!!**\nBạn may mắn nhận được **1 Quả Thần** nhờ chăm sóc cây!"
+                        embed.color = 0xf1c40f # Gold color for luck
+                
                 await interaction.followup.send(embed=embed, ephemeral=False)
                 
                 # Echo to tree channel if different

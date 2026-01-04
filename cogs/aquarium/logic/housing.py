@@ -208,3 +208,20 @@ class HousingEngine:
         except Exception as e:
             logger.error(f"[VISIT_ERROR] {e}", exc_info=True)
             return {"success": False, "message": "Lỗi khi ghé thăm."}
+    @staticmethod
+    async def set_theme(user_id: int, url: str) -> bool:
+        """Set custom aquarium theme URL (VIP feature)."""
+        try:
+            user = await UserAquarium.get(user_id=user_id)
+            user.theme_url = url
+            await user.save()
+            return True
+        except Exception as e:
+            logger.error(f"[SET_THEME_ERROR] User {user_id}: {e}")
+            return False
+
+    @staticmethod
+    async def get_theme(user_id: int) -> Optional[str]:
+        """Get user's custom theme URL."""
+        user = await UserAquarium.get_or_none(user_id=user_id)
+        return user.theme_url if user else None

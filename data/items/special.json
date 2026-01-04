@@ -195,6 +195,23 @@
       "flags": {
         "buyable": false
       }
+    },
+    "magic_fruit": {
+      "type": "special",
+      "key": "magic_fruit",
+      "name": "Quả Thần",
+      "emoji": "🍎",
+      "description": "Quả vàng óng ánh rớt từ Cây Thần. Dùng để mở khóa bộ nội thất VIP.",
+      "price": {
+        "buy": 0,
+        "sell": 500,
+        "currency": "seeds"
+      },
+      "flags": {
+        "buyable": false,
+        "tradable": true,
+        "stackable": true
+      }
     }
   }
 }

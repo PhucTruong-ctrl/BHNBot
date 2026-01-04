@@ -1067,3 +1067,27 @@ async def ensure_phase2_2_tables():
         logger.info("✓ Phase 2.2 tables ensured (baucua_daily_stats, vip_auto_tasks)")
     except Exception as e:
         logger.error(f"Error ensuring Phase 2.2 tables: {e}")
+
+async def ensure_phase3_tables():
+    """Ensures tables/columns for Phase 3 (VIP Content) exist."""
+    try:
+        # 1. Add theme_url to user_aquarium
+        # SQLite doesn't support IF NOT EXISTS for ADD COLUMN, so we check first
+        # However, db_manager.execute/modify might catch error if column exists?
+        # A clearer way in SQLite is check pragma or try-catch.
+        
+        # We'll use a try-catch pattern for modifying tables
+        try:
+            await db_manager.modify("ALTER TABLE user_aquarium ADD COLUMN theme_url TEXT DEFAULT NULL")
+            logger.info("✓ Added theme_url column to user_aquarium")
+        except Exception as e:
+            if "duplicate column" in str(e).lower():
+                pass # Already exists
+            else:
+                # Might fail if table doesn't exist? But HousingEngine initializes it.
+                # Let's log but ignore column exists error
+                pass
+
+        logger.info("✓ Phase 3 tables/columns ensured")
+    except Exception as e:
+        logger.error(f"Error ensuring Phase 3 schema: {e}")

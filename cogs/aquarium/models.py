@@ -10,6 +10,7 @@ class UserAquarium(models.Model):
     leaf_coin = fields.BigIntField(default=0)
     charm_point = fields.IntField(default=0)
     home_thread_id = fields.BigIntField(null=True)
+    theme_url = fields.TextField(null=True, default=None)
     dashboard_message_id = fields.BigIntField(null=True)
     
     # Meta info

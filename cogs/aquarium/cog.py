@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
+from typing import Optional
 import logging
 from datetime import datetime, timedelta, time
 
@@ -10,7 +11,7 @@ from .logic.market import MarketEngine
 from .logic.render import RenderEngine
 from core.services.vip_service import VIPEngine
 from .ui.embeds import create_aquarium_dashboard
-from .ui.views import DecorShopView
+from .ui.views import DecorShopView, AutoVisitView
 from .constants import AQUARIUM_FORUM_CHANNEL_ID
 
 logger = logging.getLogger("AquariumCog")
@@ -105,9 +106,52 @@ class AquariumCog(commands.Cog):
         await ctx.send(embed=embed)
 
     # ==================== SOCIAL COMMANDS ====================
-    @app_commands.command(name="thamnha", description="🏠 Ghé thăm nhà hàng xóm (Cơ hội nhận quà!)")
-    async def thamnha(self, interaction: discord.Interaction, user: discord.User):
-        """Visit another user's home."""
+    @app_commands.command(name="thamnha", description="🏠 Ghé thăm nhà hàng xóm (Cơ hội nhận quà!) hoặc Đăng ký Tự động")
+    @app_commands.describe(user="Người bạn muốn thăm (Để trống để mở menu Auto)")
+    async def thamnha(self, interaction: discord.Interaction, user: Optional[discord.User] = None):
+        """Visit another user's home or open Auto-Visit Menu."""
+        
+        # --- MODE 1: AUTO VISIT MENU (No User provided) ---
+        if user is None:
+            await interaction.response.defer(ephemeral=True)
+            
+            # Check VIP
+            vip = await VIPEngine.get_vip_data(interaction.user.id)
+            if not vip or vip['tier'] < 3:
+                return await interaction.followup.send("❌ Chức năng Auto-Visit chỉ dành cho VIP 💎 [KIM CƯƠNG]!", ephemeral=True)
+
+            # Check Status
+            row = await db_manager.fetchone(
+                "SELECT expires_at FROM vip_auto_tasks WHERE user_id = ? AND task_type = 'auto_visit'",
+                (interaction.user.id,)
+            )
+            
+            is_active = False
+            expiry_str = ""
+            if row and row[0]:
+                expires = datetime.fromisoformat(row[0])
+                if expires > datetime.now():
+                    is_active = True
+                    expiry_str = f"<t:{int(expires.timestamp())}:R>"
+            
+            if is_active:
+                embed = discord.Embed(
+                    title="🤖 Auto-Visit Manager",
+                    description=f"✅ **Đang hoạt động!**\n⏳ Hết hạn: {expiry_str}\n\nBot đang tự động thăm 5 nhà/ngày cho bạn.",
+                    color=0x2ecc71
+                )
+                await interaction.followup.send(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="🤖 Auto-Visit Manager",
+                    description="**Chưa đăng ký!**\n\nBot sẽ tự động thăm 5 nhà hàng xóm mỗi ngày.\nNhận 100 seeds/ngày.\n\n**Phí:** 50,000 Hạt / 30 ngày.",
+                    color=0x95a5a6
+                )
+                view = AutoVisitView(interaction.user.id)
+                await interaction.followup.send(embed=embed, view=view)
+            return
+
+        # --- MODE 2: MANUAL VISIT (User provided) ---
         await interaction.response.defer()
         
         # 1. Check if Target has house
@@ -123,12 +167,16 @@ class AquariumCog(commands.Cog):
         stats = await HousingEngine.calculate_home_stats(user.id)
         visuals = RenderEngine.generate_view(slots)
         
+        # Phase 3: Get Theme URL
+        theme_url = await HousingEngine.get_theme(user.id)
+        
         dashboard = create_aquarium_dashboard(
             user_name=user.display_name,
             user_avatar=user.display_avatar.url,
             view_visuals=visuals,
             stats=stats,
-            inventory_count=len(inventory)
+            inventory_count=len(inventory),
+            theme_url=theme_url
         )
         
         # 4. Result Embed
@@ -220,67 +268,7 @@ class AquariumCog(commands.Cog):
             logger.error(f"[HOUSE_CMD_ERROR] {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi khi xây nhà: {e}")
 
-    @nha_group.command(name="auto", description="[VIP 3] Đăng ký tự động thăm nhà (50k/tháng)")
-    async def nha_auto(self, interaction: discord.Interaction):
-        """Register for Auto-Visit (Tier 3 Only)."""
-        await interaction.response.defer(ephemeral=True)
-        
-        # 1. Check VIP
-        vip = await VIPEngine.get_vip_data(interaction.user.id)
-        if not vip or vip['tier'] < 3:
-            await interaction.followup.send("❌ Chỉ dành cho VIP 💎 [KIM CƯƠNG]!", ephemeral=True)
-            return
 
-        # 2. Check Existing
-        row = await db_manager.fetchone(
-            "SELECT expires_at FROM vip_auto_tasks WHERE user_id = ? AND task_type = 'auto_visit'",
-            (interaction.user.id,)
-        )
-        
-        now = datetime.now()
-        
-        if row and row[0]:
-            expires = datetime.fromisoformat(row[0])
-            if expires > now:
-                remaining = expires - now
-                days = remaining.days
-                await interaction.followup.send(
-                    f"✅ Bạn đang đăng ký tự động thăm! Hết hạn sau: {days} ngày.",
-                    ephemeral=True
-                )
-                return
-        
-        # 3. Payment
-        COST = 50000
-        DURATION_DAYS = 30
-        
-        from database_manager import get_user_balance, add_seeds
-        
-        balance = await get_user_balance(interaction.user.id)
-        if balance < COST:
-            await interaction.followup.send(f"❌ Không đủ hạt! Cần {COST:,} hạt.", ephemeral=True)
-            return
-            
-        await add_seeds(interaction.user.id, -COST, "vip_autovisit", "service")
-        
-        # 4. Register
-        expiry = (now + timedelta(days=DURATION_DAYS)).isoformat()
-        
-        await db_manager.execute(
-            """
-            INSERT INTO vip_auto_tasks (user_id, task_type, expires_at, last_run_at)
-            VALUES (?, 'auto_visit', ?, ?)
-            ON CONFLICT(user_id, task_type) DO UPDATE SET
-                expires_at = ?,
-                last_run_at = ?
-            """,
-            (interaction.user.id, expiry, now.isoformat(), expiry, now.isoformat())
-        )
-        
-        await interaction.followup.send(
-            f"✅ Đăng ký thành công! Bot sẽ tự thăm 5 nhà hàng xóm mỗi ngày (100xp). Đã trừ {COST:,} hạt.",
-            ephemeral=True
-        )
 
     # ==================== DECOR COMMANDS ====================
     @decor_group.command(name="cuahang", description="🏪 Ghé thăm Cửa Hàng Nội Thất Cá")
@@ -325,6 +313,53 @@ class AquariumCog(commands.Cog):
         from .ui.views import DecorPlacementView
         view = DecorPlacementView(user_id, inventory, slots)
         await interaction.followup.send(embed=embed, view=view)
+
+    @decor_group.command(name="theme", description="[VIP] Đổi hình nền hồ cá (GIF/Ảnh)")
+    @app_commands.describe(url="Link ảnh/GIF (Imgur, Discord, Tenor...)")
+    async def decor_theme(self, interaction: discord.Interaction, url: str):
+        """Set Custom Aquarium Theme (VIP Only)."""
+        await interaction.response.defer(ephemeral=True)
+        
+        # 1. VIP Check (Tier 2+)
+        vip = await VIPEngine.get_vip_data(interaction.user.id)
+        if not vip or vip['tier'] < 2:
+            return await interaction.followup.send("❌ Chức năng đổi Theme chỉ dành cho VIP 🥇 [VÀNG] trở lên!", ephemeral=True)
+
+        # 2. Validate URL (Basic check)
+        if not url.startswith("http") or not any(x in url for x in [".jpg", ".png", ".gif", "tenor", "giphy", "discordapp"]):
+            return await interaction.followup.send("❌ Link không hợp lệ! Vui lòng dùng link ảnh trực tiếp (JPG/PNG/GIF).", ephemeral=True)
+
+        # 3. Save Theme
+        if not await HousingEngine.has_house(interaction.user.id):
+             return await interaction.followup.send("❌ Bạn chưa có nhà!", ephemeral=True)
+             
+        success = await HousingEngine.set_theme(interaction.user.id, url)
+        
+        if success:
+            # Re-generate Dashboard to show effect immediately
+            stats = await HousingEngine.calculate_home_stats(interaction.user.id)
+            slots = await HousingEngine.get_slots(interaction.user.id)
+            
+            # Prepare data for dashboard
+            inventory = await HousingEngine.get_inventory(interaction.user.id)
+            inventory_count = len(inventory)
+            visuals = RenderEngine.generate_view(slots)
+            
+            # Call with correct signature: user_name, user_avatar, view_visuals, stats, inventory_count, theme_url
+            dashboard_embed = create_aquarium_dashboard(
+                user_name=interaction.user.name,
+                user_avatar=interaction.user.avatar.url if interaction.user.avatar else None,
+                view_visuals=visuals,
+                stats=stats,
+                inventory_count=inventory_count,
+                theme_url=url
+            )
+            
+            await interaction.followup.send(f"✅ Đã cập nhật Theme thành công!", embed=dashboard_embed, ephemeral=True)
+            from .utils import refresh_aquarium_dashboard
+            await refresh_aquarium_dashboard(interaction.user.id, self.bot)
+        else:
+            await interaction.followup.send("❌ Lỗi khi lưu theme. Vui lòng thử lại.", ephemeral=True)
 
     # ==================== ADMIN COMMANDS ====================
     @commands.command(name="themxu", description="Thêm Xu Lá cho user (Admin Only)")

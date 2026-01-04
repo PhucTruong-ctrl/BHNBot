@@ -255,3 +255,61 @@ class TreeContributeView(discord.ui.View):
                 )
             except Exception:
                 pass
+
+
+class AutoWaterView(discord.ui.View):
+    """View manage Auto-Water Subscription & Manual Contribute."""
+    def __init__(self, user_id: int, tree_manager):
+        super().__init__(timeout=120)
+        self.user_id = user_id
+        self.tree_manager = tree_manager
+
+    @discord.ui.button(label="Góp Hạt (Tuỳ ý)", style=discord.ButtonStyle.secondary, emoji="✏️", row=0)
+    async def manual_contribute(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = ContributeModal(self.tree_manager)
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Đăng Ký Auto (50k/tháng)", style=discord.ButtonStyle.success, emoji="✅", row=1)
+    async def subscribe(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id: return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        # 1. Payment
+        COST = 50000
+        DURATION_DAYS = 30
+        
+        from database_manager import get_user_balance, add_seeds, db_manager
+        from datetime import datetime, timedelta
+        
+        balance = await get_user_balance(interaction.user.id)
+        if balance < COST:
+            await interaction.followup.send(f"❌ Không đủ hạt! Cần {COST:,} hạt.", ephemeral=True)
+            return
+            
+        await add_seeds(interaction.user.id, -COST, "vip_autowater", "service")
+        
+        # 2. Register
+        now = datetime.now()
+        expiry = (now + timedelta(days=DURATION_DAYS)).isoformat()
+        
+        await db_manager.execute(
+            """
+            INSERT INTO vip_auto_tasks (user_id, task_type, expires_at, last_run_at)
+            VALUES (?, 'auto_water', ?, ?)
+            ON CONFLICT(user_id, task_type) DO UPDATE SET
+                expires_at = ?,
+                last_run_at = ?
+            """,
+            (interaction.user.id, expiry, now.isoformat(), expiry, now.isoformat())
+        )
+        
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.description = f"✅ **Đăng ký thành công!**\n\nBot sẽ tự tưới (100xp/ngày) trong 30 ngày."
+        embed.clear_fields()
+        
+        # Disable subscribe button only
+        button.disabled = True
+        
+        await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=self)

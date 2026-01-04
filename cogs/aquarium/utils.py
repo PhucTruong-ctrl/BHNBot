@@ -35,6 +35,7 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
         inventory = await HousingEngine.get_inventory(user_id)
         stats = await HousingEngine.calculate_home_stats(user_id)
         visuals = RenderEngine.generate_view(slots)
+        theme_url = await HousingEngine.get_theme(user_id)
         
         # User Info
         try:
@@ -51,7 +52,8 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
             user_avatar=user_avatar,
             view_visuals=visuals,
             stats=stats,
-            inventory_count=len(inventory)
+            inventory_count=len(inventory),
+            theme_url=theme_url
         )
         view = AquariumDashboardView(user_id)
 

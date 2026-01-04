@@ -7,7 +7,8 @@ def create_aquarium_dashboard(
     user_avatar: str,
     view_visuals: str,
     stats: Dict, # charm, value, sets
-    inventory_count: int
+    inventory_count: int,
+    theme_url: Optional[str] = None
 ) -> discord.Embed:
     """
     Generate the Standard Aquarium Dashboard Embed.
@@ -26,6 +27,10 @@ def create_aquarium_dashboard(
     )
     if user_avatar:
         embed.set_thumbnail(url=user_avatar)
+    
+    # Set Custom Theme Background (VIP)
+    if theme_url:
+        embed.set_image(url=theme_url)
     
     # Visuals
     embed.add_field(name="🖼️ Bể Cá & Nội Thất", value=view_visuals, inline=False)

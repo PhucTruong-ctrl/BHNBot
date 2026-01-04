@@ -106,13 +106,14 @@ async def create_contribution_success_embed(
     new_level: int = None,
     item_name: str = "Hạt",
     quantity: int = None,
-    action_title: str = "Góp Hạt Cho Cây!"
+    action_title: str = "Góp Hạt Cho Cây!",
+    bonus_exp: int = 0
 ) -> discord.Embed:
     """Create success embed after contribution.
     
     Args:
         user: Discord user who contributed
-        amount: Total value contributed (EXP)
+        amount: Base amount contributed (EXP)
         new_progress: New progress value
         requirement: Requirement for next level
         leveled_up: Whether tree leveled up
@@ -120,6 +121,7 @@ async def create_contribution_success_embed(
         item_name: Name of item used (e.g. "Phân Bón", "Hạt")
         quantity: Quantity of items used (e.g. 3)
         action_title: Title of the embed action
+        bonus_exp: Extra EXP from VIP/Buffs
         
     Returns:
         Discord embed with success message
@@ -153,10 +155,18 @@ async def create_contribution_success_embed(
     if leveled_up and new_level:
         embed.color = discord.Color.gold()
     
+    # Total EXP Calculation
+    total_exp = amount + bonus_exp
+    
     # Field 1: Total EXP
+    exp_text = f"**{total_exp} EXP**"
+    if bonus_exp > 0:
+        exp_text += f" ({amount} + {bonus_exp} bonus)"
+    exp_text += f" → +{total_exp} điểm cho cây"
+    
     embed.add_field(
         name="⚡ Tổng EXP",
-        value=f"**{amount} EXP** → +{amount} điểm cho cây",
+        value=exp_text,
         inline=False
     )
     
