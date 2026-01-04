@@ -52,6 +52,31 @@ _fishing_data = load_fishing_data()
 _legendary_data = load_legendary_fish_data()
 
 FISHING_DATA = _fishing_data.get("fish", [])
+
+# Load VIP Fish Data
+with open('/home/phuctruong/Work/BHNBot/data/fishing_vip_fish.json', 'r', encoding='utf-8') as f:
+    _vip_fish_data = json.load(f)
+
+VIP_FISH_DATA = _vip_fish_data.get("vip_fish", [])
+
+def get_vip_fish_for_tier(tier: int) -> list:
+    """Get list of VIP fish keys available for a given tier.
+    
+    Args:
+        tier: VIP tier level (0=non-VIP, 1=Bạc, 2=Vàng, 3=Kim Cương)
+    
+    Returns:
+        List of fish keys available for this tier
+    """
+    if tier == 0:
+        return []
+    
+    available_fish = []
+    for fish in VIP_FISH_DATA:
+        if fish['tier_required'] <= tier:
+            available_fish.append(fish['key'])
+    
+    return available_fish
 LEGENDARY_FISH_DATA = _legendary_data.get("fish", [])
 
 # Build lookup dicts by category
@@ -89,6 +114,11 @@ if LEGENDARY_FISH_DATA:
         LEGENDARY_FISH_KEYS.append(key)
 else:
     print("[WARNING] No legendary fish data loaded!")
+
+# Load VIP fish into ALL_FISH for lookup
+for vip_fish in VIP_FISH_DATA:
+    key = vip_fish["key"]
+    ALL_FISH[key] = vip_fish
 
 if not FISHING_DATA and not LEGENDARY_FISH_DATA:
     print("[ERROR] No fish data loaded! Game will not work properly.")

@@ -373,47 +373,24 @@ class ConsumableCog(commands.Cog):
             # Standard Inventory Item
             try:
                 async with db_manager.transaction() as conn:
-                    # Deduct 1 item where count >= 1
-                    result = await conn.execute(
-                        "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ? AND quantity >= ?",
-                        (1, user_id, item_key, 1)
+                    # Use fetch-then-update pattern (ACID safe in transaction)
+                    # Use fetchone directly from conn (transaction context)
+                    row = await conn.fetchone(
+                        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                        (user_id, item_key)
                     )
                     
-                    # SQLite execute returns Cursor, rowcount property might be needed or check result
-                    # aiosqlite/sqlite3 cursor.execute doesn't return string "UPDATE 0"
-                    # We need to check rowcount. db_manager.execute wrapper might differ.
-                    # Assuming db_manager.execute returns the cursor or rowcount.
-                    # If db_manager structure is standard aiosqlite wrapper:
-                    # It likely returns what the driver returns.
-                    # Let's assume rowcount check is needed. 
-                    # Note: Previous code checked result == "UPDATE 0" which suggests asyncpg behavior.
-                    # For sqlite, we usually check cursor.rowcount.
-                    
-                    # However, db_manager.execute might just return the result of await cursor.execute().
-                    
-                    if result and hasattr(result, 'rowcount'):
-                         if result.rowcount == 0:
-                             db_item_deducted = False
-                         else:
-                             db_item_deducted = True
-                    else:
-                        # Fallback if wrapper differs (e.g. returns None on success?)
-                        # Better strategy: Check if inventory changed?
-                        # Or, Fetch first?
-                        # Let's use the fetch-then-update approach for safety if we are unsure about return type wrapper
-                        # But we are in a transaction.
-                        pass 
-                    
-                    # RE-READ STRATEGY:
-                    # Since we are converting from asyncpg, let's rely on fetch-check-update pattern inside transaction which is safe.
-                    
-                    check = await conn.execute("SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?", (user_id, item_key))
-                    row = await check.fetchone()
                     if not row or row[0] < 1:
                         db_item_deducted = False
                     else:
-                        await conn.execute("UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?", (user_id, item_key))
-                        await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id,))
+                        await conn.execute(
+                            "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?",
+                            (user_id, item_key)
+                        )
+                        await conn.execute(
+                            "DELETE FROM inventory WHERE user_id = ? AND quantity <= 0",
+                            (user_id,)
+                        )
                         db_item_deducted = True
 
             except Exception as e:
@@ -429,7 +406,7 @@ class ConsumableCog(commands.Cog):
             if is_slash:
                 await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
             else:
-                await ctx.send(error_msg)
+                await ctx_or_interaction.send(error_msg)  # Fixed: Added await
             return
 
         # If we got here, ITEM IS CONSUMED.
@@ -499,6 +476,148 @@ class ConsumableCog(commands.Cog):
              else:
                  await ctx.send(embed=embed)
              return
+
+        # ==================== PREMIUM CONSUMABLES (VIP Tier 2+) ====================
+        # Check if this is a premium consumable from premium.json
+        from core.item_system import item_system
+        from database_manager import get_consumable_usage, increment_consumable_usage
+        import time
+        
+        premium_item = item_system.get_item(item_key)
+        if premium_item and premium_item.get('category') == 'vip_premium':
+            # Verify VIP tier requirement
+            from core.services.vip_service import VIPEngine
+            vip_data = await VIPEngine.get_vip_data(user_id)
+            user_tier = vip_data['tier'] if vip_data else 0
+            required_tier = premium_item.get('tier_required', 0)
+            
+            if user_tier < required_tier:
+                tier_names = {1: "🥈 Bạc", 2: "🥇 Vàng", 3: "💎 Kim Cương"}
+                error_msg = f"❌ Cần VIP {tier_names.get(required_tier, 'Tier ' + str(required_tier))} để dùng {premium_item['name']}!"
+                if is_slash:
+                    await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
+                else:
+                    await ctx_or_interaction.send(error_msg)
+                return
+            
+            # Check daily limit
+            daily_limit = premium_item.get('daily_limit', 999)
+            usage_today = await get_consumable_usage(user_id, item_key)
+            
+            if usage_today >= daily_limit:
+                error_msg = f"❌ Đã dùng hết {daily_limit} lượt/ngày cho {premium_item['name']}!\n💡 Hạn mức reset vào 00:00 hàng ngày."
+                if is_slash:
+                    await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
+                else:
+                    await ctx_or_interaction.send(error_msg)
+                return
+            
+            # Handle premium effects
+            effect_type = premium_item.get('effect_type')
+            
+            if effect_type == 'multi_catch':
+                # Chấm Long Dịch - Store buff for next /cauca
+                fishing_cog = self.bot.get_cog("FishingCog")
+                if not hasattr(fishing_cog, 'premium_buffs'):
+                    fishing_cog.premium_buffs = {}
+                
+                min_fish = premium_item['effect_value'].get('min_fish', 3)
+                max_fish = premium_item['effect_value'].get('max_fish', 5)
+                catch_count = random.randint(min_fish, max_fish)
+                
+                fishing_cog.premium_buffs[user_id] = {
+                    'type': 'multi_catch',
+                    'count': catch_count,
+                    'expires': time.time() + premium_item.get('duration_seconds', 300)
+                }
+                
+                await increment_consumable_usage(user_id, item_key)
+                
+                # Public message shows username in title
+                if is_slash:
+                    title = f"{premium_item['emoji']} {premium_item['name']}"
+                else:
+                    title = f"{premium_item['emoji']} {premium_item['name']} - {user.display_name}"
+                
+                embed = discord.Embed(
+                    title=title,
+                    description=f"✅ Đã kích hoạt!\n\n🎣 Lần câu cá tiếp theo sẽ bắt được **{catch_count} con cá**!",
+                    color=discord.Color.gold()
+                )
+                embed.set_footer(text=f"Còn {daily_limit - usage_today - 1}/{daily_limit} lượt hôm nay")
+                
+                if is_slash:
+                    await ctx_or_interaction.followup.send(embed=embed, ephemeral=True)
+                else:
+                    await ctx_or_interaction.send(embed=embed)  # Public - shows username
+                return
+            
+            elif effect_type == 'guarantee_rare_multi':
+                # Lưới Thần Thánh - Instant rare fish
+                from cogs.fishing.constants import RARE_FISH, VIP_FISH_DATA, get_vip_fish_for_tier, ALL_FISH
+                from configs.item_constants import ItemType
+                
+                # Build rare pool (including VIP fish)
+                rare_pool = RARE_FISH.copy()
+                if user_tier > 0:
+                    vip_fish_keys = get_vip_fish_for_tier(user_tier)
+                    for vip_fish in VIP_FISH_DATA:
+                        if vip_fish['key'] in vip_fish_keys:
+                            rare_pool.append(vip_fish)
+                
+                # Catch 5-10 random rare fish
+                min_rare = premium_item['effect_value'].get('min_rare', 5)
+                max_rare = premium_item['effect_value'].get('max_rare', 10)
+                catch_count = random.randint(min_rare, max_rare)
+                caught = random.choices(rare_pool, k=catch_count)
+                
+                # Add to inventory
+                fishing_cog = self.bot.get_cog("FishingCog")
+                if fishing_cog:
+                    for fish in caught:
+                        try:
+                            await fishing_cog.add_inventory_item(user_id, fish['key'], ItemType.FISH)
+                        except Exception as e:
+                            print(f"[PREMIUM_CONSUMABLE] Error adding fish {fish['key']}: {e}")
+                
+                await increment_consumable_usage(user_id, item_key)
+                
+                # Build display
+                fish_counts = {}
+                for fish in caught:
+                    fish_counts[fish['key']] = fish_counts.get(fish['key'], 0) + 1
+                
+                fish_display = []
+                for key, qty in fish_counts.items():
+                    fish = ALL_FISH.get(key, {'emoji': '🐟', 'name': key})
+                    # Get display name with VIP badge
+                    if fishing_cog and hasattr(fishing_cog, 'get_fish_display_name'):
+                        fish_name = fishing_cog.get_fish_display_name(key, fish['name'])
+                    else:
+                        fish_name = fish['name']
+                    fish_display.append(f"{fish['emoji']} {fish_name} x{qty}")
+                
+                embed = discord.Embed(
+                    title=f"{premium_item['emoji']} LƯỚI THẦN THÁNH - {user.display_name}",
+                    description=f"🎣 Bắt được **{catch_count} cá rare**!\n\n" + "\n".join(fish_display),
+                    color=discord.Color.purple()
+                )
+                embed.set_footer(text=f"Còn {daily_limit - usage_today - 1}/{daily_limit} lượt hôm nay")
+                
+                if is_slash:
+                    await ctx_or_interaction.followup.send(embed=embed)
+                else:
+                    await ctx_or_interaction.send(embed=embed)
+                return
+            
+            # Unknown premium effect type
+            else:
+                error_msg = f"❌ Chưa hỗ trợ hiệu ứng `{effect_type}` cho vật phẩm này."
+                if is_slash:
+                    await ctx_or_interaction.followup.send(error_msg, ephemeral=True)
+                else:
+                    await ctx_or_interaction.send(error_msg)
+                return
 
         # 4. Standard Effect (Boost)
         # Store active boost for this user

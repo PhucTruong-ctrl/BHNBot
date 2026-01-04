@@ -79,6 +79,14 @@ async def on_ready():
     except Exception as e:
         logger.error(f"Failed to load Xi Dach assets: {e}")
     
+    # Ensure premium consumable usage table exists (Phase 2.1)
+    try:
+        from database_manager import ensure_premium_consumable_table
+        await ensure_premium_consumable_table()
+        logger.info("✓ Premium consumable usage table ensured")
+    except Exception as e:
+        logger.error(f"Failed to ensure premium consumable table: {e}")
+    
     # Attach Discord logging handler (reads config from database)
     try:
         from core.logger import attach_discord_handler, get_log_config_from_db

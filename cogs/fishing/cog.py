@@ -197,10 +197,30 @@ class FishingCog(commands.Cog):
         luck += self.global_event_manager.get_public_effect("luck_bonus", 0.0)
             
         # Ensure luck doesn't go below -1.0 (though logic handles negatives)
-        return max(-0.9, luck)
+        return luck
+
+    def get_fish_display_name(self, fish_key: str, fish_name: str) -> str:
+        """Get display name for fish with VIP tier badge if applicable.
+        
+        Args:
+            fish_key: Fish key to check
+            fish_name: Base fish name
+            
+        Returns:
+            Fish name with tier badge if VIP fish, otherwise unchanged
+        """
+        from .constants import VIP_FISH_DATA
+        
+        # Check if this is a VIP fish
+        for vip_fish in VIP_FISH_DATA:
+            if vip_fish['key'] == fish_key:
+                tier = vip_fish['tier_required']
+                badge = {1: "🥈", 2: "🥇", 3: "💎"}.get(tier, "")
+                return f"{badge} {fish_name}"
+        
+        return fish_name
     
-    
-    def cog_unload(self):
+    async def cog_unload(self):
         """Cleanup when cog is unloaded."""
         # self.meteor_shower_event.cancel()
         self.global_event_manager.unload()
@@ -1200,6 +1220,20 @@ class FishingCog(commands.Cog):
         
                     # Process fish - roll type for each fish
                     # NOTE: Boost does NOT increase Rare Fish rate, only Chest rate to balance economy
+                    # ==================== PREMIUM BUFF: MULTI CATCH ====================
+                    # Check if user has active multi_catch buff from Chấm Long Dịch
+                    premium_multi_catch = 1  # Default 1 fish
+                    if hasattr(self, 'premium_buffs') and user_id in self.premium_buffs:
+                        buff = self.premium_buffs[user_id]
+                        if buff['type'] == 'multi_catch':  # No expiration - persists until consumed
+                            premium_multi_catch = buff['count']
+                            del self.premium_buffs[user_id]  # Consume buff
+                            logger.info(f"[PREMIUM_BUFF] {username} using multi_catch: {premium_multi_catch} fish")
+                    
+                    # Modify num_fish if premium buff active
+                    if premium_multi_catch > 1:
+                        num_fish = premium_multi_catch
+                    
                     for _ in range(num_fish):
                         # Roll from LOOT_TABLE to determine type (Rare vs Common)
                         # Normalize weights
@@ -1299,7 +1333,20 @@ class FishingCog(commands.Cog):
                                  logger.warning("[FISHING] RARE_FISH is empty! Falling back to common.")
                                  catch_type = ItemType.COMMON # Fallback
                             else:
-                                fish = random.choice(RARE_FISH)
+                                # Check VIP tier and add VIP fish to rare pool
+                                from core.services.vip_service import VIPEngine
+                                vip_data = await VIPEngine.get_vip_data(user_id)
+                                vip_tier = vip_data['tier'] if vip_data else 0
+                                
+                                rare_pool = RARE_FISH.copy()
+                                if vip_tier > 0:
+                                    from .constants import get_vip_fish_for_tier, VIP_FISH_DATA
+                                    vip_fish_keys = get_vip_fish_for_tier(vip_tier)
+                                    for vip_fish in VIP_FISH_DATA:
+                                        if vip_fish['key'] in vip_fish_keys:
+                                            rare_pool.append(vip_fish)
+                                
+                                fish = random.choice(rare_pool)
                             caught_rare_this_turn = True  # Mark rare as caught to enforce limit
                             logger.info(f"[FISHING] {username} caught RARE fish: {fish['key']} ✨ (Max 1 rare per cast, Rod Luck: +{int(rod_config['luck']*100)}%)")
                             try:
@@ -1532,7 +1579,7 @@ class FishingCog(commands.Cog):
                                 if qty > 0:
                                     fish = ALL_FISH[key]
                                     total_price = fish['sell_price'] * qty
-                                    fish_name = self.apply_display_glitch(fish['name'])
+                                    fish_name = self.apply_display_glitch(self.get_fish_display_name(fish['key'], fish['name']))
                                     fish_display.append(f"{fish['emoji']} {fish_name} x{qty} ({total_price} Hạt)")
                 
                             logger.info(f"[EVENT] {username} lost {fish_info['name']} to cat_steal")
@@ -2135,21 +2182,28 @@ class FishingCog(commands.Cog):
     
     
     @app_commands.command(name="banca", description="Bán cá - Dùng /banca [fish_types]")
-    @app_commands.describe(fish_types="Fish key phân cách bằng dấu phẩy (ví dụ: ca_ro hoặc ca_chep, ca_koi)")
-    async def sell_fish_slash(self, interaction: discord.Interaction, fish_types: str = None):
+    @app_commands.describe(
+        fish_types="Fish key phân cách bằng dấu phẩy (ví dụ: ca_ro hoặc ca_chep, ca_koi)",
+        mode="Chế độ bán (vip = giữ cá VIP - Tier 3 only)"
+    )
+    @app_commands.choices(mode=[
+        app_commands.Choice(name="Bán tất cả", value="all"),
+        app_commands.Choice(name="💎 Giữ cá VIP (Tier 3)", value="vip")
+    ])
+    async def sell_fish_slash(self, interaction: discord.Interaction, fish_types: str = None, mode: str = "all"):
         """Sell selected fish via slash command"""
-        await self._sell_fish_action(interaction, fish_types)
+        await self._sell_fish_action(interaction, fish_types, mode)
     
     @commands.command(name="banca", description="Bán cá - Dùng !banca [fish_types]")
-    async def sell_fish_prefix(self, ctx, *, fish_types: str = None):
+    async def sell_fish_prefix(self, ctx, mode: str = "all", *, fish_types: str = None):
         """Sell selected fish via prefix command"""
-        logger.info(f"[DEBUG] !banca invoked by {ctx.author} (fish_types={fish_types})")
-        await self._sell_fish_action(ctx, fish_types)
+        logger.info(f"[DEBUG] !banca invoked by {ctx.author} (fish_types={fish_types}, mode={mode})")
+        await self._sell_fish_action(ctx, fish_types, mode)
     
-    async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None):
+    async def _sell_fish_action(self, ctx_or_interaction, fish_types: str = None, mode: str = "all"):
         """Sell all fish or specific types logic. Delegate to commands module."""
-        logger.info("[DEBUG] Delegating to _sell_fish_impl")
-        return await _sell_fish_impl(self, ctx_or_interaction, fish_types)
+        logger.info(f"[DEBUG] Delegating to _sell_fish_impl (mode={mode})")
+        return await _sell_fish_impl(self, ctx_or_interaction, fish_types, mode)
     
     @app_commands.command(name="moruong", description="Mở Rương Kho Báu")
     @app_commands.describe(amount="Số lượng rương muốn mở (mặc định 1)")

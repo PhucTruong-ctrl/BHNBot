@@ -12,7 +12,7 @@ from database_manager import db_manager
 logger = setup_logger("SellCommand", "cogs/fishing/fishing.log")
 
 
-async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = None):
+async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = None, mode: str = "all"):
     """
     Sell fish with STRICT ACID transaction.
     
@@ -23,12 +23,13 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
     4. ADD MONEY (only if step 3 succeeds)
     5. COMMIT
     6. Update cache
-    7. Send invoice UI
+    7.Send invoice UI
     
     Args:
         cog: FishingCog instance
         ctx_or_interaction: Command context or interaction
         fish_types: Optional comma-separated fish types to sell
+        mode: Sell mode - "all" or "vip" (Tier 3 only - keeps VIP fish, sells others)
     """
     is_slash = isinstance(ctx_or_interaction, discord.Interaction)
     user_id = ctx_or_interaction.user.id if is_slash else ctx_or_interaction.author.id

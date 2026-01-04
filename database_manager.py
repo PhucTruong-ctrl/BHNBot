@@ -933,3 +933,93 @@ async def get_collection(user_id: int) -> Dict[str, int]:
         return {}
         
     return {row[0]: row[1] for row in rows}
+
+
+# ==================== PREMIUM CONSUMABLES ====================
+
+async def get_consumable_usage(user_id: int, item_key: str) -> int:
+    """Get today's usage count for a premium consumable with auto-reset.
+    
+    Args:
+        user_id: Discord user ID
+        item_key: Consumable item key (e.g. 'cham_long_dich')
+        
+    Returns:
+        int: Usage count for today (0 if not found or reset)
+    """
+    try:
+        row = await db_manager.fetchrow(
+            "SELECT usage_count, last_reset_date FROM premium_consumable_usage "
+            "WHERE user_id = $1 AND consumable_key = $2",
+            (user_id, item_key)
+        )
+        
+        if not row:
+            return 0
+        
+        # Check if reset needed (new day)
+        from datetime import date
+        last_reset = row[1] if isinstance(row[1], date) else date.fromisoformat(str(row[1]))
+        
+        if last_reset < date.today():
+            # Auto-reset for new day
+            await db_manager.execute(
+                "UPDATE premium_consumable_usage "
+                "SET usage_count = 0, last_reset_date = CURRENT_DATE "
+                "WHERE user_id = $1 AND consumable_key = $2",
+                (user_id, item_key)
+            )
+            logger.info(f"[CONSUMABLE] Reset daily usage for user {user_id}, item {item_key}")
+            return 0
+        
+        return row[0]
+    
+    except Exception as e:
+        logger.error(f"[CONSUMABLE] Error getting usage for {user_id}/{item_key}: {e}")
+        return 0
+
+
+async def increment_consumable_usage(user_id: int, item_key: str) -> None:
+    """Increment usage count for a premium consumable (atomic operation).
+    
+    Args:
+        user_id: Discord user ID
+        item_key: Consumable item key
+    """
+    try:
+        await db_manager.execute(
+            "INSERT INTO premium_consumable_usage "
+            "(user_id, consumable_key, usage_count, last_reset_date) "
+            "VALUES ($1, $2, 1, CURRENT_DATE) "
+            "ON CONFLICT (user_id, consumable_key) DO UPDATE "
+            "SET usage_count = premium_consumable_usage.usage_count + 1",
+            (user_id, item_key)
+        )
+        logger.info(f"[CONSUMABLE] Incremented usage for user {user_id}, item {item_key}")
+    except Exception as e:
+        logger.error(f"[CONSUMABLE] Error incrementing usage for {user_id}/{item_key}: {e}")
+        raise
+
+
+async def ensure_premium_consumable_table():
+    """Create premium_consumable_usage table if not exists (migration helper)."""
+    try:
+        await db_manager.execute(
+            "CREATE TABLE IF NOT EXISTS premium_consumable_usage ("
+            "user_id BIGINT NOT NULL, "
+            "consumable_key TEXT NOT NULL, "
+            "usage_count INTEGER DEFAULT 0, "
+            "last_reset_date DATE DEFAULT CURRENT_DATE, "
+            "PRIMARY KEY (user_id, consumable_key)"
+            ")"
+        )
+        
+        # Create index
+        await db_manager.execute(
+            "CREATE INDEX IF NOT EXISTS idx_premium_usage_reset "
+            "ON premium_consumable_usage(last_reset_date)"
+        )
+        
+        logger.info("[MIGRATION] Premium consumable usage table ensured")
+    except Exception as e:
+        logger.error(f"[MIGRATION] Error creating premium_consumable_usage table: {e}")

@@ -1,0 +1,139 @@
+{
+  "vip_fish": [
+    {
+      "key": "thien_nga",
+      "name": "Thiên Nga",
+      "emoji": "🦢",
+      "sell_price": 35,
+      "category": "rare",
+      "tier_required": 1,
+      "description": "Loài chim quyền quý của hoàng gia"
+    },
+    {
+      "key": "ngoc_trai",
+      "name": "Ngọc Trai",
+      "emoji": "🦪",
+      "sell_price": 40,
+      "category": "rare",
+      "tier_required": 1,
+      "description": "Viên ngọc quý ẩn trong vỏ sò"
+    },
+    {
+      "key": "hai_ma",
+      "name": "Hải Mã",
+      "emoji": "🐴",
+      "sell_price": 45,
+      "category": "rare",
+      "tier_required": 1,
+      "description": "sinh vật huyền bí dưới đáy biển"
+    },
+    {
+      "key": "ca_voi_xanh",
+      "name": "Cá Voi Xanh",
+      "emoji": "🐋",
+      "sell_price": 50,
+      "category": "rare",
+      "tier_required": 2,
+      "description": "Sinh vật lớn nhất đại dương"
+    },
+    {
+      "key": "ca_map_trang",
+      "name": "Cá Mập Trắng",
+      "emoji": "🦈",
+      "sell_price": 50,
+      "category": "rare",
+      "tier_required": 2,
+      "description": "Kẻ săn mồi đỉnh cao của biển cả"
+    },
+    {
+      "key": "rua_bien",
+      "name": "Rùa Biển",
+      "emoji": "🐢",
+      "sell_price": 45,
+      "category": "rare",
+      "tier_required": 2,
+      "description": "Sinh vật cổ đại sống hàng trăm năm"
+    },
+    {
+      "key": "bach_tuoc_khong_lo",
+      "name": "Bạch Tuộc Khổng Lồ",
+      "emoji": "🐙",
+      "sell_price": 50,
+      "category": "rare",
+      "tier_required": 2,
+      "description": "Sinh vật thông minh bậc nhất dưới biển"
+    },
+    {
+      "key": "ca_heo",
+      "name": "Cá Heo",
+      "emoji": "🐬",
+      "sell_price": 40,
+      "category": "rare",
+      "tier_required": 2,
+      "description": "Người bạn thân thiện của con người"
+    },
+    {
+      "key": "ufo_duoi_nuoc",
+      "name": "UFO Dưới Nước",
+      "emoji": "🛸",
+      "sell_price": 60,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Vật thể bay không xác định từ ngoài hành tinh"
+    },
+    {
+      "key": "ca_laser",
+      "name": "Cá Laser",
+      "emoji": "⚡",
+      "sell_price": 60,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Sinh vật mang công nghệ tương lai"
+    },
+    {
+      "key": "thien_than_bien",
+      "name": "Thiên Thần Biển",
+      "emoji": "👼",
+      "sell_price": 55,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Linh hồn thiêng liêng của đại dương"
+    },
+    {
+      "key": "rong_bien",
+      "name": "Rồng Biển",
+      "emoji": "🐉",
+      "sell_price": 65,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Thần thú huyền thoại cai trị biển cả"
+    },
+    {
+      "key": "phoenix_duoi_nuoc",
+      "name": "Phoenix Dưới Nước",
+      "emoji": "🔥",
+      "sell_price": 65,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Chim lửa bất tử sống dưới đáy đại dương"
+    },
+    {
+      "key": "ca_pha_le",
+      "name": "Cá Pha Lê",
+      "emoji": "💎",
+      "sell_price": 60,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Sinh vật làm bằng pha lê trong suốt"
+    },
+    {
+      "key": "than_poseidon",
+      "name": "Thần Poseidon",
+      "emoji": "🔱",
+      "sell_price": 70,
+      "category": "rare",
+      "tier_required": 3,
+      "description": "Hiện thân của vị thần cai trị biển cả"
+    }
+  ]
+}
