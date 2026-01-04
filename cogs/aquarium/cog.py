@@ -1,8 +1,8 @@
-
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 import logging
+from datetime import datetime, timedelta, time
 
 from core.database import db_manager
 from .logic.housing import HousingEngine
@@ -25,10 +25,56 @@ class AquariumCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        # Start auto-visit task
+        self.daily_auto_visit_task.start()
+        logger.info("[AQUARIUM_COG] Cog initialized + Auto-Visit Task Started")
+    
+    def cog_unload(self):
+        self.daily_auto_visit_task.cancel()
     
     # Define Groups
     nha_group = app_commands.Group(name="nha", description="Quản lý Nhà Cửa & Hồ Cá")
     decor_group = app_commands.Group(name="trangtri", description="Mua sắm & Sắp xếp Nội thất")
+
+    # ==================== CRON TASKS ====================
+    @tasks.loop(time=time(hour=8, minute=0, second=0)) # 8 AM
+    async def daily_auto_visit_task(self):
+        """Run auto-visit for subscribed VIPs."""
+        logger.info("[AUTO_VISIT] Starting daily task...")
+        
+        now = datetime.now().isoformat()
+        
+        # Fetch active tasks
+        rows = await db_manager.fetchall(
+            "SELECT user_id, expires_at FROM vip_auto_tasks WHERE task_type='auto_visit' AND expires_at > ?",
+            (now,)
+        )
+        
+        if not rows:
+            logger.info("[AUTO_VISIT] No active subscriptions.")
+            return
+            
+        count = 0
+        total_rewards = 0
+        
+        for row in rows:
+            user_id, _ = row
+            
+            try:
+                # Logic: Visit 5 random neighbors? 
+                # For Phase 2.2, just give flat rewards simulating visits.
+                # Reward: 100 seeds per day (simulating 5 visits * 20 seeds)
+                REWARD = 100
+                from database_manager import add_seeds
+                
+                await add_seeds(user_id, REWARD, "VIP Auto Visit Reward", "aquarium")
+                total_rewards += REWARD
+                count += 1
+                
+            except Exception as e:
+                logger.error(f"[AUTO_VISIT] Error for user {user_id}: {e}")
+                
+        logger.info(f"[AUTO_VISIT] Completed. Processed {count} users, Total Rewards: {total_rewards}")
 
     # ==================== ECONOMY COMMANDS ====================
     @app_commands.command(name="taiche", description="♻️ Tái chế rác thành Xu Lá & Phân Bón")
@@ -90,8 +136,15 @@ class AquariumCog(commands.Cog):
         if "lại" in result["message"] or "không thể" in result["message"]:
             msg_color = 0x95a5a6
             
+        # GIVE RANDOM REWARD FOR VISITING
+        from database_manager import add_seeds
+        import random
+        reward = random.randint(10, 30)
+        await add_seeds(interaction.user.id, reward, "visit_reward", "aquarium")
+        reward_msg = f"\n🎁 Bạn nhận được **{reward} hạt** nhờ ghé thăm hàng xóm!"
+            
         embed_result = discord.Embed(
-            description=result["message"],
+            description=result["message"] + reward_msg,
             color=msg_color
         )
         embed_result.set_author(name=f"{interaction.user.display_name} đang ghé thăm {user.display_name}", icon_url=interaction.user.display_avatar.url)
@@ -141,21 +194,11 @@ class AquariumCog(commands.Cog):
         )
         
         try:
-            # Create Thread with Message
-            # Note: forum_channel.create_thread(name=..., content=..., embed=...)
-            # Check discord.py version capability. ForumChannel usually supports apply_tag or such but create_thread is standard.
             thread_with_message = await forum_channel.create_thread(
                 name=f"Nhà của {interaction.user.display_name}",
                 content=f"Chào mừng gia chủ {interaction.user.mention}!",
                 embed=embed
             )
-            # Depending on dpy version, create_thread on Forum returns (Thread, Message) or Thread
-            # dpy 2.0+ ForumChannel.create_thread returns Thread (with message inside).
-            # Wait, dpy ForumChannel.create_thread(name, content, ...) returns `ThreadWithMessage` (named tuple: thread, message) or similar?
-            # actually it returns `Thread`.
-            # Let's assume standard behavior. If `message` arg is passed, it creates a starter message.
-            # Return type is `Thread` (the created thread).
-            # Wait, Thread.starter_message might be available.
             
             created_thread = thread_with_message.thread if hasattr(thread_with_message, 'thread') else thread_with_message
             
@@ -176,6 +219,68 @@ class AquariumCog(commands.Cog):
         except Exception as e:
             logger.error(f"[HOUSE_CMD_ERROR] {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi khi xây nhà: {e}")
+
+    @nha_group.command(name="auto", description="[VIP 3] Đăng ký tự động thăm nhà (50k/tháng)")
+    async def nha_auto(self, interaction: discord.Interaction):
+        """Register for Auto-Visit (Tier 3 Only)."""
+        await interaction.response.defer(ephemeral=True)
+        
+        # 1. Check VIP
+        vip = await VIPEngine.get_vip_data(interaction.user.id)
+        if not vip or vip['tier'] < 3:
+            await interaction.followup.send("❌ Chỉ dành cho VIP 💎 [KIM CƯƠNG]!", ephemeral=True)
+            return
+
+        # 2. Check Existing
+        row = await db_manager.fetchone(
+            "SELECT expires_at FROM vip_auto_tasks WHERE user_id = ? AND task_type = 'auto_visit'",
+            (interaction.user.id,)
+        )
+        
+        now = datetime.now()
+        
+        if row and row[0]:
+            expires = datetime.fromisoformat(row[0])
+            if expires > now:
+                remaining = expires - now
+                days = remaining.days
+                await interaction.followup.send(
+                    f"✅ Bạn đang đăng ký tự động thăm! Hết hạn sau: {days} ngày.",
+                    ephemeral=True
+                )
+                return
+        
+        # 3. Payment
+        COST = 50000
+        DURATION_DAYS = 30
+        
+        from database_manager import get_user_balance, add_seeds
+        
+        balance = await get_user_balance(interaction.user.id)
+        if balance < COST:
+            await interaction.followup.send(f"❌ Không đủ hạt! Cần {COST:,} hạt.", ephemeral=True)
+            return
+            
+        await add_seeds(interaction.user.id, -COST, "vip_autovisit", "service")
+        
+        # 4. Register
+        expiry = (now + timedelta(days=DURATION_DAYS)).isoformat()
+        
+        await db_manager.execute(
+            """
+            INSERT INTO vip_auto_tasks (user_id, task_type, expires_at, last_run_at)
+            VALUES (?, 'auto_visit', ?, ?)
+            ON CONFLICT(user_id, task_type) DO UPDATE SET
+                expires_at = ?,
+                last_run_at = ?
+            """,
+            (interaction.user.id, expiry, now.isoformat(), expiry, now.isoformat())
+        )
+        
+        await interaction.followup.send(
+            f"✅ Đăng ký thành công! Bot sẽ tự thăm 5 nhà hàng xóm mỗi ngày (100xp). Đã trừ {COST:,} hạt.",
+            ephemeral=True
+        )
 
     # ==================== DECOR COMMANDS ====================
     @decor_group.command(name="cuahang", description="🏪 Ghé thăm Cửa Hàng Nội Thất Cá")
@@ -240,6 +345,18 @@ class AquariumCog(commands.Cog):
         else: await interaction.followup.send("❌ Lỗi.", ephemeral=True)
 
     # ==================== LISTENERS ====================
+    
+    @commands.command(name="test_autovisit", hidden=True)
+    @commands.is_owner()
+    async def test_autovisit_cmd(self, ctx):
+        """[TEST] Force trigger auto-visit task."""
+        await ctx.send("🔄 Force Triggering Auto-Visit Task...")
+        try:
+            await self.daily_auto_visit_task()
+            await ctx.send("✅ Auto-Visit Task Completed. Check Logs.")
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot or isinstance(message.channel, discord.DMChannel):

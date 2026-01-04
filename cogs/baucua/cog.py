@@ -1,13 +1,11 @@
-"""Bau Cua Cog - Main orchestrator.
-
-Coordinates game logic, statistics, and UI components.
-"""
-
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 import asyncio
-from database_manager import batch_update_seeds
+import datetime
+import time
+from database_manager import batch_update_seeds, db_manager
+from core.services.vip_service import VIPEngine
 
 from .game_logic import GameManager
 from .statistics import StatisticsTracker
@@ -43,146 +41,244 @@ class BauCuaCog(commands.Cog):
         self.game_manager = GameManager(bot)
         self.stats_tracker = StatisticsTracker(bot)
         self.active_views = {}  # channel_id -> BauCuaBetView (for cleanup)
-        logger.info("[BAUCUA_COG] Cog initialized")
-    
+        
+        # Start cashback task
+        self.daily_cashback_task.start()
+        logger.info("[BAUCUA_COG] Cog initialized + Cashback Task Started")
+        
+    def cog_unload(self):
+        self.daily_cashback_task.cancel()
+
+    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0)) # UTC midnight
+    async def daily_cashback_task(self):
+        """Process daily cashback for VIP users."""
+        await self._process_cashback()
+
+    @commands.command(name="test_cashback")
+    @commands.is_owner()
+    async def test_cashback_cmd(self, ctx):
+        """Force run cashback task (Owner only)."""
+        await ctx.send("⏳ Đang chạy cashback...")
+        count, total = await self._process_cashback()
+        await ctx.send(f"✅ Đã chạy xong! Hoàn tiền cho {count} người. Tổng: {total:,} Hạt.")
+
+    async def _process_cashback(self):
+        """Core logic for cashback processing."""
+        yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        
+        logger.info(f"[CASHBACK] Starting process for date: {yesterday}")
+        
+        # 1. Get all stats for yesterday
+        rows = await db_manager.fetchall(
+            "SELECT user_id, total_lost, total_won FROM baucua_daily_stats WHERE date = ?",
+            (yesterday,)
+        )
+        
+        if not rows:
+            logger.info("[CASHBACK] No stats found for yesterday.")
+            return 0, 0
+            
+        count = 0
+        total_refunded = 0
+        
+        for row in rows:
+            user_id, lost, won = row
+            net_loss = lost - won
+            
+            if net_loss <= 0:
+                continue
+                
+            # Check VIP status
+            vip_data = await VIPEngine.get_vip_data(user_id)
+            if not vip_data:
+                continue
+                
+            tier = vip_data.get('tier', 0)
+            if tier < 1:
+                continue
+                
+            # Calculate Refund (Tier 1: 2%, Tier 2: 3%, Tier 3: 5%)
+            rate = 0
+            if tier == 1: rate = 0.02
+            elif tier == 2: rate = 0.03
+            elif tier == 3: rate = 0.05
+            
+            refund = int(net_loss * rate)
+            if refund > 10000:
+                refund = 10000 # Cap
+                
+            if refund <= 0:
+                continue
+                
+            # Process Refund
+            try:
+                await self.game_manager.update_seeds(user_id, refund)
+                total_refunded += refund
+                count += 1
+                
+                # Send DM
+                try:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        await user.send(
+                            f"💎 **VIP Cashback:** Bạn nhận được **{refund:,} Hạt** hoàn trả từ số tiền thua hôm qua ({net_loss:,}).\n"
+                            f"Tier {tier} Rate: {int(rate*100)}%."
+                        )
+                except Exception:
+                    pass # User blocked DM
+                    
+            except Exception as e:
+                logger.error(f"Error refunding user {user_id}: {e}")
+                
+        logger.info(f"[CASHBACK] Completed. Users: {count}, Total: {total_refunded}")
+        return count, total_refunded
+
     @app_commands.command(name="baucua", description="Chơi game Bầu Cua Tôm Cá Gà Nai")
     async def play_baucua_slash(self, interaction: discord.Interaction):
         """Start Bầu Cua game via slash command."""
-        await self._start_game(interaction)
+        await self._start_new_game(interaction)
     
     @commands.command(name="baucua", description="Chơi game Bầu Cua Tôm Cá Gà Nai")
-    async def play_baucua_prefix(self, ctx):
-        """Start Bầu Cua game via prefix command."""
-        await self._start_game(ctx)
-    
-    async def _start_game(self, ctx_or_interaction):
-        """Unified game start logic for both slash and prefix commands.
+    async def play_baucua_prefix(self, ctx, *args):
+        """Start Bầu Cua game via prefix command.
         
-        Args:
-            ctx_or_interaction: Either discord.Interaction (slash) or commands.Context (prefix)
+        Supports Quick Bet: !bc -q 50k bau
         """
-        try:
-            # Determine command type
-            is_slash = isinstance(ctx_or_interaction, discord.Interaction)
+        if args:
+            await self._process_quick_bet(ctx, args)
+        else:
+            await self._start_new_game(ctx)
             
-            if is_slash:
-                channel = ctx_or_interaction.channel
+    async def _process_quick_bet(self, ctx_or_interaction, args):
+        """Handle Quick Bet logic."""
+        from .helpers import parse_quick_bet_args, unified_send
+        
+        # Parse args
+        success, amount, choice, error = parse_quick_bet_args(args)
+        if not success:
+            await unified_send(ctx_or_interaction, f"❌ {error}", ephemeral=True)
+            return
+            
+        channel_id = ctx_or_interaction.channel.id
+        
+        # Check active game
+        if not self.game_manager.is_game_active(channel_id):
+            # Start new game (non-blocking)
+            game_state = await self._start_new_game(ctx_or_interaction)
+            if not game_state:
+                return # Error starting game
+            # Wait briefly for game to register
+            await asyncio.sleep(0.5)
+        else:
+            game_state = self.game_manager.get_game(channel_id)
+            
+        # Place bet
+        await self.game_manager.add_bet(
+            ctx_or_interaction,
+            game_state.game_id,
+            choice,
+            amount
+        )
+    
+    async def _start_new_game(self, ctx_or_interaction):
+        """Initialize game and spawn game loop.
+        
+        Returns:
+            GameState if successful, None if failed
+        """
+        # Determine context
+        is_slash = isinstance(ctx_or_interaction, discord.Interaction)
+        
+        if is_slash:
+            channel = ctx_or_interaction.channel
+            # Don't defer if already deferred (handled by caller if needed, or check)
+            if not ctx_or_interaction.response.is_done():
                 await ctx_or_interaction.response.defer(ephemeral=False)
-            else:
-                channel = ctx_or_interaction.channel
+        else:
+            channel = ctx_or_interaction.channel
             
-            channel_id = channel.id
+        channel_id = channel.id
+        
+        # Check active
+        if self.game_manager.is_game_active(channel_id):
+            msg = "❌ Kênh này đã có game đang chơi!"
+            from .helpers import unified_send
+            await unified_send(ctx_or_interaction, msg, ephemeral=True)
+            return None
             
-            # Check if game already active in channel
-            if self.game_manager.is_game_active(channel_id):
-                msg = "❌ Kênh này đã có game đang chơi! Chờ kết thúc trước khi tạo game mới."
-                if is_slash:
-                    await ctx_or_interaction.followup.send(msg, ephemeral=True)
-                else:
-                    await ctx_or_interaction.send(msg)
-                return
-            
-            # Create game
+        # Create game
+        try:
             game_state = self.game_manager.create_game(channel_id)
             
-            # Send betting interface
+            # Create View & Embed
             import time
             end_timestamp = int(time.time() + BETTING_TIME_SECONDS)
             
-            # Extract user for VIP styling
             user = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
             embed = await create_betting_embed(user, end_timestamp)
             view = BauCuaBetView(self.game_manager, game_state.game_id)
-            self.active_views[channel_id] = view  # Store for cleanup
+            self.active_views[channel_id] = view
             
-            if is_slash:
-                game_message = await ctx_or_interaction.followup.send(embed=embed, view=view)
-            else:
-                game_message = await ctx_or_interaction.send(embed=embed, view=view)
+            # Send Message
+            from .helpers import unified_send
+            game_message = await unified_send(ctx_or_interaction, embed=embed, view=view)
             
-            logger.info(
-                f"[GAME_START] game_id={game_state.game_id} channel={channel.name}"
-            )
+            logger.info(f"[GAME_START] game_id={game_state.game_id} channel={channel.name}")
             
-            # Betting phase - just wait, Discord handles countdown
+            # Spawn Game Loop Task
+            asyncio.create_task(self._run_game_loop(channel, game_message, view, game_state))
+            
+            return game_state
+            
+        except Exception as e:
+            logger.error(f"Error starting game: {e}")
+            from .helpers import unified_send
+            await unified_send(ctx_or_interaction, f"❌ Lỗi: {e}", ephemeral=True)
+            return None
+
+    async def _run_game_loop(self, channel, game_message, view, game_state):
+        """Main game loop running as background task."""
+        try:
+            # Betting phase
             await self._run_betting_phase(game_message, view)
             
-            # Check if anyone bet
+            # Check bets
             if not game_state.has_bets():
                 await channel.send("⚠️ Không ai cược! Game bị hủy.")
                 logger.info(f"[GAME_CANCELLED] game_id={game_state.game_id} reason=no_bets")
-                # Cleanup view before ending game
-                if channel_id in self.active_views:
-                    self.active_views[channel_id].stop()
-                    del self.active_views[channel_id]
-                self.game_manager.end_game(channel_id)
+                self._cleanup_view(channel.id)
+                self.game_manager.end_game(channel.id)
                 return
+                
+            logger.info(f"[BETTING_END] game_id={game_state.game_id} bets={game_state.get_total_bets_count()}")
             
-            logger.info(
-                f"[BETTING_END] game_id={game_state.game_id} "
-                f"players={game_state.get_total_players()} "
-                f"bets={game_state.get_total_bets_count()}"
-            )
-            
-            # Copy bets before cleanup
+            # Copy bets
             bets_data = game_state.bets.copy()
             
-            # Roll dice and show results
+            # Roll Dice
             results = await self._run_dice_roll(channel)
             
-            # Display results and summary
+            # Display Results
             await self._display_results(channel, results, bets_data)
             
-            # Clean up game state and view
-            if channel_id in self.active_views:
-                self.active_views[channel_id].stop()
-                del self.active_views[channel_id]
-                logger.info(f"[CLEANUP] View stopped for channel {channel_id}")
-            self.game_manager.end_game(channel_id)
+            # Cleanup
+            self._cleanup_view(channel.id)
+            self.game_manager.end_game(channel.id)
             
-            # Update results in background
-            asyncio.create_task(
-                self._process_game_results(channel_id, results, bets_data)
-            )
+            # Process Payouts & Stats & Instant Cashback
+            asyncio.create_task(self._process_game_results(channel.id, results, bets_data))
             
             logger.info(f"[GAME_COMPLETE] game_id={game_state.game_id}")
             
         except Exception as e:
-            logger.error(f"Error in game flow: {e}", exc_info=True)
-            
-            # Clean up on error
-            if is_slash:
-                try:
-                    await ctx_or_interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
-                except Exception:
-                    pass
-            else:
-                try:
-                    await ctx_or_interaction.send(f"❌ Lỗi: {str(e)}")
-                except Exception:
-                    pass
-            
-            # Remove active game and view
-            if channel.id in self.active_views:
-                self.active_views[channel.id].stop()
-                del self.active_views[channel.id]
+            logger.error(f"Error in game loop: {e}", exc_info=True)
+            self._cleanup_view(channel.id)
             self.game_manager.end_game(channel.id)
-    
+
     async def _run_betting_phase(self, game_message, view):
-        """Run the betting countdown phase.
-        
-        Uses Discord timestamp for countdown (auto-updates client-side).
-        Only edits message once at the end to disable buttons.
-        
-        Args:
-            game_message: Discord message to update
-            view: BauCuaBetView instance
-        """
-        # Wait for betting duration
-        # Discord timestamp handles countdown display automatically
+        """Run the betting countdown phase."""
         await asyncio.sleep(BETTING_TIME_SECONDS)
         
-        # Betting phase ended - disable buttons
         try:
             for item in view.children:
                 item.disabled = True
@@ -192,39 +288,31 @@ class BauCuaCog(commands.Cog):
             logger.error(f"Error disabling bet buttons: {e}")
     
     async def _run_dice_roll(self, channel):
-        """Roll dice with animation.
-        
-        Args:
-            channel: Discord channel for sending roll message
-            
-        Returns:
-            Tuple of (result1, result2, result3)
-        """
-        await asyncio.sleep(1)  # Brief pause before rolling
-        
-        # Initial roll display
+        """Roll dice with animation."""
+        await asyncio.sleep(1)
         initial_roll = await self.game_manager.roll_dice()
         from .helpers import create_rolling_text
         rolling_text = create_rolling_text(*initial_roll)
         rolling_message = await channel.send(rolling_text)
-        
-        # Animate
         results = await self.game_manager.animate_roll(rolling_message)
-        
         return results
     
     async def _display_results(self, channel, results, bets_data):
-        """Display final results and summary.
-        
-        Args:
-            channel: Discord channel
-            results: Tuple of (result1, result2, result3)
-            bets_data: Dictionary of bets
-        """
+        """Display final results."""
         result_display = create_result_display(*results)
-        summary_text = create_summary_text(*results, bets_data)
         
-        # Find and update rolling message, send summary
+        # Get VIP data for special messages
+        vip_data = {} # user_id -> tier
+        user_ids = list(bets_data.keys())
+        
+        for uid in user_ids:
+            vip = await VIPEngine.get_vip_data(uid)
+            if vip and vip['tier'] >= 1:
+                vip_data[uid] = vip['tier']
+        
+        # Helper uses this data to decide message template and calculate cashback amount for display
+        summary_text = create_summary_text(*results, bets_data, vip_data=vip_data)
+        
         async for message in channel.history(limit=5):
             if message.author == self.bot.user:
                 await asyncio.gather(
@@ -234,17 +322,8 @@ class BauCuaCog(commands.Cog):
                 break
     
     async def _process_game_results(self, channel_id, results, bets_data):
-        """Process game results: update balances and statistics.
-        
-        Runs in background via asyncio.create_task().
-        
-        Args:
-            channel_id: Discord channel ID
-            results: Tuple of dice results
-            bets_data: Dictionary of user bets
-        """
+        """Process game results: payouts, stats, and INSTANT CASHBACK."""
         try:
-            # Calculate payouts
             from .models import GameState
             temp_game = GameState(
                 game_id="temp",
@@ -252,22 +331,57 @@ class BauCuaCog(commands.Cog):
                 start_time=0,
                 bets=bets_data
             )
+            # 1. Standard Payouts
             payouts = await self.game_manager.calculate_results(temp_game, results)
-            
-            # Update balances
             await self.game_manager.update_game_results_batch(payouts)
             
-            # Update statistics
+            # 2. Update Stats
             await self.stats_tracker.update_game_stats(channel_id, results, bets_data)
+            
+            # 3. Instant Cashback for VIP Losers
+            await self._process_instant_cashback(bets_data, payouts)
             
         except Exception as e:
             logger.error(f"Error processing game results: {e}", exc_info=True)
 
+    async def _process_instant_cashback(self, bets_data, payouts):
+        """Calculate and apply instant cashback for VIPs who lost."""
+        for user_id, bets in bets_data.items():
+            total_bet = sum(amount for _, amount in bets)
+            payout = payouts.get(user_id, 0)
+            net_change = payout - total_bet
+            
+            if net_change >= 0:
+                continue # Only cashback on loss
+                
+            loss = abs(net_change)
+            
+            # Check VIP
+            vip = await VIPEngine.get_vip_data(user_id)
+            if not vip or vip['tier'] < 1:
+                continue
+                
+            tier = vip['tier']
+            # Rate: 2%, 3%, 5%
+            rate = 0.02
+            if tier == 2: rate = 0.03
+            elif tier == 3: rate = 0.05
+            
+            # Instant Cashback (No cap)
+            cashback = int(loss * rate)
+            
+            if cashback > 0:
+                try:
+                    await self.game_manager.update_seeds(user_id, cashback)
+                    logger.info(f"[INSTANT_CASHBACK] User {user_id} (Tier {tier}) lost {loss} -> refunded {cashback}")
+                except Exception as e:
+                    logger.error(f"[CASHBACK_ERROR] Failed to refund {user_id}: {e}")
+
+    def _cleanup_view(self, channel_id):
+        if channel_id in self.active_views:
+            self.active_views[channel_id].stop()
+            del self.active_views[channel_id]
 
 async def setup(bot: commands.Bot):
-    """Load the Bau Cua cog.
-    
-    Args:
-        bot: Discord bot instance
-    """
+    """Load the Bau Cua cog."""
     await bot.add_cog(BauCuaCog(bot))

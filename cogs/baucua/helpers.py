@@ -112,17 +112,20 @@ def create_summary_text(
     result1: str,
     result2: str,
     result3: str,
-    bets_data: Dict[int, List[Tuple[str, int]]]
+    bets_data: Dict[int, List[Tuple[str, int]]],
+    vip_data: Dict[int, int] = None
 ) -> str:
     """Create detailed summary text of results per user.
     
     Shows each player's bets and their winnings/losses.
+    VIPs get special result messages with Instant Cashback info.
     
     Args:
         result1: First dice result
         result2: Second dice result
         result3: Third dice result
         bets_data: Dictionary mapping user_id to list of (animal_key, amount) tuples
+        vip_data: Dict mapping user_id to tier (e.g. {123: 1, 456: 3})
         
     Returns:
         Formatted multi-line string with summary for each user
@@ -130,7 +133,10 @@ def create_summary_text(
     final_result = [result1, result2, result3]
     summary_lines = []
     
-    # Gen Z templates
+    if vip_data is None:
+        vip_data = {}
+    
+    # Gen Z templates (Regular)
     import random
     
     WIN_MSGS = [
@@ -167,9 +173,42 @@ def create_summary_text(
         "{user} về bờ an toàn. Hú hồn chim én!"
     ]
 
+    # VIP Messages (Instant Cashback)
+    # Tier Names Mapping
+    TIER_NAMES = {
+        1: "🥈 [BẠC]",
+        2: "🥇 [VÀNG]",
+        3: "💎 [KIM CƯƠNG]"
+    }
+    
+    VIP_WIN_MSGS = [
+        "{tier} {user} đẳng cấp chiến thắng **{amount}** 🌱. Phong độ là nhất thời, VIP là mãi mãi!",
+        "{tier} {user} hốt gọn **{amount}** 🌱. Đại gia đi shopping thôi!",
+        "{tier} {user} bỏ túi **{amount}** 🌱. Tiền vào như nước sông Đà!",
+        "{tier} Chúc mừng {user} thắng lớn **{amount}** 🌱. Thần thái sang chảnh!",
+        "{tier} {user} nâng tài sản thêm **{amount}** 🌱. Quá dữ dằn!"
+    ]
+    
+    # Template expects {amount} (loss) and {cashback} (refund)
+    VIP_LOSS_MSGS = [
+        "{tier} {user} rơi mất **{amount}** 🌱. Nhưng được hoàn **{cashback}** 🌱! 💸",
+        "{tier} {user} hơi đen khi mất **{amount}** 🌱. May là VIP, nhận lại **{cashback}** 🌱.",
+        "{tier} {user} thua **{amount}** 🌱. Ting ting! +**{cashback}** 🌱 tiền hoàn trả.",
+        "{tier} {user} lỗ **{amount}** 🌱. Đừng lo, bot đã back lại **{cashback}** 🌱.",
+        "{tier} {user} mất **{amount}** 🌱. Đặc quyền VIP: Hồi máu **{cashback}** 🌱 ngay lập tức!"
+    ]
+    
+    VIP_NEUTRAL_MSGS = [
+        "{tier} {user} bảo toàn vốn. Thong dong tự tại.",
+        "{tier} {user} hòa tiền. Phong thái điềm tĩnh.",
+        "{tier} {user} không thắng không thua. Vẫn cứ là Ok."
+    ]
+
     for user_id, bet_list in bets_data.items():
-        # Use user ID mention format (no fetch needed, instant)
         user_mention = f"<@{user_id}>"
+        tier = vip_data.get(user_id, 0)
+        is_vip = tier > 0
+        tier_str = TIER_NAMES.get(tier, "")
         
         # Calculate NET profit/loss
         total_payout = 0
@@ -179,20 +218,46 @@ def create_summary_text(
             total_bet += bet_amount
             matches = sum(1 for r in final_result if r == animal_key)
             if matches > 0:
-                # Payout includes original bet
                 total_payout += bet_amount * (matches + 1)
         
         net_profit = total_payout - total_bet
         
         if net_profit > 0:
-            msg_template = random.choice(WIN_MSGS)
-            summary = msg_template.format(user=user_mention, amount=net_profit)
+            if is_vip:
+                msg_template = random.choice(VIP_WIN_MSGS)
+                summary = msg_template.format(user=user_mention, amount=f"{net_profit:,}", tier=tier_str)
+            else:
+                msg_template = random.choice(WIN_MSGS)
+                summary = msg_template.format(user=user_mention, amount=f"{net_profit:,}")
+                
         elif net_profit < 0:
-            msg_template = random.choice(LOSS_MSGS)
-            summary = msg_template.format(user=user_mention, amount=abs(net_profit))
+            loss = abs(net_profit)
+            
+            if is_vip:
+                # Calculate Cashback for display
+                rate = 0.02
+                if tier == 2: rate = 0.03
+                elif tier == 3: rate = 0.05
+                
+                cashback = int(loss * rate)
+                summary = random.choice(VIP_LOSS_MSGS).format(
+                    user=user_mention, 
+                    amount=f"{loss:,}", 
+                    cashback=f"{cashback:,}",
+                    tier=tier_str
+                )
+            else:
+                summary = random.choice(LOSS_MSGS).format(
+                    user=user_mention, 
+                    amount=f"{loss:,}"
+                )
         else:
-            msg_template = random.choice(NEUTRAL_MSGS)
-            summary = msg_template.format(user=user_mention)
+            if is_vip:
+                msg_template = random.choice(VIP_NEUTRAL_MSGS)
+                summary = msg_template.format(user=user_mention, tier=tier_str)
+            else:
+                msg_template = random.choice(NEUTRAL_MSGS)
+                summary = msg_template.format(user=user_mention)
             
         summary_lines.append(summary)
     
@@ -233,3 +298,106 @@ def calculate_net_profit(bet_amount: int, matches: int) -> int:
     """
     payout = calculate_payout(bet_amount, matches)
     return payout - bet_amount
+
+
+async def unified_send(ctx_or_interaction, content: str = None, embed: discord.Embed = None, view: discord.ui.View = None, ephemeral: bool = False):
+    """Unified message sender for Context and Interaction.
+    
+    Arg:
+        ctx_or_interaction: commands.Context or discord.Interaction
+        content: Text content
+        embed: Discord Embed
+        view: Discord View
+        ephemeral: Only for interaction (hidden message)
+        
+    Returns:
+        The sent Message object
+    """
+    is_slash = isinstance(ctx_or_interaction, discord.Interaction)
+    
+    if is_slash:
+        # Interaction (Slash Command)
+        interaction = ctx_or_interaction
+        if interaction.response.is_done():
+            # Already deferred or responded -> use followup
+            return await interaction.followup.send(content=content, embed=embed, view=view, ephemeral=ephemeral)
+        else:
+            # Not yet responded -> use response.send_message
+            await interaction.response.send_message(content=content, embed=embed, view=view, ephemeral=ephemeral)
+            return await interaction.original_response()
+    else:
+        # Prefix Command (Context)
+        # Context doesn't support ephemeral, so ignore it
+        ctx = ctx_or_interaction
+        return await ctx.send(content=content, embed=embed, view=view)
+
+
+def parse_quick_bet_args(args: tuple) -> Tuple[bool, int, str, str]:
+    """Parse arguments for Quick Bet command.
+    
+    Supported formats:
+    - -q 50k bau
+    - 50000 cua -q (flags anywhere)
+    - mode:quick amount:50k choice:tom (handled by slash command parser separately, this is for prefix/raw args)
+    
+    Args:
+        args: Tuple of string arguments
+        
+    Returns:
+        Tuple (success, amount, animal_key, error_message)
+    """
+    import re
+    
+    if not args:
+        return False, 0, "", "Thiếu tham số! Dùng: `!bc -q <tiền> <con_vật>`"
+    
+    # Flatten args to string list
+    args_list = [str(a).lower() for a in args]
+    
+    # Check for quick flag (optional if logic calls this specifically for quick bet mode)
+    # But strictly, we expect arguments like ["50k", "bau"] here if flag was stripped, or with flag.
+    # We'll just look for amount and choice.
+    
+    amount = 0
+    choice = ""
+    
+    # Animal Aliases
+    ALIAS_MAP = {
+        'bau': 'bau', 'b': 'bau', 'bầu': 'bau',
+        'cua': 'cua', 'c': 'cua',
+        'tom': 'tom', 't': 'tom', 'tôm': 'tom',
+        'ca': 'ca', 'á': 'ca', 'cá': 'ca', 'fish': 'ca',
+        'ga': 'ga', 'g': 'ga', 'gà': 'ga', 'chicken': 'ga',
+        'nai': 'nai', 'n': 'nai', 'deer': 'nai'
+    }
+    
+    for arg in args_list:
+        if arg in ['-q', '--quick', 'quick']:
+            continue
+            
+        # Check if amount (digits + k/m)
+        money_match = re.match(r'^(\d+)([km])?$', arg)
+        if money_match:
+            try:
+                val = int(money_match.group(1))
+                suffix = money_match.group(2)
+                if suffix == 'k': val *= 1000
+                if suffix == 'm': val *= 1000000
+                amount = val
+                continue
+            except:
+                pass
+        
+        # Check if choice
+        if arg in ALIAS_MAP:
+            choice = ALIAS_MAP[arg]
+            continue
+            
+    if amount <= 0:
+        return False, 0, "", "Số tiền không hợp lệ! Ví dụ: 50k, 10000"
+        
+    if not choice:
+        return False, 0, "", "Chưa chọn linh vật! (bau, cua, tom, ca, ga, nai)"
+        
+    return True, amount, choice, ""
+

@@ -86,6 +86,14 @@ async def on_ready():
         logger.info("✓ Premium consumable usage table ensured")
     except Exception as e:
         logger.error(f"Failed to ensure premium consumable table: {e}")
+
+    # Ensure Phase 2.2 tables (Cashback, Auto-Tasks)
+    try:
+        from database_manager import ensure_phase2_2_tables
+        await ensure_phase2_2_tables()
+        logger.info("✓ Phase 2.2 tables ensured")
+    except Exception as e:
+        logger.error(f"Failed to ensure Phase 2.2 tables: {e}")
     
     # Attach Discord logging handler (reads config from database)
     try:

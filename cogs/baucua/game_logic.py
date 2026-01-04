@@ -143,12 +143,14 @@ class GameManager:
     
     async def add_bet(
         self,
-        interaction: discord.Interaction,
+        ctx_or_interaction,
         game_id: str,
         animal_key: str,
         bet_amount: int
     ) -> None:
         """Process a bet from a user.
+        
+        Supports both Slash Command (Interaction) and Prefix Command (Context).
         
         Validates:
         - Game is still active
@@ -159,24 +161,31 @@ class GameManager:
         If valid, deducts seeds and adds bet to game state.
         
         Args:
-            interaction: Discord interaction for responses
+            ctx_or_interaction: Context or Interaction
             game_id: Game session ID
             animal_key: Animal being bet on
             bet_amount: Number of seeds to bet
         """
-        channel_id = interaction.channel.id
-        user_id = interaction.user.id
+        from .helpers import unified_send
+        
+        is_slash = isinstance(ctx_or_interaction, discord.Interaction)
+        channel = ctx_or_interaction.channel
+        user = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
+        
+        channel_id = channel.id
+        user_id = user.id
         
         # Check if game still active
         game_state = self.get_game(channel_id)
         if not game_state or game_state.game_id != game_id:
-            await interaction.followup.send("❌ Game đã kết thúc!", ephemeral=True)
+            await unified_send(ctx_or_interaction, "❌ Game đã kết thúc!", ephemeral=True)
             return
         
         # Check betting time remaining (must have at least MIN_TIME_BEFORE_CUTOFF seconds left)
         time_remaining = BETTING_TIME_SECONDS - int(time.time() - game_state.start_time)
         if time_remaining < MIN_TIME_BEFORE_CUTOFF:
-            await interaction.followup.send(
+            await unified_send(
+                ctx_or_interaction,
                 f"⏰ Hết thời gian cược rồi! (Còn dưới {MIN_TIME_BEFORE_CUTOFF} giây)",
                 ephemeral=True
             )
@@ -184,20 +193,22 @@ class GameManager:
         
         # Validate bet amount (max limit)
         if bet_amount > MAX_BET_AMOUNT:
-            await interaction.followup.send(
+            await unified_send(
+                ctx_or_interaction,
                 f"❌ Số tiền cược quá lớn!\nTối đa: {MAX_BET_AMOUNT:,} | Bạn cược: {bet_amount:,}",
                 ephemeral=True
             )
             return
         
         if bet_amount <= 0:
-            await interaction.followup.send("❌ Số tiền cược không hợp lệ!", ephemeral=True)
+            await unified_send(ctx_or_interaction, "❌ Số tiền cược không hợp lệ!", ephemeral=True)
             return
         
         # Check if user has enough seeds
         user_seeds = await self.get_user_seeds(user_id)
         if user_seeds < bet_amount:
-            await interaction.followup.send(
+            await unified_send(
+                ctx_or_interaction,
                 f"❌ Bạn không đủ hạt!\nCần: {bet_amount:,} | Hiện có: {user_seeds:,}",
                 ephemeral=True
             )
@@ -214,7 +225,8 @@ class GameManager:
             else:
                 # Game was deleted, refund the user
                 await self.update_seeds(user_id, bet_amount)
-                await interaction.followup.send(
+                await unified_send(
+                    ctx_or_interaction,
                     "❌ Game đã kết thúc khi bạn cược! Tiền đã hoàn lại.",
                     ephemeral=True
                 )
@@ -224,7 +236,8 @@ class GameManager:
             # If adding bet fails, refund the user
             await self.update_seeds(user_id, bet_amount)
             logger.error(f"Error adding bet: {e}", exc_info=True)
-            await interaction.followup.send(
+            await unified_send(
+                ctx_or_interaction,
                 "❌ Lỗi khi xử lý cược! Tiền đã hoàn lại.",
                 ephemeral=True
             )
@@ -232,14 +245,15 @@ class GameManager:
         
         # Show bet confirmation
         from .constants import ANIMALS
-        await interaction.followup.send(
+        await unified_send(
+            ctx_or_interaction,
             f"✅ Bạn đã cược **{bet_amount:,} hạt** vào "
             f"**{ANIMALS[animal_key]['name']}** {ANIMALS[animal_key]['emoji']}",
             ephemeral=True
         )
         
         logger.info(
-            f"[BET_PLACED] user={interaction.user.name} (id={user_id}) "
+            f"[BET_PLACED] user={user.name} (id={user_id}) "
             f"amount={bet_amount} animal={animal_key} game_id={game_id}"
         )
     

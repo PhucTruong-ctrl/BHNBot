@@ -298,7 +298,28 @@ class ContributorData:
             logger.error(f"Error getting all-time contributors: {e}", exc_info=True)
             return []
             
-    # ... (add_contribution method skipped) ...
+    async def add_contribution(self, amount: int, exp: int) -> None:
+        """Add contribution to this season's stats.
+        
+        Args:
+            amount: Seeds amount
+            exp: Experience amount
+        """
+        self.amount += amount
+        self.contribution_exp += exp
+        
+        try:
+             await db_manager.execute(
+                """INSERT INTO tree_contributors (user_id, guild_id, season, amount, contribution_exp)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(user_id, guild_id, season) 
+                   DO UPDATE SET amount = ?, contribution_exp = ?""",
+                (self.user_id, self.guild_id, self.season, self.amount, self.contribution_exp,
+                 self.amount, self.contribution_exp)
+            )
+        except Exception as e:
+            logger.error(f"Error updating contributor {self.user_id}: {e}", exc_info=True)
+            raise
 
 @dataclass
 class HarvestBuff:

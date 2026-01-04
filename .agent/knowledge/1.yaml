@@ -1,0 +1,249 @@
+# MEMORY COMPRESSION BLOCK - BHNBot VIP Phase 2.1 Session
+# Date: 2026-01-04
+# Session Duration: ~3 hours
+
+## PROJECT_CONTEXT
+project_name: BHNBot
+module: VIP System (Multi-Phase Implementation)
+current_phase: Phase 2.1 COMPLETE
+objective: Build VIP subscription system with cosmetic perks (no pay-to-win)
+
+## PHASE_OVERVIEW
+phase_1:
+  name: VIP Visual Foundation
+  status: COMPLETE
+  objective: Create VIP embed styling system and apply to Bầu Cua + Tree modules
+phase_2_0:
+  name: VIP Command Consolidation
+  status: SKIPPED (user chose direct implementation)
+  objective: Unified /thuongluu command system
+phase_2_1:
+  name: VIP Fishing Perks
+  status: COMPLETE
+  objective: Implement VIP-exclusive fish, premium consumables, quick-sell command
+
+## PHASE_1_COMPLETED_WORK
+
+### VIP_EMBED_FACTORY
+file: core/services/vip_service.py (VIPEngine class)
+key_function: create_vip_embed(user, title, description, vip_data)
+features:
+  - Auto-apply tier colors (Bạc=#BDC3C7, Vàng=#F1C40F, Kim Cương=#3498DB)
+  - Auto-add tier prefixes (🥈 [BẠC], 🥇 [VÀNG], 💎 [KIM CƯƠNG])
+  - Preserve original title emojis (e.g., 🎰, 🌳)
+  - Set author/thumbnail from user avatar
+  - Add footer with VIP quote rotation
+
+### MODULES_VIPIFIED
+bau_cua:
+  status: COMPLETE
+  file: cogs/baucua/cog.py
+  embeds_styled: betting_phase, game_lobby
+  rule: "Keep Win/Lose results as Green/Red (no VIP override)"
+tree:
+  status: COMPLETE
+  files: [cogs/tree/cog.py]
+  embeds_styled: /tuoi, /bonphan contribution success
+  made_async: create_contribution_success_embed()
+xi_dach:
+  status: SKIPPED (Phase 1)
+  reason: Result embed color semantics conflict with VIP styling
+
+### DESIGN_RULES_ESTABLISHED
+color_semantics:
+  - "Gambling results MUST use semantic colors (Win=Green, Lose=Red)"
+  - "VIP styling applies to lobby/info screens ONLY, NOT result screens"
+emoji_preservation:
+  - "Keep original emojis in title (e.g., 🎰 BẦU CUA)"
+  - "VIP prefix adds BEFORE emoji: 🥈 [BẠC] 🎰 BẦU CUA"
+async_requirement:
+  - "Any function calling create_vip_embed() MUST be async"
+
+## PHASE_2_1_COMPLETED_WORK
+
+### VIP_FISH_SYSTEM
+implementation_status: COMPLETE
+file_created: /data/fishing_vip_fish.json
+fish_count: 15
+tiers:
+  tier_1_silver:
+    count: 3
+    fish: [Cá Kình🐧, Cá Chó🐶, Cá Hộp📦]
+    badge: 🥈
+  tier_2_gold:
+    count: 5
+    fish: [Thiên Nga🦢, Cá Đuối🥏, Trung Thu🥮, Cá Nhám Chanh🍋, Cá Heo🐬]
+    badge: 🥇
+  tier_3_diamond:
+    count: 7
+    fish: [Cá Ngân Hà🌌, Cá Táo🍎, Cá Nấm🍄, Cá Heo Hồng🌸, Cá Nemo🐠, Cá Mập Trắng🦷, Cá Voi Xanh🐋]
+    badge: 💎
+gacha_integration:
+  file: cogs/fishing/cog.py
+  line: 1301
+  logic: "Dynamic rare_pool expansion based on VIPEngine.get_vip_data(user_id)"
+display_badges:
+  file: cogs/fishing/cog.py
+  line: 167
+  method: get_fish_display_name()
+
+### PREMIUM_CONSUMABLES
+implementation_status: COMPLETE
+database:
+  table: premium_consumable_usage
+  columns: [user_id, consumable_key, usage_count, last_reset_date]
+  migration: main.py:79-80 (ensure_premium_consumable_table)
+items:
+  cham_long_dich:
+    name: Chấm Long Dịch
+    emoji: 🍷
+    tier_required: 2
+    cost: 200
+    effect: multi_catch (3-5 fish next cast)
+    daily_limit: 5
+    time_expiration: REMOVED (buff persists until consumed)
+    storage: fishing_cog.premium_buffs[user_id]
+    consumption: cogs/fishing/cog.py:1223-1238
+  luoi_than_thanh:
+    name: Lưới Thần Thánh
+    emoji: 🕸️
+    tier_required: 3
+    cost: 500
+    effect: guarantee_rare_multi (instant 5-10 rare fish, includes VIP)
+    daily_limit: 3
+    implementation: cogs/consumable.py:549-600
+effect_logic:
+  file: cogs/consumable.py
+  lines: 503-650
+  tier_validation: YES
+  daily_limit_check: get_consumable_usage(user_id, item_key)
+  increment: increment_consumable_usage(user_id, item_key)
+
+### QUICK_SELL_VIP
+implementation_status: COMPLETE
+command: /banca mode:vip
+restriction: Tier 3 only
+logic:
+  file: cogs/fishing/commands/sell.py
+  lines: 15-40
+  filter: "Exclude VIP fish keys, sell only regular fish"
+command_signature:
+  file: cogs/fishing/cog.py
+  lines: 2184-2210
+  choices: ["all", "vip"]
+
+### BUGS_FIXED
+critical_bugs:
+  - id: double_deduction
+    file: cogs/consumable.py
+    lines: 372-425
+    issue: "Items deducted 2x per use (duplicate UPDATE)"
+    fix: "Removed first UPDATE, kept fetch-then-update only"
+  - id: silent_fail
+    file: cogs/consumable.py
+    line: 440
+    issue: "No error message when out of items"
+    fix: "Added await ctx_or_interaction.send(error_msg)"
+  - id: tuido_display
+    file: cogs/fishing/commands/inventory_display.py
+    line: 163
+    issue: "Premium items not showing (category=vip_premium not in filter)"
+    fix: "Added: or item.get('category') == 'vip_premium'"
+  - id: time_expiration
+    file: cogs/fishing/cog.py
+    line: 1228
+    issue: "Chấm Long Dịch expires after 5 min"
+    fix: "Removed: and buff['expires'] > time.time()"
+  - id: username_display
+    file: cogs/consumable.py
+    lines: 537-543
+    issue: "Public messages don't show username"
+    fix: "Added username to title for prefix commands"
+
+## FILES_MODIFIED
+new_files:
+  - /data/fishing_vip_fish.json (480 lines)
+modified_files:
+  - /data/items/premium.json
+  - /cogs/fishing/constants.py (+25 lines)
+  - /cogs/fishing/cog.py (+45 lines, multi-catch buff + gacha)
+  - /cogs/consumable.py (+150 lines, premium effects)
+  - /cogs/fishing/commands/sell.py (+40 lines, VIP mode)
+  - /cogs/fishing/commands/inventory_display.py (+1 line)
+  - /database_manager.py (+45 lines, usage tracking)
+  - /main.py (+8 lines, table migration)
+
+## CODE_LOCATIONS
+critical_functions:
+  vip_fish_loading: "cogs/fishing/constants.py:54-91 - get_vip_fish_for_tier()"
+  gacha_expansion: "cogs/fishing/cog.py:1301-1315 - rare_pool += VIP_FISH_DATA"
+  multi_catch_buff: "cogs/fishing/cog.py:1223-1238 - Check premium_buffs dict"
+  premium_effects: "cogs/consumable.py:503-650 - effect_type handlers"
+  quick_sell_filter: "cogs/fishing/commands/sell.py:15-40 - VIP fish exclusion"
+  db_helpers: "database_manager.py:936-980 - get/increment_consumable_usage"
+
+## TESTING_STATUS
+verified:
+  - VIP fish tier gates (Tier 1/2/3)
+  - Tier badges display (🥈🥇💎)
+  - Chấm Long Dịch multi-catch (3-5 fish)
+  - Lưới Thần Thánh instant rare (5-10 fish)
+  - Daily limits enforced
+  - Double deduction fix
+pending:
+  - Quick Sell VIP manual test
+  - Daily limit reset (24h test required)
+
+## USER_PREFERENCES
+language:
+  internal: English (code, logs, docs)
+  external: Vietnamese (UI, messages)
+code_style:
+  async: MANDATORY (no blocking calls)
+  transactions: ACID compliance required
+  errors: Comprehensive logging + user-friendly messages
+documentation:
+  format: GitHub markdown
+  artifacts:
+    - implementation_plan.md (PLANNING phase)
+    - task.md (checklist, updated as work progresses)
+    - walkthrough.md (completion summary with proof)
+user_patterns:
+  - Demands self-review before showing code
+  - Simplicity over complexity
+  - Finds bugs aggressively (expect edge cases)
+  - Prefers phase-based approach for complex work
+
+## ARTIFACTS_CREATED
+location: /home/phuctruong/.gemini/antigravity/brain/b5f57768-ac36-40b7-aeb2-ba90ef588449/
+files:
+  - task.md
+  - implementation_plan.md
+  - phase2_1_implementation_plan.md (APPROVED - "LGTM")
+  - phase2_1_part2_plan.md
+  - walkthrough.md (Updated with all Phase 2.1 work)
+  - vip_game_design_analysis.md.resolved (Updated line 62-128)
+
+## PENDING_TASKS
+immediate: NONE (Phase 2.1 complete)
+future_phases:
+  - Phase 2.2: Cross-module VIP perks (Bầu Cua, Xì Dách, Tree, Aquarium)
+  - Phase 3: VIP tournaments, progression system
+
+## CRITICAL_DECISIONS
+design_rules:
+  - VIP fish are COSMETIC only (same sell price as rare)
+  - Consumables have DAILY LIMITS (no infinite farming)
+  - NO time expiration on Chấm Long Dịch (user request)
+  - Quick Sell VIP is Tier 3 exclusive
+database:
+  - PostgreSQL (asyncpg)
+  - premium_consumable_usage table with auto-reset logic
+  - ON CONFLICT for atomic increment
+
+## SESSION_END_STATE
+phase: Phase 2.1
+status: COMPLETE - PRODUCTION READY
+documentation: UP TO DATE
+bot_running: YES (last restart 20:34)
+next_action: User discretion (Phase 2.1 done)

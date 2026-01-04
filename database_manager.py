@@ -1023,3 +1023,47 @@ async def ensure_premium_consumable_table():
         logger.info("[MIGRATION] Premium consumable usage table ensured")
     except Exception as e:
         logger.error(f"[MIGRATION] Error creating premium_consumable_usage table: {e}")
+
+async def ensure_premium_consumable_table():
+    """Ensures the premium_consumable_usage table exists (Phase 2.1)."""
+    try:
+        await db_manager.modify("""
+            CREATE TABLE IF NOT EXISTS premium_consumable_usage (
+                user_id BIGINT,
+                consumable_key TEXT,
+                usage_count INTEGER DEFAULT 0,
+                last_reset_date TEXT,
+                PRIMARY KEY (user_id, consumable_key)
+            )
+        """)
+    except Exception as e:
+        logger.error(f"Error ensuring premium table: {e}")
+
+async def ensure_phase2_2_tables():
+    """Ensures tables for Phase 2.2 (Cashback & Auto-Tasks) exist."""
+    try:
+        # Table 1: Bầu Cua Daily Stats (for Cashback)
+        await db_manager.modify("""
+            CREATE TABLE IF NOT EXISTS baucua_daily_stats (
+                user_id BIGINT,
+                date TEXT,
+                total_bet BIGINT DEFAULT 0,
+                total_won BIGINT DEFAULT 0,
+                total_lost BIGINT DEFAULT 0,
+                PRIMARY KEY (user_id, date)
+            )
+        """)
+        
+        # Table 2: VIP Auto Tasks (for Auto-Water/Visit)
+        await db_manager.modify("""
+            CREATE TABLE IF NOT EXISTS vip_auto_tasks (
+                user_id BIGINT,
+                task_type TEXT, -- 'auto_water', 'auto_visit'
+                expires_at TEXT, -- ISO format timestamp
+                last_run_at TEXT, -- ISO format timestamp
+                PRIMARY KEY (user_id, task_type)
+            )
+        """)
+        logger.info("✓ Phase 2.2 tables ensured (baucua_daily_stats, vip_auto_tasks)")
+    except Exception as e:
+        logger.error(f"Error ensuring Phase 2.2 tables: {e}")
