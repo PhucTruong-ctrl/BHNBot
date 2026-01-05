@@ -225,3 +225,32 @@ class HousingEngine:
         """Get user's custom theme URL."""
         user = await UserAquarium.get_or_none(user_id=user_id)
         return user.theme_url if user else None
+
+    @staticmethod
+    async def get_theme(user_id: int) -> Optional[str]:
+        """Get the custom theme URL for the user's aquarium."""
+        user = await UserAquarium.get_or_none(user_id=user_id)
+        return user.theme_url if user else None
+
+    @staticmethod
+    async def is_set_active(user_id: int, set_key: str, min_items: int = 3) -> bool:
+        """
+        Check if user has a Decor Set active.
+        Condition: At least `min_items` from the set are currently placed in slots.
+        """
+        try:
+            # Get current slots (cache friendly?)
+            slots = await HousingEngine.get_slots(user_id)
+            placed_ids = [s for s in slots if s]
+            
+            count = 0
+            for item_id in placed_ids:
+                item = DECOR_ITEMS.get(item_id)
+                # Check directly in DECOR_ITEMS
+                if item and item.get("set") == set_key:
+                    count += 1
+            
+            return count >= min_items
+        except Exception as e:
+            logger.error(f"[SET_CHECK] Error checking set {set_key} for {user_id}: {e}")
+            return False

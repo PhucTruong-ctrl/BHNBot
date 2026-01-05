@@ -1091,3 +1091,35 @@ async def ensure_phase3_tables():
         logger.info("✓ Phase 3 tables/columns ensured")
     except Exception as e:
         logger.error(f"Error ensuring Phase 3 schema: {e}")
+
+async def ensure_phase3_1_tables():
+    """Ensures tables for Phase 3.1 (VIP Tournaments) exist."""
+    try:
+        # Table 1: Tournaments
+        await db_manager.modify("""
+            CREATE TABLE IF NOT EXISTS vip_tournaments (
+                id SERIAL PRIMARY KEY,
+                host_id BIGINT NOT NULL,
+                start_time TEXT,
+                end_time TEXT,
+                status TEXT DEFAULT 'pending', -- pending, active, ended, cancelled
+                entry_fee INTEGER NOT NULL,
+                prize_pool INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Table 2: Entries
+        await db_manager.modify("""
+            CREATE TABLE IF NOT EXISTS tournament_entries (
+                tournament_id INTEGER,
+                user_id BIGINT,
+                score INTEGER DEFAULT 0,
+                joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (tournament_id, user_id),
+                FOREIGN KEY(tournament_id) REFERENCES vip_tournaments(id) ON DELETE CASCADE
+            )
+        """)
+        logger.info("✓ Phase 3.1 tables ensured (vip_tournaments, tournament_entries)")
+    except Exception as e:
+        logger.error(f"Error ensuring Phase 3.1 tables: {e}")

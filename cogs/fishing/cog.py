@@ -58,12 +58,15 @@ from database_manager import (
 )
 from .mechanics.legendary_quest_helper import (
     increment_sacrifice_count, get_sacrifice_count, reset_sacrifice_count,
-    set_crafted_bait_status, get_crafted_bait_status,
-    set_phoenix_prep_status, get_phoenix_prep_status,
-    set_map_pieces_count, get_map_pieces_count, set_quest_completed, is_quest_completed,
     set_frequency_hunt_status, get_frequency_hunt_status,
     is_legendary_caught, set_legendary_caught,
     increment_manh_sao_bang
+)
+
+from .commands.tournament import (
+    tournament_create_action as _tournament_create_impl,
+    tournament_join_action as _tournament_join_impl,
+    tournament_rank_action as _tournament_rank_impl
 )
 
 # Import event views from mechanics module
@@ -74,6 +77,7 @@ from .mechanics.event_views import MeteorWishView
 from .utils.global_event_manager import GlobalEventManager
 from .utils.global_event_manager import GlobalEventManager
 from .utils.global_event_manager import GlobalEventManager
+from .tournament import TournamentManager
 
 
 # ==================== FISHING COG ====================
@@ -163,7 +167,11 @@ class FishingCog(commands.Cog):
 
         
         # Start state cleanup task (prevents memory leaks)
+        # Start state cleanup task (prevents memory leaks)
         self.cleanup_stale_state.start()
+        
+        # Start Tournament Watchdog (1 min)
+        self.tournament_watchdog.start()
         
     async def get_user_total_luck(self, user_id: int) -> float:
         """Calculate total user luck from all sources (Rod, Buffs, etc).
@@ -224,8 +232,21 @@ class FishingCog(commands.Cog):
         """Cleanup when cog is unloaded."""
         # self.meteor_shower_event.cancel()
         self.global_event_manager.unload()
+    async def cog_unload(self):
+        """Cleanup when cog is unloaded."""
+        # self.meteor_shower_event.cancel()
+        self.global_event_manager.unload()
         self.cleanup_stale_state.cancel()
+        self.tournament_watchdog.cancel()
     
+    @tasks.loop(minutes=1)
+    async def tournament_watchdog(self):
+        """Checks for tournament timeouts/auto-starts."""
+        try:
+             await TournamentManager.get_instance().check_registration_timeouts()
+        except Exception as e:
+             logger.error(f"[TOURNAMENT] Watchdog error: {e}")
+
     @tasks.loop(hours=1)
     async def cleanup_stale_state(self):
         """Periodic cleanup of expired state to prevent memory leaks.
@@ -316,28 +337,27 @@ class FishingCog(commands.Cog):
                 del self.avoid_event_users[uid]
                 cleaned_count += 1
             
-            # Clean guaranteed_catch_users that are False
-            stale_guaranteed = [uid for uid, v in list(self.guaranteed_catch_users.items()) if not v]
-            for uid in stale_guaranteed:
-                del self.guaranteed_catch_users[uid]
-                cleaned_count += 1
-            
-            # Clean expired legendary buff - Migrated to DB, no cleanup needed here
-            pass
-            
-            # Clean old sell_processing entries (older than 5 minutes)
-            old_sell = [uid for uid, t in list(self.sell_processing.items()) 
-                       if current_time - t > 300]
-            for uid in old_sell:
-                del self.sell_processing[uid]
-                cleaned_count += 1
-            
-            if cleaned_count > 0:
-                logger.info(f"[CLEANUP] Cleaned {cleaned_count} stale state entries")
+            # Cleanup cooldowns
+            expired_users = [
+                uid for uid, timestamp in self.fishing_cooldown.items() # Changed to fishing_cooldown based on original code
+                if current_time - timestamp > 3600  # Clean up if older than 1 hour
+            ]
+            for uid in expired_users:
+                del self.fishing_cooldown[uid] # Changed to fishing_cooldown based on original code
+                
+            if expired_users:
+                logger.debug(f"[CLEANUP] Removed {len(expired_users)} expired cooldown entries")
+                
+            # Run Passive Income Check
+            await self.process_future_tech_income()
                 
         except Exception as e:
             logger.error(f"[CLEANUP] Error during state cleanup: {e}")
     
+    @tournament_watchdog.before_loop
+    async def before_watchdog(self):
+        await self.bot.wait_until_ready()
+
     @cleanup_stale_state.before_loop
     async def before_cleanup(self):
         """Wait for bot to be ready before starting cleanup task."""
@@ -368,6 +388,23 @@ class FishingCog(commands.Cog):
             logger.error(f"[METEOR] Error in force meteor shower: {e}")
     
     # ==================== COMMANDS ====================
+    
+    # --- TOURNAMENT GROUP ---
+    giaidau_group = app_commands.Group(name="giaidau", description="🏆 Giải đấu câu cá VIP")
+
+    @giaidau_group.command(name="create", description="Tổ chức giải đấu (VIP Tier 1+)")
+    @app_commands.describe(fee="Phí tham gia (Tối thiểu 1000 Hạt)")
+    async def tournament_create(self, interaction: discord.Interaction, fee: int):
+        await _tournament_create_impl(interaction, fee)
+
+    @giaidau_group.command(name="join", description="Tham gia giải đấu đang mở")
+    @app_commands.describe(tournament_id="ID giải đấu")
+    async def tournament_join(self, interaction: discord.Interaction, tournament_id: int):
+        await _tournament_join_impl(interaction, tournament_id)
+
+    @giaidau_group.command(name="rank", description="Xem bảng xếp hạng giải đấu hiện tại của bạn")
+    async def tournament_rank(self, interaction: discord.Interaction):
+        await _tournament_rank_impl(interaction)
     
     @app_commands.command(name="sukiencauca", description="⚡ Force trigger event câu cá (chỉ Admin)")
     @app_commands.describe(
@@ -1478,12 +1515,17 @@ class FishingCog(commands.Cog):
                         fish_only_items = duplicated_items
         
                     # Display fish grouped
+                    tournament_score = 0 # Track score for active tournaments
                     for key, qty in fish_only_items.items():
                         fish = ALL_FISH[key]
                         emoji = fish['emoji']
                         total_price = fish['sell_price'] * qty  # Multiply price by quantity
                         fish_name = self.apply_display_glitch(fish['name'])
                         fish_display.append(f"{emoji} {fish_name} x{qty} ({total_price} Hạt)")
+                        
+                        # HOOK: Tournament Score (Base Sell Price * Qty)
+                        # We use Base Price to ensure fairness (ignore market multipliers)
+                        tournament_score += fish['sell_price'] * qty
         
                     # Process trash (independent)
                     if trash_count > 0:
@@ -1498,6 +1540,14 @@ class FishingCog(commands.Cog):
                             # 1 Trash = 1 Leaf Coin (Standard Rate)
                             recycle_reward = trash_count * 1
                             await self.bot.inventory.modify(user_id, "leaf_coin", recycle_reward)
+                            
+                    # HOOK: Update Tournament Score if applicable
+                    if tournament_score > 0:
+                        try:
+                            # Pass 'conn' to ensure ACID compliance within this transaction
+                            await TournamentManager.get_instance().on_fish_catch(user_id, tournament_score, conn=conn)
+                        except Exception as e:
+                            logger.error(f"[TOURNAMENT] Error updating score for {username}: {e}")
                             
                             logger.info(f"[FISHING] [VIP] {username} (Tier {vip_tier}) auto-recycled {trash_count} trash -> {recycle_reward} Leaf Coin")
                             fish_display.append(f"♻️ **Đã tự động tái chế {trash_count} Rác** (+{recycle_reward} 🍃)")
