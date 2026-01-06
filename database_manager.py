@@ -1123,3 +1123,27 @@ async def ensure_phase3_1_tables():
         logger.info("✓ Phase 3.1 tables ensured (vip_tournaments, tournament_entries)")
     except Exception as e:
         logger.error(f"Error ensuring Phase 3.1 tables: {e}")
+
+async def ensure_phase4_tables():
+    """Ensures tables/columns for Phase 4 (Unified Shop) exist."""
+    try:
+        # Add shop config columns to server_config
+        # Using try-catch pattern for Postgres compatibility
+        columns = [
+            ("shop_channel_id", "BIGINT DEFAULT NULL"),
+            ("shop_message_id", "BIGINT DEFAULT NULL")
+        ]
+        
+        for col_name, col_def in columns:
+            try:
+                await db_manager.modify(f"ALTER TABLE server_config ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
+            except Exception as e:
+                # If 'IF NOT EXISTS' syntax fails (old pg), try without it and catch duplicate
+                try:
+                    await db_manager.modify(f"ALTER TABLE server_config ADD COLUMN {col_name} {col_def}")
+                except Exception as inner_e:
+                    pass # Column likely exists
+
+        logger.info("✓ Phase 4 tables/columns ensured (shop_channel/message)")
+    except Exception as e:
+        logger.error(f"Error ensuring Phase 4 schema: {e}")

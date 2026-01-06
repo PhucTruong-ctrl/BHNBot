@@ -202,6 +202,7 @@ class ConfigCog(commands.Cog):
                          kenh_bump: discord.TextChannel = None,
                          kenh_log_bot: discord.TextChannel = None,
                          kenh_aquarium: discord.ForumChannel = None,
+                         kenh_shop: discord.TextChannel = None,
                          log_ping_user: discord.Member = None,
                          log_level: str = None):
         
@@ -219,7 +220,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium, kenh_shop]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -254,6 +255,12 @@ class ConfigCog(commands.Cog):
             else:
                 new_tree = None
             
+            # Handle Shop Deployment
+            if kenh_shop:
+                shop_cog = self.bot.get_cog("UnifiedShopCog")
+                if shop_cog:
+                    await shop_cog.deploy_interface(guild_id, kenh_shop.id)
+            
             # Save using UPSERT
             from datetime import datetime
             
@@ -264,6 +271,7 @@ class ConfigCog(commands.Cog):
             new_ping_user = log_ping_user.id if log_ping_user else None
             new_log_level = log_level.upper() if log_level else None
             new_aquarium = kenh_aquarium.id if kenh_aquarium else None
+            new_shop = kenh_shop.id if kenh_shop else None
             
             # Postgres UPSERT syntax
             # Note: Postgres doesn't support 'CASE WHEN excluded.bump_channel_id ...' inside ON CONFLICT DO UPDATE cleanly alias 
@@ -277,9 +285,9 @@ class ConfigCog(commands.Cog):
                     guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, 
                     bump_channel_id, bump_start_time, log_discord_channel_id, 
                     log_ping_user_id, log_discord_level,
-                    aquarium_forum_channel_id
+                    aquarium_forum_channel_id, shop_channel_id
                 ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     logs_channel_id = COALESCE(EXCLUDED.logs_channel_id, server_config.logs_channel_id),
                     noitu_channel_id = COALESCE(EXCLUDED.noitu_channel_id, server_config.noitu_channel_id),
@@ -289,11 +297,12 @@ class ConfigCog(commands.Cog):
                     log_discord_channel_id = COALESCE(EXCLUDED.log_discord_channel_id, server_config.log_discord_channel_id),
                     log_ping_user_id = COALESCE(EXCLUDED.log_ping_user_id, server_config.log_ping_user_id),
                     log_discord_level = COALESCE(EXCLUDED.log_discord_level, server_config.log_discord_level),
-                    aquarium_forum_channel_id = COALESCE(EXCLUDED.aquarium_forum_channel_id, server_config.aquarium_forum_channel_id)
+                    aquarium_forum_channel_id = COALESCE(EXCLUDED.aquarium_forum_channel_id, server_config.aquarium_forum_channel_id),
+                    shop_channel_id = COALESCE(EXCLUDED.shop_channel_id, server_config.shop_channel_id)
             """, (
                 int(guild_id), new_logs, new_noitu, new_fishing, new_bump, 
                 bump_start_time, new_log_bot, new_ping_user, new_log_level,
-                new_aquarium
+                new_aquarium, new_shop
             ))
             
             if kenh_cay:
@@ -315,6 +324,7 @@ class ConfigCog(commands.Cog):
             if kenh_bump: msg += f"⏰ Bump Disboard: {kenh_bump.mention}\n"
             if kenh_log_bot: msg += f"🤖 Log Bot: {kenh_log_bot.mention}\n"
             if kenh_aquarium: msg += f"🐟 Hồ Cá (Forum): {kenh_aquarium.mention}\n"
+            if kenh_shop: msg += f"🏪 Tạp Hóa: {kenh_shop.mention}\n"
             if log_ping_user: msg += f"🔔 Ping User: {log_ping_user.mention}\n"
             if log_level: msg += f"📊 Log Level: {log_level.upper()}\n"
             
@@ -341,7 +351,7 @@ class ConfigCog(commands.Cog):
                             del game_cog.games[guild_id]
                             # Also clean up lock
                             if guild_id in game_cog.game_locks:
-                                del game_cog.game_locks[guild_id]
+                                 del game_cog.game_locks[guild_id]
                             print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {old_noitu}")
                     
                     # Start new game
@@ -368,6 +378,7 @@ class ConfigCog(commands.Cog):
             msg += "• `!config kenh_noitu #channel` - Kênh chơi nối từ\n"
             msg += "• `!config kenh_logs #channel` - Kênh logs (admin channel)\n"
             msg += "• `!config kenh_fishing #channel` - Kênh thông báo sự kiện câu cá\n"
+            msg += "• `!config kenh_shop #channel` - Kênh tạp hóa (Deploy Shop Interface)\n"
             await ctx.send(msg)
             return
         
@@ -398,8 +409,18 @@ class ConfigCog(commands.Cog):
             elif key == "kenh_fishing":
                 new_logs, new_noitu, new_fishing = current_logs, current_noitu, channel.id
                 msg_key = "Câu Cá"
+            elif key == "kenh_shop":
+                # Deploy Shop
+                shop_cog = self.bot.get_cog("UnifiedShopCog")
+                if shop_cog:
+                    await shop_cog.deploy_interface(guild_id, channel.id)
+                    await ctx.send(f"✅ Đã deploy shop tại {channel.mention}")
+                    return # Skip standard config update for now unless we want to DRY?
+                    # The deploy logic updates shop_channel_id in DB in UnifiedShopCog.
+                    # Standard logic below only updates logs/noitu/fishing.
+                    # So we return here.
             else:
-                await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_fishing")
+                await ctx.send(f"❌ Option không hợp lệ: {key}. Dùng: kenh_noitu, kenh_logs, kenh_fishing, kenh_shop")
                 return
             
             # Save using UPSERT to preserve other columns (bump_channel_id, exclude_chat, etc.)
@@ -565,4 +586,6 @@ class ConfigCog(commands.Cog):
     
 
 async def setup(bot):
+    from database_manager import ensure_phase4_tables
+    await ensure_phase4_tables()
     await bot.add_cog(ConfigCog(bot))

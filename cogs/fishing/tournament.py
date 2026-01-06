@@ -21,11 +21,26 @@ class TournamentManager:
         self.game_duration_minutes = 10
         self.registration_timeout_minutes = 15
 
-    @classmethod
-    def get_instance(cls):
-        if cls._instance is None:
-            cls._instance = TournamentManager()
         return cls._instance
+
+    async def restore_active_tournaments(self):
+        """Restores active participants from DB after bot restart."""
+        try:
+            # Get active IDs
+            active_tourneys = await db_manager.fetchall("SELECT id FROM vip_tournaments WHERE status = 'active'")
+            if not active_tourneys:
+                return
+                
+            count = 0
+            for (t_id,) in active_tourneys:
+                entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = ?", (t_id,))
+                for (uid,) in entries:
+                    self.active_participants[uid] = t_id
+                    count += 1
+            
+            logger.info(f"[TOURNAMENT] Restored {count} active participants from {len(active_tourneys)} tournaments.")
+        except Exception as e:
+            logger.error(f"[TOURNAMENT] Restore error: {e}")
 
     async def create_tournament(self, host_id: int, entry_fee: int) -> Optional[int]:
         """Creates a new tournament lobby."""

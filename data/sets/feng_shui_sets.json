@@ -1,0 +1,34 @@
+{
+  "sets": {
+    "dai_duong": {
+      "key": "dai_duong",
+      "name": "🌊 Rạn San Hô",
+      "required": ["san_ho", "rong_bien", "ca_map", "den_neon"],
+      "tier": 1,
+      "description": "Tăng 5% Hạt nhận từ Cây Server (/thuhoach).",
+      "effects": {
+        "harvest_bonus_percent": 5
+      }
+    },
+    "hoang_gia": {
+      "key": "hoang_gia",
+      "name": "👑 Kho Báu Cổ Đại",
+      "required": ["ruong_vang", "lau_dai_cat", "ngoc_trai_khong_lo", "mo_neo"],
+      "tier": 2,
+      "description": "Tăng 10% giá trị bán cá (/ban).",
+      "effects": {
+        "sell_bonus_percent": 10
+      }
+    },
+    "tuong_lai": {
+      "key": "tuong_lai",
+      "name": "🚀 Công Nghệ Tương Lai",
+      "required": ["hologram_shark", "cyber_coral"],
+      "tier": 3,
+      "description": "Nhận 200 Hạt mỗi ngày (Passive).",
+      "effects": {
+        "passive_income": 200
+      }
+    }
+  }
+}

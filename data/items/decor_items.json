@@ -1,0 +1,157 @@
+{
+  "items": {
+    "san_ho": {
+      "key": "san_ho",
+      "name": "San Hô Đỏ",
+      "price": { "buy": 5000, "sell": 0 },
+      "emoji": "🪸",
+      "description": "Tăng vẻ đẹp hoang sơ. (+2 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "water",
+        "decor_set": "dai_duong",
+        "charm": 2,
+        "price_leaf": 50
+      }
+    },
+    "rong_bien": {
+      "key": "rong_bien",
+      "name": "Rong Biển Xanh",
+      "price": { "buy": 2000, "sell": 0 },
+      "emoji": "🌿",
+      "description": "Thức ăn cho cá. (+1 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "water",
+        "decor_set": "dai_duong",
+        "charm": 1,
+        "price_leaf": 20
+      }
+    },
+    "ruong_vang": {
+      "key": "ruong_vang",
+      "name": "Rương Kho Báu",
+      "price": { "buy": 50000, "sell": 0 },
+      "emoji": "⚱️",
+      "description": "Chứa đầy bí mật. (+10 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "floor",
+        "decor_set": "hoang_gia",
+        "charm": 10,
+        "price_leaf": 200,
+        "price_magic_fruit": 1
+      }
+    },
+    "ca_map": {
+      "key": "ca_map",
+      "name": "Cá Mập Con",
+      "price": { "buy": 100000, "sell": 0 },
+      "emoji": "🦈",
+      "description": "Hung dữ nhưng đáng yêu. (+20 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "fish",
+        "decor_set": "dai_duong",
+        "charm": 20,
+        "price_leaf": 500
+      }
+    },
+    "mo_neo": {
+      "key": "mo_neo",
+      "name": "Mỏ Neo Cổ",
+      "price": { "buy": 15000, "sell": 0 },
+      "emoji": "⚓",
+      "description": "Dấu tích tàu đắm. (+5 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "floor",
+        "decor_set": "hoang_gia",
+        "charm": 5,
+        "price_leaf": 100
+      }
+    },
+    "den_neon": {
+      "key": "den_neon",
+      "name": "Đèn Neon Sứa",
+      "price": { "buy": 30000, "sell": 0 },
+      "emoji": "💡",
+      "description": "Lung linh huyền ảo. (+8 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "float",
+        "decor_set": "dai_duong",
+        "charm": 8,
+        "price_leaf": 150
+      }
+    },
+    "lau_dai_cat": {
+      "key": "lau_dai_cat",
+      "name": "Lâu Đài Cát",
+      "price": { "buy": 20000, "sell": 0 },
+      "emoji": "🏰",
+      "description": "Công trình kiến trúc tí hon. (+6 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "floor",
+        "decor_set": "hoang_gia",
+        "charm": 6,
+        "price_leaf": 80
+      }
+    },
+    "ngoc_trai_khong_lo": {
+      "key": "ngoc_trai_khong_lo",
+      "name": "Ngọc Trai Khổng Lồ",
+      "price": { "buy": 200000, "sell": 0 },
+      "emoji": "🔮",
+      "description": "Hào quang chói lóa. (+50 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "floor",
+        "decor_set": "hoang_gia",
+        "charm": 50,
+        "price_leaf": 1000
+      }
+    },
+    "hologram_shark": {
+      "key": "hologram_shark",
+      "name": "Cá Mập Hologram",
+      "price": { "buy": 500000, "sell": 0 },
+      "emoji": "🦈",
+      "description": "Công nghệ 4.0. (+80 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "fish",
+        "decor_set": "tuong_lai",
+        "charm": 80,
+        "price_leaf": 2000
+      },
+      "tier_required": 3
+    },
+    "cyber_coral": {
+      "key": "cyber_coral",
+      "name": "San Hô Cyber",
+      "price": { "buy": 150000, "sell": 0 },
+      "emoji": "👾",
+      "description": "Phát sáng RGB. (+40 Charm)",
+      "type": "decor",
+      "flags": { "buyable": true, "decor": true, "shop_category": "special" },
+      "attributes": {
+        "decor_type": "water",
+        "decor_set": "tuong_lai",
+        "charm": 40,
+        "price_leaf": 800
+      },
+      "tier_required": 3
+    }
+  }
+}

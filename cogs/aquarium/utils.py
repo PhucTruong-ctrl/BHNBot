@@ -81,11 +81,18 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
                 pass # Message deleted, fall to resend
 
         # Scenario 2: Resend (Delete old if exists but buried?)
-        # If old_dashboard_id exists but is NOT the last message, we delete it and send new.
+        # Fix: Check if old message is the STARTER message (ID == Thread ID for Forums).
+        # If it is, DO NOT DELETE (preserves thumbnail). Just remove buttons.
         if old_dashboard_id:
             try:
                 old_msg = await thread.fetch_message(old_dashboard_id)
-                await old_msg.delete()
+                
+                is_starter = (old_msg.id == thread.id)
+                if is_starter:
+                    # Strip buttons, keep embed/content for thumbnail
+                    await old_msg.edit(view=None)
+                else:
+                    await old_msg.delete()
             except:
                 pass
 

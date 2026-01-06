@@ -68,18 +68,36 @@ class HousingEngine:
 
     @staticmethod
     async def get_inventory(user_id: int) -> Dict[str, int]:
-        """Get user's available decor inventory."""
-        # user_decor table
-        items = await UserDecor.filter(user_id=user_id, quantity__gt=0).all()
-        return {item.item_id: item.quantity for item in items}
+        """Get user's available decor inventory from MAIN inventory."""
+        from core.item_system import item_system
+        from database_manager import db_manager
+        
+        # Fetch all inventory
+        # Returns List[tuple] -> [(item_id, quantity), ...]
+        rows = await db_manager.fetchall("SELECT item_id, quantity FROM inventory WHERE user_id = $1 AND quantity > 0", (user_id,))
+        inventory = {}
+        for r in rows:
+            # r is tuple (item_id, quantity)
+            item_id = r[0]
+            quantity = r[1]
+            
+            # New Validation Logic: Check if item is decor via ItemSystem
+            item_data = item_system.get_item(item_id)
+            if item_data and item_data.get('type') == 'decor':
+                 inventory[item_id] = quantity
+        return inventory
 
     @staticmethod
     async def update_slot(user_id: int, slot_index: int, new_item_id: Optional[str]) -> tuple[bool, str]:
         """
-        Update a decor slot. Handles Inventory swapping.
-        Atomic transaction.
+        Update a decor slot. Handles Inventory swapping using MAIN inventory.
         """
         try:
+            from database_manager import db_manager
+            
+            # Hybrid Transaction: We use Tortoise for Slot metadata and DBManager for Inventory
+            # Ideally should be fully migrated, but this bridges the gap.
+            
             async with in_transaction():
                 user = await UserAquarium.get(user_id=user_id)
                 slot = await HomeSlot.get(user=user, slot_index=slot_index)
@@ -88,26 +106,35 @@ class HousingEngine:
                 if old_item_id == new_item_id:
                     return True, "Không có thay đổi."
 
-                # 1. Return OLD item to inventory
+                # 1. Return OLD item to inventory (Main DB)
                 if old_item_id:
-                    # Using get_or_create logic
-                    decor, _ = await UserDecor.get_or_create(user=user, item_id=old_item_id)
-                    decor.quantity += 1
-                    await decor.save()
+                    await db_manager.execute(
+                        """INSERT INTO inventory (user_id, item_id, quantity) 
+                           VALUES ($1, $2, 1)
+                           ON CONFLICT(user_id, item_id) 
+                           DO UPDATE SET quantity = inventory.quantity + 1""",
+                        (user_id, old_item_id)
+                    )
 
-                # 2. Take NEW item from inventory
+                # 2. Take NEW item from inventory (Main DB)
                 if new_item_id:
-                    decor = await UserDecor.get_or_none(user=user, item_id=new_item_id)
-                    if not decor or decor.quantity < 1:
-                        return False, "Không đủ vật phẩm trong kho."
+                    # Check stock first
+                    row = await db_manager.fetchrow(
+                        "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
+                        (user_id, new_item_id)
+                    )
+                    # fetchrow might return tuple or None. 
+                    # Row is (quantity,)
+                    if not row or row[0] < 1:
+                         return False, "Không đủ vật phẩm trong kho."
                     
-                    decor.quantity -= 1
-                    if decor.quantity == 0:
-                        await decor.delete() # Clean up
-                    else:
-                        await decor.save()
+                    # Deduct
+                    await db_manager.execute(
+                        "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = $1 AND item_id = $2",
+                        (user_id, new_item_id)
+                    )
 
-                # 3. Update Slot
+                # 3. Update Slot (Tortoise)
                 slot.item_id = new_item_id
                 await slot.save()
 
@@ -120,44 +147,55 @@ class HousingEngine:
 
     @staticmethod
     async def get_active_sets(user_id: int) -> List[Dict]:
-        """Check which Feng Shui sets are active."""
-        current_slots = await HousingEngine.get_slots(user_id)
-        placed_items = set(item for item in current_slots if item)
-        
-        active = []
-        for set_data in FENG_SHUI_SETS.values():
-            required = set(set_data.get("required", []))
-            if required.issubset(placed_items):
-                active.append(set_data)
-        return active
+        """Check which Feng Shui sets are active (Delegated to EffectManager)."""
+        from cogs.aquarium.logic.effect_manager import effect_manager
+        return await effect_manager.get_active_sets(user_id)
 
     @staticmethod
     async def calculate_home_stats(user_id: int) -> Dict:
         """Calculate total value and charm."""
+        from core.item_system import item_system
+        from cogs.aquarium.logic.effect_manager import effect_manager
+        
         current_slots = await HousingEngine.get_slots(user_id)
+        # Note: calling get_active_sets calls EffectManager, which calls get_slots again. 
+        # Double query but acceptable for now (caching in request context would be better).
         active_sets = await HousingEngine.get_active_sets(user_id)
         
         total_charm = 0
         total_value = 0
         
         for item_id in current_slots:
-            if item_id and item_id in DECOR_ITEMS:
-                item = DECOR_ITEMS[item_id]
-                # Parse Charm from desc if needed
-                desc = item.get('desc', '')
-                if "(+" in desc and "Charm)" in desc:
-                    try:
-                        charm_part = desc.split("(+")[1].split(" Charm)")[0]
-                        total_charm += int(charm_part)
-                    except:
-                        pass
+            if item_id:
+                item = item_system.get_item(item_id)
+                if not item: continue
                 
-                total_value += item.get('price_leaf', 0)
-        
+                # Use attributes if available
+                attributes = item.get('attributes', {})
+                charm = attributes.get('charm')
+                
+                if charm is not None:
+                    total_charm += charm
+                else:
+                    # Legacy fallback
+                    desc = item.get('description', '') or item.get('desc', '')
+                    if "(+" in desc and "Charm)" in desc:
+                        try:
+                            charm_part = desc.split("(+")[1].split(" Charm)")[0]
+                            total_charm += int(charm_part)
+                        except:
+                            pass
+                            
+                # Price Value
+                price = item.get('price', {}).get('buy', 0)
+                if price == 0: price = item.get('price_seeds', 0)
+                
+                total_value += price
+
         return {
-            "charm": total_charm,
-            "value": total_value,
-            "sets": active_sets
+            "charm_point": total_charm,
+            "total_value": total_value,
+            "active_sets_count": len(active_sets)
         }
 
     @staticmethod

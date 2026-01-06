@@ -357,6 +357,9 @@ class FishingCog(commands.Cog):
     @tournament_watchdog.before_loop
     async def before_watchdog(self):
         await self.bot.wait_until_ready()
+        # Restore active tournament cache
+        from .tournament import TournamentManager
+        await TournamentManager.get_instance().restore_active_tournaments()
 
     @cleanup_stale_state.before_loop
     async def before_cleanup(self):
