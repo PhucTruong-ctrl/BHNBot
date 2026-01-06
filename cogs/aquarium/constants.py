@@ -13,7 +13,7 @@ try:
     _all_items = item_system.get_all_items()
     TRASH_ITEM_IDS = [k for k, v in _all_items.items() if v.get("type") == "trash"]
     if not TRASH_ITEM_IDS: raise ValueError("Empty trash list")
-except:
+except Exception:
     TRASH_ITEM_IDS = ["rac", "chai_nhua", "lon_nuoc", "giay_vun", "vo_oc", "xuong_ca", "chai_thuy_tinh"]
 
 # Structure: key -> {name, price_seeds, price_leaf, icon, type, description}

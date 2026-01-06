@@ -71,6 +71,8 @@ class VIPSubscription(models.Model):
     expiry_date = fields.DatetimeField()
     custom_footer = fields.TextField(null=True)
     auto_renew = fields.BooleanField(default=False)
+    total_vip_days = fields.IntField(default=0)
+    total_spent = fields.BigIntField(default=0)
 
     class Meta:
         table = "vip_subscriptions"

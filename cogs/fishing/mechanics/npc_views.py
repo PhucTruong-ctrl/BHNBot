@@ -377,7 +377,7 @@ class InteractiveNPCView(discord.ui.View):
         try:
              await increment_stat(self.user_id, "npc_affinity", self.npc_key, -1)
              logger.info(f"[NPC_AFFINITY] User {self.user_id} decreased affinity with {self.npc_key} (-1)")
-        except:
+        except Exception:
             pass
 
     def _roll_outcome(self, pool: List[Dict]) -> Dict:

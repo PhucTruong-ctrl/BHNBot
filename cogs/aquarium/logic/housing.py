@@ -153,13 +153,12 @@ class HousingEngine:
 
     @staticmethod
     async def calculate_home_stats(user_id: int) -> Dict:
-        """Calculate total value and charm."""
-        from core.item_system import item_system
+        """Calculate total value and charm using DECOR_ITEMS constant."""
+        # Note: We rely on DECOR_ITEMS from constants because item_system might be out of sync for decor.
+        from ..constants import DECOR_ITEMS
         from cogs.aquarium.logic.effect_manager import effect_manager
         
         current_slots = await HousingEngine.get_slots(user_id)
-        # Note: calling get_active_sets calls EffectManager, which calls get_slots again. 
-        # Double query but acceptable for now (caching in request context would be better).
         active_sets = await HousingEngine.get_active_sets(user_id)
         
         total_charm = 0
@@ -167,30 +166,22 @@ class HousingEngine:
         
         for item_id in current_slots:
             if item_id:
-                item = item_system.get_item(item_id)
+                item = DECOR_ITEMS.get(item_id)
                 if not item: continue
                 
-                # Use attributes if available
-                attributes = item.get('attributes', {})
-                charm = attributes.get('charm')
-                
-                if charm is not None:
-                    total_charm += charm
-                else:
-                    # Legacy fallback
-                    desc = item.get('description', '') or item.get('desc', '')
-                    if "(+" in desc and "Charm)" in desc:
-                        try:
-                            charm_part = desc.split("(+")[1].split(" Charm)")[0]
-                            total_charm += int(charm_part)
-                        except:
-                            pass
+                # Logic: Parse Charm from description 
+                # Format: "Description (+X Charm)"
+                desc = item.get('desc', '')
+                # Try simple parse first
+                if "(+" in desc and "Charm)" in desc:
+                    try:
+                        charm_part = desc.split("(+")[1].split(" Charm)")[0]
+                        total_charm += int(charm_part)
+                    except Exception:
+                        pass
                             
                 # Price Value
-                price = item.get('price', {}).get('buy', 0)
-                if price == 0: price = item.get('price_seeds', 0)
-                
-                total_value += price
+                total_value += item.get('price_seeds', 0)
 
         return {
             "charm_point": total_charm,

@@ -206,5 +206,5 @@ async def nangcap_action(ctx_or_interaction):
                 await reply(error_msg, ephemeral=True)
             else:
                 await reply(error_msg)
-        except:
+        except Exception:
             pass

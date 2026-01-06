@@ -354,10 +354,7 @@ class FishingCog(commands.Cog):
                 
             if expired_users:
                 logger.debug(f"[CLEANUP] Removed {len(expired_users)} expired cooldown entries")
-                
-            # Run Passive Income Check
-            await self.process_future_tech_income()
-                
+
         except Exception as e:
             logger.error(f"[CLEANUP] Error during state cleanup: {e}")
     
@@ -2220,7 +2217,7 @@ class FishingCog(commands.Cog):
                     await ctx_or_interaction.followup.send("❌ Mạng yếu! Thử lại sau.", ephemeral=True)
                 else:
                     await ctx_or_interaction.reply("❌ Mạng yếu! Thử lại sau.")
-            except:
+            except Exception:
                 pass  # Can't notify, just log
         except Exception as e:
             total_time = time.time() - start_time

@@ -89,13 +89,11 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
         import os
         logger.info(f"[SELL] Loading fish data from JSON file")
         
-        # Try multiple possible paths
-        # Try multiple possible paths
-        # Update: Fixed path to match server environment
+        # Try multiple possible paths (using relative paths for portability)
+        _sell_file_dir = os.path.dirname(os.path.abspath(__file__))
         possible_paths = [
-            "/home/phuctruong/Work/BHNBot/data/fishing_data.json",  # Correct Absolute Path (found via find)
-            "data/fishing_data.json", # Relative to CWD
-            os.path.join(os.path.dirname(__file__), "../../../data/fishing_data.json"), # Relative to file
+            os.path.join(_sell_file_dir, "..", "..", "..", "data", "fishing_data.json"),  # Relative to this file
+            "data/fishing_data.json",  # Relative to CWD
         ]
         
         fish_data = {}

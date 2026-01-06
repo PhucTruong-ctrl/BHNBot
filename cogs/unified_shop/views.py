@@ -342,7 +342,7 @@ class TransactionModal(ui.Modal):
         try:
             qty = int(self.quantity.value)
             if qty <= 0: raise ValueError
-        except:
+        except Exception:
              return await interaction.response.send_message("❌ Số lượng không hợp lệ.", ephemeral=True)
         
         # Check Item Data for Currency Options

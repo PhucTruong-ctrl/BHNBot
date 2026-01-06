@@ -26,7 +26,7 @@ class UnifiedShopCog(commands.Cog):
         if not channel:
             try:
                 channel = await self.bot.fetch_channel(channel_id)
-            except:
+            except Exception:
                 logger.error(f"Cannot fetch shop channel {channel_id}")
                 return False
 

@@ -149,7 +149,7 @@ class GenericActionView(discord.ui.View):
                 await interaction.response.send_message(f"❌ Lỗi: {error}", ephemeral=True)
             else:
                 await interaction.followup.send(f"❌ Lỗi: {error}", ephemeral=True)
-        except:
+        except Exception:
             pass
     
     def _get_item_name(self, key):

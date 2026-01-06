@@ -53,8 +53,10 @@ _legendary_data = load_legendary_fish_data()
 
 FISHING_DATA = _fishing_data.get("fish", [])
 
-# Load VIP Fish Data
-with open('/home/phuctruong/Work/BHNBot/data/fishing_vip_fish.json', 'r', encoding='utf-8') as f:
+# Load VIP Fish Data (using relative path)
+_CONSTANTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_VIP_FISH_PATH = os.path.join(_CONSTANTS_DIR, '..', '..', 'data', 'fishing_vip_fish.json')
+with open(_VIP_FISH_PATH, 'r', encoding='utf-8') as f:
     _vip_fish_data = json.load(f)
 
 VIP_FISH_DATA = _vip_fish_data.get("vip_fish", [])

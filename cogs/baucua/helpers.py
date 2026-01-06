@@ -385,7 +385,7 @@ def parse_quick_bet_args(args: tuple) -> Tuple[bool, int, str, str]:
                 if suffix == 'm': val *= 1000000
                 amount = val
                 continue
-            except:
+            except Exception:
                 pass
         
         # Check if choice

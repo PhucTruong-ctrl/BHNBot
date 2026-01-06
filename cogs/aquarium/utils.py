@@ -27,7 +27,7 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
         if not thread:
             try:
                 thread = await bot.fetch_channel(thread_id)
-            except:
+            except Exception:
                 return False
 
         # Prepare Data
@@ -42,7 +42,7 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
             user = bot.get_user(user_id) or await bot.fetch_user(user_id)
             user_name = user.display_name
             user_avatar = user.display_avatar.url
-        except:
+        except Exception:
             user_name = thread.name.replace('Nhà của ', '')
             user_avatar = None
 
@@ -93,7 +93,7 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
                     await old_msg.edit(view=None)
                 else:
                     await old_msg.delete()
-            except:
+            except Exception:
                 pass
 
         # Send New

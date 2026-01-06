@@ -168,7 +168,7 @@ async def legendary_hall_of_fame_action(cog, ctx_or_interaction, is_slash: bool)
                         "username": user.name,
                         "avatar_url": user.avatar.url if user.avatar else None
                     })
-                except:
+                except Exception:
                     legendary_catches['ca_isekai'].append({
                         "user_id": user_id,
                         "username": f"User {user_id}",

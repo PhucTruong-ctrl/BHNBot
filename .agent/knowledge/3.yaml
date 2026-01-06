@@ -1,0 +1,38 @@
+MEMORY_COMPRESSION_BLOCK:
+  Session_ID: "Fix_Tournament_Aquarium_Session"
+  Date: "2026-01-06"
+  Status: "CRITICAL_FIXES_DEPLOYED"
+  
+  CRITICAL_DECISIONS:
+    1. Unified_Shop:
+       - Implemented in `cogs/unified_shop`.
+       - Features: Dynamic Rod Upgrades, Multi-Currency (Seeds/Leaves), Category Views.
+       - Architecture: `ShopManager` (Singleton), transactions via `ShopController`.
+    2. Tournament_System_Repair:
+       - Core Issue: Lifecycle & Persistence Broken.
+       - Fix 1 (Prize Pool): Rewrote `join_tournament` (was corrupted stub) to correctly deduct fee & atomic update `prize_pool`.
+       - Fix 2 (Auto-End): Replaced SQL string comparison with Python-side Timezone-Aware Datetime check in `check_active_timeouts` (Fixed "Mất tích Announcement").
+       - Fix 3 (Persistence): Added `channel_id` column to DB & `restored_active_tournaments` on Cog Load.
+       - Fix 4 (Crash): Added defensive init for `t_id` in Watchdog loop.
+    3. Aquarium_Stats_Repair:
+       - Issue: Charm = 0 despite placed items.
+       - Root Cause: `HousingEngine` used `item_system` (broken for decor) vs View/Shop using `DECOR_ITEMS` constant.
+       - Fix: Patched `HousingEngine.calculate_home_stats` to use `DECOR_ITEMS` constant + String Parsing for Charm value.
+       - Clarification: "Rạn San Hô" set inactive because user lacked `den_neon` (4/4 requirement confirmed).
+
+  CURRENT_CODE_STATE:
+    - `cogs/fishing/tournament.py`: Robust lifecycle, Self-Healing Cache active, Watchdog logging enabled.
+    - `cogs/aquarium/logic/housing.py`: Uses `DECOR_ITEMS` for stats.
+    - `database_manager.py`: `vip_tournaments` table schema v3.0 (has `channel_id`).
+    - `vip_game_design_analysis.md.resolved`: Updated to v3.0 (Reflects Shop & Tournament Completion).
+
+  PENDING_TASKS:
+    - User Action: Buy `den_neon` to verify full Set Activation.
+    - Next Phase: Phase 4: Social Features (Prestige Badges, Gifting).
+    - Refactor: Consider unifying `item_system` and `DECOR_ITEMS` to strictly `item_system` in future (Technical Debt).
+
+  KNOWN_BUGS_RESOLVED:
+    - Tournament Prize Pool 1000 vs 2000 (Logic missing).
+    - Tournament Auto-End Silent Fail (Timezone mismatch).
+    - Tournament Watchdog Crash (UnboundLocalError).
+    - Aquarium Charm 0 (Source misalign).

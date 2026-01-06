@@ -196,35 +196,31 @@ def attach_discord_handler(bot: discord.Client, channel_id: int = 0, ping_user_i
 
 
 async def get_log_config_from_db(guild_id: int = None) -> Tuple[int, int, str]:
-    """Read log config from server_config.
-    
+    """Read log config from server_config (PostgreSQL).
+
     Args:
         guild_id: Guild ID to get config for (uses first guild if None)
-        
+
     Returns:
         Tuple of (channel_id, ping_user_id, log_level)
     """
     try:
-        import aiosqlite
-        from configs.settings import DB_PATH
-        
-        async with aiosqlite.connect(DB_PATH) as db:
-            if guild_id:
-                async with db.execute(
-                    "SELECT log_discord_channel_id, log_ping_user_id, log_discord_level FROM server_config WHERE guild_id = ?",
-                    (guild_id,)
-                ) as cursor:
-                    row = await cursor.fetchone()
-            else:
-                # Get first configured channel
-                async with db.execute(
-                    "SELECT log_discord_channel_id, log_ping_user_id, log_discord_level FROM server_config WHERE log_discord_channel_id IS NOT NULL LIMIT 1"
-                ) as cursor:
-                    row = await cursor.fetchone()
-            
-            if row:
-                return (row[0] or 0, row[1] or 0, row[2] or "WARNING")
-            return (0, 0, "WARNING")
+        from core.database import db_manager
+
+        if guild_id:
+            row = await db_manager.fetchone(
+                "SELECT log_discord_channel_id, log_ping_user_id, log_discord_level FROM server_config WHERE guild_id = $1",
+                guild_id
+            )
+        else:
+            # Get first configured channel
+            row = await db_manager.fetchone(
+                "SELECT log_discord_channel_id, log_ping_user_id, log_discord_level FROM server_config WHERE log_discord_channel_id IS NOT NULL LIMIT 1"
+            )
+
+        if row:
+            return (row[0] or 0, row[1] or 0, row[2] or "WARNING")
+        return (0, 0, "WARNING")
     except Exception as e:
         print(f"[Logger] Failed to read log config from DB: {e}")
         return (0, 0, "WARNING")

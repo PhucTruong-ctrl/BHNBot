@@ -199,18 +199,22 @@ class GameNoiTu(commands.Cog):
     async def reload_words_dict(self):
         """Reload dictionary from file (after new words added)"""
         try:
-            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
-                self.words_dict = json.load(f)
+            def load_and_process():
+                with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                    words_dict = json.load(f)
+                
+                all_words = set()
+                all_words_list = []
+                for first, seconds in words_dict.items():
+                    for second in seconds:
+                        word = f"{first} {second}"
+                        all_words.add(word)
+                        all_words_list.append(word)
+                
+                return words_dict, all_words, all_words_list
             
-            # Rebuild set and list
-            self.all_words.clear()
-            self.all_words_list.clear()
-            
-            for first, seconds in self.words_dict.items():
-                for second in seconds:
-                    word = f"{first} {second}"
-                    self.all_words.add(word)
-                    self.all_words_list.append(word)
+            loop = asyncio.get_running_loop()
+            self.words_dict, self.all_words, self.all_words_list = await loop.run_in_executor(None, load_and_process)
             
             logger.info(f"Reloaded words dict: {len(self.all_words)} total words")
         except Exception as e:
@@ -1240,6 +1244,80 @@ class GameNoiTu(commands.Cog):
         )
         
         logger.info(f"[RESET_NOITU] User {interaction.user.id} reset game in guild {guild_id}")
+
+    @app_commands.command(name="nthint", description="Gợi ý từ nối (VIP only)")
+    async def nthint(self, interaction: discord.Interaction):
+        """Get a hint for the current word chain game (VIP only)."""
+        from core.services.vip_service import VIPEngine
+        
+        guild_id = interaction.guild_id
+        user_id = interaction.user.id
+        
+        vip_data = await VIPEngine.get_vip_data(user_id)
+        if not vip_data:
+            await interaction.response.send_message(
+                "❌ **Chức năng VIP!**\n"
+                "Dùng `/thuongluu b` để mua gói VIP và nhận gợi ý nối từ.",
+                ephemeral=True
+            )
+            return
+        
+        if guild_id not in self.games:
+            await interaction.response.send_message(
+                "❌ Không có game nào đang chạy trong server này!",
+                ephemeral=True
+            )
+            return
+        
+        game = self.games[guild_id]
+        current_word = game.get('current_word', '')
+        
+        if not current_word:
+            await interaction.response.send_message(
+                "❌ Không tìm thấy từ hiện tại!",
+                ephemeral=True
+            )
+            return
+        
+        parts = current_word.split()
+        if len(parts) < 2:
+            await interaction.response.send_message(
+                "❌ Từ hiện tại không hợp lệ!",
+                ephemeral=True
+            )
+            return
+        
+        last_syllable = parts[-1]
+        
+        valid_words = self.words_dict.get(last_syllable, [])
+        used_words = game.get('used_words', set())
+        
+        available_hints = []
+        for second in valid_words:
+            word = f"{last_syllable} {second}"
+            if word not in used_words:
+                available_hints.append(word)
+        
+        if not available_hints:
+            await interaction.response.send_message(
+                f"😬 Không tìm thấy gợi ý nào cho **{last_syllable}...**\n"
+                "Có vẻ đã hết từ rồi!",
+                ephemeral=True
+            )
+            return
+        
+        hint = random.choice(available_hints[:10])
+        
+        tier_emoji = {1: "🥈", 2: "🥇", 3: "💎"}
+        emoji = tier_emoji.get(vip_data['tier'], "✨")
+        
+        await interaction.response.send_message(
+            f"{emoji} **Gợi ý VIP**: `{hint}`\n"
+            f"*(Còn {len(available_hints)} từ khả dụng)*",
+            ephemeral=True
+        )
+        
+        logger.info(f"[NTHINT] User {user_id} (VIP T{vip_data['tier']}) got hint: {hint}")
 
 async def setup(bot):
     await bot.add_cog(GameNoiTu(bot))

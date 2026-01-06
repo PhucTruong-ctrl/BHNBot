@@ -485,7 +485,7 @@ class GlobalEventManager:
                              try:
                                  old_msg = await channel.fetch_message(old_id)
                                  await old_msg.delete()
-                             except: pass
+                             except Exception: pass
 
                         new_msg = await channel.send(embed=embed, view=view)
                         
@@ -634,7 +634,7 @@ class GlobalEventManager:
                  # Achievement
                  try:
                      await self.bot.achievement_manager.check_unlock(user_id, "fishing", "god_slayer", 1, None)
-                 except: pass
+                 except Exception: pass
                  
                  # Base + MVP Bonus
                  base_txt = await give_reward_items(user_id, base_items_cfg)
@@ -956,7 +956,7 @@ class GlobalEventManager:
                         try:
                             old_msg = await ch.fetch_message(old_msg_id)
                             await old_msg.delete()
-                        except:
+                        except Exception:
                             pass
                     
                     # Send new message

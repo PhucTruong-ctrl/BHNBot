@@ -225,7 +225,7 @@ class AquariumCog(commands.Cog):
             # Try fetch
             try:
                 forum_channel = await self.bot.fetch_channel(forum_id)
-            except:
+            except Exception:
                 return await interaction.followup.send(f"❌ Lỗi Config: Không tìm thấy kênh Làng Chài (ID: {forum_id}).", ephemeral=True)
         
         # Create Embed

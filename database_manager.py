@@ -316,6 +316,12 @@ async def get_all_stats(user_id: int, game_id: str = None) -> Dict[str, int]:
             "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = ?",
             (user_id, game_id),
         )
+    else:
+        result = await db_manager.fetchall(
+            "SELECT stat_key, value FROM user_stats WHERE user_id = ?",
+            (user_id,),
+        )
+    return {row[0]: row[1] for row in result} if result else {}
 
 # ==================== GLOBAL EVENT PERSISTENCE ====================
 
@@ -366,7 +372,7 @@ async def set_global_state(event_key: str, state_data: dict):
 
 async def get_stat_leaderboard(game_id: str, stat_key: str, limit: int = 10) -> List[tuple]:
     """Get top users for a specific stat in a game"""
-    result = await db_manager.execute(
+    result = await db_manager.fetchall(
         """
         SELECT u.user_id, u.username, us.value 
         FROM users u
@@ -377,7 +383,7 @@ async def get_stat_leaderboard(game_id: str, stat_key: str, limit: int = 10) -> 
         """,
         (game_id, stat_key, limit),
     )
-    return result
+    return result if result else []
 
 
 # ----- FISHING PROFILE OPERATIONS -----
@@ -543,16 +549,16 @@ async def get_fish_count(user_id: int, fish_id: str) -> int:
 # Use regular inventory (item_id) and the standard add_item/remove_item functions instead
 
 async def add_item_v2(user_id: int, item_id: str, quantity: int = 1, item_category: str = None):
-    """DEPRECATED: Use add_item() instead"""
-    return await add_item(user_id, item_id, quantity)
+    """DEPRECATED: Use bot.inventory.modify() instead"""
+    raise NotImplementedError("Legacy add_item_v2 is removed. Use bot.inventory.modify()")
 
 async def get_inventory_v2(user_id: int) -> Dict[str, int]:
-    """DEPRECATED: Use get_inventory() instead"""
-    return await get_inventory(user_id)
+    """DEPRECATED: Use bot.inventory.get_all() instead"""
+    raise NotImplementedError("Legacy get_inventory_v2 is removed. Use bot.inventory.get_all()")
 
 async def remove_item_v2(user_id: int, item_id: str, quantity: int = 1) -> bool:
-    """DEPRECATED: Use remove_item() instead"""
-    return await remove_item(user_id, item_id, quantity)
+    """DEPRECATED: Use bot.inventory.modify() instead"""
+    raise NotImplementedError("Legacy remove_item_v2 is removed. Use bot.inventory.modify()")
 
 # ==================== CRITICAL TRANSACTION OPERATIONS ====================
 
@@ -571,47 +577,32 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
     Returns:
         tuple[bool, str]: Success status and message.
     """
-    db = await get_db_connection(DB_PATH)
     try:
-        await db.execute("BEGIN")
-        
-        # Step 1: Check user exists and has enough seeds
-        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id))
-        row = await cursor.fetchone()
-        
-        if not row:
-            await db.rollback()
-            return False, "User không tồn tại!"
-        
-        if row[0] < cost:
-            await db.rollback()
-            return False, f"Không đủ tiền! Cần {cost}, hiện có {row[0]}"
-        
-        # Step 2: Deduct seeds
-        await db.execute(
-            "UPDATE users SET seeds = seeds - ?, last_active = CURRENT_TIMESTAMP WHERE user_id = ?",
-            (cost, user_id)
-        )
-        
-        # Step 3: Add item (Upsert - insert or update if exists)
-        await db.execute("""
-            INSERT INTO inventory (user_id, item_id, item_type, quantity)
-            VALUES (?, ?, 'item', ?)
-            ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + ?
-        """, (user_id, item_id, quantity, quantity))
-        
-        # Commit transaction
-        await db.commit()
-        
+        async with db_manager.transaction() as conn:
+            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            
+            if not row:
+                return False, "User không tồn tại!"
+            
+            if row[0] < cost:
+                return False, f"Không đủ tiền! Cần {cost}, hiện có {row[0]}"
+            
+            await conn.execute(
+                "UPDATE users SET seeds = seeds - ?, last_active = CURRENT_TIMESTAMP WHERE user_id = ?",
+                (cost, user_id)
+            )
+            
+            await conn.execute("""
+                INSERT INTO inventory (user_id, item_id, item_type, quantity)
+                VALUES (?, ?, 'item', ?)
+                ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + ?
+            """, (user_id, item_id, quantity, quantity))
+            
         return True, "Mua thành công!"
         
     except Exception as e:
-        await db.rollback()
         logger.error(f"Transaction error (buy_shop_item): {e}")
         return False, f"Lỗi hệ thống: {str(e)}"
-    
-    finally:
-        await db.close()
 
 
 async def use_consumable_item(user_id: int, item_id: str) -> tuple[bool, str]:
@@ -639,42 +630,29 @@ async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, st
     Returns:
         tuple[bool, str]: Success status and message.
     """
-    db = await get_db_connection(DB_PATH)
     try:
-        await db.execute("BEGIN")
-        
-        # Check balance
-        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id))
-        row = await cursor.fetchone()
-        
-        if not row or row[0] < upgrade_cost:
-            await db.rollback()
-            return False, f"Không đủ tiền để nâng cấp! Cần {upgrade_cost}"
-        
-        # Deduct seeds
-        await db.execute(
-            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-            (upgrade_cost, user_id)
-        )
-        
-        # Upgrade rod (level +1, durability to 30)
-        await db.execute("""
-            UPDATE fishing_profiles 
-            SET rod_level = rod_level + 1, rod_durability = 30
-            WHERE user_id = ?
-        """, (user_id))
-        
-        await db.commit()
-        
+        async with db_manager.transaction() as conn:
+            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            
+            if not row or row[0] < upgrade_cost:
+                return False, f"Không đủ tiền để nâng cấp! Cần {upgrade_cost}"
+            
+            await conn.execute(
+                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                (upgrade_cost, user_id)
+            )
+            
+            await conn.execute("""
+                UPDATE fishing_profiles 
+                SET rod_level = rod_level + 1, rod_durability = 30
+                WHERE user_id = ?
+            """, (user_id,))
+            
         return True, "Nâng cấp cần câu thành công!"
         
     except Exception as e:
-        await db.rollback()
         logger.error(f"Transaction error (upgrade_fishing_rod): {e}")
         return False, f"Lỗi nâng cấp: {str(e)}"
-    
-    finally:
-        await db.close()
 
 
 # ==================== FISHING PROFILE AUTO-CREATION ====================
@@ -693,16 +671,15 @@ async def create_fishing_profile(user_id: int) -> bool:
     try:
         existing = await db_manager.fetchone(
             "SELECT user_id FROM fishing_profiles WHERE user_id = ?",
-            (user_id)
+            (user_id,)
         )
         
         if existing:
             return False  # Already exists
         
-        # Create default profile
         await db_manager.modify(
             "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability, exp) VALUES (?, 1, 30, 0)",
-            (user_id)
+            (user_id,)
         )
         
         return True
@@ -751,58 +728,30 @@ async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]
     Returns:
         tuple[bool, str]: Success status and message.
     """
-    db = await get_db_connection(DB_PATH)
     try:
-        await db.execute("BEGIN")
-        
-        # Check balance
-        cursor = await db.execute("SELECT seeds FROM users WHERE user_id = ?", (user_id))
-        row = await cursor.fetchone()
-        
-        if not row or row[0] < repair_cost:
-            await db.rollback()
-            return False, f"Không đủ tiền để sửa cần! Cần {repair_cost}"
-        
-        # Deduct seeds
-        await db.execute(
-            "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-            (repair_cost, user_id)
-        )
-        
-        # Repair rod
-        await db.execute(
-            "UPDATE fishing_profiles SET rod_durability = 30 WHERE user_id = ?",
-            (user_id)
-        )
-        
-        # Track stat
-        existing_stat = await db_manager.fetchone(
-            "SELECT value FROM user_stats WHERE user_id = ? AND stat_key = ?",
-            (user_id, "fishing_rods_repaired")
-        )
-        
-        if existing_stat:
-            await db.execute(
-                "UPDATE user_stats SET value = value + 1 WHERE user_id = ? AND stat_key = ?",
-                (user_id, "fishing_rods_repaired")
+        async with db_manager.transaction() as conn:
+            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            
+            if not row or row[0] < repair_cost:
+                return False, f"Không đủ tiền để sửa cần! Cần {repair_cost}"
+            
+            await conn.execute(
+                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                (repair_cost, user_id)
             )
-        else:
-            await db.execute(
-                "INSERT INTO user_stats (user_id, stat_key, value) VALUES (?, ?, 1)",
-                (user_id, "fishing_rods_repaired")
+            
+            await conn.execute(
+                "UPDATE fishing_profiles SET rod_durability = 30 WHERE user_id = ?",
+                (user_id,)
             )
-        
-        await db.commit()
-        
+            
+            await increment_stat(user_id, "fishing", "fishing_rods_repaired", 1)
+            
         return True, "Sửa cần câu thành công!"
         
     except Exception as e:
-        await db.rollback()
         logger.error(f"Transaction error (repair_fishing_rod): {e}")
         return False, f"Lỗi sửa cần: {str(e)}"
-    
-    finally:
-        await db.close()
 async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: int) -> tuple[bool, str]:
     """Atomically sells multiple items.
 
@@ -816,50 +765,36 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
     Returns:
         tuple[bool, str]: Success status and message.
     """
-    db = await get_db_connection(DB_PATH)
     try:
-        await db.execute("BEGIN")
-        
-        # 1. Verify and deduct items
-        for item_id, quantity in items.items():
-            # Check if user has enough
-            cursor = await db.execute(
-                "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
-                (user_id, item_id)
+        async with db_manager.transaction() as conn:
+            for item_id, quantity in items.items():
+                row = await conn.fetchrow(
+                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                    (user_id, item_id)
+                )
+                
+                if not row or row[0] < quantity:
+                    raise ValueError(f"Không đủ số lượng cho {item_id}! Cần {quantity}, có {row[0] if row else 0}")
+                
+                await conn.execute(
+                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                    (quantity, user_id, item_id)
+                )
+            
+            await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id,))
+            
+            await conn.execute(
+                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                (total_money, user_id)
             )
-            row = await cursor.fetchone()
             
-            if not row or row[0] < quantity:
-                await db.rollback()
-                return False, f"Không đủ số lượng cho {item_id}! Cần {quantity}, có {row[0] if row else 0}"
-            
-            # Deduct item
-            await db.execute(
-                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
-                (quantity, user_id, item_id)
-            )
-            
-        # 2. Cleanup zero quantity items
-        await db.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id))
-        
-        # 3. Add money
-        await db.execute(
-            "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
-            (total_money, user_id)
-        )
-        
-        await db.commit()
-        
-        # Clear caches
-        
         return True, "Giao dịch thành công!"
         
+    except ValueError as ve:
+        return False, str(ve)
     except Exception as e:
-        await db.rollback()
         logger.error(f"Transaction error (sell_items_atomic): {e}")
         return False, f"Lỗi giao dịch: {str(e)}"
-    finally:
-        await db.close()
 
 
 # ==================== BUFF OPERATIONS ====================
@@ -1024,21 +959,6 @@ async def ensure_premium_consumable_table():
     except Exception as e:
         logger.error(f"[MIGRATION] Error creating premium_consumable_usage table: {e}")
 
-async def ensure_premium_consumable_table():
-    """Ensures the premium_consumable_usage table exists (Phase 2.1)."""
-    try:
-        await db_manager.modify("""
-            CREATE TABLE IF NOT EXISTS premium_consumable_usage (
-                user_id BIGINT,
-                consumable_key TEXT,
-                usage_count INTEGER DEFAULT 0,
-                last_reset_date TEXT,
-                PRIMARY KEY (user_id, consumable_key)
-            )
-        """)
-    except Exception as e:
-        logger.error(f"Error ensuring premium table: {e}")
-
 async def ensure_phase2_2_tables():
     """Ensures tables for Phase 2.2 (Cashback & Auto-Tasks) exist."""
     try:
@@ -1081,12 +1001,12 @@ async def ensure_phase3_tables():
             await db_manager.modify("ALTER TABLE user_aquarium ADD COLUMN theme_url TEXT DEFAULT NULL")
             logger.info("✓ Added theme_url column to user_aquarium")
         except Exception as e:
-            if "duplicate column" in str(e).lower():
-                pass # Already exists
+            # Handle both PostgreSQL and SQLite duplicate column errors
+            error_msg = str(e).lower()
+            if "duplicate column" in error_msg or "already exists" in error_msg or "column.*already exists" in error_msg:
+                logger.debug("theme_url column already exists (idempotent)")
             else:
-                # Might fail if table doesn't exist? But HousingEngine initializes it.
-                # Let's log but ignore column exists error
-                pass
+                logger.error(f"Error adding theme_url column: {e}")
 
         logger.info("✓ Phase 3 tables/columns ensured")
     except Exception as e:
@@ -1117,7 +1037,7 @@ async def ensure_phase3_1_tables():
              # Fallback for old Postgres/SQLite
              try:
                  await db_manager.modify("ALTER TABLE vip_tournaments ADD COLUMN channel_id BIGINT")
-             except:
+             except Exception:
                  pass
         
         # Table 2: Entries

@@ -98,24 +98,38 @@ class TournamentManager:
     async def join_tournament(self, tournament_id: int, user_id: int) -> Tuple[bool, str]:
         """User joins a pending tournament."""
         try:
-            txn = await db_manager.fetchrow("SELECT status, entry_fee FROM vip_tournaments WHERE id = ?", (tournament_id,))
-            if not txn or txn['status'] != 'pending':
-                return False, "Giải đấu không còn nhận đăng ký."
-            
-            # Use transaction
+            # 1. Fetch Entry Fee & Status
+            tourney = await db_manager.fetchrow("SELECT status, entry_fee FROM vip_tournaments WHERE id = ?", (tournament_id,))
+            if not tourney or tourney['status'] != 'pending':
+                return False, "Giải đấu không tồn tại hoặc đã bị khóa."
+
+            entry_fee = tourney['entry_fee']
+
             async with db_manager.transaction() as conn:
-                 # Check balance... (omitted for brevity, assume simple join for now or handle fee later)
-                 # Actually join just adds entry if fee handling is done or free
-                 # Check if already joined?
+                 # 2. Check Exists
                  check = await conn.fetchrow("SELECT 1 FROM tournament_entries WHERE tournament_id = ? AND user_id = ?", (tournament_id, user_id))
                  if check:
                      return False, "Bạn đã tham gia giải này rồi."
 
+                 # 3. Check Balance
+                 bal = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+                 if not bal or bal['seeds'] < entry_fee:
+                     return False, f"Không đủ Hạt (Cần {entry_fee:,} Hạt)."
+
+                 # 4. Deduct Fee
+                 await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (entry_fee, user_id))
+                 await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, 'tournament_join', 'fishing', CURRENT_TIMESTAMP)", (user_id, -entry_fee))
+
+                 # 5. Add Entry
                  await conn.execute("INSERT INTO tournament_entries (tournament_id, user_id) VALUES (?, ?)", (tournament_id, user_id))
-            
+
+                 # 6. Update Prize Pool
+                 await conn.execute("UPDATE vip_tournaments SET prize_pool = prize_pool + ? WHERE id = ?", (entry_fee, tournament_id))
+
+            # 7. Update Cache
             self.active_participants[user_id] = tournament_id
             return True, "Tham gia thành công!"
-            
+
         except Exception as e:
             logger.error(f"[TOURNAMENT] Join error: {e}")
             return False, "Lỗi hệ thống."
@@ -161,26 +175,6 @@ class TournamentManager:
             logger.info(f"[TOURNAMENT] Updated score for {user_id}: +{points}")
         except Exception as e:
             logger.error(f"[TOURNAMENT] Score update failed: {e}")
-            
-            async with db_manager.transaction() as conn:
-                # Deduct Fee
-                row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
-                if not row or row['seeds'] < entry_fee:
-                    return False, f"Không đủ Hạt (Cần {entry_fee:,})."
-                    
-                await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (entry_fee, user_id))
-                await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, 'tournament_join', 'fishing', CURRENT_TIMESTAMP)", (user_id, -entry_fee))
-                
-                # Add Entry
-                await conn.execute("INSERT INTO tournament_entries (tournament_id, user_id) VALUES (?, ?)", (tournament_id, user_id))
-                
-                # Update Prize Pool
-                await conn.execute("UPDATE vip_tournaments SET prize_pool = prize_pool + ? WHERE id = ?", (entry_fee, tournament_id))
-                
-            return True, "Tham gia thành công!"
-        except Exception as e:
-            logger.error(f"[TOURNAMENT] Join error: {e}")
-            return False, "Lỗi hệ thống."
 
     async def cancel_tournament(self, tournament_id: int, reason: str = "Host cancelled"):
         """Refunds everyone and marks cancelled."""
@@ -356,18 +350,46 @@ class TournamentManager:
     async def check_active_timeouts(self):
         """Checks for active tournaments that should have ended."""
         try:
-            now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            # Check Active Games
+            # Fetch ALL active to avoid SQL string comparison issues with timezones
+            active = await db_manager.fetchall("SELECT id, end_time FROM vip_tournaments WHERE status = 'active'")
+            if not active:
+                return
+
+            from datetime import datetime, timezone
+            from dateutil import parser
             
-            # Find expired tournaments
-            rows = await db_manager.fetchall(
-                "SELECT id FROM vip_tournaments WHERE status = 'active' AND end_time <= ?",
-                (now_str,)
-            )
+            now = datetime.now(timezone.utc)
             
-            for (t_id,) in rows:
-                logger.info(f"[TOURNAMENT] Auto-ending expired tournament {t_id}")
-                await self.distribute_prizes(t_id)
-                
+            for row in active:
+                t_id = "Unknown"
+                try:
+                    t_id = row['id']
+                    end_str = row['end_time']
+                    
+                    # Robust Parsing
+                    try:
+                        end_dt = parser.parse(end_str)
+                    except Exception:
+                        # If parsing fails, skip or force end? Let's skip and log.
+                        logger.error(f"[TOURNAMENT] Invalid time format for ID {t_id}: {end_str}")
+                        continue
+                        
+                    # Normalize to UTC
+                    if end_dt.tzinfo is None:
+                        # Assume UTC if naive, or Local?
+                        # Best to assume UTC if generated by us.
+                        end_dt = end_dt.replace(tzinfo=timezone.utc)
+                    else:
+                        end_dt = end_dt.astimezone(timezone.utc)
+                        
+                    if now >= end_dt:
+                        logger.info(f"[TOURNAMENT] Auto-ending expired tournament {t_id}")
+                        await self.distribute_prizes(t_id)
+                        
+                except Exception as e:
+                    logger.error(f"[TOURNAMENT] Error processing {t_id}: {e}")
+
         except Exception as e:
             logger.error(f"[TOURNAMENT] Active timeout check error: {e}")
 

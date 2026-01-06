@@ -132,7 +132,7 @@ class VIPCommandsCog(commands.Cog):
                     try:
                         user = await self.bot.fetch_user(user_id)
                         username = user.display_name
-                    except:
+                    except Exception:
                         username = f"User#{user_id}"
                     
                     lines.append(
@@ -152,7 +152,7 @@ class VIPCommandsCog(commands.Cog):
             logger.error(f"[VIP_LEADERBOARD] Error: {e}", exc_info=True)
             try:
                 await interaction.followup.send(f"❌ Lỗi khi tải bảng xếp hạng: {str(e)}", ephemeral=True)
-            except:
+            except Exception:
                 logger.error(f"[VIP_LEADERBOARD] Failed to send error message")
     
     async def _vip_status(self, interaction: discord.Interaction):
@@ -187,7 +187,7 @@ class VIPCommandsCog(commands.Cog):
             
             row = await db_manager.fetchrow(
                 "SELECT expiry_date, total_vip_days, total_spent "
-                "FROM vip_subscriptions WHERE user_id = ?",
+                "FROM vip_subscriptions WHERE user_id = $1",
                 (user_id,)
             )
             
@@ -262,7 +262,7 @@ class VIPCommandsCog(commands.Cog):
                     f"❌ Lỗi khi kiểm tra VIP status: {str(e)}",
                     ephemeral=True
                 )
-            except:
+            except Exception:
                 logger.error(f"[VIP_STATUS] Failed to send error message")
 
 
@@ -300,58 +300,68 @@ class VIPPurchaseView(discord.ui.View):
         await interaction.response.defer()
         
         user_id = interaction.user.id
-        balance = await get_user_balance(user_id)
-        
-        if balance < cost:
-            await interaction.followup.send(
-                f"❌ Không đủ Hạt!\nCần: {cost:,} | Có: {balance:,}",
-                ephemeral=True
-            )
-            return
         
         try:
             async with db_manager.transaction() as conn:
+                # Check balance INSIDE transaction to prevent race condition
+                balance_row = await conn.fetchrow(
+                    "SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE",
+                    user_id
+                )
+                balance = balance_row[0] if balance_row else 0
+                
+                if balance < cost:
+                    await interaction.followup.send(
+                        f"❌ Không đủ Hạt!\nCần: {cost:,} | Có: {balance:,}",
+                        ephemeral=True
+                    )
+                    return
+                
                 await conn.execute(
-                    "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
-                    (cost, user_id)
+                    "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
+                    cost, user_id
                 )
                 
                 await conn.execute(
-                    "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES (?, ?, ?, ?)",
-                    (user_id, -cost, f'vip_purchase_tier_{tier}', 'vip')
+                    "INSERT INTO transaction_logs (user_id, amount, reason, category) VALUES ($1, $2, $3, $4)",
+                    user_id, -cost, f'vip_purchase_tier_{tier}', 'vip'
                 )
                 
                 existing = await conn.fetchrow(
-                    "SELECT expiry_date, total_vip_days, total_spent FROM vip_subscriptions WHERE user_id = ?",
-                    (user_id,)
+                    "SELECT expiry_date, total_vip_days, total_spent, tier_level FROM vip_subscriptions WHERE user_id = $1",
+                    user_id
                 )
                 
                 now = datetime.now(timezone.utc)
                 expiry = now + timedelta(days=30)
                 
                 if existing:
-                    # PostgreSQL returns datetime object directly
                     old_expiry = existing[0]
-                    if old_expiry > now:
+                    old_tier = existing[3] or 0
+                    
+                    if old_expiry and old_expiry > now:
                         expiry = old_expiry + timedelta(days=30)
                     
-                    total_days = existing[1] + 30
-                    total_spent = existing[2] + cost
+                    total_days = (existing[1] or 0) + 30
+                    total_spent = (existing[2] or 0) + cost
+                    
+                    # Only upgrade tier, never downgrade
+                    new_tier = max(tier, old_tier)
                     
                     await conn.execute(
-                        "UPDATE vip_subscriptions SET tier_level = ?, expiry_date = ?, "
-                        "total_vip_days = ?, total_spent = ? WHERE user_id = ?",
-                        (tier, expiry.isoformat(), total_days, total_spent, user_id)
+                        "UPDATE vip_subscriptions SET tier_level = $1, expiry_date = $2, "
+                        "total_vip_days = $3, total_spent = $4 WHERE user_id = $5",
+                        new_tier, expiry, total_days, total_spent, user_id
                     )
                 else:
                     await conn.execute(
                         "INSERT INTO vip_subscriptions "
                         "(user_id, tier_level, start_date, expiry_date, total_vip_days, total_spent) "
-                        "VALUES (?, ?, ?, ?, ?, ?)",
-                        (user_id, tier, now.isoformat(), expiry.isoformat(), 30, cost)
+                        "VALUES ($1, $2, $3, $4, $5, $6)",
+                        user_id, tier, now, expiry, 30, cost
                     )
             
-            VIPEngine._vip_cache.pop(user_id, None)
+            VIPEngine.clear_cache(user_id)
             
             tier_names = {1: "Bạc 🥈", 2: "Vàng 🥇", 3: "Kim Cương 💎"}
             
@@ -370,7 +380,7 @@ class VIPPurchaseView(discord.ui.View):
             self.stop()
             
         except Exception as e:
-            logger.error(f"[VIP] Purchase failed: {e}")
+            logger.error(f"[VIP] Purchase failed: {e}", exc_info=True)
             await interaction.followup.send("❌ Giao dịch thất bại!", ephemeral=True)
 
 

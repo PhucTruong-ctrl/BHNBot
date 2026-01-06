@@ -37,7 +37,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                     await interaction.followup.send(f"❌ Có lỗi xảy ra: {error.original}", ephemeral=True)
                 else:
                     await interaction.response.send_message(f"❌ Có lỗi xảy ra: {error.original}", ephemeral=True)
-            except:
+            except Exception:
                 pass
         else:
             logger.error(f"Unhandled command error: {error}", exc_info=error)
@@ -46,7 +46,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                     await interaction.followup.send("❌ Có lỗi xảy ra!", ephemeral=True)
                 else:
                     await interaction.response.send_message("❌ Có lỗi xảy ra!", ephemeral=True)
-            except:
+            except Exception:
                 pass
 
     def cog_unload(self):
@@ -550,7 +550,7 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                             import re
                             found_ids = re.findall(r"<@!?(\d+)>", desc)
                             current_winners = [int(uid) for uid in found_ids]
-                    except:
+                    except Exception:
                         pass
             
             # Filter

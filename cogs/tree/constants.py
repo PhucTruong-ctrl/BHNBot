@@ -94,3 +94,23 @@ TREE_UPDATE_DEBOUNCE_SECONDS = 5
 
 # Progress bar length in characters
 PROGRESS_BAR_LENGTH = 14
+
+# ==================== PRESTIGE BADGES ====================
+
+# Prestige tiers based on total lifetime contribution XP
+PRESTIGE_TIERS = {
+    1: {"name": "🌱 Người Trồng Cây", "min_exp": 1000, "color": 0x95C77D},
+    2: {"name": "🌿 Người Làm Vườn", "min_exp": 5000, "color": 0x6AB04C},
+    3: {"name": "🌳 Người Bảo Vệ Rừng", "min_exp": 25000, "color": 0x4A7C59},
+    4: {"name": "🌸 Thần Nông", "min_exp": 100000, "color": 0xF8B400},
+    5: {"name": "🍎 Tiên Nhân", "min_exp": 500000, "color": 0xFF6B6B}
+}
+
+# Badge emoji for display
+PRESTIGE_BADGES = {
+    1: "🌱",
+    2: "🌿",
+    3: "🌳",
+    4: "🌸",
+    5: "🍎"
+}

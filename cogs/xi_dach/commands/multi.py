@@ -779,7 +779,7 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
             # Delete old message and send new one (to update image)
             try:
                 await dealer_msg.delete()
-            except:
+            except Exception:
                 pass
             dealer_msg = await _safe_send(channel, embed=embed, file=file)
         except Exception as e:
@@ -827,7 +827,7 @@ async def _run_dealer(cog: "XiDachCog", channel, table: Table) -> None:
     if dealer_msg:
         try:
              await dealer_msg.delete()
-        except:
+        except Exception:
              pass
 
     # Generate fresh image for final state
