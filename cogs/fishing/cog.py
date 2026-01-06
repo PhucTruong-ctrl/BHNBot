@@ -228,10 +228,16 @@ class FishingCog(commands.Cog):
         
         return fish_name
     
-    async def cog_unload(self):
-        """Cleanup when cog is unloaded."""
-        # self.meteor_shower_event.cancel()
-        self.global_event_manager.unload()
+    async def cog_load(self):
+        """Called when cog is loaded. Initialize async tasks."""
+        # Restore active tournament state from DB
+        try:
+            manager = TournamentManager.get_instance()
+            manager.set_bot(self.bot)
+            await manager.restore_active_tournaments()
+        except Exception as e:
+            logger.error(f"[FISHING] Failed to restore tournaments: {e}")
+
     async def cog_unload(self):
         """Cleanup when cog is unloaded."""
         # self.meteor_shower_event.cancel()
@@ -244,6 +250,7 @@ class FishingCog(commands.Cog):
         """Checks for tournament timeouts/auto-starts."""
         try:
              await TournamentManager.get_instance().check_registration_timeouts()
+             await TournamentManager.get_instance().check_active_timeouts()
         except Exception as e:
              logger.error(f"[TOURNAMENT] Watchdog error: {e}")
 

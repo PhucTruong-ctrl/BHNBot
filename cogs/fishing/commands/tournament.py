@@ -29,7 +29,7 @@ async def tournament_create_action(interaction: discord.Interaction, entry_fee: 
     await interaction.response.defer(ephemeral=False)
     
     manager = TournamentManager.get_instance()
-    t_id = await manager.create_tournament(user.id, entry_fee)
+    t_id = await manager.create_tournament(user.id, entry_fee, interaction.channel.id)
     
     if t_id is None:
         await interaction.followup.send("❌ Tạo giải thất bại! (Có thể bạn đã tham gia giải khác hoặc gặp lỗi hệ thống)")
@@ -72,11 +72,10 @@ async def tournament_rank_action(interaction: discord.Interaction):
     manager = TournamentManager.get_instance()
     
     # Check if user is in a tournament
-    if user.id not in manager.active_participants:
+    tournament_id = await manager.get_user_tournament(user.id)
+    if not tournament_id:
         await interaction.response.send_message("❌ Bạn không tham gia giải đấu nào đang diễn ra.", ephemeral=True)
         return
-        
-    tournament_id = manager.active_participants[user.id]
     
     # Fetch Leaderboard
     from core.database import db_manager
@@ -105,10 +104,20 @@ async def tournament_rank_action(interaction: discord.Interaction):
     embed.add_field(name="💰 Tổng Giải Thưởng", value=f"{tourney['prize_pool']:,} Hạt", inline=True)
     
     if tourney['end_time']:
-         # Convert ISO string/native to dynamic timestamp
-         # TODO: Handle string parsing properly if sqlite returns string
-         # BUT better: We stored standard string in manager. Or just display "Dang dien ra"
-         # Let's simple for now.
-         embed.set_footer(text=f"Kết thúc: {tourney['end_time']} (UTC)")
+         try:
+             from datetime import datetime, timezone
+             # Handle both string (SQLite) and datetime (Postgres)
+             end_time = tourney['end_time']
+             if isinstance(end_time, str):
+                 end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+             
+             # Force UTC awareness if naive
+             if end_time.tzinfo is None:
+                 end_time = end_time.replace(tzinfo=timezone.utc)
+             
+             ts = int(end_time.timestamp())
+             embed.add_field(name="⏳ Thời Gian", value=f"<t:{ts}:R> (<t:{ts}:t>)", inline=True)
+         except Exception as e:
+             embed.set_footer(text=f"Kết thúc: {tourney['end_time']} (UTC)")
          
     await interaction.response.send_message(embed=embed)

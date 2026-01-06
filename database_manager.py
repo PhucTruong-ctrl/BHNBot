@@ -1100,6 +1100,7 @@ async def ensure_phase3_1_tables():
             CREATE TABLE IF NOT EXISTS vip_tournaments (
                 id SERIAL PRIMARY KEY,
                 host_id BIGINT NOT NULL,
+                channel_id BIGINT,
                 start_time TEXT,
                 end_time TEXT,
                 status TEXT DEFAULT 'pending', -- pending, active, ended, cancelled
@@ -1108,6 +1109,16 @@ async def ensure_phase3_1_tables():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Migration: Add channel_id if missing
+        try:
+             await db_manager.modify("ALTER TABLE vip_tournaments ADD COLUMN IF NOT EXISTS channel_id BIGINT")
+        except Exception:
+             # Fallback for old Postgres/SQLite
+             try:
+                 await db_manager.modify("ALTER TABLE vip_tournaments ADD COLUMN channel_id BIGINT")
+             except:
+                 pass
         
         # Table 2: Entries
         await db_manager.modify("""

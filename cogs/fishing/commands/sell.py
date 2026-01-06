@@ -278,6 +278,14 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
         # STEP 5: Transaction auto-commits here
         logger.info(f"[SELL] [SUCCESS] Transaction committed for user {user_id}")
         
+        # STEP 5.5: UPDATE TOURNAMENT SCORE
+        try:
+            from ..tournament import TournamentManager
+            # Update score with total value (Base + Bonus)
+            await TournamentManager.get_instance().update_score(user_id, final_total_value)
+        except Exception as e:
+            logger.error(f"[SELL] Tournament update failed: {e}")
+        
     except ValueError as ve:
         # User-friendly error (insufficient items)
         logger.warning(f"[SELL] [ROLLBACK] {ve}")
