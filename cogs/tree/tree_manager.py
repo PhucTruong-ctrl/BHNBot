@@ -442,8 +442,9 @@ class TreeManager:
                         logger.warning(f"[TREE] Could not check/edit last message: {e}")
 
                 
-                # Create embed
-                embed = await create_tree_embed(tree_data)
+                # Create embed (use bot user for VIP styling since no specific user context)
+                bot_user = self.bot.user
+                embed = await create_tree_embed(bot_user, tree_data)
                 
                 # Add buff info if active
                 if await HarvestBuff.is_active(guild_id):

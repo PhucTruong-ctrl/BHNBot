@@ -346,18 +346,21 @@ class ConfigCog(commands.Cog):
             if kenh_noitu:
                 game_cog = self.bot.get_cog("GameNoiTu")
                 if game_cog:
-                    # Stop old game if channel changed
                     if old_noitu and old_noitu != kenh_noitu.id:
                         if guild_id in game_cog.games:
                             del game_cog.games[guild_id]
-                            # Also clean up lock
                             if guild_id in game_cog.game_locks:
                                  del game_cog.game_locks[guild_id]
                             print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {old_noitu}")
                     
-                    # Start new game
                     await game_cog.start_new_round(guild_id, kenh_noitu)
                     print(f"GAME_START [Guild {guild_id}] Started new game at channel {kenh_noitu.id}")
+            
+            if kenh_cay:
+                tree_cog = self.bot.get_cog("TreeCog")
+                if tree_cog:
+                    await tree_cog.tree_manager.update_tree_message(guild_id, kenh_cay.id)
+                    print(f"TREE_SETUP [Guild {guild_id}] Created tree message in channel {kenh_cay.id}")
 
         except Exception as e:
             import traceback
