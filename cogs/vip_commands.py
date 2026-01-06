@@ -2,7 +2,7 @@
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -17,6 +17,11 @@ class VIPCommandsCog(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
+        self.vip_expiry_reminder.start()
+        logger.info("[VIP] Expiry reminder task started")
+    
+    async def cog_unload(self):
+        self.vip_expiry_reminder.cancel()
         
     # ==================== /thuongluu COMMAND ====================
     
@@ -52,11 +57,11 @@ class VIPCommandsCog(commands.Cog):
         embed.add_field(
             name="🥈 BẠC - 50,000 Hạt/30 ngày",
             value=(
-                "🎨 **Giao Diện**: Màu embed bạc, Prefix 🥈\n"
+                "🎨 **Giao Diện**: Màu embed bạc, Tiền tố 🥈\n"
                 "🎣 **Câu Cá**: 3 cá VIP\n"
-                "🎲 **Minigames**: Quick Bet\n"
+                "🎲 **Trò Chơi**: Cược nhanh\n"
                 "🌳 **Cây**: +10% XP\n"
-                "🐠 **Aquarium**: +1 ô decor"
+                "🐠 **Hồ Cá**: +1 ô trang trí"
             ),
             inline=False
         )
@@ -64,11 +69,11 @@ class VIPCommandsCog(commands.Cog):
         embed.add_field(
             name="🥇 VÀNG - 150,000 Hạt/30 ngày",
             value=(
-                "✅ **TẤT CẢ PERKS BẠC +**\n\n"
-                "🎣 **Câu Cá**: +5 cá VIP (8 total) + Chấm Long Dịch\n"
-                "🎲 **Minigames**: Cashback 3%\n"
-                "🌳 **Cây**: Magic Fruit drop\n"
-                "🐠 **Aquarium**: +2 ô decor, GIF bg"
+                "✅ **TẤT CẢ QUYỀN LỢI BẠC +**\n\n"
+                "🎣 **Câu Cá**: +5 cá VIP (8 tổng) + Chấm Long Dịch\n"
+                "🎲 **Trò Chơi**: Hoàn tiền 3%\n"
+                "🌳 **Cây**: Trái phép đặc biệt\n"
+                "🐠 **Hồ Cá**: +2 ô trang trí, Nền GIF"
             ),
             inline=False
         )
@@ -76,11 +81,11 @@ class VIPCommandsCog(commands.Cog):
         embed.add_field(
             name="💎 KIM CƯƠNG - 500,000 Hạt/30 ngày",
             value=(
-                "✅ **TẤT CẢ PERKS VÀNG +**\n\n"
-                "🎣 **Câu Cá**: +7 cá VIP (15 total) + Lưới Thần Thánh + Quick Sell\n"
-                "🎲 **Minigames**: Cashback 5%\n"
-                "🌳 **Cây**: Auto-Water\n"
-                "🐠 **Aquarium**: +3 ô decor, Auto-Visit"
+                "✅ **TẤT CẢ QUYỀN LỢI VÀNG +**\n\n"
+                "🎣 **Câu Cá**: +7 cá VIP (15 tổng) + Lưới Thần Thánh + Bán nhanh\n"
+                "🎲 **Trò Chơi**: Hoàn tiền 5%\n"
+                "🌳 **Cây**: Tự động tưới\n"
+                "🐠 **Hồ Cá**: +3 ô trang trí, Tự động thăm"
             ),
             inline=False
         )
@@ -116,7 +121,7 @@ class VIPCommandsCog(commands.Cog):
             
             embed = discord.Embed(
                 title="🏆 BẢNG XẾP HẠNG VIP",
-                description=f"Top {len(rows)} VIP users",
+                description=f"Top {len(rows)} thành viên VIP",
                 color=discord.Color.blue()
             )
             
@@ -137,7 +142,7 @@ class VIPCommandsCog(commands.Cog):
                     
                     lines.append(
                         f"{idx}. **{username}**\n"
-                        f"   └ {total_days} ngày VIP | {total_spent:,} Hạt spent"
+                        f"   └ {total_days} ngày VIP | {total_spent:,} Hạt đã chi"
                     )
                 
                 embed.add_field(
@@ -172,10 +177,10 @@ class VIPCommandsCog(commands.Cog):
                     description=(
                         "Dùng `/thuongluu b` để mua gói VIP!\n\n"
                         "**Lợi ích VIP:**\n"
-                        "• Custom màu embed\n"
+                        "• Màu embed riêng\n"
                         "• Cá VIP độc quyền\n"
-                        "• Buff consumables\n"
-                        "• Cashback minigames"
+                        "• Vật phẩm đặc biệt\n"
+                        "• Hoàn tiền trò chơi"
                     ),
                     color=discord.Color.red()
                 )
@@ -208,7 +213,7 @@ class VIPCommandsCog(commands.Cog):
                 embed.add_field(
                     name="📊 Trạng Thái",
                     value=(
-                        f"**Tier**: {config['prefix']}\n"
+                        f"**Hạng**: {config['prefix']}\n"
                         f"**Hết hạn**: <t:{expiry_timestamp}:R> ({days_left} ngày)\n"
                         f"**Tổng ngày VIP**: {total_days} ngày\n"
                         f"**Tổng chi tiêu**: {total_spent:,} Hạt"
@@ -218,14 +223,14 @@ class VIPCommandsCog(commands.Cog):
             
             perks = []
             if tier >= 1:
-                perks.append("✅ Custom embed màu " + config['prefix'])
+                perks.append("✅ Màu embed riêng " + config['prefix'])
                 perks.append(f"✅ {3 if tier == 1 else 8 if tier == 2 else 15} cá VIP")
             if tier >= 2:
-                perks.append("✅ Chấm Long Dịch consumable")
-                perks.append("✅ Cashback 3% minigames")
+                perks.append("✅ Chấm Long Dịch (vật phẩm)")
+                perks.append("✅ Hoàn tiền 3% trò chơi")
             if tier >= 3:
-                perks.append("✅ Lưới Thần Thánh consumable")
-                perks.append("✅ Cashback 5% minigames")
+                perks.append("✅ Lưới Thần Thánh (vật phẩm)")
+                perks.append("✅ Hoàn tiền 5% trò chơi")
             
             embed.add_field(
                 name="🎁 Quyền Lợi Hiện Tại",
@@ -234,10 +239,10 @@ class VIPCommandsCog(commands.Cog):
             )
             
             milestones = [
-                (30, "Supporter Badge"),
-                (100, "Permanent Color"),
-                (365, "Hall of Fame"),
-                (730, "Lifetime Discount 50%")
+                (30, "Huy Hiệu Ủng Hộ"),
+                (100, "Màu Vĩnh Viễn"),
+                (365, "Bảng Vàng Danh Vọng"),
+                (730, "Giảm Giá 50% Trọn Đời")
             ]
             
             milestone_text = []
@@ -264,6 +269,73 @@ class VIPCommandsCog(commands.Cog):
                 )
             except Exception:
                 logger.error(f"[VIP_STATUS] Failed to send error message")
+    
+    # ==================== VIP EXPIRY REMINDER TASK ====================
+    
+    @tasks.loop(hours=24)
+    async def vip_expiry_reminder(self):
+        from cogs.aquarium.constants import VIP_NAMES
+        
+        now = datetime.now(timezone.utc)
+        three_days_later = now + timedelta(days=3)
+        four_days_later = now + timedelta(days=4)
+        
+        logger.info("[VIP_REMINDER] Starting daily check...")
+        
+        rows = await db_manager.fetchall(
+            "SELECT user_id, tier_level, expiry_date "
+            "FROM vip_subscriptions "
+            "WHERE expiry_date BETWEEN $1 AND $2",
+            (three_days_later, four_days_later)
+        )
+        
+        if not rows:
+            logger.info("[VIP_REMINDER] No users expiring in 3 days")
+            return
+        
+        success_count = 0
+        for row in rows:
+            user_id, tier, expiry = row
+            try:
+                user = await self.bot.fetch_user(user_id)
+                
+                if expiry.tzinfo is None:
+                    expiry = expiry.replace(tzinfo=timezone.utc)
+                days_left = (expiry - now).days
+                
+                tier_name = VIP_NAMES.get(tier, f"Tier {tier}")
+                
+                embed = discord.Embed(
+                    title="⚠️ VIP SẮP HẾT HẠN",
+                    description=f"VIP **{tier_name}** của bạn còn **{days_left} ngày**!",
+                    color=0xFF6B6B
+                )
+                embed.add_field(
+                    name="Gia hạn ngay",
+                    value="Dùng `/thuongluu b` để gia hạn VIP và nhận thêm 30 ngày!",
+                    inline=False
+                )
+                embed.add_field(
+                    name="Lợi ích VIP",
+                    value="• Hoàn tiền khi chơi Bầu Cua\n• Tự động tưới cây\n• Cá VIP đặc biệt\n• Chủ đề hồ cá riêng",
+                    inline=False
+                )
+                embed.set_footer(text="Cảm ơn bạn đã ủng hộ server! 💎")
+                
+                await user.send(embed=embed)
+                success_count += 1
+                logger.info(f"[VIP_REMINDER] Sent to user {user_id}, {days_left} days left")
+                
+            except discord.Forbidden:
+                logger.warning(f"[VIP_REMINDER] Cannot DM user {user_id} (DMs closed)")
+            except Exception as e:
+                logger.error(f"[VIP_REMINDER] Error for user {user_id}: {e}")
+        
+        logger.info(f"[VIP_REMINDER] Completed. Sent {success_count}/{len(rows)} reminders")
+    
+    @vip_expiry_reminder.before_loop
+    async def before_vip_reminder(self):
+        await self.bot.wait_until_ready()
 
 
 class VIPPurchaseView(discord.ui.View):
@@ -303,6 +375,25 @@ class VIPPurchaseView(discord.ui.View):
         
         try:
             async with db_manager.transaction() as conn:
+                # CHECK EXISTING VIP FIRST - Block downgrade attempts BEFORE deducting seeds
+                existing_vip = await conn.fetchrow(
+                    "SELECT tier_level, expiry_date FROM vip_subscriptions "
+                    "WHERE user_id = $1 AND expiry_date > NOW()",
+                    user_id
+                )
+                
+                if existing_vip:
+                    old_tier = existing_vip[0] or 0
+                    tier_names = {1: "Bạc 🥈", 2: "Vàng 🥇", 3: "Kim Cương 💎"}
+                    
+                    if tier < old_tier:
+                        await interaction.followup.send(
+                            f"❌ Bạn đang có **VIP {tier_names[old_tier]}**!\n"
+                            f"Không thể mua gói thấp hơn. Chọn gói cao hơn hoặc chờ hết hạn để gia hạn.",
+                            ephemeral=True
+                        )
+                        return
+                
                 # Check balance INSIDE transaction to prevent race condition
                 balance_row = await conn.fetchrow(
                     "SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE",

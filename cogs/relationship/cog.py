@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
+from datetime import datetime
 # from database_manager import remove_item (Removed)
 # Replaced import: SHOP_ITEMS is gone.
 from cogs.fishing.constants import ALL_ITEMS_DATA
@@ -23,6 +24,7 @@ for key, item_data in ALL_ITEMS_DATA.items():
 class RelationshipCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.gift_cooldowns = {}
 
     @app_commands.command(name="tangqua", description="Tặng quà healing cho người khác (Cà phê, Hoa, Quà...)")
     @app_commands.describe(
@@ -32,8 +34,29 @@ class RelationshipCog(commands.Cog):
         an_danh="Gửi ẩn danh (True/False)"
     )
     async def tangqua(self, interaction: discord.Interaction, user: discord.User, item: str, message: str = None, an_danh: bool = False):
-        # Defer ephemerally if anonymous to hide usage
+        sender_id = interaction.user.id
+        now = datetime.now()
+        
+        if sender_id in self.gift_cooldowns:
+            recent_gifts = [t for t in self.gift_cooldowns[sender_id] if (now - t).total_seconds() < 3600]
+            
+            if len(recent_gifts) >= 10:
+                oldest_gift = min(recent_gifts)
+                wait_time = 3600 - (now - oldest_gift).total_seconds()
+                wait_minutes = int(wait_time / 60) + 1
+                
+                return await interaction.response.send_message(
+                    f"⏳ Bạn đã tặng quá nhiều! Vui lòng đợi **{wait_minutes} phút** nữa.",
+                    ephemeral=True
+                )
+            
+            self.gift_cooldowns[sender_id] = recent_gifts
+        else:
+            self.gift_cooldowns[sender_id] = []
+        
         await interaction.response.defer(ephemeral=an_danh)
+        
+        self.gift_cooldowns[sender_id].append(now)
 
         if user.id == interaction.user.id:
             return await interaction.followup.send("❌ Hãy thương lấy chính mình trước khi thương người khác nhé! (Nhưng tặng quà cho mình thì hơi kỳ)")

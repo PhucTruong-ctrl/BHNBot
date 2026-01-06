@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from typing import Optional
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 from database_manager import db_manager
 from core.services.vip_service import VIPEngine
 from core.logger import setup_logger
@@ -41,7 +41,7 @@ class TreeCog(commands.Cog):
         self.daily_auto_water_task.start()
         logger.info("[TREE_COG] Cog initialized + Auto-Water Task Started")
     
-    def cog_unload(self):
+    async def cog_unload(self):
         self.daily_auto_water_task.cancel()
         
     async def cog_load(self):
@@ -156,12 +156,9 @@ class TreeCog(commands.Cog):
         logger.info("[AUTO_WATER] Starting daily task...")
         
         now = datetime.now().isoformat()
-        yesterday = (datetime.now() - timedelta(days=1)).isoformat()
         
-        # Fetch active tasks
-        # SQL: select user_id from vip_auto_tasks where task_type='auto_water' and expires_at > now
         rows = await db_manager.fetchall(
-            "SELECT user_id, expires_at FROM vip_auto_tasks WHERE task_type='auto_water' AND expires_at > ?",
+            "SELECT user_id, expires_at FROM vip_auto_tasks WHERE task_type='auto_water' AND expires_at > $1",
             (now,)
         )
         
@@ -171,23 +168,28 @@ class TreeCog(commands.Cog):
             
         count = 0
         
-        # For each user, find a guild they are in? 
-        # BHNBot seems to be single-guild or primary guild focused.
-        # Logic: Iterate guilds, if user in guild, contribute.
-        # Assuming user is in the guild where the tree exists.
-        
         for row in rows:
-            user_id, expiry = row
-            
-            # Simple assumption: User contributes to the first guild they share with bot
-            # Or iterate all guilds? Tree logic is per-guild.
-            # Usually bots serve one main community. I'll execute for all guilds the user is in.
+            user_id, task_expiry = row
             
             try:
+                from core.services.vip_service import VIPEngine
+                vip = await VIPEngine.get_vip_data(user_id, use_cache=False)
+                
+                if not vip or vip['tier'] < 3:
+                    logger.warning(f"[AUTO_WATER] User {user_id} task active but VIP expired/downgraded. Skipping.")
+                    continue
+                
+                vip_expiry = vip.get('expiry')
+                if vip_expiry:
+                    if vip_expiry.tzinfo is None:
+                        vip_expiry = vip_expiry.replace(tzinfo=timezone.utc)
+                    if vip_expiry < datetime.now(timezone.utc):
+                        logger.warning(f"[AUTO_WATER] User {user_id} VIP expired. Skipping.")
+                        continue
+                
                 for guild in self.bot.guilds:
                     member = guild.get_member(user_id)
                     if member:
-                        # Auto contribute 100 seeds (Free/Generated, Perk)
                         await self.add_external_contribution(user_id, guild.id, 100, "auto_water")
                         count += 1
                         
