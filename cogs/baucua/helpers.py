@@ -316,19 +316,21 @@ async def unified_send(ctx_or_interaction, content: str = None, embed: discord.E
     is_slash = isinstance(ctx_or_interaction, discord.Interaction)
     
     if is_slash:
-        # Interaction (Slash Command)
         interaction = ctx_or_interaction
         if interaction.response.is_done():
-            # Already deferred or responded -> use followup
+            if view is None:
+                return await interaction.followup.send(content=content, embed=embed, ephemeral=ephemeral)
             return await interaction.followup.send(content=content, embed=embed, view=view, ephemeral=ephemeral)
         else:
-            # Not yet responded -> use response.send_message
-            await interaction.response.send_message(content=content, embed=embed, view=view, ephemeral=ephemeral)
+            if view is None:
+                await interaction.response.send_message(content=content, embed=embed, ephemeral=ephemeral)
+            else:
+                await interaction.response.send_message(content=content, embed=embed, view=view, ephemeral=ephemeral)
             return await interaction.original_response()
     else:
-        # Prefix Command (Context)
-        # Context doesn't support ephemeral, so ignore it
         ctx = ctx_or_interaction
+        if view is None:
+            return await ctx.send(content=content, embed=embed)
         return await ctx.send(content=content, embed=embed, view=view)
 
 

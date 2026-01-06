@@ -86,9 +86,9 @@ tail -20 /tmp/bot.log
    ```
 
 ### Pass Criteria:
-- [ ] Cashback hiển thị trong result
-- [ ] Seeds được cộng vào tài khoản
-- [ ] Log ghi nhận cashback
+- [OK] Cashback hiển thị trong result
+- [OK] Seeds được cộng vào tài khoản
+- [OK] Log ghi nhận cashback
 
 ---
 
