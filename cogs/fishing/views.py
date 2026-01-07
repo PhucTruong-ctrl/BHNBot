@@ -27,7 +27,15 @@ class FishSellView(discord.ui.View):
         self.sold = False
     
     async def on_timeout(self):
-        """Cleans up view when it times out."""
+        try:
+            if hasattr(self, 'message') and self.message:
+                await self.message.edit(
+                    content="⏰ **Hết thời gian!** Phiên hiển thị đã kết thúc.",
+                    view=None
+                )
+        except:
+            pass
+        
         if self.user_id in self.cog.caught_items:
             try:
                 del self.cog.caught_items[self.user_id]

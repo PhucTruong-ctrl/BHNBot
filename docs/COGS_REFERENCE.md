@@ -472,9 +472,11 @@ earned_count / total_guild_members * 100
 
 ### MUST DO
 1. Sử dụng `async with db_manager.transaction()` cho mọi thay đổi tài sản
-2. Không blocking I/O trong async functions
-3. Chạy `lsp_diagnostics` sau mỗi thay đổi (nếu có)
-4. Test import trước khi commit
+2. **CRITICAL**: Balance check và deduction phải trong CÙNG 1 transaction (tránh race condition)
+3. Không blocking I/O trong async functions
+4. Chạy `lsp_diagnostics` sau mỗi thay đổi (nếu có)
+5. Test import trước khi commit
+6. **NEW**: Transaction scope phải TỐI THIỂU - KHÔNG bao gồm `asyncio.sleep` hoặc `channel.send`
 
 ### MUST NOT DO
 1. KHÔNG xóa hoặc rename functions mà không kiểm tra references
@@ -482,5 +484,34 @@ earned_count / total_guild_members * 100
 3. KHÔNG hardcode Discord IDs
 4. KHÔNG sử dụng `type: ignore` trừ khi thực sự cần thiết
 5. KHÔNG pay-to-win cho VIP features
+6. **NEW**: KHÔNG dùng f-string cho dynamic column names trong SQL (risk SQL injection)
+7. **NEW**: KHÔNG để `on_timeout` methods không thông báo user (phải edit message)
+
+---
+
+## KNOWN ISSUES \u0026 TECHNICAL DEBT
+
+### Performance Bottlenecks
+- **Fishing Transaction Lock** (`cogs/fishing/cog.py` lines 632-834): Transaction giữ lock 1-5 giây → cần refactor
+- **N+1 Query Pattern** (fishing catches): Sequential DB updates cho mỗi con cá → cần batch
+- **Aquarium Dashboard Spam** (`cogs/aquarium/`): Refresh mỗi message → cần debounce 30s
+
+### Security Issues
+- ⚠️ **Xi Dach Race Condition** (`cogs/xi_dach/commands/multi.py`): Double-spend possible → wrap trong transaction
+- ⚠️ **SQL Injection Risk** (`database_manager.py`): Dynamic column names → thêm whitelist
+- **Non-atomic Stats** (`increment_stat`): SELECT then UPDATE → dùng ON CONFLICT
+
+### Scalability Limits
+- **Fishing**: 500-1000 concurrent users (bottleneck: in-memory cooldowns)
+- **Werewolf**: 10-20 games/guild (bottleneck: Discord channel creation API)
+- **Aquarium**: 5-10 active threads (bottleneck: message edit rate limit)
+- **Economy**: 10,000+ users (good scalability)
+
+### Migration Status
+- ⚠️ **DB Layer Inconsistency**: Mix of SQLite `?` và Postgres `$n` placeholders
+- Migration strategy: Currently using `ensure_*_tables()` → should move to versioned migrations
+- Cross-DB transactions (VIP): Seeds (SQLite?) + VIP (Postgres) → needs unification
+
+**Detailed Analysis:** See `/docs/AUDIT_REPORT_2026.md`
 
 ---

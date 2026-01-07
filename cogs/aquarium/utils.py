@@ -14,7 +14,21 @@ async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
     Refreshes the Aquarium Dashboard in the user's home thread.
     - Updates existing message if found.
     - Resends if old/deleted.
+    - DEBOUNCED: Max 1 refresh per 30 seconds per thread.
     """
+    import time
+    
+    if not hasattr(bot, '_aquarium_last_refresh'):
+        bot._aquarium_last_refresh = {}
+    
+    now = time.time()
+    last_refresh = bot._aquarium_last_refresh.get(user_id, 0)
+    
+    if now - last_refresh < 30:
+        return False
+    
+    bot._aquarium_last_refresh[user_id] = now
+    
     try:
         # Lazy import to avoid circular dependency
         from .ui.views import AquariumDashboardView

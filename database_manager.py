@@ -150,6 +150,17 @@ async def _remove_item_unsafe(user_id: int, item_id: str, quantity: int = 1) -> 
 
 # ==================== SERVER CONFIG QUERIES ====================
 
+ALLOWED_CONFIG_FIELDS = {
+    "fishing_channel_id",
+    "harvest_buff_until",
+    "exclude_chat_channels",
+    "logs_channel_id",
+    "tree_channel_id",
+    "vip_role_id_1",
+    "vip_role_id_2",
+    "vip_role_id_3",
+}
+
 async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
     """Retrieves a specific configuration field for a server.
 
@@ -159,7 +170,13 @@ async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
 
     Returns:
         Optional[Any]: The value of the config field, or None if not found.
+        
+    Raises:
+        ValueError: If field is not in the whitelist (prevents SQL injection).
     """
+    if field not in ALLOWED_CONFIG_FIELDS:
+        raise ValueError(f"Invalid config field: {field}. Allowed fields: {ALLOWED_CONFIG_FIELDS}")
+        
     result = await db_manager.fetchone(
         f"SELECT {field} FROM server_config WHERE guild_id = ?",
         (guild_id),
@@ -174,7 +191,13 @@ async def set_server_config(guild_id: int, field: str, value: Any):
         guild_id (int): The Discord guild ID.
         field (str): The column name in the server_config table to update.
         value (Any): The value to set.
+        
+    Raises:
+        ValueError: If field is not in the whitelist (prevents SQL injection).
     """
+    if field not in ALLOWED_CONFIG_FIELDS:
+        raise ValueError(f"Invalid config field: {field}. Allowed fields: {ALLOWED_CONFIG_FIELDS}")
+        
     await db_manager.modify(
         f"INSERT INTO server_config (guild_id, {field}) VALUES (?, ?) ON CONFLICT (guild_id) DO UPDATE SET {field} = EXCLUDED.{field}",
         (guild_id, value)
@@ -257,6 +280,8 @@ async def get_leaderboard_new(limit: int = 10) -> List[tuple]:
 
 async def increment_stat(user_id: int, game_id: str, stat_key: str, amount: int = 1):
     """Increments a generic user statistic for a specific game module.
+    
+    Uses atomic ON CONFLICT DO UPDATE to prevent race conditions.
 
     Args:
         user_id (int): The Discord user ID.
@@ -264,9 +289,12 @@ async def increment_stat(user_id: int, game_id: str, stat_key: str, amount: int 
         stat_key (str): The specific statistic key (e.g., 'fish_caught').
         amount (int): The amount to increment. Defaults to 1.
     """
-    existing = await db_manager.fetchone(
-        "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?",
-        (user_id, game_id, stat_key)
+    await db_manager.modify(
+        """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT (user_id, game_id, stat_key) 
+           DO UPDATE SET value = user_stats.value + ?""",
+        (user_id, game_id, stat_key, amount, amount)
     )
     
     if existing:

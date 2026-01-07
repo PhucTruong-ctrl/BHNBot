@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
 from core.logger import setup_logger
-from database_manager import get_user_balance, add_seeds, batch_update_seeds
+from database_manager import get_user_balance, add_seeds, batch_update_seeds, get_or_create_user, db_manager
 
 from ..core.game_manager import game_manager
 from ..core.table import Table, TableStatus
@@ -176,7 +176,7 @@ async def _run_lobby(cog: "XiDachCog", ctx_or_interaction, table: Table) -> None
 
 
 async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table: Table, user_id: int, amount: int) -> None:
-    """Process a bet from a player. Amounts are ADDITIVE."""
+    """Process a bet from a player. Amounts are ADDITIVE. RACE-CONDITION SAFE."""
     async with table.lock:
         if table.status != TableStatus.LOBBY:
             await interaction.response.send_message("⚠️ Game đã bắt đầu!", ephemeral=True)
@@ -184,24 +184,50 @@ async def process_bet(cog: "XiDachCog", interaction: discord.Interaction, table:
 
         await interaction.response.defer(ephemeral=True)
 
-        balance = await get_user_balance(user_id)
         current_player = table.players.get(user_id)
         current_bet = current_player.bet if current_player else 0
         
-        # ADDITIVE: New total = current + amount clicked
         new_total = current_bet + amount
-        additional_needed = amount  # Always add the clicked amount
-
-        if balance < additional_needed:
-            await interaction.followup.send(f"❌ Không đủ hạt! (Cần {additional_needed:,}, bạn có {balance:,})", ephemeral=True)
+        additional_needed = amount
+        
+        try:
+            async with db_manager.transaction() as conn:
+                balance_row = await conn.fetchrow(
+                    "SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE", 
+                    user_id
+                )
+                
+                if not balance_row:
+                    await get_or_create_user(user_id, interaction.user.display_name)
+                    balance = 0
+                else:
+                    balance = balance_row['seeds']
+                
+                if balance < additional_needed:
+                    await interaction.followup.send(
+                        f"❌ Không đủ hạt! (Cần {additional_needed:,}, bạn có {balance:,})", 
+                        ephemeral=True
+                    )
+                    return
+                
+                await conn.execute(
+                    "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
+                    additional_needed, user_id
+                )
+                
+                await conn.execute(
+                    """INSERT INTO transaction_logs (user_id, amount, transaction_type, game_id, created_at)
+                       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)""",
+                    user_id, -additional_needed, 'xi_dach_bet_add', 'xidach'
+                )
+                
+        except Exception as e:
+            logger.error(f"[BET_ERROR] Failed to process bet for {user_id}: {e}", exc_info=True)
+            await interaction.followup.send("❌ Lỗi xử lý cược. Vui lòng thử lại!", ephemeral=True)
             return
 
-        # Deduct the clicked amount
-        # Deduct the clicked amount
-        await add_seeds(user_id, -additional_needed, 'xi_dach_bet_add', 'xidach')
-
         if current_player:
-            current_player.bet = new_total  # Additive
+            current_player.bet = new_total
             current_player.is_ready = True
         else:
             player = table.add_player(user_id, interaction.user.display_name, amount)

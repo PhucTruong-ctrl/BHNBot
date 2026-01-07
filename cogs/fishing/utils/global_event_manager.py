@@ -727,6 +727,21 @@ class GlobalEventManager:
             embed.add_field(name="🏆 Chiến Thần", value=top_text, inline=False)
         else:
             embed.add_field(name="🏆 Chiến Thần", value="*Chưa có ai tham chiến...*", inline=False)
+        
+        damage_info = (
+            "🐟 **Cá Thường:** 5-9 Sát Thương\n"
+            "⭐ **Cá Hiếm:** 35-500 Sát Thương\n"
+            "💎 **Cá Huyền Thoại:** Nhiều hơn nữa!"
+        )
+        embed.add_field(name="📊 Đóng Góp Theo Cá", value=damage_info, inline=True)
+        
+        rewards_info = (
+            "🥇 **MVP:** 5,000 Hạt + Huy Hiệu\n"
+            "🥈 **Top 2:** 3,000 Hạt\n"
+            "🥉 **Top 3:** 1,500 Hạt\n"
+            "👥 **Tham gia:** 500 Hạt"
+        )
+        embed.add_field(name="🎁 Phần Thưởng", value=rewards_info, inline=True)
             
         if self.current_event and self.current_event.get("end_time"):
             end_ts = int(self.current_event["end_time"])

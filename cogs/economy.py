@@ -19,7 +19,7 @@ logger = setup_logger("EconomyCog", "cogs/economy.log")
 # Constants
 DAILY_BONUS = 10  # Hạt received from /chao
 DAILY_WINDOW_START = 5  # 5 AM
-DAILY_WINDOW_END = 12  # 12 AM
+DAILY_WINDOW_END = 10  # 10 AM (FIXED: was 12, inconsistent with message)
 CHAT_REWARD_MIN = 1
 CHAT_REWARD_MAX = 3
 CHAT_REWARD_COOLDOWN = 60  # seconds

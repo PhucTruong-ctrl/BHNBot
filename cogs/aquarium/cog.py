@@ -17,17 +17,10 @@ from .constants import AQUARIUM_FORUM_CHANNEL_ID
 logger = logging.getLogger("AquariumCog")
 
 class AquariumCog(commands.Cog):
-    """
-    Project Aquarium: Symbiosis Model
-    - Economy (Leaf Coin, Recycle)
-    - Housing (Home, Decor)
-    - Interaction (Visitors)
-    """
-
     def __init__(self, bot):
         self.bot = bot
-        # Start auto-visit task
         self.daily_auto_visit_task.start()
+        self.last_dashboard_refresh = {}
         logger.info("[AQUARIUM_COG] Cog initialized + Auto-Visit Task Started")
     
     def cog_unload(self):
