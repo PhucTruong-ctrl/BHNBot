@@ -77,6 +77,54 @@
         "loss_type": "none"
       },
       "reward_message": "Bạn đã mở ra **Cánh Cổng Hư Không**! Mọi thứ trở nên mơ hồ... 👻"
+    },
+    {
+      "key": "hacker_attack",
+      "name": "Tấn Công Hacker",
+      "emoji": "💻",
+      "chance": 0.0,
+      "duration": 300,
+      "description": "Một hacker điên khùng xâm nhập hệ thống làng chài, phá hoại mọi thiết bị điện tử!",
+      "effects": {
+        "display_glitch": true,
+        "glitch_duration": 300,
+        "drain_seeds": 50,
+        "message_template": "💻 **HACKER TẤN CÔNG SERVER!** {player} đã vô tình tải Trojan Horse vào hệ thống!\\n\\n⚠️ Hiển thị bị nhiễu loạn + Mỗi người mất 50 Hạt do virus mã độc trong 5 phút!",
+        "loss_type": "money"
+      },
+      "reward_message": "Bạn đã trở thành **Patient Zero** của virus tin học! Anonymous đang hunt bạn. 🖥️"
+    },
+    {
+      "key": "earthquake",
+      "name": "Động Đất",
+      "emoji": "🌋",
+      "chance": 0.0,
+      "duration": 240,
+      "description": "Đất đai rung chuyển dữ dội! Cần câu của mọi người bị hư hỏng nặng nề.",
+      "effects": {
+        "durability_loss_all": 30,
+        "rod_break_chance": 0.1,
+        "message_template": "🌋 **ĐỘNG ĐẤT MẠNH 7.5 RICHTER!** {player} đã chọc giận Thần Đất!\\n\\n⚠️ Tất cả cần câu **mất 30 Độ bền**! 10% khả năng cần câu GÃY LUÔN!",
+        "loss_type": "durability"
+      },
+      "reward_message": "Bạn đã gây ra **Thảm Họa Địa Chất**! Các nhà địa chất học đang nghiên cứu bạn. 📊"
+    },
+    {
+      "key": "tsunami",
+      "name": "Sóng Thần",
+      "emoji": "🌊",
+      "chance": 0.0,
+      "duration": 300,
+      "description": "Một con sóng khổng lồ cao 15m ập vào làng chài, cuốn trôi mọi thứ!",
+      "effects": {
+        "lose_all_bait": true,
+        "lose_current_catch": true,
+        "cooldown_penalty": 5,
+        "penalty_duration": 300,
+        "message_template": "🌊 **SÓNG THẦN CẤP 5!** {player} đã đánh thức quái vật biển sâu!\\n\\n⚠️ **TẤT CẢ MỒICÂU BỊ CUỐN TRÔI!** Cá đang câu BỊ MẤT! Cooldown +5s trong 5 phút!",
+        "loss_type": "items"
+      },
+      "reward_message": "Bạn đã triệu hồi **Thần Sóng Biển**! Tất cả người câu cá tránh xa bạn. 🌊💀"
     }
   ],
   "global_cooldown": 3600,

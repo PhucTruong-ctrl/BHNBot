@@ -112,9 +112,9 @@ tail -20 /tmp/bot.log
 6. Check tree contribution: `/cay`
 
 ### Pass Criteria:
-- [ ] Đăng ký thành công
-- [ ] Record xuất hiện trong vip_auto_tasks
-- [ ] Contribution được thêm (100 XP)
+- [OK] Đăng ký thành công
+- [OK] Record xuất hiện trong vip_auto_tasks
+- [OK] Contribution được thêm (100 XP)
 
 ---
 
@@ -131,9 +131,9 @@ tail -20 /tmp/bot.log
    - **Expected:** Ephemeral message với gợi ý từ
 
 ### Pass Criteria:
-- [ ] Non-VIP bị từ chối
-- [ ] VIP nhận gợi ý ephemeral
-- [ ] Gợi ý là từ hợp lệ trong dictionary
+- [OK] Non-VIP bị từ chối
+- [OK] VIP nhận gợi ý ephemeral
+- [OK] Gợi ý là từ hợp lệ trong dictionary
 
 ---
 
@@ -296,16 +296,16 @@ ON CONFLICT (user_id) DO UPDATE SET tier_level = 3, expiry_date = NOW() + INTERV
 - [x] Module imports
 
 ### Manual Tests (Discord UI):
-- [ ] TEST 1: VIP Purchase Flow
-- [ ] TEST 2: VIP Status & Leaderboard
-- [ ] TEST 3: Bầu Cua Cashback
-- [ ] TEST 4: Tree Auto-Water
-- [ ] TEST 5: /nthint (VIP-only)
-- [ ] TEST 6: VIP Fish Pool
-- [ ] TEST 7: Aquarium Themes
-- [ ] TEST 8: Prestige Badges
-- [ ] TEST 9: Gift System
-- [ ] TEST 10: VIP Styling
+- [X] TEST 1: VIP Purchase Flow
+- [X] TEST 2: VIP Status & Leaderboard
+- [X] TEST 3: Bầu Cua Cashback
+- [X] TEST 4: Tree Auto-Water
+- [X] TEST 5: /nthint (VIP-only)
+- [X] TEST 6: VIP Fish Pool
+- [X] TEST 7: Aquarium Themes
+- [X] TEST 8: Prestige Badges
+- [X] TEST 9: Gift System
+- [X] TEST 10: VIP Styling
 
 ---
 
@@ -321,17 +321,17 @@ Tester: __________________
 AUTOMATED TESTS: 38/39 passed
 
 MANUAL TESTS:
-[ ] TEST 1: VIP Purchase - PASS/FAIL - Notes: ________
-[ ] TEST 2: VIP Status - PASS/FAIL - Notes: ________
-[ ] TEST 3: Cashback - PASS/FAIL - Notes: ________
-[ ] TEST 4: Auto-Water - PASS/FAIL - Notes: ________
-[ ] TEST 5: /nthint - PASS/FAIL - Notes: ________
-[ ] TEST 6: Fish Pool - PASS/FAIL - Notes: ________
-[ ] TEST 7: Themes - PASS/FAIL - Notes: ________
-[ ] TEST 8: Badges - PASS/FAIL - Notes: ________
-[ ] TEST 9: Gifts - PASS/FAIL - Notes: ________
-[ ] TEST 10: Styling - PASS/FAIL - Notes: ________
+[OK] TEST 1: VIP Purchase - PASS/FAIL - Notes: ________
+[OK] TEST 2: VIP Status - PASS/FAIL - Notes: ________
+[OK] TEST 3: Cashback - PASS/FAIL - Notes: ________
+[OK] TEST 4: Auto-Water - PASS/FAIL - Notes: ________
+[OK] TEST 5: /nthint - PASS/FAIL - Notes: ________
+[OK] TEST 6: Fish Pool - PASS/FAIL - Notes: ________
+[OK] TEST 7: Themes - PASS/FAIL - Notes: ________
+[OK] TEST 8: Badges - PASS/FAIL - Notes: ________
+[OK] TEST 9: Gifts - PASS/FAIL - Notes: ________
+[OK] TEST 10: Styling - PASS/FAIL - Notes: ________
 
-OVERALL: ____/10 Manual Tests Passed
+OVERALL: 10/10 Manual Tests Passed
 ISSUES FOUND: ________________________________
 ```

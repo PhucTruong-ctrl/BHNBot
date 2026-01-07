@@ -39,6 +39,13 @@ Tài liệu này được tạo ra để AI assistant có thể:
 - Global disasters: Hacker attack, Earthquake, Tsunami...
 - Legendary quests: Thượng Luồng, Cá Ngân Hà, Phượng Hoàng, Cthulhu, 52Hz, Isekai
 - Buff/Debuff system: suy, keo_ly, lag, lucky_buff
+- **NPC Affinity System**: Repeated interactions unlock better rewards (Lv.1, Lv.2)
+- **NEW**: All NPC declines result in -1 Affinity (now visible in UI)
+
+### Inventory Display
+- **FIXED**: Legendary fish (ca_isekai) now show in Fish category, not Tools
+- Categories: 🐟 Fish, 💝 Gifts, 🛠️ Tools, 🗑️ Trash
+- Fish sorted by rarity with price calculations
 
 ### State Variables (FishingCog)
 - `fishing_cooldown`: dict[user_id -> timestamp]
@@ -254,6 +261,11 @@ Tài liệu này được tạo ra để AI assistant có thể:
 - Xì Bàn (2 A) > Xì Dách (A+10) > Ngũ Linh (5 lá ≤21) > Đủ tuổi (16-21)
 - Payout: Thường 2x, Xì Dách 2.5x, Xì Bàn 3x, Ngũ Linh 3.5x
 
+### Error Handling
+- **IMPROVED**: Better exception handling in dealer turn
+- Fallback result display if formatting fails
+- Enhanced logging for debugging result display issues
+
 ### UI
 - Card rendering bằng Pillow
 - Assets tại `assets/cards/`
@@ -268,6 +280,7 @@ Tài liệu này được tạo ra để AI assistant có thể:
 |------|-----------|
 | `/cay` | Xem trạng thái cây |
 | `/gophat [amount]` | Góp hạt cho cây |
+| `/huyhieu` | Xem huy hiệu đóng góp |
 | `/thuhoach` | (Admin) Thu hoạch |
 
 ### Mechanics
@@ -278,6 +291,21 @@ Tài liệu này được tạo ra để AI assistant có thể:
 - Top 1: 13k hạt + Role "Thần Nông"
 - Top 2: 5k, Top 3: 3k, Others: 1.5k
 - Server buff: x2 hạt 24h
+
+### Prestige Badges
+**NEW**: Hệ thống huy hiệu dựa trên contribution XP
+
+| Tier | Badge | Tên | XP yêu cầu |
+|------|-------|-----|------------|
+| 1 | 🌱 | Người Trồng Cây | 1,000 |
+| 2 | 🌿 | Người Làm Vườn | 5,000 |
+| 3 | 🌳 | Người Bảo Vệ Rừng | 25,000 |
+| 4 | 🌸 | Thần Nông | 100,000 |
+| 5 | 🍎 | Tiên Nhân | 500,000 |
+
+**Commands:**
+- `/huyhieu` - Xem badge hiện tại, progress, và tất cả tiers
+- `/cay` - Leaderboard hiển thị badge trước tên user
 
 ---
 
@@ -370,7 +398,32 @@ Tài liệu này được tạo ra để AI assistant có thể:
 
 ---
 
-## 18. VIP SYSTEM
+## 18. VIP SYSTEM \u0026 ACHIEVEMENTS
+
+### Achievements System
+
+**File**: `core/achievement_system.py`
+
+**Features:**
+- Unlock notifications with embedded rewards
+- **NEW**: Rarity display - shows % of server who has the achievement
+- Categorized by game (fishing, economy, social, etc.)
+- Role rewards for special achievements
+- Seed rewards for milestones
+
+**Database:**
+- `user_achievements`: Records unlock timestamps
+- `achievements_data`: Achievement definitions
+
+**Rarity Calculation:**
+```python
+# Example: "2.5% người chơi đã đạt được"
+earned_count / total_guild_members * 100
+```
+
+---
+
+## 19. VIP SYSTEM
 **Files**: `cogs/vip_commands.py`, `core/services/vip_service.py`
 
 ### Tiers

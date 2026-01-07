@@ -935,14 +935,27 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                 results=results
             )
             
-            # Send as Fun Text Message (NO EMBED)
             logger.info(f"[RESULT] Sending text result len={len(result_text)}")
             await channel.send(f"🎰 **KẾT QUẢ XÌ DÁCH** 🎰\n\n{result_text}")
             logger.info(f"[RESULT] Final results sent to channel {channel.id}")
 
         except Exception as e:
-            logger.error(f"[RESULT_ERROR] Failed to format/send results: {e}", exc_info=True)
-            await channel.send(f"⚠️ **Lỗi hiển thị kết quả:** {e}\n(Tiền vẫn được tính vào ví!)")
+            logger.error(
+                f"[RESULT_ERROR] Failed to format/send results: {e}\n"
+                f"Dealer hand: {table.dealer_hand}, Results count: {len(results)}, "
+                f"Results: {results}", 
+                exc_info=True
+            )
+            fallback_text = "\n".join([
+                f"{r['player_name']}: {'🟢 THẮNG' if r['outcome'] == 'win' else '🔴 THUA' if r['outcome'] == 'lose' else '🟡 HÒA'} "
+                f"{r['profit']:+,} Hạt"
+                for r in results
+            ])
+            await channel.send(
+                f"🎰 **KẾT QUẢ XÌ DÁCH** 🎰\n\n"
+                f"Nhà cái: {d_score} điểm\n\n{fallback_text}\n\n"
+                f"_⚠️ Lỗi hiển thị chi tiết, nhưng tiền đã được tính!_"
+            )
     
     finally:
         game_manager.remove_table(table.table_id)

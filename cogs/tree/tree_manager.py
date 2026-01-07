@@ -315,7 +315,7 @@ class TreeManager:
                 )
                 
                 # Send success message
-                embed = create_contribution_success_embed(
+                embed = await create_contribution_success_embed(
                     user=interaction.user,
                     amount=amount,
                     new_progress=new_progress,

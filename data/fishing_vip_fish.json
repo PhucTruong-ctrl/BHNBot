@@ -10,8 +10,8 @@
       "description": "Loài chim quyền quý của hoàng gia"
     },
     {
-      "key": "ngoc_trai",
-      "name": "Ngọc Trai",
+      "key": "ngoc_trai_tien_ca",
+      "name": "Ngọc Trai Tiên Cá",
       "emoji": "🦪",
       "sell_price": 40,
       "category": "rare",

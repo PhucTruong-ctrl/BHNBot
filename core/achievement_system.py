@@ -193,6 +193,21 @@ class AchievementManager:
             if reward_fields:
                 embed.add_field(name="🎁 Phần thưởng", value="\n".join(reward_fields), inline=True)
 
+            if channel.guild:
+                total_members = channel.guild.member_count or 1
+                count_row = await db_manager.fetchone(
+                    "SELECT COUNT(DISTINCT user_id) FROM user_achievements WHERE achievement_key = ?",
+                    (achievement_key,)
+                )
+                earned_count = count_row[0] if count_row else 1
+                rarity_pct = (earned_count / total_members) * 100
+                
+                embed.add_field(
+                    name="🌍 Độ hiếm", 
+                    value=f"**{rarity_pct:.1f}%** người chơi đã đạt được", 
+                    inline=True
+                )
+
             # Add emoji footer
             emoji = achievement_data.get("emoji", "🎮")
             embed.set_footer(text=f"Game Achievement {emoji}")

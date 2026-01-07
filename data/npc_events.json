@@ -8,42 +8,65 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "worm", "amount": 5, "chance": 0.3, "message": "Mèo ăn xong vui vẻ nhả lại **5 Mồi Câu** rồi bỏ đi! 🪱" },
-        { "type": "lucky_buff", "chance": 0.4, "message": "Mèo dụi đầu vào chân bạn. Bạn cảm thấy **May Mắn** hơn! ✨" },
-        { "type": "nothing", "chance": 0.3, "message": "Mèo ăn xong rồi bỏ đi một mạch. Đồ vô ơn! 😿" }
-      ],
-      "decline": "Bạn đuổi mèo đi. Nó liếc bạn một cái đầy oán hận rồi chạy mất."
-    },
-    "affinity_tiers": [
         {
-            "min_affinity": 5,
-            "overrides": {
-                "name": "🐈 Mèo Thân Thiết (Lv.1)",
-                "description": "Chú mèo quen thuộc chạy ra đón bạn! Nó cọ vào chân bạn đòi ăn.",
-                "question": "**Cho mèo ăn cá để nhận bùa may mắn?**",
-                "rewards": {
-                    "accept": [
-                        { "type": "lucky_buff", "duration": 20, "chance": 1.0, "message": "Mèo rừ rừ hạnh phúc. **Buff May Mắn (20p)** được kích hoạt! ✨" }
-                    ],
-                    "decline": "Mèo buồn bã cụp tai xuống. Nó dỗi rồi!"
-                }
-            }
+          "type": "worm",
+          "amount": 5,
+          "chance": 0.3,
+          "message": "Mèo ăn xong vui vẻ nhả lại **5 Mồi Câu** rồi bỏ đi! 🪱"
         },
         {
-            "min_affinity": 15,
-            "overrides": {
-                "name": "😺 Mèo Tri Kỷ (Lv.2)",
-                "description": "Meow! Nó tha một con cá Hiếm đặt trước mặt bạn như một món quà!",
-                "question": "**Nhận món quà từ Mèo?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "random_rare_fish", "amount": 1, "chance": 1.0, "message": "Biết ơn vì sự chăm sóc bấy lâu, Mèo tha về tặng bạn một con **{amount}**! 🐟✨" }
-                    ],
-                    "decline": "Bạn từ chối nhận quà. Mèo nhìn bạn khó hiểu."
-                }
-            }
+          "type": "lucky_buff",
+          "chance": 0.4,
+          "message": "Mèo dụi đầu vào chân bạn. Bạn cảm thấy **May Mắn** hơn! ✨"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.3,
+          "message": "Mèo ăn xong rồi bỏ đi một mạch. Đồ vô ơn! 😿"
         }
+      ],
+      "decline": "Bạn đuổi mèo đi. Nó liếc bạn một cái đầy oán hận rồi chạy mất.\n_(Độ thân thiết -1)_"
+    },
+    "affinity_tiers": [
+      {
+        "min_affinity": 5,
+        "overrides": {
+          "name": "🐈 Mèo Thân Thiết (Lv.1)",
+          "description": "Chú mèo quen thuộc chạy ra đón bạn! Nó cọ vào chân bạn đòi ăn.",
+          "question": "**Cho mèo ăn cá để nhận bùa may mắn?**",
+          "rewards": {
+            "accept": [
+              {
+                "type": "lucky_buff",
+                "duration": 20,
+                "chance": 1.0,
+                "message": "Mèo rừ rừ hạnh phúc. **Buff May Mắn (20p)** được kích hoạt! ✨"
+              }
+            ],
+            "decline": "Mèo buồn bã cụp tai xuống. Nó dỗi rồi!"
+          }
+        }
+      },
+      {
+        "min_affinity": 15,
+        "overrides": {
+          "name": "😺 Mèo Tri Kỷ (Lv.2)",
+          "description": "Meow! Nó tha một con cá Hiếm đặt trước mặt bạn như một món quà!",
+          "question": "**Nhận món quà từ Mèo?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "random_rare_fish",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Biết ơn vì sự chăm sóc bấy lâu, Mèo tha về tặng bạn một con **{amount}**! 🐟✨"
+              }
+            ],
+            "decline": "Bạn từ chối nhận quà. Mèo nhìn bạn khó hiểu."
+          }
+        }
+      }
     ]
   },
   "beggar": {
@@ -55,43 +78,67 @@
     "cost": 50,
     "rewards": {
       "accept": [
-        { "type": "chest", "amount": 1, "chance": 0.05, "message": "👴: 'Cảm ơn con! Ta thực ra là **Thổ Địa**. Tặng con **1 Rương Kho Báu**!' 🎁" },
-        { "type": "rod_durability", "amount": 20, "chance": 0.45, "message": "👴: 'Cảm ơn con!' Ông lão sửa giúp bạn một chút cần câu. (**+20 Độ bền**) 🔨" },
-        { "type": "nothing", "chance": 0.5, "message": "👴: 'Cảm ơn con...'" }
-      ],
-      "decline": "Ông lão thở dài bỏ đi. Bạn cảm thấy hơi áy náy..."
-    },
-    "affinity_tiers": [
         {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🎩 Phú Ông Hào Phóng (Lv.1)",
-                "description": "Một chiếc xe sang trọng đỗ lại. Một quý ông bước xuống.\n'Chào ân nhân! Là tôi đây, ông lão ăn xin năm xưa!'",
-                "question": "**Nhận sự trả ơn từ Phú Ông?**",
-                "cost": 0,
-                "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/richbeggar.png",
-                "rewards": {
-                    "accept": [
-                        { "type": "money", "amount": 1000, "chance": 1.0, "message": "🎩: 'Cảm ơn vì đã giúp tôi lúc khó khăn! Xin biếu cậu **1000 Hạt**!' 💰" }
-                    ],
-                    "decline": "Bạn từ chối nhận tiền. Phú ông càng kính nể bạn hơn!"
-                }
-            }
+          "type": "chest",
+          "amount": 1,
+          "chance": 0.05,
+          "message": "👴: 'Cảm ơn con! Ta thực ra là **Thổ Địa**. Tặng con **1 Rương Kho Báu**!' 🎁"
         },
         {
-             "min_affinity": 20,
-             "overrides": {
-                 "name": "😇 Thổ Địa Hiển Linh (Lv.2)",
-                 "description": "Phú ông mỉm cười và hóa thân thành Thổ Địa rực rỡ hào quang.\n'Con có tấm lòng vàng. Ta sẽ ban phước cho con!'",
-                 "question": "**Nhận phước lành của Thổ Địa?**",
-                 "cost": 0,
-                 "rewards": {
-                     "accept": [
-                         { "type": "legendary_buff", "duration": 30, "chance": 1.0, "message": "✨ **Thổ Địa Ban Phước!** Tăng tỉ lệ câu cá Hiếm cực mạnh trong 30 phút!" }
-                     ]
-                 }
-             }
+          "type": "rod_durability",
+          "amount": 20,
+          "chance": 0.45,
+          "message": "👴: 'Cảm ơn con!' Ông lão sửa giúp bạn một chút cần câu. (**+20 Độ bền**) 🔨"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "👴: 'Cảm ơn con...'"
         }
+      ],
+      "decline": "Ông lão thở dài bỏ đi. Bạn cảm thấy hơi áy náy...\n_(Độ thân thiết -1)_"
+    },
+    "affinity_tiers": [
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🎩 Phú Ông Hào Phóng (Lv.1)",
+          "description": "Một chiếc xe sang trọng đỗ lại. Một quý ông bước xuống.\n'Chào ân nhân! Là tôi đây, ông lão ăn xin năm xưa!'",
+          "question": "**Nhận sự trả ơn từ Phú Ông?**",
+          "cost": 0,
+          "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/richbeggar.png",
+          "rewards": {
+            "accept": [
+              {
+                "type": "money",
+                "amount": 1000,
+                "chance": 1.0,
+                "message": "🎩: 'Cảm ơn vì đã giúp tôi lúc khó khăn! Xin biếu cậu **1000 Hạt**!' 💰"
+              }
+            ],
+            "decline": "Bạn từ chối nhận tiền. Phú ông càng kính nể bạn hơn!"
+          }
+        }
+      },
+      {
+        "min_affinity": 20,
+        "overrides": {
+          "name": "😇 Thổ Địa Hiển Linh (Lv.2)",
+          "description": "Phú ông mỉm cười và hóa thân thành Thổ Địa rực rỡ hào quang.\n'Con có tấm lòng vàng. Ta sẽ ban phước cho con!'",
+          "question": "**Nhận phước lành của Thổ Địa?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "legendary_buff",
+                "duration": 30,
+                "chance": 1.0,
+                "message": "✨ **Thổ Địa Ban Phước!** Tăng tỉ lệ câu cá Hiếm cực mạnh trong 30 phút!"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "otter_trader": {
@@ -103,40 +150,74 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "ngoc_trai", "amount": 1, "chance": 0.25, "message": "Rái cá trao cho bạn **1 Ngọc Trai** lấp lánh! 🔮" },
-        { "type": "vat_lieu_nang_cap", "amount": 2, "chance": 0.3, "message": "Rái cá tặng bạn **2 Vật Liệu Cần Câu**! 🛠️" },
-        { "type": "worm", "amount": 10, "chance": 0.2, "message": "Rái cá cho bạn **10 Mồi Câu**! 🪱" },
-        { "type": "rock", "chance": 0.25, "message": "Rái cá đưa cho bạn... một cục đá cuội. Bị lừa rồi! 🪨" }
-      ],
-      "decline": "Rái cá tức giận tát nước vào mặt bạn rồi lặn mất! 💦"
-    },
-    "affinity_tiers": [
         {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🦦 Rái Cá Đối Tác (Lv.1)",
-                "description": "Rái Cá vẫy tay chào bạn như người quen cũ! Nó đưa ra những món hàng tuyển chọn hơn.",
-                "rewards": {
-                    "accept": [
-                         { "type": "ngoc_trai", "amount": 2, "chance": 0.4, "message": "Rái cá ưu đãi khách quen! **2 Ngọc Trai**! 🔮🔮" },
-                         { "type": "vat_lieu_nang_cap", "amount": 4, "chance": 0.6, "message": "Rái cá tặng **4 Vật Liệu**! Không còn đá cuội nữa! 🛠️" }
-                    ]
-                }
-            }
+          "type": "ngoc_trai",
+          "amount": 1,
+          "chance": 0.25,
+          "message": "Rái cá trao cho bạn **1 Ngọc Trai** lấp lánh! 🔮"
         },
         {
-            "min_affinity": 25,
-            "overrides": {
-                "name": "🦦 Rái Cá Thủ Lĩnh (Lv.2)",
-                "description": "Rái Cá Thủ Lĩnh xuất hiện cùng tùy tùng. Nó muốn đổi **Rương Kho Báu** lấy cá của bạn!",
-                "question": "**Đổi cá lấy Rương Kho Báu?**",
-                "rewards": {
-                    "accept": [
-                        { "type": "chest", "amount": 1, "chance": 1.0, "message": "Giao dịch thành công! Bạn nhận được **1 Rương Kho Báu**! 🎁" }
-                    ]
-                }
-            }
+          "type": "vat_lieu_nang_cap",
+          "amount": 2,
+          "chance": 0.3,
+          "message": "Rái cá tặng bạn **2 Vật Liệu Cần Câu**! 🛠️"
+        },
+        {
+          "type": "worm",
+          "amount": 10,
+          "chance": 0.2,
+          "message": "Rái cá cho bạn **10 Mồi Câu**! 🪱"
+        },
+        {
+          "type": "rock",
+          "chance": 0.25,
+          "message": "Rái cá đưa cho bạn... một cục đá cuội. Bị lừa rồi! 🪨"
         }
+      ],
+      "decline": "Rái cá tức giận tát nước vào mặt bạn rồi lặn mất! 💦\n_(Độ thân thiết -1)_"
+    },
+    "affinity_tiers": [
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🦦 Rái Cá Đối Tác (Lv.1)",
+          "description": "Rái Cá vẫy tay chào bạn như người quen cũ! Nó đưa ra những món hàng tuyển chọn hơn.",
+          "rewards": {
+            "accept": [
+              {
+                "type": "ngoc_trai",
+                "amount": 2,
+                "chance": 0.4,
+                "message": "Rái cá ưu đãi khách quen! **2 Ngọc Trai**! 🔮🔮"
+              },
+              {
+                "type": "vat_lieu_nang_cap",
+                "amount": 4,
+                "chance": 0.6,
+                "message": "Rái cá tặng **4 Vật Liệu**! Không còn đá cuội nữa! 🛠️"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "min_affinity": 25,
+        "overrides": {
+          "name": "🦦 Rái Cá Thủ Lĩnh (Lv.2)",
+          "description": "Rái Cá Thủ Lĩnh xuất hiện cùng tùy tùng. Nó muốn đổi **Rương Kho Báu** lấy cá của bạn!",
+          "question": "**Đổi cá lấy Rương Kho Báu?**",
+          "rewards": {
+            "accept": [
+              {
+                "type": "chest",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Giao dịch thành công! Bạn nhận được **1 Rương Kho Báu**! 🎁"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "eccentric_collector": {
@@ -148,83 +229,119 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "triple_money", "chance": 0.8, "message": "Giao dịch thành công! Nhận được túi tiền nặng trĩu: **{amount}** (x3 Giá trị)! 💰" },
-        { "type": "nothing", "chance": 0.2, "message": "Lão cầm cá rồi đưa bạn... một cọng cỏ. 'Nghệ thuật là ánh trăng lừa dối!' Lão biến mất. 🤡" }
-      ],
-      "decline": "Lão già lẩm bẩm 'Đồ nhà quê!' rồi bỏ đi."
-    },
-    "affinity_tiers": [
         {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🧐 Nhà Sưu Tầm Uy Tín (Lv.1)",
-                "description": "Nhà sưu tầm nhận ra bạn: 'À, người cung cấp hàng đầu! Ta sẽ không giở trò đâu.'",
-                "question": "**Bán cá giá x3 (Tỉ lệ lừa 0%)?**",
-                "rewards": {
-                    "accept": [
-                        { "type": "triple_money", "chance": 1.0, "message": "Giao dịch sòng phẳng! Nhận **{amount}**! 💰✅" }
-                    ]
-                }
-            }
+          "type": "triple_money",
+          "chance": 0.8,
+          "message": "Giao dịch thành công! Nhận được túi tiền nặng trĩu: **{amount}** (x3 Giá trị)! 💰"
         },
         {
-            "min_affinity": 20,
-            "overrides": {
-                "name": "🧐 Giám Đốc Bảo Tàng (Lv.2)",
-                "description": "Ông ta mặc vest sang trọng: 'Mẫu vật này xứng đáng vào bảo tàng! Ta trả **GẤP 5 GIÁ**!'",
-                "question": "**Bán cá giá cực phẩm (x5)?**",
-                "rewards": {
-                     "accept": [
-                        { "type": "triple_money", "multiplier": 5, "chance": 1.0, "message": "Một cái giá không thể chối từ! Bạn nhận được **{amount}** (x5 Giá trị)! 🏛️💰" }
-                     ]
-                }
-            }
+          "type": "nothing",
+          "chance": 0.2,
+          "message": "Lão cầm cá rồi đưa bạn... một cọng cỏ. 'Nghệ thuật là ánh trăng lừa dối!' Lão biến mất. 🤡"
         }
+      ],
+      "decline": "Lão già lẩm bẩm 'Đồ nhà quê!' rồi bỏ đi.\n_(Độ thân thiết -1)_"
+    },
+    "affinity_tiers": [
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🧐 Nhà Sưu Tầm Uy Tín (Lv.1)",
+          "description": "Nhà sưu tầm nhận ra bạn: 'À, người cung cấp hàng đầu! Ta sẽ không giở trò đâu.'",
+          "question": "**Bán cá giá x3 (Tỉ lệ lừa 0%)?**",
+          "rewards": {
+            "accept": [
+              {
+                "type": "triple_money",
+                "chance": 1.0,
+                "message": "Giao dịch sòng phẳng! Nhận **{amount}**! 💰✅"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "min_affinity": 20,
+        "overrides": {
+          "name": "🧐 Giám Đốc Bảo Tàng (Lv.2)",
+          "description": "Ông ta mặc vest sang trọng: 'Mẫu vật này xứng đáng vào bảo tàng! Ta trả **GẤP 5 GIÁ**!'",
+          "question": "**Bán cá giá cực phẩm (x5)?**",
+          "rewards": {
+            "accept": [
+              {
+                "type": "triple_money",
+                "multiplier": 5,
+                "chance": 1.0,
+                "message": "Một cái giá không thể chối từ! Bạn nhận được **{amount}** (x5 Giá trị)! 🏛️💰"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "drowned_ghost": {
     "name": "👻 Hồn Ma Chết Đuối",
     "description": "Không khí lạnh toát... Một bóng trắng lướt qua:\n'Lạnh... Cho ta mượn cần câu chút hơi ấm...'",
-    "question": "**Cho ma mượn cần câu (Rủi ro bị nguyền)?**",
+    "question": "**Cho ma mượn cần câu (Cộng 5 phút cooldown)?**",
     "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/ghost.png",
     "chance": 0.15,
     "cost": "cooldown_5min",
     "rewards": {
       "accept": [
-        { "type": "legendary_buff", "duration": 10, "chance": 0.7, "message": "Ma trả lại cần câu đã được tẩm phép thuật! ✨ **Tăng 75% tỉ lệ Cá Hiếm (5p)**! 👻" },
-        { "type": "cursed", "chance": 0.3, "message": "👻 Ma cười nham hiểm! Bạn sợ quá vứt luôn cần câu! **(Treo 5p)** & **Giảm 20 Độ bền**! 💀" }
-      ],
-      "decline": "Bạn hoảng sợ bỏ chạy..."
-    },
-    "affinity_tiers": [
         {
-            "min_affinity": 5,
-            "overrides": {
-                "name": "👻 Vong Linh Hiền Lành (Lv.1)",
-                "description": "Hồn ma nhận ra bạn, nó không còn đáng sợ nữa. 'Cảm ơn người...'",
-                "question": "**Ngồi tâm sự với ma?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "lucky_buff", "duration": 15, "chance": 1.0, "message": "Hồn ma kể chuyện xưa cho bạn nghe. Bạn thấy bình yên. **Nhận Buff May Mắn (15p)**. 🎐" }
-                    ]
-                }
-            }
+          "type": "legendary_buff",
+          "duration": 10,
+          "chance": 0.7,
+          "message": "Ma trả lại cần câu đã được tẩm phép thuật! ✨ **Tăng 75% tỉ lệ Cá Hiếm (5p)**! 👻"
         },
         {
-             "min_affinity": 15,
-             "overrides": {
-                 "name": "👻 Hộ Pháp Dưới Nước (Lv.2)",
-                 "description": "Hồn ma coi bạn là ân nhân. 'Ta tìm được cái này dưới đáy sâu...'",
-                 "question": "**Nhận quà từ cõi âm?**",
-                 "cost": 0,
-                 "rewards": {
-                     "accept": [
-                         { "type": "chest", "amount": 1, "chance": 1.0, "message": "Hồn ma tặng bạn **1 Rương Kho Báu** vớt được từ tàu đắm! 🏴‍☠️🎁" }
-                     ]
-                 }
-             }
+          "type": "cursed",
+          "chance": 0.3,
+          "message": "👻 Ma cười nham hiểm! Bạn sợ quá vứt luôn cần câu! **(Treo 5p)** & **Giảm 20 Độ bền**! 💀"
         }
+      ],
+      "decline": "Bạn hoảng sợ bỏ chạy...\n_(Độ thân thiết -1)_"
+    },
+    "affinity_tiers": [
+      {
+        "min_affinity": 5,
+        "overrides": {
+          "name": "👻 Vong Linh Hiền Lành (Lv.1)",
+          "description": "Hồn ma nhận ra bạn, nó không còn đáng sợ nữa. 'Cảm ơn người...'",
+          "question": "**Ngồi tâm sự với ma?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "lucky_buff",
+                "duration": 15,
+                "chance": 1.0,
+                "message": "Hồn ma kể chuyện xưa cho bạn nghe. Bạn thấy bình yên. **Nhận Buff May Mắn (15p)**. 🎐"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "min_affinity": 15,
+        "overrides": {
+          "name": "👻 Hộ Pháp Dưới Nước (Lv.2)",
+          "description": "Hồn ma coi bạn là ân nhân. 'Ta tìm được cái này dưới đáy sâu...'",
+          "question": "**Nhận quà từ cõi âm?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "chest",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Hồn ma tặng bạn **1 Rương Kho Báu** vớt được từ tàu đắm! 🏴‍☠️🎁"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "river_pirates": {
@@ -236,41 +353,70 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-         { "type": "nothing", "chance": 0.6, "message": "'Biết điều đấy!' - Hắn lấy cá rồi bỏ đi. Bạn an toàn. 😮‍💨" },
-         { "type": "vat_lieu_nang_cap", "amount": 2, "chance": 0.4, "message": "'Cũng nể chú mày ngoan ngoãn.' Hắn vứt lại **2 Vật Liệu** vụn vặt. 🛠️" }
+        {
+          "type": "nothing",
+          "chance": 0.6,
+          "message": "'Biết điều đấy!' - Hắn lấy cá rồi bỏ đi. Bạn an toàn. 😮‍💨"
+        },
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 2,
+          "chance": 0.4,
+          "message": "'Cũng nể chú mày ngoan ngoãn.' Hắn vứt lại **2 Vật Liệu** vụn vặt. 🛠️"
+        }
       ],
       "decline": [
-          { "type": "vat_lieu_nang_cap", "amount": 5, "chance": 0.3, "message": "Bạn bật lại! Hắn sợ quá bỏ chạy làm rơi đồ (**5 Vật Liệu**) ⚔️🛠️" },
-          { "type": "rod_durability", "amount": -20, "chance": 0.7, "message": "Bạn bật lại nhưng bị hắn đánh trả! **(-20 Độ Bền)** ⚔️💢" }
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 5,
+          "chance": 0.3,
+          "message": "Bạn bật lại! Hắn sợ quá bỏ chạy làm rơi đồ (**5 Vật Liệu**) ⚔️🛠️"
+        },
+        {
+          "type": "rod_durability",
+          "amount": -20,
+          "chance": 0.7,
+          "message": "Bạn bật lại nhưng bị hắn đánh trả! **(-20 Độ Bền)** ⚔️💢"
+        }
       ]
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 9999,
-            "overrides": {
-                "name": "🏴‍☠️ Kẻ Thù Của Cướp Biển (Lv.-1)",
-                "description": "Hắn nhận ra mặt bạn: 'Lại là thằng lì lợm này! Tao sẽ không tha đâu!'",
-                "rewards": {
-                    "decline": [
-                        { "type": "rod_durability", "amount": -50, "chance": 1.0, "message": "Hắn lao vào tấn công điên cuồng! Cần câu của bạn gãy làm đôi! **(-50 Độ Bền)** ⚔️💀" }
-                    ]
-                }
-            }
-        },
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🏴‍☠️ Phó Bang Chủ (Lv.2)",
-                "description": "Thuyền trưởng cúi chào: 'Đại ca! Hôm nay thu hoạch tốt không?'",
-                "question": "**Nhận tiền bảo kê từ đàn em?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "money", "amount": 500, "chance": 1.0, "message": "'Đây là phần của đại ca hôm nay!' **Nhận 500 Hạt**. 💰" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 9999,
+        "overrides": {
+          "name": "🏴‍☠️ Kẻ Thù Của Cướp Biển (Lv.-1)",
+          "description": "Hắn nhận ra mặt bạn: 'Lại là thằng lì lợm này! Tao sẽ không tha đâu!'",
+          "rewards": {
+            "decline": [
+              {
+                "type": "rod_durability",
+                "amount": -50,
+                "chance": 1.0,
+                "message": "Hắn lao vào tấn công điên cuồng! Cần câu của bạn gãy làm đôi! **(-50 Độ Bền)** ⚔️💀"
+              }
+            ]
+          }
         }
+      },
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🏴‍☠️ Phó Bang Chủ (Lv.2)",
+          "description": "Thuyền trưởng cúi chào: 'Đại ca! Hôm nay thu hoạch tốt không?'",
+          "question": "**Nhận tiền bảo kê từ đàn em?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "money",
+                "amount": 500,
+                "chance": 1.0,
+                "message": "'Đây là phần của đại ca hôm nay!' **Nhận 500 Hạt**. 💰"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "wandering_swordsman": {
@@ -282,38 +428,58 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "rod_durability", "amount": 50, "chance": 0.6, "message": "Kiếm khách ăn xong, dùng nội công sửa lại cần câu giúp bạn! **(+50 Độ Bền)** 🛠️" },
-        { "type": "worm", "amount": 10, "chance": 0.4, "message": "Để tạ ơn, tại hạ xin tặng huynh đài số mồi câu này. **(10 Mồi Câu)** 🪱" }
-      ],
-      "decline": "Kiếm khách thở dài, ôm bụng đói lảo đảo bước đi..."
-    },
-    "affinity_tiers": [
         {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "⚔️ Huynh Đệ Kết Nghĩa (Lv.1)",
-                "description": "Kiếm khách: 'Ha! Lại gặp huynh đệ! Rượu ngon phải có mồi ngon!'",
-                "rewards": {
-                     "accept": [
-                         { "type": "legendary_buff", "duration": 15, "chance": 1.0, "message": "Hai người đàm đạo võ công. Bạn ngộ ra chân lý! **Buff Cá Hiếm (15p)**. 🍶✨" }
-                     ]
-                }
-            }
+          "type": "rod_durability",
+          "amount": 50,
+          "chance": 0.6,
+          "message": "Kiếm khách ăn xong, dùng nội công sửa lại cần câu giúp bạn! **(+50 Độ Bền)** 🛠️"
         },
         {
-            "min_affinity": 20,
-            "overrides": {
-                "name": "⚔️ Đại Hiệp (Lv.2)",
-                "description": "Kiếm khách quỳ xuống: 'Đa tạ ân công bấy lâu! Tại hạ tìm được kho báu này...'",
-                "question": "**Nhận rương báu tạ ơn?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "chest", "amount": 1, "chance": 1.0, "message": "Kiếm khách trao cho bạn **1 Rương Kho Báu** rồi phi thân đi mất. 🎁💨" }
-                    ]
-                }
-            }
+          "type": "worm",
+          "amount": 10,
+          "chance": 0.4,
+          "message": "Để tạ ơn, tại hạ xin tặng huynh đài số mồi câu này. **(10 Mồi Câu)** 🪱"
         }
+      ],
+      "decline": "Kiếm khách thở dài, ôm bụng đói lảo đảo bước đi...\n_(Độ thân thiết -1)_"
+    },
+    "affinity_tiers": [
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "⚔️ Huynh Đệ Kết Nghĩa (Lv.1)",
+          "description": "Kiếm khách: 'Ha! Lại gặp huynh đệ! Rượu ngon phải có mồi ngon!'",
+          "rewards": {
+            "accept": [
+              {
+                "type": "legendary_buff",
+                "duration": 15,
+                "chance": 1.0,
+                "message": "Hai người đàm đạo võ công. Bạn ngộ ra chân lý! **Buff Cá Hiếm (15p)**. 🍶✨"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "min_affinity": 20,
+        "overrides": {
+          "name": "⚔️ Đại Hiệp (Lv.2)",
+          "description": "Kiếm khách quỳ xuống: 'Đa tạ ân công bấy lâu! Tại hạ tìm được kho báu này...'",
+          "question": "**Nhận rương báu tạ ơn?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "chest",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Kiếm khách trao cho bạn **1 Rương Kho Báu** rồi phi thân đi mất. 🎁💨"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "gemstone_gambler": {
@@ -325,27 +491,46 @@
     "cost": 200,
     "rewards": {
       "accept": [
-        { "type": "money", "amount": 2000, "chance": 0.2, "message": "💎 **THẮNG LỚN!** Hắn thán phục và trả bạn đá quý trị giá **2000 Hạt**! 💰💰" },
-        { "type": "nothing", "chance": 0.5, "message": "🎲 **THUA RỒI!** Hắn cười khẩy thu tiền: 'Vận may chưa tới!' 💸" },
-        { "type": "worm", "amount": 5, "chance": 0.3, "message": "Thua sạch! Hắn thương hại ném cho ít mồi câu gỡ gạc. **(5 Mồi Câu)** 🤡" }
+        {
+          "type": "money",
+          "amount": 2000,
+          "chance": 0.2,
+          "message": "💎 **THẮNG LỚN!** Hắn thán phục và trả bạn đá quý trị giá **2000 Hạt**! 💰💰"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "🎲 **THUA RỒI!** Hắn cười khẩy thu tiền: 'Vận may chưa tới!' 💸"
+        },
+        {
+          "type": "worm",
+          "amount": 5,
+          "chance": 0.3,
+          "message": "Thua sạch! Hắn thương hại ném cho ít mồi câu gỡ gạc. **(5 Mồi Câu)** 🤡"
+        }
       ],
-      "decline": "'Kẻ nhát gan không bao giờ giàu!' - Hắn bỏ đi."
+      "decline": "'Kẻ nhát gan không bao giờ giàu!' - Hắn bỏ đi.\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-         {
-             "min_affinity": 10,
-             "overrides": {
-                 "name": "💎 Vua Cờ Bạc (Lv.2)",
-                 "description": "Thương buôn cúi đầu: 'Thần bài! Xin hãy nhận chút quà mọn, đừng vét sạch túi tôi nữa!'",
-                 "question": "**Nhận tiền bảo kê sòng bạc?**",
-                 "cost": 0,
-                 "rewards": {
-                     "accept": [
-                         { "type": "money", "amount": 1000, "chance": 1.0, "message": "Hắn biếu bạn **1000 Hạt** rồi dọn sòng chạy trốn. 🏃‍♂️💨" }
-                     ]
-                 }
-             }
-         }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "💎 Vua Cờ Bạc (Lv.2)",
+          "description": "Thương buôn cúi đầu: 'Thần bài! Xin hãy nhận chút quà mọn, đừng vét sạch túi tôi nữa!'",
+          "question": "**Nhận tiền bảo kê sòng bạc?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "money",
+                "amount": 1000,
+                "chance": 1.0,
+                "message": "Hắn biếu bạn **1000 Hạt** rồi dọn sòng chạy trốn. 🏃‍♂️💨"
+              }
+            ]
+          }
+        }
+      }
     ]
   },
   "traveling_bard": {
@@ -357,26 +542,44 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-          { "type": "money", "amount": 500, "chance": 0.3, "message": "🎶 Bài thơ nổi tiếng khắp kinh thành! Bạn được chia nhuận bút **500 Hạt**! 💰" },
-          { "type": "lucky_buff", "chance": 0.4, "message": "Lời ca du dương khiến bạn phấn chấn. **Nhận Buff May Mắn!** 🎼✨" },
-          { "type": "nothing", "chance": 0.3, "message": "Thơ dở tệ. Khán giả ném cà chua. Bạn chẳng được gì. 🍅" }
+        {
+          "type": "money",
+          "amount": 500,
+          "chance": 0.3,
+          "message": "🎶 Bài thơ nổi tiếng khắp kinh thành! Bạn được chia nhuận bút **500 Hạt**! 💰"
+        },
+        {
+          "type": "lucky_buff",
+          "chance": 0.4,
+          "message": "Lời ca du dương khiến bạn phấn chấn. **Nhận Buff May Mắn!** 🎼✨"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.3,
+          "message": "Thơ dở tệ. Khán giả ném cà chua. Bạn chẳng được gì. 🍅"
+        }
       ],
-      "decline": "'Tâm hồn khô khan!' - Nhà thơ thất vọng bỏ đi."
+      "decline": "'Tâm hồn khô khan!' - Nhà thơ thất vọng bỏ đi.\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🎵 Nhạc Sĩ Hoàng Gia (Lv.1)",
-                "description": "Nhà thơ giờ đã nổi tiếng trong cung đình. 'Nhờ có cảm hứng từ bạn...'",
-                "question": "**Nghe bản nhạc Hoàng Gia?**",
-                "rewards": {
-                    "accept": [
-                         { "type": "legendary_buff", "duration": 20, "chance": 1.0, "message": "Âm nhạc tuyệt đỉnh! Bạn cảm thấy như rồng bay phượng múa! **Buff Cá Hiếm (20p)** 🐉✨" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🎵 Nhạc Sĩ Hoàng Gia (Lv.1)",
+          "description": "Nhà thơ giờ đã nổi tiếng trong cung đình. 'Nhờ có cảm hứng từ bạn...'",
+          "question": "**Nghe bản nhạc Hoàng Gia?**",
+          "rewards": {
+            "accept": [
+              {
+                "type": "legendary_buff",
+                "duration": 20,
+                "chance": 1.0,
+                "message": "Âm nhạc tuyệt đỉnh! Bạn cảm thấy như rồng bay phượng múa! **Buff Cá Hiếm (20p)** 🐉✨"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "mystery_courier": {
@@ -387,27 +590,41 @@
     "chance": 0.2,
     "cost": "fish",
     "rewards": {
-       "accept": [
-          { "type": "vat_lieu_nang_cap", "amount": 3, "chance": 0.5, "message": "📦 Bên trong là quà từ phương xa: **3 Vật Liệu**! 🎁" },
-          { "type": "nothing", "chance": 0.5, "message": "📦 Bên trong rỗng tuếch. Chắc rơi dọc đường rồi? 🍃" }
-       ],
-       "decline": "Hạc kêu một tiếng rồi bay vút lên mây xanh."
+      "accept": [
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 3,
+          "chance": 0.5,
+          "message": "📦 Bên trong là quà từ phương xa: **3 Vật Liệu**! 🎁"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "📦 Bên trong rỗng tuếch. Chắc rơi dọc đường rồi? 🍃"
+        }
+      ],
+      "decline": "Hạc kêu một tiếng rồi bay vút lên mây xanh.\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🦅 Thần Điểu (Lv.2)",
-                "description": "Con Hạc tỏa sáng, nó chính là Thần Điểu biến hình. Nó mang đến món quà của Thiên Đình.",
-                "question": "**Nhận Thiên Quà?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "chest", "amount": 1, "chance": 1.0, "message": "Thần Điểu thả xuống **1 Rương Kho Báu** lấp lánh rồi tan vào mây. 🌥️🎁" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🦅 Thần Điểu (Lv.2)",
+          "description": "Con Hạc tỏa sáng, nó chính là Thần Điểu biến hình. Nó mang đến món quà của Thiên Đình.",
+          "question": "**Nhận Thiên Quà?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "chest",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Thần Điểu thả xuống **1 Rương Kho Báu** lấp lánh rồi tan vào mây. 🌥️🎁"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "neighbor_aunt": {
@@ -419,28 +636,46 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "vat_lieu_nang_cap", "amount": 5, "chance": 0.4, "message": "Uy tín! Bạn tìm thấy cái túi chứa **5 Vật Liệu**! 👌" },
-        { "type": "cursed", "chance": 0.6, "message": "Bà ta chỉ vào ổ kiến lửa! **Bị cắn sưng tay (-20 Độ bền)**! 🐜🔥" }
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 5,
+          "chance": 0.4,
+          "message": "Uy tín! Bạn tìm thấy cái túi chứa **5 Vật Liệu**! 👌"
+        },
+        {
+          "type": "cursed",
+          "chance": 0.6,
+          "message": "Bà ta chỉ vào ổ kiến lửa! **Bị cắn sưng tay (-20 Độ bền)**! 🐜🔥"
+        }
       ],
       "decline": [
-          { "type": "nothing", "chance": 1.0, "message": "'Thằng này kiệt sỉ!' - Bà ta đi nói xấu bạn khắp làng. (Affinity -1) 🗣️" }
+        {
+          "type": "nothing",
+          "chance": 1.0,
+          "message": "'Thằng này kiệt sỉ!' - Bà ta đi nói xấu bạn khắp làng. (Affinity -1) 🗣️"
+        }
       ]
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 15,
-            "overrides": {
-                "name": "📢 Bà Trùm Thông Tin (Lv.2)",
-                "description": "Bà hàng xóm coi bạn như cháu ruột. 'Tin mật từ cung đình đây! Nghe không?'",
-                "question": "**Nhận tin mật?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "legendary_buff", "duration": 30, "chance": 1.0, "message": "Bà ta chỉ đúng long mạch! **Tăng tỉ lệ Cá Hiếm cực mạnh (30p)**! 🗣️👂✨" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 15,
+        "overrides": {
+          "name": "📢 Bà Trùm Thông Tin (Lv.2)",
+          "description": "Bà hàng xóm coi bạn như cháu ruột. 'Tin mật từ cung đình đây! Nghe không?'",
+          "question": "**Nhận tin mật?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "legendary_buff",
+                "duration": 30,
+                "chance": 1.0,
+                "message": "Bà ta chỉ đúng long mạch! **Tăng tỉ lệ Cá Hiếm cực mạnh (30p)**! 🗣️👂✨"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "young_noble": {
@@ -452,28 +687,52 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-         { "type": "money", "amount": 1000, "chance": 0.4, "message": "Hắn ném cho bạn đĩnh vàng **(1000 Hạt)**. 'Khỏi thối lại!' 🪙" },
-         { "type": "vat_lieu_nang_cap", "amount": 10, "chance": 0.3, "message": "Hắn sai gia nô mang cho bạn **10 Vật Liệu** thượng hạng! 🎁" },
-         { "type": "nothing", "chance": 0.3, "message": "Gia nô thì thầm: 'Công tử quên mang tiền rồi'. Hắn ngại quá chạy mất. 🤡" }
+        {
+          "type": "money",
+          "amount": 1000,
+          "chance": 0.4,
+          "message": "Hắn ném cho bạn đĩnh vàng **(1000 Hạt)**. 'Khỏi thối lại!' 🪙"
+        },
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 10,
+          "chance": 0.3,
+          "message": "Hắn sai gia nô mang cho bạn **10 Vật Liệu** thượng hạng! 🎁"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.3,
+          "message": "Gia nô thì thầm: 'Công tử quên mang tiền rồi'. Hắn ngại quá chạy mất. 🤡"
+        }
       ],
-      "decline": "'Không biết hưởng lộc!' - Hắn phe phẩy quạt bỏ đi."
+      "decline": "'Không biết hưởng lộc!' - Hắn phe phẩy quạt bỏ đi.\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🎎 Mạnh Thường Quân (Lv.2)",
-                "description": "Công tử: 'Ngươi là người thật thà hiếm có. Ta muốn kết giao!'",
-                "question": "**Nhận quà kết giao?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "money", "amount": 2000, "chance": 0.5, "message": "Quà ra mắt cực khủng! **2000 Hạt**! 💰💰" },
-                        { "type": "chest", "amount": 1, "chance": 0.5, "message": "Công tử tặng bạn **1 Rương Châu Báu**! 💎" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🎎 Mạnh Thường Quân (Lv.2)",
+          "description": "Công tử: 'Ngươi là người thật thà hiếm có. Ta muốn kết giao!'",
+          "question": "**Nhận quà kết giao?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "money",
+                "amount": 2000,
+                "chance": 0.5,
+                "message": "Quà ra mắt cực khủng! **2000 Hạt**! 💰💰"
+              },
+              {
+                "type": "chest",
+                "amount": 1,
+                "chance": 0.5,
+                "message": "Công tử tặng bạn **1 Rương Châu Báu**! 💎"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "swamp_monster": {
@@ -485,27 +744,49 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "vat_lieu_nang_cap", "amount": 5, "chance": 0.6, "message": "Nó ăn xong, ợ ra một đống kim loại quý! **(5 Vật Liệu)** 🤢✨" },
-        { "type": "cursed", "chance": 0.4, "message": "Nó quẫy đuôi làm ướt sũng cần câu! **Giảm 30 Độ bền**! 💦" }
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 5,
+          "chance": 0.6,
+          "message": "Nó ăn xong, ợ ra một đống kim loại quý! **(5 Vật Liệu)** 🤢✨"
+        },
+        {
+          "type": "cursed",
+          "chance": 0.4,
+          "message": "Nó quẫy đuôi làm ướt sũng cần câu! **Giảm 30 Độ bền**! 💦"
+        }
       ],
       "decline": [
-          { "type": "nothing", "chance": 0.5, "message": "Bạn chạy thoát, nhưng tiếng gầm của quái vật làm bạn điếc cả tai... 👂" },
-          { "type": "rod_durability", "amount": -20, "chance": 0.5, "message": "Nó phun bùn độc vào cần câu! **Giảm 20 Độ Bền**! 🤢" }
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "Bạn chạy thoát, nhưng tiếng gầm của quái vật làm bạn điếc cả tai... 👂"
+        },
+        {
+          "type": "rod_durability",
+          "amount": -20,
+          "chance": 0.5,
+          "message": "Nó phun bùn độc vào cần câu! **Giảm 20 Độ Bền**! 🤢"
+        }
       ]
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "👹 Linh Vật Giữ Cửa (Lv.1)",
-                "description": "Nó không còn hung dữ nữa, mà ngoan ngoãn như một con cún khổng lồ.",
-                "rewards": {
-                    "accept": [
-                        { "type": "lucky_buff", "chance": 1.0, "message": "Nó liếm mặt bạn (hơi nhớt). Bạn nhận được sự bảo hộ của đầm lầy! **Buff May Mắn!** 🛡️" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "👹 Linh Vật Giữ Cửa (Lv.1)",
+          "description": "Nó không còn hung dữ nữa, mà ngoan ngoãn như một con cún khổng lồ.",
+          "rewards": {
+            "accept": [
+              {
+                "type": "lucky_buff",
+                "chance": 1.0,
+                "message": "Nó liếm mặt bạn (hơi nhớt). Bạn nhận được sự bảo hộ của đầm lầy! **Buff May Mắn!** 🛡️"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "wise_turtle": {
@@ -516,59 +797,92 @@
     "chance": 0.15,
     "cost": 100,
     "rewards": {
-       "accept": [
-         { "type": "legendary_buff", "duration": 15, "chance": 0.5, "message": "Cụ Rùa giảng đạo. Bạn giác ngộ! **Buff Cá Hiếm (15p)** 🐢💡" },
-         { "type": "nothing", "chance": 0.5, "message": "Cụ Rùa kể chuyện ngày xưa... Bạn ngủ gật lúc nào không hay. Phí tiền! 💤" }
-       ],
-       "decline": "Cụ Rùa: 'Dục tốc bất đạt...' Cụ lặn xuống từ từ."
+      "accept": [
+        {
+          "type": "legendary_buff",
+          "duration": 15,
+          "chance": 0.5,
+          "message": "Cụ Rùa giảng đạo. Bạn giác ngộ! **Buff Cá Hiếm (15p)** 🐢💡"
+        },
+        {
+          "type": "nothing",
+          "chance": 0.5,
+          "message": "Cụ Rùa kể chuyện ngày xưa... Bạn ngủ gật lúc nào không hay. Phí tiền! 💤"
+        }
+      ],
+      "decline": "Cụ Rùa: 'Dục tốc bất đạt...' Cụ lặn xuống từ từ.\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🐢 Thần Kim Quy (Lv.2)",
-                "description": "Cụ Rùa tỏa hào quang vàng rực. 'Con đã đủ đức độ. Nhận lấy cái này...'",
-                "question": "**Nhận Móng Rùa Thần?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "random_rare_fish", "amount": 1, "chance": 1.0, "message": "Cụ Rùa gọi lên một con thủy quái hiếm nhất trao cho bạn! **Nhận {amount}**! 🐉🎁" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🐢 Thần Kim Quy (Lv.2)",
+          "description": "Cụ Rùa tỏa hào quang vàng rực. 'Con đã đủ đức độ. Nhận lấy cái này...'",
+          "question": "**Nhận Móng Rùa Thần?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "random_rare_fish",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Cụ Rùa gọi lên một con thủy quái hiếm nhất trao cho bạn! **Nhận {amount}**! 🐉🎁"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "kind_grandma": {
     "name": "👵 Bà Tiên Đỡ Đầu",
     "description": "Một bà lão phúc hậu hiện ra giữa làn khói trắng.\n'Cháu ngoan, ta thấy cháu vất vả quá. Ta có chút quà...'",
-    "question": "**Nhận quà từ Bà Tiên?**",
+    "question": "**Nhận quà từ Bà Tiên (Cộng 2 phút cooldown)?**",
     "image_url": "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%A9n%20Nh%C3%A0%20-%20Discord%20Server/fishing-game/npc/pookie_sponsor.png",
     "chance": 0.1,
     "cost": "cooldown_2min",
     "rewards": {
       "accept": [
-        { "type": "money", "amount": 1000, "chance": 0.4, "message": "Bà Tiên hô biến! Trong túi bạn có **1000 Hạt**! 👵✨" },
-        { "type": "worm", "amount": 10, "chance": 0.3, "message": "Bà tặng bạn gói hạt giống (thực ra là mồi câu). **10 Mồi Câu**! 🌱" },
-        { "type": "cursed", "chance": 0.3, "message": "Hóa ra là Mụ Phù Thủy! Mụ biến cần câu của bạn thành khúc củi mục! **(-40 Độ bền)** 🧛‍♀️" }
+        {
+          "type": "money",
+          "amount": 1000,
+          "chance": 0.4,
+          "message": "Bà Tiên hô biến! Trong túi bạn có **1000 Hạt**! 👵✨"
+        },
+        {
+          "type": "worm",
+          "amount": 10,
+          "chance": 0.3,
+          "message": "Bà tặng bạn gói hạt giống (thực ra là mồi câu). **10 Mồi Câu**! 🌱"
+        },
+        {
+          "type": "cursed",
+          "chance": 0.3,
+          "message": "Hóa ra là Mụ Phù Thủy! Mụ biến cần câu của bạn thành khúc củi mục! **(-40 Độ bền)** 🧛‍♀️"
+        }
       ],
-      "decline": "Bà lão mỉm cười rồi tan biến vào hư không..."
+      "decline": "Bà lão mỉm cười rồi tan biến vào hư không...\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 5,
-            "overrides": {
-                "name": "👵 Tiên Nữ Giáng Trần (Lv.2)",
-                "description": "Bà lão hiện nguyên hình là Tiên Nữ xinh đẹp. 'Cháu đã vượt qua thử thách lòng tham.'",
-                "question": "**Nhận phép màu?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "legendary_buff", "duration": 30, "chance": 1.0, "message": "Tiên Nữ ban phép! Cần câu lấp lánh ánh sao! **Buff Cá Hiếm (30p)** ✨🧚‍♀️" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 5,
+        "overrides": {
+          "name": "👵 Tiên Nữ Giáng Trần (Lv.2)",
+          "description": "Bà lão hiện nguyên hình là Tiên Nữ xinh đẹp. 'Cháu đã vượt qua thử thách lòng tham.'",
+          "question": "**Nhận phép màu?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "legendary_buff",
+                "duration": 30,
+                "chance": 1.0,
+                "message": "Tiên Nữ ban phép! Cần câu lấp lánh ánh sao! **Buff Cá Hiếm (30p)** ✨🧚‍♀️"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "royal_artist": {
@@ -579,26 +893,45 @@
     "chance": 0.15,
     "cost": "fish",
     "rewards": {
-       "accept": [
-         { "type": "money", "amount": 300, "chance": 0.5, "message": "Bức tranh được Vua khen ngợi! Họa sĩ chia thưởng cho bạn **300 Hạt**! 🎨💰" },
-         { "type": "vat_lieu_nang_cap", "amount": 3, "chance": 0.3, "message": "Tặng bạn bộ dụng cụ vẽ (có thể dùng sửa cần). **3 Vật Liệu**! 🖌️" },
-         { "type": "lucky_buff", "chance": 0.2, "message": "Được vẽ tranh, bạn cảm thấy mình thật nghệ thuật. **Buff May Mắn!** ✨" }
-       ],
-       "decline": "Họa sĩ lắc đầu: 'Nghệ thuật không dành cho phàm nhân.' 🎨"
+      "accept": [
+        {
+          "type": "money",
+          "amount": 300,
+          "chance": 0.5,
+          "message": "Bức tranh được Vua khen ngợi! Họa sĩ chia thưởng cho bạn **300 Hạt**! 🎨💰"
+        },
+        {
+          "type": "vat_lieu_nang_cap",
+          "amount": 3,
+          "chance": 0.3,
+          "message": "Tặng bạn bộ dụng cụ vẽ (có thể dùng sửa cần). **3 Vật Liệu**! 🖌️"
+        },
+        {
+          "type": "lucky_buff",
+          "chance": 0.2,
+          "message": "Được vẽ tranh, bạn cảm thấy mình thật nghệ thuật. **Buff May Mắn!** ✨"
+        }
+      ],
+      "decline": "Họa sĩ lắc đầu: 'Nghệ thuật không dành cho phàm nhân.' 🎨\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🎨 Danh Họa (Lv.1)",
-                "description": "Họa sĩ muốn vẽ chân dung bạn treo trong cung điện!",
-                "rewards": {
-                    "accept": [
-                        { "type": "money", "amount": 1000, "chance": 1.0, "message": "Chân dung hoàn hảo! Bạn nhận được **1000 Hạt** tiền người mẫu! 🖼️💰" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🎨 Danh Họa (Lv.1)",
+          "description": "Họa sĩ muốn vẽ chân dung bạn treo trong cung điện!",
+          "rewards": {
+            "accept": [
+              {
+                "type": "money",
+                "amount": 1000,
+                "chance": 1.0,
+                "message": "Chân dung hoàn hảo! Bạn nhận được **1000 Hạt** tiền người mẫu! 🖼️💰"
+              }
+            ]
+          }
         }
+      }
     ]
   },
   "river_god_trial": {
@@ -610,27 +943,47 @@
     "cost": "fish",
     "rewards": {
       "accept": [
-        { "type": "money", "amount": 500, "chance": 0.4, "message": "Đáp 'Đêm Trăng!' - Hà Bá gật đầu: 'Khá lắm!'. **Tặng 500 Hạt!** 🌙" },
-        { "type": "rod_durability", "amount": 50, "chance": 0.3, "message": "Hà Bá khen bạn thông thái, gia cường cần câu cho bạn! **(+50 Độ bền)** 🔧" },
-        { "type": "cursed", "amount": 30, "chance": 0.3, "message": "Đáp 'Trưa Nắng!' - Hà Bá tức giận: 'Ngươi định phơi khô ta à?' **(-30 Độ bền)** ☀️💢" }
+        {
+          "type": "money",
+          "amount": 500,
+          "chance": 0.4,
+          "message": "Đáp 'Đêm Trăng!' - Hà Bá gật đầu: 'Khá lắm!'. **Tặng 500 Hạt!** 🌙"
+        },
+        {
+          "type": "rod_durability",
+          "amount": 50,
+          "chance": 0.3,
+          "message": "Hà Bá khen bạn thông thái, gia cường cần câu cho bạn! **(+50 Độ bền)** 🔧"
+        },
+        {
+          "type": "cursed",
+          "amount": 30,
+          "chance": 0.3,
+          "message": "Đáp 'Trưa Nắng!' - Hà Bá tức giận: 'Ngươi định phơi khô ta à?' **(-30 Độ bền)** ☀️💢"
+        }
       ],
-      "decline": "Hà Bá lặn xuống: 'Kẻ dốt nát không xứng đáng nói chuyện với ta.'"
+      "decline": "Hà Bá lặn xuống: 'Kẻ dốt nát không xứng đáng nói chuyện với ta.'\n_(Độ thân thiết -1)_"
     },
     "affinity_tiers": [
-        {
-            "min_affinity": 10,
-            "overrides": {
-                "name": "🧜‍♂️ Bạn Của Hà Bá (Lv.2)",
-                "description": "Hà Bá coi bạn là tri kỷ. 'Cầm lấy cái này, là đồ ta tịch thu của bọn cướp.'",
-                "question": "**Nhận chiến lợi phẩm?**",
-                "cost": 0,
-                "rewards": {
-                    "accept": [
-                        { "type": "chest", "amount": 1, "chance": 1.0, "message": "Hà Bá tặng bạn **1 Rương Kho Báu**! 🧜‍♂️🎁" }
-                    ]
-                }
-            }
+      {
+        "min_affinity": 10,
+        "overrides": {
+          "name": "🧜‍♂️ Bạn Của Hà Bá (Lv.2)",
+          "description": "Hà Bá coi bạn là tri kỷ. 'Cầm lấy cái này, là đồ ta tịch thu của bọn cướp.'",
+          "question": "**Nhận chiến lợi phẩm?**",
+          "cost": 0,
+          "rewards": {
+            "accept": [
+              {
+                "type": "chest",
+                "amount": 1,
+                "chance": 1.0,
+                "message": "Hà Bá tặng bạn **1 Rương Kho Báu**! 🧜‍♂️🎁"
+              }
+            ]
+          }
         }
+      }
     ]
   }
 }

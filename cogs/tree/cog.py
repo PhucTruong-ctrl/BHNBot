@@ -278,69 +278,90 @@ class TreeCog(commands.Cog):
         
         Displays:
         - Tree level and progress
-        - Active buffs
-        - Top contributors (season + all-time)
-        
-        Args:
-            interaction: Discord interaction
+        - Top contributors
+        - Tree image
         """
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer()
         
         guild_id = interaction.guild.id
-        
-        # Load tree data
         tree_data = await TreeData.load(guild_id)
         
-        # Create main embed
         embed = await create_tree_embed(interaction.user, tree_data)
+        await interaction.followup.send(embed=embed)
+    
+    @app_commands.command(name="huyhieu", description="Xem huy hiệu đóng góp của bạn")
+    async def show_badge(self, interaction: discord.Interaction):
+        """Display user's prestige badge and contribution stats."""
+        from .constants import PRESTIGE_TIERS, PRESTIGE_BADGES
         
-        # Add buff info if active
-        if await HarvestBuff.is_active(guild_id):
-            from database_manager import db_manager
-            
-            result = await db_manager.fetchone(
-                "SELECT harvest_buff_until FROM server_config WHERE guild_id = ?",
-                (guild_id,)
+        await interaction.response.defer(ephemeral=True)
+        
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        
+        row = await db_manager.fetchone(
+            "SELECT contribution_exp FROM tree_contributors WHERE user_id = $1 AND guild_id = $2",
+            (user_id, guild_id)
+        )
+        
+        total_exp = row[0] if row else 0
+        
+        current_tier = 0
+        for tier_num in sorted(PRESTIGE_TIERS.keys(), reverse=True):
+            if total_exp >= PRESTIGE_TIERS[tier_num]["min_exp"]:
+                current_tier = tier_num
+                break
+        
+        if current_tier == 0:
+            embed = discord.Embed(
+                title="🌱 Huy Hiệu Đóng Góp",
+                description=f"Bạn chưa đạt huy hiệu nào!\n\n**Tổng XP hiện tại:** {total_exp:,}\n**Cần:** {1000:,} XP để đạt huy hiệu đầu tiên",
+                color=0x95C77D
             )
-            if result and result[0]:
-                buff_until = datetime.fromisoformat(result[0])
-                timestamp = int(buff_until.timestamp())
+            embed.add_field(
+                name="📊 Tiến độ",
+                value=f"{total_exp}/1,000 XP ({int(total_exp/1000*100)}%)",
+                inline=False
+            )
+        else:
+            tier_info = PRESTIGE_TIERS[current_tier]
+            badge = PRESTIGE_BADGES[current_tier]
+            
+            next_tier = current_tier + 1
+            if next_tier in PRESTIGE_TIERS:
+                next_info = PRESTIGE_TIERS[next_tier]
+                remaining = next_info["min_exp"] - total_exp
+                progress_pct = int((total_exp - tier_info["min_exp"]) / (next_info["min_exp"] - tier_info["min_exp"]) * 100)
+                
+                embed = discord.Embed(
+                    title=f"{badge} Huy Hiệu Đóng Góp",
+                    description=f"**{tier_info['name']}**\n\n**Tổng XP:** {total_exp:,}\n**Tiếp theo:** {next_info['name']} (cần {remaining:,} XP nữa)",
+                    color=tier_info["color"]
+                )
                 embed.add_field(
-                    name="🌟 Buff Toàn Server",
-                    value=f"X2 hạt còn <t:{timestamp}:R>",
+                    name="📊 Tiến độ đến tier tiếp theo",
+                    value=f"{total_exp:,}/{next_info['min_exp']:,} XP ({progress_pct}%)",
                     inline=False
                 )
+            else:
+                embed = discord.Embed(
+                    title=f"{badge} Huy Hiệu Đóng Góp",
+                    description=f"**{tier_info['name']}**\n\n**Tổng XP:** {total_exp:,}\n\n🎉 **Bạn đã đạt huy hiệu cao nhất!**",
+                    color=tier_info["color"]
+                )
         
-        # Add contributor info
-        current_season_contributors = await self.contributor_manager.get_top_contributors_season(
-            guild_id,
-            tree_data.season,
-            3
+        embed.add_field(
+            name="🏅 Tất cả huy hiệu",
+            value=(
+                f"🌱 Người Trồng Cây (1,000 XP)\n"
+                f"🌿 Người Làm Vườn (5,000 XP)\n"
+                f"🌳 Người Bảo Vệ Rừng (25,000 XP)\n"
+                f"🌸 Thần Nông (100,000 XP)\n"
+                f"🍎 Tiên Nhân (500,000 XP)"
+            ),
+            inline=False
         )
-        all_time_contributors = await self.contributor_manager.get_top_contributors_all_time(guild_id, 3)
-        
-        if current_season_contributors:
-            season_text = await format_contributor_list(
-                current_season_contributors,
-                self.tree_manager,  # Pass tree_manager for caching
-                show_exp=False
-            )
-            embed.add_field(
-                name=f"🏆 Top 3 Người Góp mùa {tree_data.season}",
-                value=season_text,
-                inline=False
-            )
-        
-        if all_time_contributors:
-            all_time_text = await format_all_time_contributors(
-                all_time_contributors,
-                self.tree_manager  # Pass tree_manager for caching
-            )
-            embed.add_field(
-                name="🏆 Top 3 Người Góp toàn thời gian",
-                value=all_time_text,
-                inline=False
-            )
+        embed.set_footer(text="Góp hạt cho cây để tăng XP và nhận huy hiệu!")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
     

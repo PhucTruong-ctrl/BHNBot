@@ -280,7 +280,7 @@ async def format_contributor_list(
     tree_manager,  # Changed from bot to tree_manager
     show_exp: bool = False
 ) -> str:
-    """Format list of contributors for display.
+    """Format list of contributors for display with prestige badges.
     
     PERFORMANCE FIX #4: Uses tree_manager.get_user_cached() to avoid N+1 queries.
     
@@ -290,8 +290,10 @@ async def format_contributor_list(
         show_exp: Whether to show exp or amount
         
     Returns:
-        Formatted string with numbered list
+        Formatted string with numbered list including badges
     """
+    from .constants import PRESTIGE_TIERS, PRESTIGE_BADGES
+    
     if not contributors:
         return "Chưa có ai đóng góp"
     
@@ -300,8 +302,16 @@ async def format_contributor_list(
         user = await tree_manager.get_user_cached(contributor.user_id)
         username = user.name if user else f"User #{contributor.user_id}"
         
+        # Calculate badge based on contribution_exp
+        badge = ""
+        exp = contributor.contribution_exp
+        for tier_num in sorted(PRESTIGE_TIERS.keys(), reverse=True):
+            if exp >= PRESTIGE_TIERS[tier_num]["min_exp"]:
+                badge = PRESTIGE_BADGES[tier_num]
+                break
+        
         value = contributor.contribution_exp if show_exp else contributor.amount
-        result += f"{idx}. **{username}** - {value} {'Kinh Nghiệm' if show_exp else 'Hạt'}\n"
+        result += f"{idx}. {badge} **{username}** - {value} {'Kinh Nghiệm' if show_exp else 'Hạt'}\n"
     
     return result
 
@@ -310,7 +320,7 @@ async def format_all_time_contributors(
     contributors: List[Tuple[int, int]],
     tree_manager  # Changed from bot to tree_manager
 ) -> str:
-    """Format all-time contributors for display.
+    """Format all-time contributors for display with prestige badges.
     
     PERFORMANCE FIX #4: Uses tree_manager.get_user_cached() to avoid N+1 queries.
     
@@ -319,8 +329,10 @@ async def format_all_time_contributors(
         tree_manager: TreeManager instance (for cached user fetching)
         
     Returns:
-        Formatted string with numbered list
+        Formatted string with numbered list including badges
     """
+    from .constants import PRESTIGE_TIERS, PRESTIGE_BADGES
+    
     if not contributors:
         return "Chưa có ai đóng góp"
     
@@ -329,7 +341,14 @@ async def format_all_time_contributors(
         user = await tree_manager.get_user_cached(user_id)
         username = user.name if user else f"User #{user_id}"
         
-        result += f"{idx}. **{username}** - {total_exp} Kinh Nghiệm\n"
+        # Calculate badge
+        badge = ""
+        for tier_num in sorted(PRESTIGE_TIERS.keys(), reverse=True):
+            if total_exp >= PRESTIGE_TIERS[tier_num]["min_exp"]:
+                badge = PRESTIGE_BADGES[tier_num]
+                break
+        
+        result += f"{idx}. {badge} **{username}** - {total_exp} Kinh Nghiệm\n"
     
     return result
 

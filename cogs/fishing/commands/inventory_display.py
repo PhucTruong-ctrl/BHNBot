@@ -166,15 +166,13 @@ async def create_inventory_embed(user: discord.User, seeds: int, inventory: Dict
                     # Fallback to tool/misc
                     tool_items[key] = qty
             
-            # Check ALL_FISH (Fishing System)
-            elif key in ALL_FISH and key not in LEGENDARY_FISH_KEYS:
-                # Ensure we don't double count if it was in ITEMS_DATA
-                # But we handled checks above.
+            elif key in LEGENDARY_FISH_KEYS:
                 fish_items[key] = qty
             
-            # Fallback for truly unknown items (legacy?)
+            elif key in ALL_FISH:
+                fish_items[key] = qty
+            
             else:
-                 # Put in tools just to show it exists
                  tool_items[key] = qty
                  
         # --- DISPLAY SECTIONS ---
