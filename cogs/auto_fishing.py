@@ -263,7 +263,7 @@ class AutoFishing(commands.Cog):
         total_essence = 0
 
         for fish_key, count in pending.items():
-            fish_data = ALL_FISH_DATA.get(fish_key, {})
+            fish_data = ALL_FISH.get(fish_key, {})
             rarity = fish_data.get("rarity", "common")
             total_essence += count * ESSENCE_PER_RARITY.get(rarity, 1)
 
@@ -282,7 +282,7 @@ class AutoFishing(commands.Cog):
 
         fish_summary = []
         for fish_key, count in list(pending.items())[:10]:
-            fish_data = ALL_FISH_DATA.get(fish_key, {})
+            fish_data = ALL_FISH.get(fish_key, {})
             name = fish_data.get("name", fish_key)
             fish_summary.append(f"• {name} x{count}")
 
@@ -354,16 +354,158 @@ class AutoFishing(commands.Cog):
         await interaction.response.defer(ephemeral=True)
 
         inventory = await self.bot.inventory.get_all(interaction.user.id)
-        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH_DATA and v > 0}
+        fish_items = {k: v for k, v in inventory.items() if k in ALL_FISH and v > 0}
 
         if not fish_items:
             return await interaction.followup.send("❌ Bạn không có cá để tinh luyện!")
 
+        total_fish = 0
+        total_essence = 0
+        fish_by_rarity = {"common": [], "rare": [], "epic": [], "legendary": []}
+
+        for fish_key, count in fish_items.items():
+            fish_data = ALL_FISH.get(fish_key, {})
+            rarity = fish_data.get("rarity", "common")
+            name = fish_data.get("name", fish_key)
+            essence = count * ESSENCE_PER_RARITY.get(rarity, 1)
+            total_essence += essence
+            total_fish += count
+            fish_by_rarity[rarity].append(f"{name} x{count} (+{essence}💎)")
+
+        embed = discord.Embed(
+            title="🔮 Tinh Luyện Cá",
+            description=(
+                f"**Tổng cá:** {total_fish}\n"
+                f"**Tinh chất nhận được:** {total_essence} 💎\n\n"
+                "Chọn loại cá muốn tinh luyện bên dưới:"
+            ),
+            color=0x9b59b6
+        )
+
+        rarity_icons = {"common": "⚪", "rare": "🔵", "epic": "🟣", "legendary": "🟡"}
+        rarity_names = {"common": "Thường", "rare": "Hiếm", "epic": "Sử Thi", "legendary": "Huyền Thoại"}
+
+        for rarity in ["legendary", "epic", "rare", "common"]:
+            if fish_by_rarity[rarity]:
+                fish_list = fish_by_rarity[rarity][:5]
+                if len(fish_by_rarity[rarity]) > 5:
+                    fish_list.append(f"... và {len(fish_by_rarity[rarity]) - 5} loại khác")
+                embed.add_field(
+                    name=f"{rarity_icons[rarity]} {rarity_names[rarity]} ({ESSENCE_PER_RARITY[rarity]}💎/con)",
+                    value="\n".join(fish_list),
+                    inline=False
+                )
+
+        view = SacrificeMenuView(interaction.user.id, fish_items, self.bot)
+        await interaction.followup.send(embed=embed, view=view)
+
+
+class SacrificeMenuView(discord.ui.View):
+
+    def __init__(self, user_id: int, fish_items: dict, bot):
+        super().__init__(timeout=120)
+        self.user_id = user_id
+        self.fish_items = fish_items
+        self.bot = bot
+
+    @discord.ui.button(label="🔮 Tinh luyện TẤT CẢ", style=discord.ButtonStyle.danger, row=0)
+    async def sacrifice_all(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+
+        total_essence = 0
+        for fish_key, count in self.fish_items.items():
+            fish_data = ALL_FISH.get(fish_key, {})
+            rarity = fish_data.get("rarity", "common")
+            total_essence += count * ESSENCE_PER_RARITY.get(rarity, 1)
+
+        embed = discord.Embed(
+            title="⚠️ Xác Nhận Tinh Luyện",
+            description=(
+                f"Bạn sắp tinh luyện **TẤT CẢ {total_fish} cá**!\n\n"
+                f"💎 Tinh chất nhận được: **{total_essence}**\n\n"
+                "**Hành động này KHÔNG THỂ hoàn tác!**"
+            ),
+            color=0xe74c3c
+        )
+
+        view = SacrificeConfirmView(self.user_id, self.fish_items, self.bot, "all")
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    @discord.ui.button(label="⚪ Chỉ cá Thường", style=discord.ButtonStyle.secondary, row=1)
+    async def sacrifice_common(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._sacrifice_by_rarity(interaction, "common")
+
+    @discord.ui.button(label="🔵 Chỉ cá Hiếm", style=discord.ButtonStyle.primary, row=1)
+    async def sacrifice_rare(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._sacrifice_by_rarity(interaction, "rare")
+
+    @discord.ui.button(label="🟣 Chỉ cá Sử Thi", style=discord.ButtonStyle.primary, row=1)
+    async def sacrifice_epic(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._sacrifice_by_rarity(interaction, "epic")
+
+    @discord.ui.button(label="❌ Hủy", style=discord.ButtonStyle.secondary, row=2)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+        await interaction.response.edit_message(content="❌ Đã hủy tinh luyện.", embed=None, view=None)
+
+    async def _sacrifice_by_rarity(self, interaction: discord.Interaction, target_rarity: str):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+
+        filtered_fish = {}
+        for fish_key, count in self.fish_items.items():
+            fish_data = ALL_FISH.get(fish_key, {})
+            rarity = fish_data.get("rarity", "common")
+            if rarity == target_rarity:
+                filtered_fish[fish_key] = count
+
+        if not filtered_fish:
+            return await interaction.response.send_message(
+                f"❌ Bạn không có cá {target_rarity}!", ephemeral=True
+            )
+
+        total_fish = sum(filtered_fish.values())
+        total_essence = total_fish * ESSENCE_PER_RARITY[target_rarity]
+
+        rarity_names = {"common": "Thường", "rare": "Hiếm", "epic": "Sử Thi", "legendary": "Huyền Thoại"}
+
+        embed = discord.Embed(
+            title="⚠️ Xác Nhận Tinh Luyện",
+            description=(
+                f"Bạn sắp tinh luyện **{total_fish} cá {rarity_names[target_rarity]}**!\n\n"
+                f"💎 Tinh chất nhận được: **{total_essence}**\n\n"
+                "**Hành động này KHÔNG THỂ hoàn tác!**"
+            ),
+            color=0xe74c3c
+        )
+
+        view = SacrificeConfirmView(self.user_id, filtered_fish, self.bot, target_rarity)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+
+class SacrificeConfirmView(discord.ui.View):
+
+    def __init__(self, user_id: int, fish_to_sacrifice: dict, bot, sacrifice_type: str):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.fish_to_sacrifice = fish_to_sacrifice
+        self.bot = bot
+        self.sacrifice_type = sacrifice_type
+
+    @discord.ui.button(label="✅ Xác nhận tinh luyện", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+
+        await interaction.response.defer()
+
         total_essence = 0
         sacrificed_count = 0
 
-        for fish_key, count in fish_items.items():
-            fish_data = ALL_FISH_DATA.get(fish_key, {})
+        for fish_key, count in self.fish_to_sacrifice.items():
+            fish_data = ALL_FISH.get(fish_key, {})
             rarity = fish_data.get("rarity", "common")
             essence = count * ESSENCE_PER_RARITY.get(rarity, 1)
             total_essence += essence
@@ -376,10 +518,22 @@ class AutoFishing(commands.Cog):
             (total_essence, interaction.user.id)
         )
 
-        await interaction.followup.send(
-            f"🔮 Đã tinh luyện **{sacrificed_count}** cá!\n"
-            f"Nhận được: **{total_essence}** 💎 Tinh chất"
+        embed = discord.Embed(
+            title="🔮 Tinh Luyện Thành Công!",
+            description=(
+                f"Đã tinh luyện **{sacrificed_count}** cá!\n\n"
+                f"💎 Tinh chất nhận được: **+{total_essence}**"
+            ),
+            color=0x2ecc71
         )
+
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="❌ Hủy", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
+        await interaction.response.edit_message(content="❌ Đã hủy tinh luyện.", embed=None, view=None)
 
 
 class AutoFishStartView(discord.ui.View):
