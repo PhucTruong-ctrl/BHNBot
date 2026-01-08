@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users as UsersIcon, Shield, Settings, Terminal } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, Shield, Settings, Terminal, FileText } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Roles from './pages/Roles';
 import Config from './pages/Config';
+import BotLogs from './pages/BotLogs';
 import { ThemeProvider } from './context/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
 
@@ -32,6 +33,10 @@ function AppContent() {
             <Settings size={20} />
             <span>System</span>
           </NavLink>
+          <NavLink to="/bot-logs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <FileText size={20} />
+            <span>Logs</span>
+          </NavLink>
         </nav>
       </aside>
       <main className="main-content">
@@ -41,6 +46,7 @@ function AppContent() {
           <Route path="/users" element={<Users />} />
           <Route path="/roles" element={<Roles />} />
           <Route path="/config" element={<Config />} />
+          <Route path="/bot-logs" element={<BotLogs />} />
         </Routes>
       </main>
     </div>

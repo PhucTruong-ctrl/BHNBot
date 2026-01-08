@@ -151,7 +151,12 @@ def get_bot_status() -> Dict[str, Any]:
     for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time', 'cpu_percent', 'memory_info']):
         try:
             cmdline = proc.info['cmdline']
-            if cmdline and 'python' in proc.info['name'] and any('main.py' in arg for arg in cmdline):
+            proc_name = proc.info['name'] or ''
+            # Match both 'python' and 'python3'
+            is_python = 'python' in proc_name.lower()
+            has_main = cmdline and any('main.py' in str(arg) for arg in cmdline)
+            
+            if is_python and has_main:
                 # Found it
                 # cpu_percent needs a blocking call or interval, which psutil handles internally on subsequent calls
                 # For first call it might be 0, but that's fine for polling.
@@ -175,12 +180,72 @@ def get_bot_status() -> Dict[str, Any]:
 @router.get("/stats")
 async def get_system_stats() -> Dict[str, Any]:
     """Data aggregation for Dashboard."""
+    cpu = get_cpu_info()
+    memory = get_memory_info()
+    disk = get_disk_info()
+    network = get_network_info()
+    bot = get_bot_status()
+    
+    # Format for frontend compatibility
     return {
-        "cpu": get_cpu_info(),
-        "memory": get_memory_info(),
-        "disk": get_disk_info(),
-        "network": get_network_info(),
+        "cpu": {
+            "model": cpu["model"],
+            "usage_percent": cpu["usage"],
+            "frequency": cpu["frequency"],
+            "temperature": cpu["temperature"],
+            "cores": cpu["cores"],
+            "threads": cpu["threads"]
+        },
+        "memory": {
+            "ram_total_gb": memory["ram"]["total"] / (1024**3),
+            "ram_used_gb": memory["ram"]["used"] / (1024**3),
+            "ram_percent": memory["ram"]["percent"],
+            "ram_free_gb": memory["ram"]["free"] / (1024**3),
+            "swap_total_gb": memory["swap"]["total"] / (1024**3),
+            "swap_used_gb": memory["swap"]["used"] / (1024**3),
+            "swap_percent": memory["swap"]["percent"]
+        },
+        "disk": {
+            "total_gb": disk["total"] / (1024**3),
+            "used_gb": disk["used"] / (1024**3),
+            "free_gb": disk["free"] / (1024**3),
+            "usage_percent": disk["percent"],
+            "read_bytes": disk["read_bytes"],
+            "write_bytes": disk["write_bytes"]
+        },
+        "network": {
+            "upload_speed": network["upload_speed"],
+            "download_speed": network["download_speed"],
+            "upload_speed_mbps": network["upload_speed"] * 8 / (1024**2),
+            "download_speed_mbps": network["download_speed"] * 8 / (1024**2)
+        },
         "gpu": get_gpu_info(),
-        "bot": get_bot_status(),
+        "bot": {
+            "online": bot["status"] == "online",
+            "status": bot["status"],
+            "pid": bot.get("pid"),
+            "cpu_percent": bot["cpu_percent"],
+            "memory_percent": bot["memory_percent"],
+            "memory_mb": bot["memory_usage"] / (1024**2) if bot["memory_usage"] else 0,
+            "threads": bot["threads"],
+            "uptime": format_uptime(bot["uptime"]) if bot["uptime"] else "N/A",
+            "uptime_seconds": bot["uptime"]
+        },
         "timestamp": time.time()
     }
+
+
+def format_uptime(seconds: float) -> str:
+    """Format uptime seconds to human readable string."""
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    elif seconds < 3600:
+        return f"{int(seconds // 60)}m {int(seconds % 60)}s"
+    elif seconds < 86400:
+        hours = int(seconds // 3600)
+        mins = int((seconds % 3600) // 60)
+        return f"{hours}h {mins}m"
+    else:
+        days = int(seconds // 86400)
+        hours = int((seconds % 86400) // 3600)
+        return f"{days}d {hours}h"

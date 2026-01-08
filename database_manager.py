@@ -159,6 +159,9 @@ ALLOWED_CONFIG_FIELDS = {
     "vip_role_id_1",
     "vip_role_id_2",
     "vip_role_id_3",
+    "role_top1_noitu",
+    "role_top2_noitu",
+    "role_top3_noitu",
 }
 
 async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
@@ -1020,21 +1023,13 @@ async def ensure_phase3_tables():
     """Ensures tables/columns for Phase 3 (VIP Content) exist."""
     try:
         # 1. Add theme_url to user_aquarium
-        # SQLite doesn't support IF NOT EXISTS for ADD COLUMN, so we check first
-        # However, db_manager.execute/modify might catch error if column exists?
-        # A clearer way in SQLite is check pragma or try-catch.
-        
-        # We'll use a try-catch pattern for modifying tables
-        try:
+        existing = await db_manager.fetchone(
+            "SELECT 1 FROM information_schema.columns WHERE table_name = 'user_aquarium' AND column_name = 'theme_url'",
+            ()
+        )
+        if not existing:
             await db_manager.modify("ALTER TABLE user_aquarium ADD COLUMN theme_url TEXT DEFAULT NULL")
             logger.info("✓ Added theme_url column to user_aquarium")
-        except Exception as e:
-            # Handle both PostgreSQL and SQLite duplicate column errors
-            error_msg = str(e).lower()
-            if "duplicate column" in error_msg or "already exists" in error_msg or "column.*already exists" in error_msg:
-                logger.debug("theme_url column already exists (idempotent)")
-            else:
-                logger.error(f"Error adding theme_url column: {e}")
 
         logger.info("✓ Phase 3 tables/columns ensured")
     except Exception as e:

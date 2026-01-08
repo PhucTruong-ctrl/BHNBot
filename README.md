@@ -1,6 +1,8 @@
 # BHNBot
 ## admin dashboard
 ./scripts/start_admin.sh
+or
+.venv/bin/python3 -m uvicorn web.main:app --host 0.0.0.0 --port 8080
 
 ## bot
 pkill -f "python3 main.py"; sleep 1; cd /home/phuctruong/Work/BHNBot && .venv/bin/python3 main.py

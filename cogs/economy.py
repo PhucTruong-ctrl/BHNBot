@@ -24,7 +24,11 @@ CHAT_REWARD_MIN = 1
 CHAT_REWARD_MAX = 3
 CHAT_REWARD_COOLDOWN = 60  # seconds
 VOICE_REWARD_INTERVAL = 10  # minutes
-VOICE_REWARD = 2  # Hạt per 10 minutes in voice
+VOICE_REWARD = 5  # Hạt per 10 minutes in voice (ENHANCED: was 2)
+VOICE_PARTY_BONUS_PERCENT = 20  # +20% per extra person in channel
+VOICE_MUSIC_BONUS = 2  # +2 Hạt if music bot is playing
+STREAK_BONUS_PER_DAY = 5  # +5 Hạt per consecutive day
+MAX_STREAK_BONUS = 100  # Max +100 at 20 days
 
 class EconomyCog(commands.Cog):
     """Cog handling the economy system.
@@ -132,15 +136,31 @@ class EconomyCog(commands.Cog):
 
     async def get_last_daily(self, user_id: int) -> datetime:
         """Get last daily reward time"""
-        # Postgres: $1 placeholder
         result = await db_manager.fetchrow(
             "SELECT last_daily FROM users WHERE user_id = $1",
             (int(user_id),)
         )
         if result and result['last_daily']:
-            # Native datetime object from asyncpg
             return result['last_daily']
         return None
+
+    async def get_streak_data(self, user_id: int) -> tuple[int, bool]:
+        result = await db_manager.fetchrow(
+            "SELECT daily_streak, streak_protection FROM users WHERE user_id = $1",
+            (int(user_id),)
+        )
+        if result:
+            return (result['daily_streak'] or 0, result['streak_protection'] or False)
+        return (0, False)
+
+    async def update_streak(self, user_id: int, streak: int, protection: bool):
+        await db_manager.execute(
+            "UPDATE users SET daily_streak = $1, streak_protection = $2 WHERE user_id = $3",
+            (streak, protection, int(user_id))
+        )
+
+    def calculate_streak_bonus(self, streak: int) -> int:
+        return min(streak * STREAK_BONUS_PER_DAY, MAX_STREAK_BONUS)
 
     def is_daily_window(self) -> bool:
         """Check if current time is within daily reward window (5 AM - 10 AM)"""
@@ -181,10 +201,9 @@ class EconomyCog(commands.Cog):
 
     @app_commands.command(name="chao", description="Chào buổi sáng (5h-10h) để nhận hạt")
     async def daily_bonus(self, interaction: discord.Interaction):
-        """Daily bonus reward between 5 AM - 10 AM"""
+        """Daily bonus reward between 5 AM - 10 AM with streak system"""
         await interaction.response.defer(ephemeral=True)
         
-        # Check time window
         if not self.is_daily_window():
             now = datetime.now()
             await interaction.followup.send(
@@ -194,34 +213,81 @@ class EconomyCog(commands.Cog):
             )
             return
         
-        # Get or create user
         user = interaction.user
         await self.get_or_create_user_local(user.id, user.name)
         
-        # Check if already claimed today
         last_daily = await self.get_last_daily(user.id)
+        today = datetime.now().date()
+        
+        if last_daily and last_daily.date() == today:
+            await interaction.followup.send(
+                f"❌ Bạn đã nhận hạt hôm nay rồi! Quay lại vào ngày mai.",
+                ephemeral=True
+            )
+            return
+        
+        current_streak, has_protection = await self.get_streak_data(user.id)
+        new_streak = current_streak
+        protection_used = False
+        streak_lost = False
+        
         if last_daily:
-            today = datetime.now().date()
-            if last_daily.date() == today:
-                await interaction.followup.send(
-                    f"❌ Bạn đã nhận hạt hôm nay rồi! Quay lại vào ngày mai.",
-                    ephemeral=True
-                )
-                return
+            days_missed = (today - last_daily.date()).days - 1
+            
+            if days_missed == 0:
+                new_streak = current_streak + 1
+            elif days_missed == 1 and has_protection:
+                new_streak = current_streak + 1
+                protection_used = True
+            elif days_missed >= 1:
+                new_streak = 1
+                streak_lost = current_streak > 0
+        else:
+            new_streak = 1
         
-        # Award seeds
-        await self.add_seeds_local(user.id, DAILY_BONUS, 'daily_reward', 'social')
+        new_protection = new_streak >= 7 and not protection_used
+        
+        streak_bonus = self.calculate_streak_bonus(new_streak)
+        total_reward = DAILY_BONUS + streak_bonus
+        
+        await self.add_seeds_local(user.id, total_reward, 'daily_reward', 'social')
         await self.update_last_daily(user.id)
+        await self.update_streak(user.id, new_streak, new_protection)
         
-        # Get new balance
         seeds = await self.get_user_balance_local(user.id)
         
         embed = discord.Embed(
             title="☀️ Chào buổi sáng!",
-            description=f"Bạn nhận được **{DAILY_BONUS} hạt**",
             color=discord.Color.gold()
         )
+        
+        reward_text = f"**{DAILY_BONUS}** hạt cơ bản"
+        if streak_bonus > 0:
+            reward_text += f"\n**+{streak_bonus}** hạt streak (ngày {new_streak})"
+        embed.add_field(name="🎁 Phần thưởng", value=reward_text, inline=False)
+        
+        streak_display = f"🔥 **{new_streak}** ngày liên tiếp"
+        if new_protection:
+            streak_display += "\n🛡️ Bảo vệ streak: **Có sẵn**"
+        else:
+            streak_display += "\n🛡️ Bảo vệ streak: Đạt 7 ngày để mở"
+        embed.add_field(name="📊 Streak", value=streak_display, inline=False)
+        
+        if protection_used:
+            embed.add_field(
+                name="⚠️ Đã dùng bảo vệ!",
+                value="Bạn quên 1 ngày nhưng streak được giữ nhờ bảo vệ.",
+                inline=False
+            )
+        elif streak_lost:
+            embed.add_field(
+                name="💔 Streak đã reset",
+                value=f"Bạn mất streak {current_streak} ngày do nghỉ quá lâu.",
+                inline=False
+            )
+        
         embed.add_field(name="💰 Hạt hiện tại", value=f"**{seeds}**", inline=False)
+        embed.set_footer(text=f"Tip: Đạt 20 ngày để nhận tối đa +{MAX_STREAK_BONUS} hạt/ngày!")
         
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -645,41 +711,43 @@ class EconomyCog(commands.Cog):
 
     @tasks.loop(minutes=VOICE_REWARD_INTERVAL)
     async def voice_reward_task(self):
-        """Check voice channels and reward members every 5 minutes - ONLY if speaking"""
+        """Check voice channels and reward members every 10 minutes - ONLY if speaking"""
         try:
             for guild in self.bot.guilds:
                 is_buff_active = await self.is_harvest_buff_active(guild.id)
+                afk_channel_id = guild.afk_channel.id if guild.afk_channel else None
                 
                 for voice_channel in guild.voice_channels:
-                    # Get members in voice (exclude bots) who are SPEAKING
+                    if voice_channel.id == afk_channel_id:
+                        continue
+                    
                     speaking_members = [m for m in voice_channel.members if not m.bot and m.voice and m.voice.self_mute == False]
                     
                     if not speaking_members:
                         continue
                     
-                    # Award seeds to each speaking member
+                    party_size = len(speaking_members)
+                    party_multiplier = 1.0 + ((party_size - 1) * VOICE_PARTY_BONUS_PERCENT / 100)
+                    
+                    music_bot_playing = any(
+                        m.bot and m.voice and not m.voice.self_mute 
+                        for m in voice_channel.members
+                    )
+                    
                     for member in speaking_members:
                         await self.get_or_create_user_local(member.id, member.name)
                         
-                        # Get user rod level (affects reward bonus)
-                        try:
-                            # get_rod_data returns (level, durability) tuple, NOT dict
-                            rod_data = await self.bot.get_cog("FishingCog").get_rod_data(member.id)
-                            if rod_data:
-                                rod_level, rod_durability = rod_data
-                            else:
-                                rod_level = 0
-                        except Exception as e:
-                            rod_level = 0
-                            # logger.error(f"[ECONOMY] Error fetching rod data for {member.name}: {e}")
-                        
-                        reward = VOICE_REWARD
+                        base_reward = VOICE_REWARD
                         if is_buff_active:
-                            reward = reward * 2
+                            base_reward = base_reward * 2
+                        
+                        reward = int(base_reward * party_multiplier)
+                        if music_bot_playing:
+                            reward += VOICE_MUSIC_BONUS
                         
                         logger.info(
                             f"[ECONOMY] [VOICE_REWARD] user_id={member.id} username={member.name} "
-                            f"reward={reward} buff_active={is_buff_active}"
+                            f"reward={reward} buff={is_buff_active} party={party_size} music={music_bot_playing}"
                         )
                         await self.add_seeds_local(member.id, reward, 'voice_reward', 'social')
         

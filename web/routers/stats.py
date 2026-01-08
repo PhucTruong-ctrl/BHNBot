@@ -229,7 +229,6 @@ async def get_advanced_stats() -> Dict[str, Any]:
 async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
     """Get cash flow statistics grouped by category and reason."""
     
-    # Postgres specific: Use make_interval for clean integer handling
     query = """
         SELECT 
             category,
@@ -253,13 +252,11 @@ async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
         cat = row["category"] or "unknown"
         reason = row["reason"] or "unknown"
         
-        # summary updates
         summary["total_in"] += row["total_in"]
         summary["total_out"] += row["total_out"]
         summary["net"] += row["net_amount"]
         summary["transaction_count"] += row["count"]
         
-        # category init
         if cat not in categories:
             categories[cat] = {
                 "net": 0,
@@ -269,7 +266,6 @@ async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
                 "reasons": []
             }
             
-        # category updates
         c = categories[cat]
         c["net"] += row["net_amount"]
         c["in"] += row["total_in"]
@@ -289,6 +285,311 @@ async def get_cashflow_stats(days: int = 30) -> Dict[str, Any]:
         "summary": summary,
         "categories": categories
     }
+
+
+@router.get("/economy/detailed")
+async def get_detailed_economy_stats() -> Dict[str, Any]:
+    """Get detailed economy breakdown by source/cog."""
+    
+    by_category = await fetchall("""
+        SELECT 
+            category,
+            COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0)::BIGINT as earned,
+            COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0)::BIGINT as spent,
+            COUNT(*) as transactions
+        FROM transaction_logs
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY category
+        ORDER BY earned DESC
+    """)
+    
+    by_day = await fetchall("""
+        SELECT 
+            DATE(created_at) as date,
+            COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0)::BIGINT as earned,
+            COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0)::BIGINT as spent
+        FROM transaction_logs
+        WHERE created_at >= NOW() - INTERVAL '14 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date
+    """)
+    
+    top_earners = await fetchall("""
+        SELECT user_id, COALESCE(SUM(amount), 0)::BIGINT as total_earned
+        FROM transaction_logs
+        WHERE amount > 0 AND created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY user_id
+        ORDER BY total_earned DESC
+        LIMIT 10
+    """)
+    
+    top_spenders = await fetchall("""
+        SELECT user_id, COALESCE(SUM(ABS(amount)), 0)::BIGINT as total_spent
+        FROM transaction_logs
+        WHERE amount < 0 AND created_at >= NOW() - INTERVAL '7 days'
+        GROUP BY user_id
+        ORDER BY total_spent DESC
+        LIMIT 10
+    """)
+    
+    return {
+        "by_category": by_category,
+        "by_day": [{"date": str(r["date"]), "earned": r["earned"], "spent": r["spent"]} for r in by_day],
+        "top_earners": top_earners,
+        "top_spenders": top_spenders
+    }
+
+
+@router.get("/inventory")
+async def get_inventory_stats() -> Dict[str, Any]:
+    """Get inventory and item statistics."""
+    
+    item_counts = await fetchall("""
+        SELECT item_id, COALESCE(SUM(quantity), 0)::BIGINT as total_quantity, COUNT(DISTINCT user_id) as owners
+        FROM inventory
+        GROUP BY item_id
+        ORDER BY total_quantity DESC
+        LIMIT 20
+    """)
+    
+    total_items = await fetchone("""
+        SELECT COALESCE(SUM(quantity), 0)::BIGINT as total, COUNT(DISTINCT item_id) as unique_items
+        FROM inventory
+    """)
+    
+    fish_stats = await fetchall("""
+        SELECT fish_id, COALESCE(SUM(quantity), 0)::BIGINT as total, COUNT(DISTINCT user_id) as catchers
+        FROM fish_collection
+        GROUP BY fish_id
+        ORDER BY total DESC
+        LIMIT 20
+    """)
+    
+    rarest_fish = await fetchall("""
+        SELECT fish_id, COALESCE(SUM(quantity), 0)::BIGINT as total
+        FROM fish_collection
+        GROUP BY fish_id
+        ORDER BY total ASC
+        LIMIT 10
+    """)
+    
+    return {
+        "items": {
+            "total_quantity": total_items["total"] if total_items else 0,
+            "unique_items": total_items["unique_items"] if total_items else 0,
+            "top_items": item_counts
+        },
+        "fish": {
+            "most_caught": fish_stats,
+            "rarest": rarest_fish
+        }
+    }
+
+
+@router.get("/commands")
+async def get_command_stats(
+    days: int = Query(default=7, ge=1, le=90),
+    cog: Optional[str] = None,
+    guild_id: Optional[int] = None
+) -> Dict[str, Any]:
+    """Get command usage statistics."""
+    
+    # Base filters
+    filters = ["used_at >= NOW() - make_interval(days := $1)"]
+    params: List[Any] = [days]
+    param_idx = 2
+    
+    if cog:
+        filters.append(f"cog_name = ${param_idx}")
+        params.append(cog)
+        param_idx += 1
+    
+    if guild_id:
+        filters.append(f"guild_id = ${param_idx}")
+        params.append(guild_id)
+        param_idx += 1
+    
+    where_clause = " AND ".join(filters)
+    
+    # Total commands
+    total = await fetchone(
+        f"SELECT COUNT(*) as count FROM command_usage WHERE {where_clause}",
+        tuple(params)
+    )
+    
+    # Commands by name (top 20)
+    by_command = await fetchall(
+        f"""SELECT command_name, COUNT(*) as count, 
+            SUM(CASE WHEN success THEN 1 ELSE 0 END) as success_count
+        FROM command_usage WHERE {where_clause}
+        GROUP BY command_name ORDER BY count DESC LIMIT 20""",
+        tuple(params)
+    )
+    
+    # Commands by cog
+    by_cog = await fetchall(
+        f"""SELECT COALESCE(cog_name, 'Unknown') as cog_name, COUNT(*) as count
+        FROM command_usage WHERE {where_clause}
+        GROUP BY cog_name ORDER BY count DESC""",
+        tuple(params)
+    )
+    
+    # Commands by hour (for chart)
+    by_hour = await fetchall(
+        f"""SELECT EXTRACT(HOUR FROM used_at)::INT as hour, COUNT(*) as count
+        FROM command_usage WHERE {where_clause}
+        GROUP BY hour ORDER BY hour""",
+        tuple(params)
+    )
+    
+    # Commands by day (for chart)
+    by_day = await fetchall(
+        f"""SELECT DATE(used_at) as date, COUNT(*) as count
+        FROM command_usage WHERE {where_clause}
+        GROUP BY date ORDER BY date""",
+        tuple(params)
+    )
+    
+    # Error breakdown
+    errors = await fetchall(
+        f"""SELECT error_type, COUNT(*) as count
+        FROM command_usage WHERE {where_clause} AND success = FALSE AND error_type IS NOT NULL
+        GROUP BY error_type ORDER BY count DESC LIMIT 10""",
+        tuple(params)
+    )
+    
+    # Top users
+    top_users = await fetchall(
+        f"""SELECT user_id, COUNT(*) as count
+        FROM command_usage WHERE {where_clause}
+        GROUP BY user_id ORDER BY count DESC LIMIT 10""",
+        tuple(params)
+    )
+    
+    return {
+        "period": f"Last {days} days",
+        "total_commands": total["count"] if total else 0,
+        "by_command": by_command,
+        "by_cog": by_cog,
+        "by_hour": by_hour,
+        "by_day": [{"date": str(r["date"]), "count": r["count"]} for r in by_day],
+        "errors": errors,
+        "top_users": top_users,
+        "success_rate": round(
+            sum(c["success_count"] for c in by_command) / max(1, total["count"] if total else 1) * 100, 2
+        )
+    }
+
+
+@router.get("/commands/trending")
+async def get_trending_commands() -> Dict[str, Any]:
+    """Get trending commands (comparing last 24h vs previous 24h)."""
+    
+    # Last 24 hours
+    recent = await fetchall(
+        """SELECT command_name, COUNT(*) as count
+        FROM command_usage 
+        WHERE used_at >= NOW() - INTERVAL '24 hours'
+        GROUP BY command_name"""
+    )
+    
+    # Previous 24 hours
+    previous = await fetchall(
+        """SELECT command_name, COUNT(*) as count
+        FROM command_usage 
+        WHERE used_at >= NOW() - INTERVAL '48 hours' 
+        AND used_at < NOW() - INTERVAL '24 hours'
+        GROUP BY command_name"""
+    )
+    
+    recent_map = {r["command_name"]: r["count"] for r in recent}
+    previous_map = {r["command_name"]: r["count"] for r in previous}
+    
+    all_commands = set(recent_map.keys()) | set(previous_map.keys())
+    
+    trends = []
+    for cmd in all_commands:
+        r_count = recent_map.get(cmd, 0)
+        p_count = previous_map.get(cmd, 0)
+        
+        if p_count > 0:
+            change = ((r_count - p_count) / p_count) * 100
+        elif r_count > 0:
+            change = 100.0  # New command
+        else:
+            change = 0.0
+            
+        trends.append({
+            "command": cmd,
+            "recent": r_count,
+            "previous": p_count,
+            "change_percent": round(change, 1)
+        })
+    
+    # Sort by change (biggest gainers first)
+    trends.sort(key=lambda x: x["change_percent"], reverse=True)
+    
+    return {
+        "trending_up": trends[:10],
+        "trending_down": sorted(trends, key=lambda x: x["change_percent"])[:10]
+    }
+
+
+@router.get("/activity")
+async def get_user_activity_stats(days: int = Query(default=7, ge=1, le=90)) -> Dict[str, Any]:
+    """Get user activity statistics (joins, leaves, etc)."""
+    
+    # Joins and leaves by day
+    activity_by_day = await fetchall(
+        """SELECT DATE(created_at) as date, event_type, COUNT(*) as count
+        FROM user_activity 
+        WHERE created_at >= NOW() - make_interval(days := $1)
+        GROUP BY date, event_type
+        ORDER BY date""",
+        (days,)
+    )
+    
+    # Summary
+    summary = await fetchone(
+        """SELECT 
+            SUM(CASE WHEN event_type = 'join' THEN 1 ELSE 0 END) as joins,
+            SUM(CASE WHEN event_type = 'leave' THEN 1 ELSE 0 END) as leaves
+        FROM user_activity 
+        WHERE created_at >= NOW() - make_interval(days := $1)""",
+        (days,)
+    )
+    
+    # Format for chart
+    dates_data: Dict[str, Dict[str, int]] = {}
+    for row in activity_by_day:
+        date_str = str(row["date"])
+        if date_str not in dates_data:
+            dates_data[date_str] = {"join": 0, "leave": 0}
+        dates_data[date_str][row["event_type"]] = row["count"]
+    
+    chart_data = [
+        {"date": d, "joins": v["join"], "leaves": v["leave"]}
+        for d, v in sorted(dates_data.items())
+    ]
+    
+    return {
+        "period": f"Last {days} days",
+        "summary": {
+            "total_joins": summary["joins"] if summary else 0,
+            "total_leaves": summary["leaves"] if summary else 0,
+            "net_change": (summary["joins"] or 0) - (summary["leaves"] or 0) if summary else 0
+        },
+        "by_day": chart_data
+    }
+
+
+@router.get("/cogs")
+async def get_cog_list() -> List[str]:
+    """Get list of all cogs that have recorded commands."""
+    result = await fetchall(
+        "SELECT DISTINCT cog_name FROM command_usage WHERE cog_name IS NOT NULL ORDER BY cog_name"
+    )
+    return [r["cog_name"] for r in result]
 
 
 @router.get("/export")

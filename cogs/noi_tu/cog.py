@@ -247,20 +247,20 @@ class GameNoiTu(commands.Cog):
             
             # Check if session exists
             existing = await db_manager.fetchone(
-                "SELECT id FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                "SELECT session_id FROM game_sessions WHERE guild_id = $1 AND game_type = $2",
                 (guild_id, "noitu")
             )
             
             if existing:
                 # Update existing session
                 await db_manager.modify(
-                    "UPDATE game_sessions SET channel_id = ?, game_state = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND game_type = ?",
+                    "UPDATE game_sessions SET channel_id = $1, game_state = $2, last_saved = CURRENT_TIMESTAMP WHERE guild_id = $3 AND game_type = $4",
                     (channel_id, game_state_json, guild_id, "noitu")
                 )
             else:
                 # Insert new session
                 await db_manager.modify(
-                    "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO game_sessions (guild_id, game_type, channel_id, game_state) VALUES ($1, $2, $3, $4)",
                     (guild_id, "noitu", channel_id, game_state_json)
                 )
             
@@ -277,7 +277,7 @@ class GameNoiTu(commands.Cog):
         """
         try:
             row = await db_manager.fetchone(
-                "SELECT game_state FROM game_sessions WHERE guild_id = ? AND game_type = ?",
+                "SELECT game_state FROM game_sessions WHERE guild_id = $1 AND game_type = $2",
                 (guild_id, "noitu")
             )
             

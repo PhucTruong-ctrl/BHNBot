@@ -17,3 +17,4 @@ typing_extensions==4.15.0
 urllib3==2.6.1
 yarl==1.22.0
 asyncpg
+wavelink>=3.0.0
