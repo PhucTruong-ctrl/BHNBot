@@ -246,7 +246,29 @@ async def init_postgres():
             )
         """)
         
-        # 19. RECREATE TRANSACTION LOGS
+        # 19. GIFT HISTORY (Enhanced Gifting)
+        await db_manager.execute("""
+            CREATE TABLE IF NOT EXISTS gift_history (
+                id SERIAL PRIMARY KEY,
+                sender_id BIGINT NOT NULL,
+                receiver_id BIGINT NOT NULL,
+                item_key TEXT NOT NULL,
+                item_name TEXT,
+                is_anonymous BOOLEAN DEFAULT FALSE,
+                message TEXT,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create indexes for gift leaderboard queries
+        await db_manager.execute("""
+            CREATE INDEX IF NOT EXISTS idx_gift_history_sender ON gift_history(sender_id, sent_at)
+        """)
+        await db_manager.execute("""
+            CREATE INDEX IF NOT EXISTS idx_gift_history_receiver ON gift_history(receiver_id, sent_at)
+        """)
+
+        # 20. RECREATE TRANSACTION LOGS
         # Dropping to ensure currency column exists
         await db_manager.execute("DROP TABLE IF EXISTS transaction_logs")
         await db_manager.execute("""

@@ -338,6 +338,36 @@ class VIPCommandsCog(commands.Cog):
         await self.bot.wait_until_ready()
 
 
+class VIPConfirmModal(discord.ui.Modal, title="Xác nhận mua VIP"):
+    """Confirmation modal before VIP purchase."""
+    
+    confirm_input = discord.ui.TextInput(
+        label="Nhập 'xacnhan' để mua",
+        placeholder="xacnhan",
+        required=True,
+        max_length=10
+    )
+    
+    def __init__(self, user_id: int, bot, tier: int, cost: int, parent_view):
+        super().__init__()
+        self.user_id = user_id
+        self.bot = bot
+        self.tier = tier
+        self.cost = cost
+        self.parent_view = parent_view
+        self.tier_names = {1: "Bạc 🥈", 2: "Vàng 🥇", 3: "Kim Cương 💎"}
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        if self.confirm_input.value.lower().strip() != "xacnhan":
+            await interaction.response.send_message(
+                "❌ Nhập sai! Hãy nhập đúng 'xacnhan' để xác nhận mua.",
+                ephemeral=True
+            )
+            return
+        
+        await self.parent_view._execute_purchase(interaction, self.tier, self.cost)
+
+
 class VIPPurchaseView(discord.ui.View):
     """UI for VIP purchase confirmation."""
     
@@ -348,22 +378,30 @@ class VIPPurchaseView(discord.ui.View):
         
     @discord.ui.button(label="Mua Bạc (50k)", style=discord.ButtonStyle.secondary, emoji="🥈")
     async def buy_silver(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._process_purchase(interaction, 1, 50000)
+        await self._show_confirmation(interaction, 1, 50000)
     
     @discord.ui.button(label="Mua Vàng (150k)", style=discord.ButtonStyle.primary, emoji="🥇")
     async def buy_gold(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._process_purchase(interaction, 2, 150000)
+        await self._show_confirmation(interaction, 2, 150000)
     
     @discord.ui.button(label="Mua Kim Cương (500k)", style=discord.ButtonStyle.success, emoji="💎")
     async def buy_diamond(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._process_purchase(interaction, 3, 500000)
+        await self._show_confirmation(interaction, 3, 500000)
     
     @discord.ui.button(label="❌ Hủy", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(content="❌ Đã hủy mua VIP.", embed=None, view=None)
         self.stop()
     
-    async def _process_purchase(self, interaction: discord.Interaction, tier: int, cost: int):
+    async def _show_confirmation(self, interaction: discord.Interaction, tier: int, cost: int):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Không phải giao dịch của bạn!", ephemeral=True)
+            return
+        
+        modal = VIPConfirmModal(self.user_id, self.bot, tier, cost, self)
+        await interaction.response.send_modal(modal)
+    
+    async def _execute_purchase(self, interaction: discord.Interaction, tier: int, cost: int):
         """Process VIP purchase transaction."""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Không phải giao dịch của bạn!", ephemeral=True)

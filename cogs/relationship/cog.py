@@ -2,12 +2,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
-from datetime import datetime
-# from database_manager import remove_item (Removed)
-# Replaced import: SHOP_ITEMS is gone.
+from datetime import datetime, timedelta
 from cogs.fishing.constants import ALL_ITEMS_DATA
 from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
 from core.logger import setup_logger
+from core.database import db_manager
 
 logger = setup_logger("RelationshipCog", "cogs/relationship.log")
 
@@ -92,7 +91,14 @@ class RelationshipCog(commands.Cog):
 
         logger.info(f"Gift: {interaction.user.id} -> {user.id}, item: {item_key}, anonymous: {an_danh}")
         
-        # Construct Embed
+        item_info = ALL_ITEMS_DATA.get(item_key, {})
+        item_name = item_info.get('name', item_key)
+        
+        await db_manager.modify(
+            "INSERT INTO gift_history (sender_id, receiver_id, item_key, item_name, is_anonymous, message) VALUES (?, ?, ?, ?, ?, ?)",
+            (interaction.user.id, user.id, item_key, item_name, an_danh, message)
+        )
+        
         sender_name = "Một người giấu tên" if an_danh else interaction.user.display_name
         sender_avatar = "https://cdn.discordapp.com/embed/avatars/0.png" if an_danh else interaction.user.display_avatar.url
         
@@ -131,8 +137,128 @@ class RelationshipCog(commands.Cog):
             if interaction.channel:
                 await interaction.channel.send(content=user.mention, embed=embed)
         else:
-            # Normal reply
             await interaction.followup.send(content=user.mention, embed=embed)
+
+    @app_commands.command(name="qua-thongke", description="Xem thống kê tặng quà (leaderboard, lịch sử)")
+    @app_commands.describe(loai="Loại thống kê")
+    @app_commands.choices(loai=[
+        app_commands.Choice(name="🏆 Bảng xếp hạng người tặng nhiều nhất", value="bangxephang"),
+        app_commands.Choice(name="📜 Lịch sử quà đã tặng", value="lichsu"),
+        app_commands.Choice(name="🎁 Quà đã nhận được", value="nhanduoc"),
+    ])
+    async def qua_thongke(self, interaction: discord.Interaction, loai: str = "bangxephang"):
+        await interaction.response.defer()
+        
+        if loai == "bangxephang":
+            rows = await db_manager.fetchall(
+                """SELECT sender_id, COUNT(*) as total_gifts 
+                   FROM gift_history 
+                   GROUP BY sender_id 
+                   ORDER BY total_gifts DESC 
+                   LIMIT 10"""
+            )
+            
+            if not rows:
+                return await interaction.followup.send("📭 Chưa có ai tặng quà nào cả!")
+            
+            embed = discord.Embed(
+                title="🏆 Bảng Xếp Hạng Người Tặng Quà",
+                color=COLOR_RELATIONSHIP
+            )
+            
+            medals = ["🥇", "🥈", "🥉"]
+            lines = []
+            for i, (sender_id, total) in enumerate(rows):
+                medal = medals[i] if i < 3 else f"`{i+1}.`"
+                try:
+                    user = await self.bot.fetch_user(sender_id)
+                    name = user.display_name
+                except Exception:
+                    name = f"User#{sender_id}"
+                lines.append(f"{medal} **{name}** — {total} quà")
+            
+            embed.description = "\n".join(lines)
+            embed.set_footer(text="Tặng quà để leo hạng! Dùng /tangqua")
+            await interaction.followup.send(embed=embed)
+            
+        elif loai == "lichsu":
+            rows = await db_manager.fetchall(
+                """SELECT receiver_id, item_name, is_anonymous, sent_at 
+                   FROM gift_history 
+                   WHERE sender_id = ? 
+                   ORDER BY sent_at DESC 
+                   LIMIT 15""",
+                (interaction.user.id,)
+            )
+            
+            if not rows:
+                return await interaction.followup.send("📭 Bạn chưa tặng quà cho ai cả! Dùng `/tangqua` để bắt đầu.")
+            
+            embed = discord.Embed(
+                title="📜 Lịch Sử Quà Đã Tặng",
+                color=COLOR_RELATIONSHIP
+            )
+            
+            lines = []
+            for receiver_id, item_name, is_anon, sent_at in rows:
+                try:
+                    recv_user = await self.bot.fetch_user(receiver_id)
+                    receiver_name = recv_user.display_name
+                except Exception:
+                    receiver_name = f"User#{receiver_id}"
+                anon_tag = " 🎭" if is_anon else ""
+                time_str = sent_at.strftime("%d/%m") if sent_at else "N/A"
+                lines.append(f"• **{item_name}** → {receiver_name}{anon_tag} ({time_str})")
+            
+            embed.description = "\n".join(lines)
+            
+            total = await db_manager.fetchone(
+                "SELECT COUNT(*) FROM gift_history WHERE sender_id = ?",
+                (interaction.user.id,)
+            )
+            embed.set_footer(text=f"Tổng cộng: {total[0] if total else 0} quà đã tặng")
+            await interaction.followup.send(embed=embed)
+            
+        elif loai == "nhanduoc":
+            rows = await db_manager.fetchall(
+                """SELECT sender_id, item_name, is_anonymous, sent_at 
+                   FROM gift_history 
+                   WHERE receiver_id = ? 
+                   ORDER BY sent_at DESC 
+                   LIMIT 15""",
+                (interaction.user.id,)
+            )
+            
+            if not rows:
+                return await interaction.followup.send("📭 Bạn chưa nhận được quà nào! Hãy tốt bụng và chờ đợi nhé 💝")
+            
+            embed = discord.Embed(
+                title="🎁 Quà Bạn Đã Nhận",
+                color=COLOR_RELATIONSHIP
+            )
+            
+            lines = []
+            for sender_id, item_name, is_anon, sent_at in rows:
+                if is_anon:
+                    sender_name = "Ẩn danh 🎭"
+                else:
+                    try:
+                        send_user = await self.bot.fetch_user(sender_id)
+                        sender_name = send_user.display_name
+                    except Exception:
+                        sender_name = f"User#{sender_id}"
+                time_str = sent_at.strftime("%d/%m") if sent_at else "N/A"
+                lines.append(f"• **{item_name}** từ {sender_name} ({time_str})")
+            
+            embed.description = "\n".join(lines)
+            
+            total = await db_manager.fetchone(
+                "SELECT COUNT(*) FROM gift_history WHERE receiver_id = ?",
+                (interaction.user.id,)
+            )
+            embed.set_footer(text=f"Tổng cộng: {total[0] if total else 0} quà đã nhận")
+            await interaction.followup.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(RelationshipCog(bot))
