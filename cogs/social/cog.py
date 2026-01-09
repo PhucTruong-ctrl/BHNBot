@@ -1,0 +1,196 @@
+import logging
+from datetime import datetime
+from typing import Optional
+
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+
+from .services.voice_service import VoiceService, VoiceStats
+from .services.kindness_service import KindnessService, KindnessStats
+
+logger = logging.getLogger(__name__)
+
+
+class SocialCog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self._reaction_cooldowns: dict[tuple[int, int], datetime] = {}
+
+    async def cog_load(self) -> None:
+        await VoiceService.ensure_table()
+        await KindnessService.ensure_table()
+        self.flush_voice_sessions.start()
+        logger.info("SocialCog loaded - Voice & Kindness tracking active")
+
+    async def cog_unload(self) -> None:
+        self.flush_voice_sessions.cancel()
+
+    @tasks.loop(minutes=5)
+    async def flush_voice_sessions(self) -> None:
+        for guild in self.bot.guilds:
+            count = await VoiceService.flush_active_sessions(guild.id)
+            if count > 0:
+                logger.debug(f"Flushed {count} voice sessions for guild {guild.id}")
+
+    @flush_voice_sessions.before_loop
+    async def before_flush(self) -> None:
+        await self.bot.wait_until_ready()
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState
+    ) -> None:
+        if member.bot:
+            return
+
+        guild_id = member.guild.id
+        user_id = member.id
+
+        joined = before.channel is None and after.channel is not None
+        left = before.channel is not None and after.channel is None
+
+        if joined:
+            await VoiceService.start_session(user_id, guild_id)
+            logger.debug(f"Voice session started: {member} in {after.channel}")
+
+        elif left:
+            duration = await VoiceService.end_session(user_id, guild_id)
+            logger.debug(f"Voice session ended: {member}, duration={duration}s")
+
+    @commands.Cog.listener()
+    async def on_reaction_add(
+        self,
+        reaction: discord.Reaction,
+        user: discord.User
+    ) -> None:
+        if user.bot:
+            return
+        if reaction.message.author.bot:
+            return
+        if user.id == reaction.message.author.id:
+            return
+
+        guild = reaction.message.guild
+        if not guild:
+            return
+
+        cooldown_key = (user.id, reaction.message.author.id)
+        now = datetime.utcnow()
+
+        if cooldown_key in self._reaction_cooldowns:
+            elapsed = (now - self._reaction_cooldowns[cooldown_key]).total_seconds()
+            if elapsed < 60:
+                return
+
+        self._reaction_cooldowns[cooldown_key] = now
+
+        await KindnessService.increment_reaction_given(user.id, guild.id)
+        await KindnessService.increment_reaction_received(reaction.message.author.id, guild.id)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        if message.author.bot:
+            return
+        if not message.guild:
+            return
+        if not message.mentions:
+            return
+
+        if not KindnessService.contains_thanks(message.content):
+            return
+
+        guild_id = message.guild.id
+        sender_id = message.author.id
+
+        await KindnessService.increment_thanks_given(sender_id, guild_id)
+
+        for mentioned_user in message.mentions:
+            if mentioned_user.bot:
+                continue
+            if mentioned_user.id == sender_id:
+                continue
+            await KindnessService.increment_thanks_received(mentioned_user.id, guild_id)
+
+    @app_commands.command(name="tute", description="Xem điểm tử tế của bạn hoặc người khác")
+    @app_commands.describe(user="Người muốn xem (mặc định: bản thân)")
+    async def kindness_cmd(
+        self,
+        interaction: discord.Interaction,
+        user: Optional[discord.Member] = None
+    ) -> None:
+        target = user or interaction.user
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        stats = await KindnessService.get_stats(target.id, interaction.guild.id)
+        voice_stats = await VoiceService.get_stats(target.id, interaction.guild.id)
+
+        embed = discord.Embed(
+            title=f"💝 Điểm Tử Tế - {target.display_name}",
+            color=0xFF69B4
+        )
+        embed.set_thumbnail(url=target.display_avatar.url)
+
+        embed.add_field(
+            name="📊 Tổng Điểm",
+            value=f"**{stats.score:,}** điểm",
+            inline=False
+        )
+
+        details = (
+            f"😊 Reactions đã cho: **{stats.reactions_given}**\n"
+            f"🥰 Reactions đã nhận: **{stats.reactions_received}**\n"
+            f"🙏 Lần cảm ơn: **{stats.thanks_given}**\n"
+            f"💕 Được cảm ơn: **{stats.thanks_received}**\n"
+            f"🎁 Quà đã tặng: **{stats.gifts_given}**\n"
+            f"📦 Quà đã nhận: **{stats.gifts_received}**"
+        )
+        embed.add_field(name="📋 Chi Tiết", value=details, inline=False)
+
+        embed.add_field(
+            name="🎤 Thời Gian Voice",
+            value=f"**{voice_stats.total_hours}** giờ ({voice_stats.sessions_count} phiên)",
+            inline=False
+        )
+
+        embed.set_footer(text="Cho đi là nhận lại 💖")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="tutetop", description="Bảng xếp hạng người tử tế nhất server")
+    async def kindness_leaderboard(self, interaction: discord.Interaction) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+
+        leaderboard = await KindnessService.get_leaderboard(interaction.guild.id, limit=10)
+
+        if not leaderboard:
+            await interaction.followup.send("Chưa có ai trong bảng xếp hạng!")
+            return
+
+        embed = discord.Embed(
+            title="💝 Bảng Xếp Hạng Tử Tế",
+            description="Top 10 người tử tế nhất server",
+            color=0xFF69B4
+        )
+
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+
+        for i, (user_id, score) in enumerate(leaderboard):
+            medal = medals[i] if i < 3 else f"**{i+1}.**"
+            member = interaction.guild.get_member(user_id)
+            name = member.display_name if member else f"User {user_id}"
+            lines.append(f"{medal} {name} - **{score:,}** điểm")
+
+        embed.description = "\n".join(lines)
+        embed.set_footer(text="Hãy tử tế với mọi người nhé! 🌸")
+
+        await interaction.followup.send(embed=embed)

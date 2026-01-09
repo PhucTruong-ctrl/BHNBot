@@ -651,3 +651,100 @@ auto_fish_storage (
 - **Minimum Harvest Time**: 0.005 giờ (~18 giây) để tránh spam
 
 ---
+
+## 22. SOCIAL MODULE (Tử Tế & Voice Stats)
+**Files**: `cogs/social/` (cog.py, services/voice_service.py, services/kindness_service.py)
+
+### Slash Commands
+| Lệnh | Chức năng |
+|------|-----------|
+| `/tute [@user]` | Xem điểm tử tế của bạn hoặc người khác |
+| `/tutetop` | Bảng xếp hạng người tử tế nhất server |
+
+### Voice Hours Tracking
+- `on_voice_state_update`: Track join/leave
+- Background task mỗi 5 phút flush active sessions (crash protection)
+- Stats: `total_seconds`, `sessions_count`
+
+### Kindness Points System
+| Hành động | Điểm |
+|-----------|------|
+| Reaction cho người khác | +1 |
+| Nhận reaction | +0.5 |
+| Nói cảm ơn | +2 |
+| Được cảm ơn | +1 |
+| Tặng quà | +5 |
+| Nhận quà | +2 |
+
+### Thanks Detection Patterns
+- Vietnamese: `cảm ơn`, `cám ơn`, `camon`
+- English: `thanks`, `thank you`, `ty`, `tysm`
+
+### Database Tables
+```sql
+voice_stats (
+    user_id BIGINT,
+    guild_id BIGINT,
+    total_seconds BIGINT DEFAULT 0,
+    sessions_count INT DEFAULT 0,
+    last_session_start TIMESTAMP,
+    PRIMARY KEY (user_id, guild_id)
+)
+
+kindness_stats (
+    user_id BIGINT,
+    guild_id BIGINT,
+    reactions_given INT DEFAULT 0,
+    reactions_received INT DEFAULT 0,
+    thanks_given INT DEFAULT 0,
+    thanks_received INT DEFAULT 0,
+    PRIMARY KEY (user_id, guild_id)
+)
+```
+
+---
+
+## 23. PROFILE MODULE (Hồ Sơ Cá Nhân)
+**Files**: `cogs/profile/` (cog.py, core/themes.py, core/stats.py, services/profile_service.py, ui/)
+
+### Slash Commands
+| Lệnh | Chức năng |
+|------|-----------|
+| `/hoso [@user]` | Xem profile card (image) |
+| `/theme` | Chọn theme hồ sơ (Select Menu) |
+| `/bio [text]` | Đặt bio cá nhân (max 200 ký tự) |
+
+### Themes Available
+| Theme | Emoji | Font | VIP Tier |
+|-------|-------|------|----------|
+| Forest Sanctuary | 🌲 | Quicksand | Free |
+| Ocean Depths | 🌊 | Comfortaa | Free |
+| Starry Night | 🌙 | Nunito | Free |
+| Cozy Cabin | 🏠 | Caveat | VIP 1 |
+| Sunrise Meadow | 🌅 | Outfit | VIP 2 |
+
+### Profile Card Stats
+| Icon | Stat | Source |
+|------|------|--------|
+| 🌾 | Seeds | `users.seeds` |
+| 🐟 | Fish | `COUNT(fish_collection)` |
+| 🎤 | Voice Hours | `voice_stats.total_seconds / 3600` |
+| 💝 | Kindness | Computed score từ kindness_stats |
+| 🔥 | Streak | `users.daily_streak` |
+| 🏆 | Badges | Top 4 achievements emojis |
+
+### Database Table
+```sql
+user_profiles (
+    user_id BIGINT PRIMARY KEY,
+    theme VARCHAR(32) DEFAULT 'forest',
+    badges_display VARCHAR(256),
+    bio VARCHAR(200) DEFAULT 'Một người bạn thân thiện 🌸'
+)
+```
+
+### Assets
+- `assets/profile/bg_*.png`: 5 theme backgrounds (900x350px)
+- `assets/profile/fonts/*.ttf`: 5 Google Fonts
+
+---
