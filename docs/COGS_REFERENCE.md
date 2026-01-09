@@ -74,7 +74,7 @@ Tài liệu này được tạo ra để AI assistant có thể:
 ### Slash Commands
 | Lệnh | Chức năng |
 |------|-----------|
-| `/chao` | Chào buổi sáng nhận 10 hạt (5h-12h) |
+| `/chao` | Chào buổi sáng nhận 10 hạt (5h-10h) + streak bonus |
 | `/tuido [user]` | Xem số dư, cần câu, túi đồ |
 | `/top` | Bảng xếp hạng đại gia |
 | `/themhat [user] [amount]` | (Admin) Cộng hạt |
@@ -85,8 +85,14 @@ Tài liệu này được tạo ra để AI assistant có thể:
 - Voice Reward: 2 hạt / 10 phút voice
 - Weekly Welfare: 500 hạt cho người nghèo mỗi Chủ Nhật
 
+### Daily Streak System
+- **Window**: 5 AM - 10 AM (DAILY_WINDOW_START/END)
+- **Streak Bonus**: +hạt mỗi ngày liên tiếp (capped at MAX_STREAK_BONUS)
+- **Streak Protection**: Boolean flag bảo vệ streak khi miss 1 ngày
+- **Database columns**: `daily_streak`, `streak_protection` trong `users` table
+
 ### Database
-- `users`: user_id, seeds, last_daily, last_chat_reward...
+- `users`: user_id, seeds, last_daily, last_chat_reward, daily_streak, streak_protection...
 - `server_config`: harvest_buff_until, exclude_chat_channels
 - `transaction_logs`: lịch sử giao dịch
 
@@ -513,5 +519,135 @@ earned_count / total_guild_members * 100
 - Cross-DB transactions (VIP): Seeds (SQLite?) + VIP (Postgres) → needs unification
 
 **Detailed Analysis:** See `/docs/AUDIT_REPORT_2026.md`
+
+---
+
+## 20. MUSIC MODULE (Nhạc)
+**Files**: `cogs/music/` (cog.py, ui/views.py, services/)
+
+### Requirements
+- **Lavalink Server**: Cần chạy Lavalink server tại `localhost:2333`
+- **Wavelink Library**: Python wrapper cho Lavalink
+
+### Slash Commands
+| Lệnh | Tham số | Chức năng |
+|------|---------|-----------|
+| `/play` | query | Phát nhạc từ YouTube/Spotify/SoundCloud |
+| `/skip` | Không | Bỏ qua bài hiện tại |
+| `/stop` | Không | Dừng phát và rời kênh |
+| `/pause` | Không | Tạm dừng/tiếp tục |
+| `/queue` | Không | Xem hàng đợi |
+| `/nowplaying` | Không | Xem bài đang phát |
+| `/volume` | level (0-100) | Điều chỉnh âm lượng |
+| `/shuffle` | Không | Xáo trộn hàng đợi |
+| `/loop` | mode (off/track/queue) | Chế độ lặp |
+| `/247` | Không | Bật/tắt chế độ 24/7 |
+| `/filter` | effect | Áp dụng hiệu ứng âm thanh |
+
+### Playlist Commands (Subgroup `/playlist`)
+| Lệnh | Chức năng |
+|------|-----------|
+| `/playlist create [name]` | Tạo playlist mới |
+| `/playlist add [name]` | Thêm bài đang phát vào playlist |
+| `/playlist list` | Xem danh sách playlist |
+| `/playlist view [name]` | Xem chi tiết playlist |
+| `/playlist play [name]` | Phát playlist |
+| `/playlist remove [name] [position]` | Xóa bài khỏi playlist |
+| `/playlist delete [name]` | Xóa playlist |
+
+### Audio Filters
+| Filter | Effect |
+|--------|--------|
+| `lofi` | Pitch 0.9 (chill vibe) |
+| `vaporwave` | Speed 0.8, Pitch 0.85 |
+| `nightcore` | Speed 1.2, Pitch 1.2 |
+| `bass` | Bass boost equalizer |
+| `reset` | Reset về mặc định |
+
+### Music Sources
+- **YouTube**: Direct URL hoặc playlist
+- **Spotify**: Track, Playlist, Album (convert sang SoundCloud/YouTube search)
+- **SoundCloud**: Default search source
+- **Fallback**: YouTube search nếu SoundCloud không tìm thấy
+
+### State Variables
+- `music_247_guilds`: Set[guild_id] - guilds bật 24/7
+- `lavalink_connected`: Boolean - trạng thái kết nối
+- `_now_playing_messages`: dict[guild_id → Message] - embed đang phát
+- `_music_channels`: dict[guild_id → TextChannel] - kênh text
+
+### Database Tables
+- `music_playlists`: user_id, guild_id, name, track_count, total_duration_ms
+- `music_playlist_tracks`: playlist_id, title, uri, artist, duration_ms, position
+
+### Critical Notes
+- Bot auto-disconnect sau 5 phút nếu queue trống (trừ chế độ 24/7)
+- Persistent View cho MusicControlView (sống qua restart)
+- Spotify không stream trực tiếp, chỉ lấy metadata rồi search trên SoundCloud/YouTube
+
+---
+
+## 21. AUTO-FISHING MODULE (Câu Cá Tự Động)
+**Files**: `cogs/auto_fishing/` (cog.py, core/calculator.py, services/fishing_service.py, ui/views.py)
+
+### Slash Commands
+| Lệnh | Chức năng |
+|------|-----------|
+| `/autocauca` | Mở dashboard auto-fishing (ephemeral) |
+
+### UI Buttons (MainMenuView)
+| Button | Chức năng |
+|--------|-----------|
+| 🔄 Refresh | Làm mới + thu hoạch cá mới |
+| 🟢 Bật/Tắt | Toggle auto-fishing on/off |
+| 🪣 Xem kho | Xem kho cá tự động |
+| ⬆️ Nâng cấp | Menu nâng cấp |
+| 📦 Chuyển → Xô | Chuyển cá vào inventory chính |
+| 🔮 Tinh luyện | Chuyển cá thành essence |
+| 💰 Bán cá | Bán cá lấy coins |
+
+### Upgrade System
+| Upgrade | Levels | Effect |
+|---------|--------|--------|
+| ⚡ Efficiency | 1-5 | 5/10/20/40/100 cá/giờ |
+| ⏱️ Duration | 1-5 | 4/8/12/18/24 giờ max tích lũy |
+| ✨ Quality | 1-5 | +5/10/20/35/50% cá hiếm |
+
+### Essence System
+| Rarity | Essence/con |
+|--------|-------------|
+| Common | 1 |
+| Rare | 5 |
+| Epic | 25 |
+| Legendary | 100 |
+
+### Background Task
+- `harvest_loop`: Chạy mỗi 30 phút, auto-harvest cho tất cả user có `is_active=TRUE`
+
+### Database Tables
+```sql
+auto_fishing (
+    user_id BIGINT PRIMARY KEY,
+    is_active BOOLEAN DEFAULT FALSE,
+    efficiency_level INT DEFAULT 1,
+    duration_level INT DEFAULT 1,
+    quality_level INT DEFAULT 1,
+    total_essence INT DEFAULT 0,
+    last_harvest TIMESTAMP
+)
+
+auto_fish_storage (
+    user_id BIGINT,
+    fish_key VARCHAR(64),
+    quantity INT DEFAULT 0,
+    PRIMARY KEY (user_id, fish_key)
+)
+```
+
+### Critical Notes
+- **State Persistence**: `is_active` và `last_harvest` lưu trong DB → survive restart
+- **Separate Storage**: Cá auto-fish lưu riêng trong `auto_fish_storage`, KHÔNG phải `inventory`
+- **Ephemeral UI**: Dashboard chỉ user thấy, dùng nút 🔄 để refresh
+- **Minimum Harvest Time**: 0.005 giờ (~18 giây) để tránh spam
 
 ---
