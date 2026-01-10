@@ -231,6 +231,139 @@ class QuestCog(commands.Cog):
         
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(name="nv-test-sang", description="[Admin] Trigger thông báo nhiệm vụ buổi sáng")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def nv_test_morning(self, interaction: discord.Interaction):
+        if not interaction.guild:
+            return await interaction.response.send_message("Chỉ dùng trong server!", ephemeral=True)
+        
+        await interaction.response.defer()
+        
+        channel_id = self._quest_channels.get(interaction.guild.id)
+        if not channel_id:
+            return await interaction.followup.send(
+                "Chưa cấu hình kênh nhiệm vụ! Dùng `/config kenh_nhiemvu:#channel`", 
+                ephemeral=True
+            )
+        
+        channel = self.bot.get_channel(channel_id)
+        if not channel:
+            return await interaction.followup.send("Không tìm thấy kênh!", ephemeral=True)
+        
+        quests = await QuestService.generate_daily_quests(interaction.guild.id)
+        streak = await QuestService.get_streak(interaction.guild.id)
+        
+        now = datetime.now(VN_TZ)
+        embed = discord.Embed(
+            title="🎯 NHIỆM VỤ NGÀY " + now.strftime("%d/%m/%Y"),
+            color=0x00FF88
+        )
+        
+        quest_lines = []
+        for i, quest in enumerate(quests, 1):
+            defn = quest.definition
+            desc = defn.description_vi.format(target=quest.target_value)
+            quest_lines.append(
+                f"{defn.icon} **{i}. {defn.name_vi}**\n"
+                f"   {desc} → {quest.reward_pool} Hạt"
+            )
+        
+        embed.description = "\n\n".join(quest_lines)
+        
+        bonus_text = f"🎁 Bonus hoàn thành cả 3: **+{ALL_QUEST_BONUS} Hạt**"
+        if streak.current_streak > 0:
+            bonus_text += f"\n🔥 Server streak: **{streak.current_streak}** ngày (+{int(streak.bonus_multiplier*100)}%)"
+        
+        embed.add_field(name="💰 Phần Thưởng", value=bonus_text, inline=False)
+        embed.set_footer(text="[TEST] Kết quả sẽ được công bố lúc 22:00")
+        
+        await channel.send(embed=embed)
+        await interaction.followup.send(f"✅ Đã gửi thông báo nhiệm vụ tới {channel.mention}", ephemeral=True)
+
+    @app_commands.command(name="nv-test-toi", description="[Admin] Trigger kết quả nhiệm vụ buổi tối")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def nv_test_evening(self, interaction: discord.Interaction):
+        if not interaction.guild:
+            return await interaction.response.send_message("Chỉ dùng trong server!", ephemeral=True)
+        
+        await interaction.response.defer()
+        
+        channel_id = self._quest_channels.get(interaction.guild.id)
+        if not channel_id:
+            return await interaction.followup.send(
+                "Chưa cấu hình kênh nhiệm vụ! Dùng `/config kenh_nhiemvu:#channel`", 
+                ephemeral=True
+            )
+        
+        channel = self.bot.get_channel(channel_id)
+        if not channel:
+            return await interaction.followup.send("Không tìm thấy kênh!", ephemeral=True)
+        
+        quests = await QuestService.get_today_quests(interaction.guild.id)
+        if not quests:
+            return await interaction.followup.send("Chưa có nhiệm vụ hôm nay!", ephemeral=True)
+        
+        rewards = await QuestService.distribute_rewards(interaction.guild.id)
+        streak = await QuestService.get_streak(interaction.guild.id)
+        top_contributors = await QuestService.get_top_contributors(interaction.guild.id, limit=5)
+        
+        embed = discord.Embed(
+            title="📊 KẾT QUẢ NHIỆM VỤ HÔM NAY",
+            color=0xFFD700
+        )
+        
+        quest_results = []
+        completed_count = 0
+        for i, quest in enumerate(quests, 1):
+            defn = quest.definition
+            status = "✅" if quest.completed else "❌"
+            if quest.completed:
+                completed_count += 1
+            quest_results.append(
+                f"{status} {defn.icon} **{defn.name_vi}**: "
+                f"{quest.current_value}/{quest.target_value}"
+            )
+        
+        embed.add_field(
+            name=f"📋 Tiến Độ ({completed_count}/{len(quests)})",
+            value="\n".join(quest_results),
+            inline=False
+        )
+        
+        if top_contributors:
+            top_lines = []
+            medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+            for idx, (user_id, contrib) in enumerate(top_contributors):
+                try:
+                    user = await self.bot.fetch_user(user_id)
+                    name = user.display_name
+                except Exception:
+                    name = f"User#{user_id}"
+                
+                reward = rewards.get(user_id, 0)
+                top_lines.append(f"{medals[idx]} **{name}** - {contrib} đóng góp → +{reward} Hạt")
+            
+            embed.add_field(
+                name="👥 TOP ĐÓNG GÓP",
+                value="\n".join(top_lines),
+                inline=False
+            )
+        
+        streak_text = f"🔥 Server streak: **{streak.current_streak}** ngày"
+        if streak.longest_streak > streak.current_streak:
+            streak_text += f" (kỷ lục: {streak.longest_streak})"
+        embed.add_field(name="⚡ Streak", value=streak_text, inline=False)
+        
+        total_distributed = sum(rewards.values())
+        embed.set_footer(text=f"[TEST] Tổng phát: {total_distributed} Hạt cho {len(rewards)} người")
+        
+        await channel.send(embed=embed)
+        await interaction.followup.send(
+            f"✅ Đã gửi kết quả tới {channel.mention}\n"
+            f"💰 Phát {total_distributed} Hạt cho {len(rewards)} người",
+            ephemeral=True
+        )
+
     @staticmethod
     def _progress_bar(percent: float, length: int = 10) -> str:
         filled = int(percent / 100 * length)
