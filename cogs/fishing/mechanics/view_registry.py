@@ -1,5 +1,4 @@
-from .trash_sell_view import TrashSellView
-from .event_views import MeteorWishView, GenericActionView
+from ..ui import TrashSellView, MeteorWishView, GenericActionView
 
 # Registry Mapping
 # Key: String ID from JSON config

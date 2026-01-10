@@ -157,7 +157,7 @@ def create_interactive_view(event_data: Dict, cog, user_id: int, fish_items: Dic
     Returns:
         InteractiveSellEventView instance
     """
-    from .interactive_sell_views import InteractiveSellEventView
+    from ..ui import InteractiveSellEventView
     
     # For now, use base class for all events
     # Later can add event-specific View classes

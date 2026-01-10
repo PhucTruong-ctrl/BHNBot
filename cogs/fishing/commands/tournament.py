@@ -49,7 +49,7 @@ async def tournament_create_action(interaction: discord.Interaction, entry_fee: 
     )
     embed.set_footer(text=f"ID Giải: {t_id}")
     
-    from ..views import TournamentLobbyView
+    from ..ui import TournamentLobbyView
     view = TournamentLobbyView(t_id, user.id)
     
     await interaction.followup.send(embed=embed, view=view)

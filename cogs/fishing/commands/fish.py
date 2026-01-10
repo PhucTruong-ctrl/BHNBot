@@ -30,13 +30,14 @@ from configs.item_constants import ItemKeys, ItemType
 
 # Import mechanics
 from ..mechanics.rod_system import get_rod_data, check_and_repair_rod as _check_and_repair_rod_impl
-from ..mechanics.legendary import LegendaryBossFightView, check_legendary_spawn_conditions
+from ..ui import LegendaryBossFightView, InteractiveNPCView
+from ..mechanics.legendary import check_legendary_spawn_conditions
 from ..mechanics.events import trigger_random_event
 from ..mechanics.disasters import (
     check_server_freeze as _check_server_freeze_impl,
     clear_expired_disaster as _clear_expired_disaster_impl
 )
-from ..mechanics.npc_views import InteractiveNPCView
+
 
 # Import helpers
 from ..helpers import track_caught_fish, get_collection, check_collection_complete

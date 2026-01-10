@@ -7,7 +7,7 @@ from discord.ext import tasks
 import discord
 from core.logger import setup_logger
 from database_manager import db_manager, add_seeds, get_stat, increment_stat, set_global_state, get_global_state
-from ..mechanics.event_views import MeteorWishView
+from ..ui import MeteorWishView
 
 logger = setup_logger("GlobalEvents", "cogs/fishing/global_events.log")
 

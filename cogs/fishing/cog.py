@@ -17,7 +17,7 @@ from .constants import *
 from configs.item_constants import ItemKeys, ItemType
 from .helpers import track_caught_fish, get_collection, check_collection_complete
 from .mechanics.rod_system import get_rod_data, update_rod_data, check_and_repair_rod as _check_and_repair_rod_impl
-from .mechanics.legendary import LegendaryBossFightView, check_legendary_spawn_conditions, add_legendary_fish_to_user as add_legendary_module
+from .mechanics.legendary import check_legendary_spawn_conditions, add_legendary_fish_to_user as add_legendary_module
 from .mechanics.events import trigger_random_event
 
 # FORCE RELOAD collection module to pick up changes
@@ -27,7 +27,7 @@ importlib.reload(collection_module)
 from .commands.collection import _view_collection_impl_v2
 
 
-from .views import FishSellView
+from .ui import FishSellView, LegendaryBossFightView, InteractiveNPCView, MeteorWishView
 from core.services.vip_service import VIPEngine
 from .mechanics.glitch import apply_display_glitch as global_apply_display_glitch, set_glitch_state
 
@@ -79,10 +79,6 @@ from .commands.tournament import (
 # Import event views from mechanics module
 # from .mechanics.interactive_sell_views import FishSellView -> Removed
 
-from .mechanics.npc_views import InteractiveNPCView
-from .mechanics.event_views import MeteorWishView
-from .utils.global_event_manager import GlobalEventManager
-from .utils.global_event_manager import GlobalEventManager
 from .utils.global_event_manager import GlobalEventManager
 from .tournament import TournamentManager
 
