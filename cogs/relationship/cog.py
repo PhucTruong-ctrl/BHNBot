@@ -415,6 +415,4 @@ class RelationshipCog(commands.Cog):
 
 
 async def setup(bot):
-    cog = RelationshipCog(bot)
-    cog.__cog_app_commands__.append(cog.banthan_group)
-    await bot.add_cog(cog)
+    await bot.add_cog(RelationshipCog(bot))
