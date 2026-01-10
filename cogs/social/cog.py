@@ -11,6 +11,8 @@ from .services.kindness_service import KindnessService, KindnessStats
 from .services.streak_service import StreakService, StreakData, STREAK_MULTIPLIERS
 from .services.voice_reward_service import VoiceRewardService
 from cogs.relationship.services.buddy_service import BuddyService
+from cogs.quest.services.quest_service import QuestService
+from cogs.quest.core.quest_types import QuestType
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,7 @@ class SocialCog(commands.Cog):
         await KindnessService.increment_reaction_given(user.id, guild.id)
         await KindnessService.increment_reaction_received(reaction.message.author.id, guild.id)
         await StreakService.record_kind_action(user.id, guild.id)
+        await QuestService.add_contribution(guild.id, user.id, QuestType.REACT_TOTAL, 1)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -153,6 +156,7 @@ class SocialCog(commands.Cog):
 
         await KindnessService.increment_thanks_given(sender_id, guild_id)
         await StreakService.record_kind_action(sender_id, guild_id)
+        await QuestService.add_contribution(guild_id, sender_id, QuestType.THANK_TOTAL, 1)
 
         for mentioned_user in message.mentions:
             if mentioned_user.bot:

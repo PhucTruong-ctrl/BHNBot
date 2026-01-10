@@ -191,6 +191,7 @@ class ConfigCog(commands.Cog):
         kenh_bump="Kênh nhắc bump Disboard",
         kenh_log_bot="Kênh gửi log lỗi bot lên Discord",
         kenh_aquarium="Kênh Forum Làng Chài (Hồ Cá)",
+        kenh_nhiemvu="Kênh thông báo nhiệm vụ hàng ngày",
         log_ping_user="Người nhận ping khi có lỗi ERROR/CRITICAL",
         log_level="Mức độ log gửi lên Discord (INFO/WARNING/ERROR/CRITICAL)"
     )
@@ -204,6 +205,7 @@ class ConfigCog(commands.Cog):
                          kenh_log_bot: discord.TextChannel = None,
                          kenh_aquarium: discord.ForumChannel = None,
                          kenh_shop: discord.TextChannel = None,
+                         kenh_nhiemvu: discord.TextChannel = None,
                          log_ping_user: discord.Member = None,
                          log_level: str = None):
         
@@ -221,7 +223,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium, kenh_shop]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium, kenh_shop, kenh_nhiemvu]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -261,6 +263,12 @@ class ConfigCog(commands.Cog):
                 shop_cog = self.bot.get_cog("UnifiedShopCog")
                 if shop_cog:
                     await shop_cog.deploy_interface(guild_id, kenh_shop.id)
+            
+            # Handle Quest Channel
+            if kenh_nhiemvu:
+                quest_cog = self.bot.get_cog("QuestCog")
+                if quest_cog:
+                    await quest_cog.set_quest_channel(guild_id, kenh_nhiemvu.id)
             
             # Save using UPSERT
             from datetime import datetime

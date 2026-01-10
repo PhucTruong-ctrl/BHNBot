@@ -1,0 +1,238 @@
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+from datetime import datetime, time
+import pytz
+
+from .services.quest_service import QuestService
+from .core.quest_types import QuestType, QUEST_DEFINITIONS, ALL_QUEST_BONUS
+from core.database import db_manager
+from core.logger import setup_logger
+
+logger = setup_logger("QuestCog", "cogs/quest.log")
+
+VN_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
+MORNING_HOUR = 7
+EVENING_HOUR = 22
+
+
+class QuestCog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self._quest_channels: dict[int, int] = {}
+
+    async def cog_load(self) -> None:
+        await QuestService.ensure_tables()
+        await self._load_quest_channels()
+        self.morning_announcement.start()
+        self.evening_summary.start()
+        logger.info("QuestCog loaded - Daily quests system active")
+
+    async def cog_unload(self) -> None:
+        self.morning_announcement.cancel()
+        self.evening_summary.cancel()
+
+    async def _load_quest_channels(self) -> None:
+        await db_manager.execute("""
+            CREATE TABLE IF NOT EXISTS quest_config (
+                guild_id BIGINT PRIMARY KEY,
+                announcement_channel_id BIGINT,
+                enabled BOOLEAN DEFAULT TRUE
+            )
+        """)
+        
+        rows = await db_manager.fetchall(
+            "SELECT guild_id, announcement_channel_id FROM quest_config WHERE enabled = TRUE"
+        )
+        self._quest_channels = {row[0]: row[1] for row in rows if row[1]}
+
+    async def set_quest_channel(self, guild_id: int, channel_id: int) -> None:
+        await db_manager.execute(
+            """INSERT INTO quest_config (guild_id, announcement_channel_id, enabled)
+               VALUES ($1, $2, TRUE)
+               ON CONFLICT (guild_id) DO UPDATE SET
+                   announcement_channel_id = $2, enabled = TRUE""",
+            (guild_id, channel_id)
+        )
+        self._quest_channels[guild_id] = channel_id
+
+    @tasks.loop(time=time(hour=0, minute=0, tzinfo=VN_TZ))
+    async def morning_announcement(self) -> None:
+        now = datetime.now(VN_TZ)
+        if now.hour != MORNING_HOUR:
+            return
+        
+        for guild_id, channel_id in self._quest_channels.items():
+            try:
+                channel = self.bot.get_channel(channel_id)
+                if not channel:
+                    continue
+                
+                quests = await QuestService.generate_daily_quests(guild_id)
+                streak = await QuestService.get_streak(guild_id)
+                
+                embed = discord.Embed(
+                    title="🎯 NHIỆM VỤ NGÀY " + now.strftime("%d/%m/%Y"),
+                    color=0x00FF88
+                )
+                
+                quest_lines = []
+                for i, quest in enumerate(quests, 1):
+                    defn = quest.definition
+                    desc = defn.description_vi.format(target=quest.target_value)
+                    quest_lines.append(
+                        f"{defn.icon} **{i}. {defn.name_vi}**\n"
+                        f"   {desc} → {quest.reward_pool} Hạt"
+                    )
+                
+                embed.description = "\n\n".join(quest_lines)
+                
+                bonus_text = f"🎁 Bonus hoàn thành cả 3: **+{ALL_QUEST_BONUS} Hạt**"
+                if streak.current_streak > 0:
+                    bonus_text += f"\n🔥 Server streak: **{streak.current_streak}** ngày (+{int(streak.bonus_multiplier*100)}%)"
+                
+                embed.add_field(name="💰 Phần Thưởng", value=bonus_text, inline=False)
+                embed.set_footer(text="Kết quả sẽ được công bố lúc 22:00")
+                
+                await channel.send(embed=embed)
+                logger.info(f"Morning announcement sent to guild {guild_id}")
+                
+            except Exception as e:
+                logger.error(f"Failed morning announcement for guild {guild_id}: {e}")
+
+    @tasks.loop(time=time(hour=15, minute=0, tzinfo=VN_TZ))
+    async def evening_summary(self) -> None:
+        now = datetime.now(VN_TZ)
+        if now.hour != EVENING_HOUR:
+            return
+        
+        for guild_id, channel_id in self._quest_channels.items():
+            try:
+                channel = self.bot.get_channel(channel_id)
+                if not channel:
+                    continue
+                
+                quests = await QuestService.get_today_quests(guild_id)
+                if not quests:
+                    continue
+                
+                rewards = await QuestService.distribute_rewards(guild_id)
+                streak = await QuestService.get_streak(guild_id)
+                top_contributors = await QuestService.get_top_contributors(guild_id, limit=5)
+                
+                embed = discord.Embed(
+                    title="📊 KẾT QUẢ NHIỆM VỤ HÔM NAY",
+                    color=0xFFD700
+                )
+                
+                quest_results = []
+                completed_count = 0
+                for i, quest in enumerate(quests, 1):
+                    defn = quest.definition
+                    status = "✅" if quest.completed else "❌"
+                    if quest.completed:
+                        completed_count += 1
+                    quest_results.append(
+                        f"{status} {defn.icon} **{defn.name_vi}**: "
+                        f"{quest.current_value}/{quest.target_value}"
+                    )
+                
+                embed.add_field(
+                    name=f"📋 Tiến Độ ({completed_count}/{len(quests)})",
+                    value="\n".join(quest_results),
+                    inline=False
+                )
+                
+                if top_contributors:
+                    top_lines = []
+                    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+                    for idx, (user_id, contrib) in enumerate(top_contributors):
+                        try:
+                            user = await self.bot.fetch_user(user_id)
+                            name = user.display_name
+                        except Exception:
+                            name = f"User#{user_id}"
+                        
+                        reward = rewards.get(user_id, 0)
+                        top_lines.append(f"{medals[idx]} **{name}** - {contrib} đóng góp → +{reward} Hạt")
+                    
+                    embed.add_field(
+                        name="👥 TOP ĐÓNG GÓP",
+                        value="\n".join(top_lines),
+                        inline=False
+                    )
+                
+                streak_text = f"🔥 Server streak: **{streak.current_streak}** ngày"
+                if streak.longest_streak > streak.current_streak:
+                    streak_text += f" (kỷ lục: {streak.longest_streak})"
+                embed.add_field(name="⚡ Streak", value=streak_text, inline=False)
+                
+                total_distributed = sum(rewards.values())
+                embed.set_footer(text=f"Tổng phát: {total_distributed} Hạt cho {len(rewards)} người")
+                
+                await channel.send(embed=embed)
+                logger.info(f"Evening summary sent to guild {guild_id}, distributed {total_distributed} Hạt")
+                
+            except Exception as e:
+                logger.error(f"Failed evening summary for guild {guild_id}: {e}")
+
+    @morning_announcement.before_loop
+    async def before_morning(self) -> None:
+        await self.bot.wait_until_ready()
+
+    @evening_summary.before_loop
+    async def before_evening(self) -> None:
+        await self.bot.wait_until_ready()
+
+    @app_commands.command(name="nhiemvu", description="Xem nhiệm vụ hàng ngày của server")
+    async def nhiemvu(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        
+        if not interaction.guild:
+            return await interaction.followup.send("Lệnh này chỉ dùng trong server!")
+        
+        quests = await QuestService.generate_daily_quests(interaction.guild.id)
+        streak = await QuestService.get_streak(interaction.guild.id)
+        
+        now = datetime.now(VN_TZ)
+        embed = discord.Embed(
+            title="🎯 NHIỆM VỤ NGÀY " + now.strftime("%d/%m/%Y"),
+            color=0x00FF88
+        )
+        
+        quest_lines = []
+        completed_count = 0
+        for i, quest in enumerate(quests, 1):
+            defn = quest.definition
+            desc = defn.description_vi.format(target=quest.target_value)
+            status = "✅" if quest.completed else f"({quest.current_value}/{quest.target_value})"
+            if quest.completed:
+                completed_count += 1
+            
+            progress_bar = self._progress_bar(quest.progress_percent)
+            quest_lines.append(
+                f"{defn.icon} **{defn.name_vi}** {status}\n"
+                f"   {progress_bar} {quest.progress_percent:.0f}%\n"
+                f"   {desc} → {quest.reward_pool} Hạt"
+            )
+        
+        embed.description = "\n\n".join(quest_lines)
+        
+        bonus_text = f"🎁 Hoàn thành cả 3: **+{ALL_QUEST_BONUS} Hạt**"
+        if streak.current_streak > 0:
+            bonus_text += f"\n🔥 Server streak: **{streak.current_streak}** ngày (+{int(streak.bonus_multiplier*100)}%)"
+        
+        embed.add_field(name="💰 Bonus", value=bonus_text, inline=False)
+        
+        if completed_count == len(quests):
+            embed.set_footer(text="🎉 Tất cả nhiệm vụ đã hoàn thành! Chờ 22:00 để nhận thưởng.")
+        else:
+            embed.set_footer(text="Cùng nhau hoàn thành nhiệm vụ nào!")
+        
+        await interaction.followup.send(embed=embed)
+
+    @staticmethod
+    def _progress_bar(percent: float, length: int = 10) -> str:
+        filled = int(percent / 100 * length)
+        empty = length - filled
+        return "█" * filled + "░" * empty

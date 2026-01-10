@@ -238,6 +238,13 @@ class TreeContributeView(discord.ui.View):
             reward = random.choice([5, 10, 15, 20, 30, 50])
             await add_seeds(user_id, reward, reason='tree_water_daily', category='social')
             
+            try:
+                from cogs.quest.services.quest_service import QuestService
+                from cogs.quest.core.quest_types import QuestType
+                await QuestService.add_contribution(guild_id, user_id, QuestType.TREE_WATER, 1)
+            except Exception:
+                pass
+            
             await interaction.followup.send(
                 f"💧 **Tưới cây thành công!** Cây nhận +10 XP.{level_up_msg}\n"
                 f"🌱 Cây cảm ơn và thưởng bạn **{reward}** Hạt!",
