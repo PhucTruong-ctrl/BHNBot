@@ -9,6 +9,8 @@ from discord.ext import commands, tasks
 from .services.voice_service import VoiceService, VoiceStats
 from .services.kindness_service import KindnessService, KindnessStats
 from .services.streak_service import StreakService, StreakData, STREAK_MULTIPLIERS
+from .services.voice_reward_service import VoiceRewardService
+from cogs.relationship.services.buddy_service import BuddyService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ class SocialCog(commands.Cog):
         await VoiceService.ensure_table()
         await KindnessService.ensure_table()
         await StreakService.ensure_table()
+        await VoiceRewardService.ensure_table()
         self.flush_voice_sessions.start()
         logger.info("SocialCog loaded - Voice & Kindness tracking active")
 
@@ -38,10 +41,45 @@ class SocialCog(commands.Cog):
             count = await VoiceService.flush_active_sessions(guild.id)
             if count > 0:
                 logger.debug(f"Flushed {count} voice sessions for guild {guild.id}")
+                await self._process_voice_rewards(guild)
 
     @flush_voice_sessions.before_loop
     async def before_flush(self) -> None:
         await self.bot.wait_until_ready()
+
+    async def _process_voice_rewards(self, guild: discord.Guild) -> None:
+        online_user_ids: set[int] = set()
+        for vc in guild.voice_channels:
+            for member in vc.members:
+                if not member.bot:
+                    online_user_ids.add(member.id)
+        
+        from core.database import db_manager
+        rows = await db_manager.fetchall(
+            """SELECT user_id, total_seconds FROM voice_stats 
+               WHERE guild_id = $1 AND last_session_start IS NULL AND total_seconds > 0""",
+            (guild.id,)
+        )
+        
+        for row in rows:
+            user_id, total_seconds = row[0], row[1]
+            if total_seconds < 600:
+                continue
+            
+            buddies = await BuddyService.get_buddies(user_id, guild.id)
+            has_buddy_online = False
+            for bond in buddies:
+                buddy_id = BuddyService.get_buddy_id(bond, user_id)
+                if buddy_id in online_user_ids:
+                    has_buddy_online = True
+                    break
+            
+            base, bonus = await VoiceRewardService.calculate_and_grant_reward(
+                user_id, guild.id, 300, has_buddy_online
+            )
+            
+            if base > 0 or bonus > 0:
+                logger.debug(f"Voice reward granted: {user_id} -> {base}+{bonus} Hạt")
 
     @commands.Cog.listener()
     async def on_voice_state_update(
@@ -176,6 +214,18 @@ class SocialCog(commands.Cog):
         embed.add_field(
             name="🎤 Thời Gian Voice",
             value=f"**{voice_stats.total_hours}** giờ ({voice_stats.sessions_count} phiên)",
+            inline=False
+        )
+
+        earned_today, remaining, voice_streak = await VoiceRewardService.get_daily_stats(
+            target.id, interaction.guild.id
+        )
+        voice_reward_text = f"💰 Hôm nay: **{earned_today}** Hạt (còn {remaining} Hạt)"
+        if voice_streak > 0:
+            voice_reward_text += f"\n🔥 Voice streak: **{voice_streak}** ngày"
+        embed.add_field(
+            name="🎁 Voice Rewards",
+            value=voice_reward_text,
             inline=False
         )
 
