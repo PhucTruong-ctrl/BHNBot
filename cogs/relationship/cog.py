@@ -5,6 +5,7 @@ import random
 from datetime import datetime, timedelta
 from cogs.fishing.constants import ALL_ITEMS_DATA
 from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
+from .services.buddy_service import BuddyService
 from core.logger import setup_logger
 from core.database import db_manager
 
@@ -280,5 +281,140 @@ class RelationshipCog(commands.Cog):
             await interaction.followup.send(embed=embed)
 
 
+    banthan_group = app_commands.Group(name="banthan", description="He thong ban than - ket ban cau ca")
+
+    @banthan_group.command(name="moi", description="Gui loi moi ket ban than")
+    @app_commands.describe(user="Nguoi ban muon ket ban than")
+    async def banthan_moi(self, interaction: discord.Interaction, user: discord.User):
+        if user.id == interaction.user.id:
+            return await interaction.response.send_message("Ban khong the tu ket ban than voi chinh minh!", ephemeral=True)
+        if user.bot:
+            return await interaction.response.send_message("Bot khong the lam ban than!", ephemeral=True)
+        
+        await interaction.response.defer(ephemeral=True)
+        await BuddyService.ensure_tables()
+        
+        success, msg = await BuddyService.create_request(
+            interaction.user.id, user.id, interaction.guild_id or 0
+        )
+        
+        if success:
+            embed = discord.Embed(
+                title="Lời Mời Bạn Thân",
+                description=f"{interaction.user.mention} muốn kết bạn thân với {user.mention}!\n\nDùng `/banthan chapnhan` để chấp nhận.",
+                color=COLOR_RELATIONSHIP
+            )
+            await interaction.followup.send(msg, ephemeral=True)
+            if interaction.channel and hasattr(interaction.channel, 'send'):
+                await interaction.channel.send(content=user.mention, embed=embed)
+        else:
+            await interaction.followup.send(msg, ephemeral=True)
+
+    @banthan_group.command(name="chapnhan", description="Chap nhan loi moi ban than")
+    @app_commands.describe(user="Nguoi gui loi moi")
+    async def banthan_chapnhan(self, interaction: discord.Interaction, user: discord.User):
+        await interaction.response.defer()
+        await BuddyService.ensure_tables()
+        
+        success, msg = await BuddyService.accept_request(
+            user.id, interaction.user.id, interaction.guild_id or 0
+        )
+        
+        if success:
+            embed = discord.Embed(
+                title="Bạn Thân Mới!",
+                description=f"{interaction.user.mention} và {user.mention} đã trở thành bạn thân!\n\n+10-25% XP khi câu cá cùng nhau",
+                color=COLOR_RELATIONSHIP
+            )
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.followup.send(msg)
+
+    @banthan_group.command(name="tuchoi", description="Tu choi loi moi ban than")
+    @app_commands.describe(user="Nguoi gui loi moi")
+    async def banthan_tuchoi(self, interaction: discord.Interaction, user: discord.User):
+        await interaction.response.defer(ephemeral=True)
+        await BuddyService.ensure_tables()
+        
+        success, msg = await BuddyService.decline_request(
+            user.id, interaction.user.id, interaction.guild_id or 0
+        )
+        await interaction.followup.send(msg, ephemeral=True)
+
+    @banthan_group.command(name="danhsach", description="Xem danh sach ban than cua ban")
+    async def banthan_danhsach(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        await BuddyService.ensure_tables()
+        
+        buddies = await BuddyService.get_buddies(interaction.user.id, interaction.guild_id or 0)
+        
+        if not buddies:
+            return await interaction.followup.send("Bạn chưa có bạn thân nào. Dùng `/banthan moi` để gửi lời mời!")
+        
+        embed = discord.Embed(
+            title=f"Danh Sách Bạn Thân ({len(buddies)}/3)",
+            color=COLOR_RELATIONSHIP
+        )
+        
+        lines = []
+        for bond in buddies:
+            buddy_id = BuddyService.get_buddy_id(bond, interaction.user.id)
+            try:
+                buddy_user = await self.bot.fetch_user(buddy_id)
+                buddy_name = buddy_user.display_name
+            except Exception:
+                buddy_name = f"User#{buddy_id}"
+            
+            lines.append(
+                f"**{buddy_name}** — {bond.bond_title} (Lv.{bond.bond_level})\n"
+                f"   XP chung: {bond.shared_xp:,} | Bonus: +{bond.xp_bonus_percent:.0f}%"
+            )
+        
+        embed.description = "\n\n".join(lines)
+        embed.set_footer(text="Câu cá cùng bạn thân để tăng cấp liên kết!")
+        await interaction.followup.send(embed=embed)
+
+    @banthan_group.command(name="cho", description="Xem loi moi ban than dang cho")
+    async def banthan_cho(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        await BuddyService.ensure_tables()
+        
+        requests = await BuddyService.get_pending_requests(interaction.user.id, interaction.guild_id or 0)
+        
+        if not requests:
+            return await interaction.followup.send("Không có lời mời bạn thân nào đang chờ.", ephemeral=True)
+        
+        embed = discord.Embed(
+            title=f"Lời Mời Bạn Thân ({len(requests)})",
+            color=COLOR_RELATIONSHIP
+        )
+        
+        lines = []
+        for req in requests:
+            try:
+                from_user = await self.bot.fetch_user(req.from_user_id)
+                from_name = from_user.display_name
+            except Exception:
+                from_name = f"User#{req.from_user_id}"
+            
+            lines.append(f"• **{from_name}** — Dùng `/banthan chapnhan @{from_name}` để chấp nhận")
+        
+        embed.description = "\n".join(lines)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @banthan_group.command(name="huy", description="Huy lien ket ban than")
+    @app_commands.describe(user="Ban than muon huy lien ket")
+    async def banthan_huy(self, interaction: discord.Interaction, user: discord.User):
+        await interaction.response.defer(ephemeral=True)
+        await BuddyService.ensure_tables()
+        
+        success, msg = await BuddyService.remove_buddy(
+            interaction.user.id, user.id, interaction.guild_id or 0
+        )
+        await interaction.followup.send(msg, ephemeral=True)
+
+
 async def setup(bot):
-    await bot.add_cog(RelationshipCog(bot))
+    cog = RelationshipCog(bot)
+    cog.__cog_app_commands__.append(cog.banthan_group)
+    await bot.add_cog(cog)
