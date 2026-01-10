@@ -12,6 +12,10 @@ from .services.kindness_service import KindnessService, KindnessStats
 logger = logging.getLogger(__name__)
 
 
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(SocialCog(bot))
+
+
 class SocialCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot

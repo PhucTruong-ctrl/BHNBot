@@ -16,6 +16,10 @@ from .ui.renderer import render_profile
 logger = logging.getLogger(__name__)
 
 
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(ProfileCog(bot))
+
+
 class ProfileCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
