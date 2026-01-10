@@ -91,21 +91,27 @@ class KindnessService:
 
     @staticmethod
     async def _count_gifts_given(user_id: int, guild_id: int) -> int:
-        row = await db_manager.fetchone(
-            """SELECT COUNT(*) FROM gift_history
-               WHERE sender_id = $1 AND guild_id = $2""",
-            (user_id, guild_id)
-        )
-        return row[0] if row else 0
+        try:
+            row = await db_manager.fetchone(
+                """SELECT COUNT(*) FROM gift_history
+                   WHERE sender_id = $1 AND guild_id = $2""",
+                (user_id, guild_id)
+            )
+            return row[0] if row else 0
+        except Exception:
+            return 0
 
     @staticmethod
     async def _count_gifts_received(user_id: int, guild_id: int) -> int:
-        row = await db_manager.fetchone(
-            """SELECT COUNT(*) FROM gift_history
-               WHERE receiver_id = $1 AND guild_id = $2""",
-            (user_id, guild_id)
-        )
-        return row[0] if row else 0
+        try:
+            row = await db_manager.fetchone(
+                """SELECT COUNT(*) FROM gift_history
+                   WHERE receiver_id = $1 AND guild_id = $2""",
+                (user_id, guild_id)
+            )
+            return row[0] if row else 0
+        except Exception:
+            return 0
 
     @staticmethod
     async def increment_reaction_given(user_id: int, guild_id: int) -> None:

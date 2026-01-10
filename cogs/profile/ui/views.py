@@ -28,7 +28,6 @@ class ThemeSelectView(ui.View):
                 label=f"{theme.name}{vip_label}{lock_label}",
                 value=theme.key,
                 emoji=theme.emoji,
-                description=f"Font: {theme.font.replace('.ttf', '').replace('-Medium', '')}",
             ))
 
         select = ui.Select(

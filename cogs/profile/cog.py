@@ -12,6 +12,7 @@ from .core.stats import get_user_stats
 from .services.profile_service import ProfileService
 from .ui.views import ThemeSelectView, ThemePreviewView
 from .ui.renderer import render_profile
+from core.services.vip_service import VIPEngine
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,9 @@ class ProfileCog(commands.Cog):
         await ProfileService.ensure_table()
         logger.info("ProfileCog loaded - Profile customization ready")
 
-    def _get_vip_tier(self, member: discord.Member) -> int:
-        vip_roles = {
-            "VIP 1": 1, "VIP Bạc": 1, "Bạc": 1,
-            "VIP 2": 2, "VIP Vàng": 2, "Vàng": 2,
-            "VIP 3": 3, "VIP Kim Cương": 3, "Kim Cương": 3,
-        }
-        for role in member.roles:
-            if role.name in vip_roles:
-                return vip_roles[role.name]
-        return 0
+    async def _get_vip_tier(self, user_id: int) -> int:
+        vip_data = await VIPEngine.get_vip_data(user_id)
+        return vip_data['tier'] if vip_data else 0
 
     async def _get_achievement_emojis(self, user_id: int) -> list[str]:
         try:
@@ -122,7 +116,7 @@ class ProfileCog(commands.Cog):
             )
             return
 
-        vip_tier = self._get_vip_tier(interaction.user)
+        vip_tier = await self._get_vip_tier(interaction.user.id)
         profile = await ProfileService.get_profile(interaction.user.id)
         current_theme = get_theme(profile.theme)
 
@@ -155,8 +149,7 @@ class ProfileCog(commands.Cog):
             description=f"Bạn có muốn áp dụng theme **{theme.name}**?",
             color=discord.Color.from_rgb(*theme.accent_color)
         )
-        embed.add_field(name="Font", value=theme.font.replace(".ttf", ""), inline=True)
-        embed.add_field(name="VIP Tier", value=str(theme.vip_tier) if theme.vip_tier > 0 else "Free", inline=True)
+        embed.add_field(name="Yêu cầu", value="VIP " + str(theme.vip_tier) if theme.vip_tier > 0 else "Miễn phí", inline=True)
 
         view = ThemePreviewView(interaction.user.id, theme_key, self)
         await interaction.response.edit_message(embed=embed, view=view)

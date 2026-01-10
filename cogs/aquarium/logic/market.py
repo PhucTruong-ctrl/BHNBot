@@ -42,26 +42,23 @@ class MarketEngine:
                 bonus_fertilizer += 1
 
         try:
-            # 2. [SQLite] Delete Trash & Give Fertilizer
-            # We do this first. If it fails, we abort.
-            operations = []
-            for item_id, _ in user_trash.items():
-                operations.append((
-                    "DELETE FROM inventory WHERE user_id = ? AND item_id = ?",
-                    (user_id, item_id)
-                ))
-            
-            if bonus_fertilizer > 0:
-                operations.append((
-                    """
-                    INSERT INTO inventory (user_id, item_id, quantity) 
-                    VALUES (?, 'phan_bon', ?)
-                    ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + ?
-                    """,
-                    (user_id, bonus_fertilizer, bonus_fertilizer)
-                ))
-            
-            await db_manager.batch_modify(operations)
+            # 2. [Postgres] Delete Trash & Give Fertilizer using transaction
+            async with db_manager.transaction() as conn:
+                for item_id in user_trash.keys():
+                    await conn.execute(
+                        "DELETE FROM inventory WHERE user_id = $1 AND item_id = $2",
+                        user_id, item_id
+                    )
+                
+                if bonus_fertilizer > 0:
+                    await conn.execute(
+                        """
+                        INSERT INTO inventory (user_id, item_id, quantity) 
+                        VALUES ($1, 'phan_bon', $2)
+                        ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = inventory.quantity + $3
+                        """,
+                        user_id, bonus_fertilizer, bonus_fertilizer
+                    )
 
             # 3. [Postgres] Add Leaf Coins
             # If this fails, we hold a Critical Error (User lost trash but got no coins)

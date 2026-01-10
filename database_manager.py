@@ -294,22 +294,11 @@ async def increment_stat(user_id: int, game_id: str, stat_key: str, amount: int 
     """
     await db_manager.modify(
         """INSERT INTO user_stats (user_id, game_id, stat_key, value) 
-           VALUES (?, ?, ?, ?)
+           VALUES ($1, $2, $3, $4)
            ON CONFLICT (user_id, game_id, stat_key) 
-           DO UPDATE SET value = user_stats.value + ?""",
+           DO UPDATE SET value = user_stats.value + $5""",
         (user_id, game_id, stat_key, amount, amount)
     )
-    
-    if existing:
-        await db_manager.modify(
-            "UPDATE user_stats SET value = value + ? WHERE user_id = ? AND game_id = ? AND stat_key = ?",
-            (amount, user_id, game_id, stat_key)
-        )
-    else:
-        await db_manager.modify(
-            "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES (?, ?, ?, ?)",
-            (user_id, game_id, stat_key, amount)
-        )
     
 
 

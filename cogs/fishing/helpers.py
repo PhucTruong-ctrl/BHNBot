@@ -17,24 +17,19 @@ async def track_caught_fish(user_id: int, fish_key: str) -> bool:
         bool: True if this is the first time the user has caught this fish, False otherwise.
     """
     try:
-        # Use database_manager for proper connection pooling
-        exists = await db_manager.execute(
-            "SELECT 1 FROM fish_collection WHERE user_id = ? AND fish_id = ?",
+        exists = await db_manager.fetchone(
+            "SELECT 1 FROM fish_collection WHERE user_id = $1 AND fish_id = $2",
             (user_id, fish_key)
         )
         
         if not exists:
             await db_manager.modify(
-                "INSERT INTO fish_collection (user_id, fish_id) VALUES (?, ?)",
+                "INSERT INTO fish_collection (user_id, fish_id, quantity) VALUES ($1, $2, 1) ON CONFLICT (user_id, fish_id) DO NOTHING",
                 (user_id, fish_key)
             )
             return True
     except Exception as e:
-        # Note: 'caught_at' will default to CURRENT_TIMESTAMP due to schema
         print(f"[COLLECTION] Error tracking fish {fish_key} for user {user_id}: {e}")
-        # Try to use database_manager.add_fish instead/fallback logic if needed
-        # But for now, we assume schema is correct from setup_data
-        pass
     
     return False
 
@@ -45,16 +40,14 @@ async def get_collection(user_id: int) -> dict:
         user_id (int): The Discord user ID.
 
     Returns:
-        dict: A dictionary mapping fish_id to catch timestamp (or other metadata).
+        dict: A dictionary mapping fish_id to quantity.
     """
     try:
-        # Use database_manager for proper connection pooling
-        rows = await db_manager.execute(
-            "SELECT fish_id FROM fish_collection WHERE user_id = ?",
+        rows = await db_manager.fetchall(
+            "SELECT fish_id, COALESCE(quantity, 1) FROM fish_collection WHERE user_id = $1 AND quantity > 0",
             (user_id,)
         )
-        # Return dict with fish_id as key, 1 as value (indicating owned)
-        return {row[0]: 1 for row in rows}
+        return {row[0]: row[1] for row in rows} if rows else {}
     except Exception as e:
         print(f"[COLLECTION] Error getting collection for user {user_id}: {e}")
         return {}

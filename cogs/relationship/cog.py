@@ -25,6 +25,26 @@ class RelationshipCog(commands.Cog):
         self.bot = bot
         self.gift_cooldowns = {}
 
+    async def cog_load(self) -> None:
+        """Initialize gift_history table on cog load."""
+        await self._ensure_table()
+
+    async def _ensure_table(self) -> None:
+        """Create gift_history table if not exists."""
+        await db_manager.execute("""
+            CREATE TABLE IF NOT EXISTS gift_history (
+                id SERIAL PRIMARY KEY,
+                sender_id BIGINT NOT NULL,
+                receiver_id BIGINT NOT NULL,
+                guild_id BIGINT,
+                item_key VARCHAR(64),
+                item_name VARCHAR(128),
+                is_anonymous BOOLEAN DEFAULT FALSE,
+                message TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
     @app_commands.command(name="tangqua", description="Tặng quà healing cho người khác (Cà phê, Hoa, Quà...)")
     @app_commands.describe(
         user="Người nhận",
@@ -95,8 +115,8 @@ class RelationshipCog(commands.Cog):
         item_name = item_info.get('name', item_key)
         
         await db_manager.modify(
-            "INSERT INTO gift_history (sender_id, receiver_id, item_key, item_name, is_anonymous, message) VALUES (?, ?, ?, ?, ?, ?)",
-            (interaction.user.id, user.id, item_key, item_name, an_danh, message)
+            "INSERT INTO gift_history (sender_id, receiver_id, guild_id, item_key, item_name, is_anonymous, message) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            (interaction.user.id, user.id, interaction.guild_id, item_key, item_name, an_danh, message)
         )
         
         sender_name = "Một người giấu tên" if an_danh else interaction.user.display_name
@@ -183,10 +203,10 @@ class RelationshipCog(commands.Cog):
             
         elif loai == "lichsu":
             rows = await db_manager.fetchall(
-                """SELECT receiver_id, item_name, is_anonymous, sent_at 
+                """SELECT receiver_id, item_name, is_anonymous, created_at 
                    FROM gift_history 
-                   WHERE sender_id = ? 
-                   ORDER BY sent_at DESC 
+                   WHERE sender_id = $1 
+                   ORDER BY created_at DESC 
                    LIMIT 15""",
                 (interaction.user.id,)
             )
@@ -213,7 +233,7 @@ class RelationshipCog(commands.Cog):
             embed.description = "\n".join(lines)
             
             total = await db_manager.fetchone(
-                "SELECT COUNT(*) FROM gift_history WHERE sender_id = ?",
+                "SELECT COUNT(*) FROM gift_history WHERE sender_id = $1",
                 (interaction.user.id,)
             )
             embed.set_footer(text=f"Tổng cộng: {total[0] if total else 0} quà đã tặng")
@@ -221,10 +241,10 @@ class RelationshipCog(commands.Cog):
             
         elif loai == "nhanduoc":
             rows = await db_manager.fetchall(
-                """SELECT sender_id, item_name, is_anonymous, sent_at 
+                """SELECT sender_id, item_name, is_anonymous, created_at 
                    FROM gift_history 
-                   WHERE receiver_id = ? 
-                   ORDER BY sent_at DESC 
+                   WHERE receiver_id = $1 
+                   ORDER BY created_at DESC 
                    LIMIT 15""",
                 (interaction.user.id,)
             )
@@ -253,7 +273,7 @@ class RelationshipCog(commands.Cog):
             embed.description = "\n".join(lines)
             
             total = await db_manager.fetchone(
-                "SELECT COUNT(*) FROM gift_history WHERE receiver_id = ?",
+                "SELECT COUNT(*) FROM gift_history WHERE receiver_id = $1",
                 (interaction.user.id,)
             )
             embed.set_footer(text=f"Tổng cộng: {total[0] if total else 0} quà đã nhận")
