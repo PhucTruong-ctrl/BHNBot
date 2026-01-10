@@ -8,6 +8,7 @@ from discord.ext import commands, tasks
 
 from .services.voice_service import VoiceService, VoiceStats
 from .services.kindness_service import KindnessService, KindnessStats
+from .services.streak_service import StreakService, StreakData, STREAK_MULTIPLIERS
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class SocialCog(commands.Cog):
     async def cog_load(self) -> None:
         await VoiceService.ensure_table()
         await KindnessService.ensure_table()
+        await StreakService.ensure_table()
         self.flush_voice_sessions.start()
         logger.info("SocialCog loaded - Voice & Kindness tracking active")
 
@@ -94,6 +96,7 @@ class SocialCog(commands.Cog):
 
         await KindnessService.increment_reaction_given(user.id, guild.id)
         await KindnessService.increment_reaction_received(reaction.message.author.id, guild.id)
+        await StreakService.record_kind_action(user.id, guild.id)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -111,6 +114,7 @@ class SocialCog(commands.Cog):
         sender_id = message.author.id
 
         await KindnessService.increment_thanks_given(sender_id, guild_id)
+        await StreakService.record_kind_action(sender_id, guild_id)
 
         for mentioned_user in message.mentions:
             if mentioned_user.bot:
@@ -133,6 +137,7 @@ class SocialCog(commands.Cog):
 
         stats = await KindnessService.get_stats(target.id, interaction.guild.id)
         voice_stats = await VoiceService.get_stats(target.id, interaction.guild.id)
+        streak = await StreakService.get_streak(target.id, interaction.guild.id)
 
         embed = discord.Embed(
             title=f"💝 Điểm Tử Tế - {target.display_name}",
@@ -140,9 +145,21 @@ class SocialCog(commands.Cog):
         )
         embed.set_thumbnail(url=target.display_avatar.url)
 
+        multiplier_text = f" (x{streak.multiplier:.2f})" if streak.multiplier > 1.0 else ""
         embed.add_field(
             name="📊 Tổng Điểm",
-            value=f"**{stats.score:,}** điểm",
+            value=f"**{stats.score:,}** điểm{multiplier_text}",
+            inline=False
+        )
+
+        streak_text = f"🔥 **{streak.current_streak}** ngày"
+        if streak.next_milestone:
+            streak_text += f" (còn {streak.days_to_next_milestone} ngày đến x{STREAK_MULTIPLIERS.get(streak.next_milestone, 1.0):.2f})"
+        if streak.streak_protected:
+            streak_text += " 🛡️"
+        embed.add_field(
+            name="⚡ Streak Tử Tế",
+            value=streak_text,
             inline=False
         )
 
