@@ -1,0 +1,54 @@
+{
+  "event_id": "birthday_2026",
+
+  "milestones": [
+    {"percent": 100, "reward_type": "multi", "rewards": [{"type": "seeds", "amount": 200}, {"type": "badge", "value": "🎂"}], "announcement": "🎂 HOÀN THÀNH! Tất cả nhận +200 hạt giống và Badge 🎂!"}
+  ],
+
+  "fish": [],
+
+  "daily_quests": [],
+  "daily_quest_count": 0,
+
+  "fixed_quests": [
+    {"id": "birthday_wish", "type": "wishes_sent", "target": 1, "reward_type": "currency", "reward_value": 50, "description": "Gửi lời chúc", "icon": "💌"},
+    {"id": "birthday_cake", "type": "cake_claimed", "target": 1, "reward_type": "currency", "reward_value": 100, "description": "Nhận bánh sinh nhật", "icon": "🎂"},
+    {"id": "birthday_balloon", "type": "balloons_popped", "target": 10, "reward_type": "currency", "reward_value": 40, "description": "Bắt 10 bóng bay", "icon": "🎈"},
+    {"id": "birthday_top_wish", "type": "wish_voted_top", "target": 1, "reward_type": "badge", "reward_value": "🎂", "description": "Lời chúc được vote top 10", "icon": "🏆"}
+  ],
+
+  "shop": [
+    {"key": "bg_birthday", "name": "Background Sinh Nhật", "price": 200, "type": "background", "limit_per_user": 1},
+    {"key": "frame_birthday", "name": "Frame Bong Bóng", "price": 150, "type": "frame", "limit_per_user": 1},
+    {"key": "party_hat", "name": "Party Hat", "price": 100, "type": "cosmetic", "limit_per_user": 1},
+    {"key": "confetti", "name": "Confetti", "price": 80, "type": "effect", "limit_per_user": 1},
+    {"key": "badge_birthday", "name": "Badge 🎂", "price": 500, "type": "badge", "limit_per_user": 1}
+  ],
+
+  "minigame_config": {
+    "wishes": {
+      "channel": "kenh_sukien",
+      "max_per_day": 3,
+      "max_length": 200,
+      "reward_per_wish": 20,
+      "goal_contribution": 1,
+      "voting_enabled": true
+    },
+    "balloon_pop": {
+      "spawn_type": "random",
+      "times_per_day": [8, 12],
+      "active_hours": [8, 23],
+      "reward_range": [10, 30],
+      "timeout_seconds": 30,
+      "unlimited_claims": true
+    },
+    "birthday_cake": {
+      "type": "one_time_claim",
+      "reward": 100,
+      "random_buff": {
+        "options": ["seeds_x2", "fishing_x2", "xp_x2", "luck_x2"],
+        "duration_hours": 24
+      }
+    }
+  }
+}

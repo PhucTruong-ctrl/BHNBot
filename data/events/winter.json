@@ -1,0 +1,89 @@
+{
+  "event_id": "winter_2026",
+
+  "milestones": [
+    {"percent": 25, "reward_type": "seeds", "amount": 150, "announcement": "❄️ Đạt 25%! Tất cả nhận +150 hạt giống!"},
+    {"percent": 50, "reward_type": "title", "title_key": "tinh_linh_tuyet", "title_name": "Tinh Linh Tuyết", "announcement": "❄️ Đạt 50%! Mở khóa danh hiệu \"Tinh Linh Tuyết\"!"},
+    {"percent": 75, "reward_type": "buff", "buff_type": "all_rewards_x2", "duration_hours": 24, "announcement": "❄️ Đạt 75%! x2 tất cả rewards trong 24 giờ!"},
+    {"percent": 100, "reward_type": "role", "role_name": "❄️ Mùa Đông 2026", "role_color": "#4169E1", "extra_rewards": [{"type": "background", "key": "bg_winter", "name": "Background Đêm Tuyết"}], "announcement": "🎉 HOÀN THÀNH! Người tuyết khổng lồ đã hoàn thành!"}
+  ],
+
+  "fish": [
+    {"key": "ca_tuyet", "name": "Cá Tuyết", "emoji": "❄️🐟", "tier": "common", "drop_rate": 0.30, "currency_reward": 5},
+    {"key": "ca_thong_xanh", "name": "Cá Thông Xanh", "emoji": "🌲🐟", "tier": "common", "drop_rate": 0.25, "currency_reward": 5},
+    {"key": "ca_chuong_vang", "name": "Cá Chuông Vàng", "emoji": "🔔🐟", "tier": "common", "drop_rate": 0.15, "currency_reward": 5},
+    {"key": "ca_qua_tang", "name": "Cá Quà Tặng", "emoji": "🎁🐟", "tier": "rare", "drop_rate": 0.12, "currency_reward": 15},
+    {"key": "ca_ngoi_sao", "name": "Cá Ngôi Sao", "emoji": "⭐🐟", "tier": "rare", "drop_rate": 0.08, "currency_reward": 15},
+    {"key": "ca_keo_gay", "name": "Cá Kẹo Gậy", "emoji": "🍬🐟", "tier": "rare", "drop_rate": 0.05, "currency_reward": 15},
+    {"key": "ca_ong_gia_noel", "name": "Cá Ông Già Noel", "emoji": "🎅✨", "tier": "epic", "drop_rate": 0.05, "currency_reward": 50}
+  ],
+
+  "daily_quests": [
+    {"id": "winter_snowman", "type": "snowman_contributed", "target": 5, "reward": 30, "description": "Góp {target} phần người tuyết", "icon": "⛄"},
+    {"id": "winter_fish", "type": "fish_count", "target": 15, "reward": 25, "description": "Câu {target} cá", "icon": "🎣"},
+    {"id": "winter_voice", "type": "voice_minutes", "target": 30, "reward": 35, "description": "Voice chat {target} phút", "icon": "🎤"},
+    {"id": "winter_buddy", "type": "buddy_activity", "target": 20, "reward": 40, "description": "Hoạt động với buddy {target} phút", "icon": "👥"}
+  ],
+  "daily_quest_count": 3,
+
+  "fixed_quests": [
+    {"id": "winter_epic_fish", "type": "catch_specific_fish", "fish_key": "ca_ong_gia_noel", "target": 1, "reward_type": "title", "reward_value": "Santa's Helper", "title_key": "santa_helper", "description": "Câu được Cá Ông Già Noel", "icon": "🎅"},
+    {"id": "winter_santa", "type": "secret_santa_completed", "target": 1, "reward_type": "badge", "reward_value": "❄️", "description": "Tham gia Secret Santa", "icon": "🎁"},
+    {"id": "winter_snowman_100", "type": "snowman_contributed_total", "target": 100, "reward_type": "currency", "reward_value": 400, "description": "Góp 100 phần người tuyết", "icon": "⛄"},
+    {"id": "winter_countdown", "type": "countdown_participated", "target": 1, "reward_type": "currency", "reward_value": 100, "description": "Có mặt lúc 00:00", "icon": "🎆"},
+    {"id": "winter_all_fish", "type": "collect_all_fish", "target": 7, "reward_type": "currency", "reward_value": 500, "description": "Sưu tầm 7 loại cá", "icon": "🏆"}
+  ],
+
+  "shop": [
+    {"key": "bg_winter", "name": "Background Đêm Tuyết", "price": 600, "type": "background", "limit_per_user": 1},
+    {"key": "frame_winter", "name": "Frame Bông Tuyết", "price": 350, "type": "frame", "limit_per_user": 1},
+    {"key": "hot_chocolate", "name": "Sô Cô La Nóng", "price": 90, "type": "consumable", "limit_per_user": 10, "effect": {"type": "buff", "buff_type": "buddy_xp_x2", "duration_hours": 3}},
+    {"key": "santa_hat", "name": "Mũ Ông Già Noel", "price": 500, "type": "cosmetic", "limit_per_user": 1},
+    {"key": "mystery_box", "name": "Hộp Quà Bí Ẩn", "price": 200, "type": "lootbox", "limit_per_user": 5},
+    {"key": "gift_normal", "name": "Quà Bình Thường", "price": 100, "type": "secret_santa", "limit_per_user": -1, "tier": 1},
+    {"key": "gift_special", "name": "Quà Đặc Biệt", "price": 300, "type": "secret_santa", "limit_per_user": -1, "tier": 2},
+    {"key": "gift_perfect", "name": "Quà Hoàn Hảo", "price": 600, "type": "secret_santa", "limit_per_user": -1, "tier": 3},
+    {"key": "badge_winter", "name": "Badge ❄️", "price": 1200, "type": "badge", "limit_per_user": 1}
+  ],
+
+  "minigame_config": {
+    "secret_santa": {
+      "registration_start": "2026-12-20",
+      "registration_end": "2026-12-22T23:59:00",
+      "gift_deadline": "2026-12-24T23:59:00",
+      "reveal_time": "2026-12-25T20:00:00",
+      "participation_reward": 100,
+      "max_message_length": 200
+    },
+    "snowman": {
+      "manual_cooldown_seconds": 600,
+      "manual_contribution": 1,
+      "auto_spawn_type": "random",
+      "auto_times_per_day": [3, 4],
+      "auto_reward_range": [5, 15],
+      "auto_contribution_range": [3, 5]
+    },
+    "countdown": {
+      "date": "2026-12-31",
+      "announcements": [
+        {"time": "23:50", "message": "⏰ Còn 10 phút nữa là năm mới!"},
+        {"time": "23:55", "message": "⏰ Còn 5 phút!"},
+        {"time": "23:58", "message": "⏰ Còn 2 phút!"},
+        {"time": "23:59", "message": "⏰ Còn 1 phút! Sẵn sàng chưa?"},
+        {"time": "00:00", "message": "🎆🎇🎆 CHÚC MỪNG NĂM MỚI 2027! 🎆🎇🎆"}
+      ],
+      "react_emoji": "🎆",
+      "react_timeout_seconds": 60,
+      "react_reward": 100,
+      "top_10_bonus": 50
+    }
+  },
+
+  "special_bonuses": {
+    "night_owl": {
+      "active_hours": [20, 2],
+      "currency_multiplier": 1.5,
+      "description": "Voice 8PM-2AM: +50% ❄️"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "event_id": "summer_2026",
+
+  "milestones": [
+    {"percent": 25, "reward_type": "seeds", "amount": 150, "announcement": "🌊 Đạt 25%! Tất cả người tham gia nhận +150 hạt giống!"},
+    {"percent": 50, "reward_type": "title", "title_key": "thuy_thu", "title_name": "Thủy Thủ", "announcement": "🌊 Đạt 50%! Mở khóa danh hiệu \"Thủy Thủ\"!"},
+    {"percent": 75, "reward_type": "buff", "buff_type": "fishing_x2", "duration_hours": 24, "announcement": "🌊 Đạt 75%! x2 cá trong 24 giờ!"},
+    {"percent": 100, "reward_type": "role", "role_name": "🌊 Thủy Thủ 2026", "role_color": "#00CED1", "extra_rewards": [{"type": "background", "key": "bg_summer", "name": "Background Hoàng Hôn Biển"}], "announcement": "🎉 HOÀN THÀNH! Tạo role và tặng Background!"}
+  ],
+
+  "fish": [
+    {"key": "ca_sao_bien", "name": "Cá Sao Biển", "emoji": "⭐🐟", "tier": "common", "drop_rate": 0.30, "currency_reward": 5},
+    {"key": "ca_san_ho", "name": "Cá San Hô", "emoji": "🪸🐟", "tier": "common", "drop_rate": 0.25, "currency_reward": 5},
+    {"key": "ca_sua_xanh", "name": "Cá Sứa Xanh", "emoji": "🪼🐟", "tier": "common", "drop_rate": 0.15, "currency_reward": 5},
+    {"key": "ca_ngoc_trai", "name": "Cá Ngọc Trai", "emoji": "🦪🐟", "tier": "rare", "drop_rate": 0.12, "currency_reward": 15},
+    {"key": "ca_cau_vong", "name": "Cá Cầu Vồng", "emoji": "🌈🐟", "tier": "rare", "drop_rate": 0.08, "currency_reward": 15},
+    {"key": "ca_mat_troi", "name": "Cá Mặt Trời", "emoji": "☀️🐟", "tier": "rare", "drop_rate": 0.05, "currency_reward": 15},
+    {"key": "ca_than_bien", "name": "Cá Thần Biển", "emoji": "🔱✨", "tier": "epic", "drop_rate": 0.05, "currency_reward": 50}
+  ],
+
+  "daily_quests": [
+    {"id": "summer_fish", "type": "fish_count", "target": 25, "reward": 35, "description": "Câu {target} cá", "icon": "🎣"},
+    {"id": "summer_treasure", "type": "treasure_found", "target": 1, "reward": 60, "description": "Tìm {target} kho báu", "icon": "🏴‍☠️"},
+    {"id": "summer_voice", "type": "voice_minutes", "target": 45, "reward": 50, "description": "Voice chat {target} phút", "icon": "🎤"},
+    {"id": "summer_react", "type": "reaction_count", "target": 25, "reward": 30, "description": "React {target} lần", "icon": "👍"},
+    {"id": "summer_race", "type": "boat_race_participated", "target": 1, "reward": 40, "description": "Tham gia {target} cuộc đua thuyền", "icon": "🚤"}
+  ],
+  "daily_quest_count": 3,
+
+  "fixed_quests": [
+    {"id": "summer_epic_fish", "type": "catch_specific_fish", "fish_key": "ca_than_bien", "target": 1, "reward_type": "title", "reward_value": "Vua Biển Cả", "title_key": "vua_bien", "description": "Câu được Cá Thần Biển", "icon": "🔱"},
+    {"id": "summer_all_fish", "type": "collect_all_fish", "target": 7, "reward_type": "badge", "reward_value": "🐚", "description": "Sưu tầm đủ 7 loại cá", "icon": "🏆"},
+    {"id": "summer_treasure_20", "type": "treasure_found_total", "target": 20, "reward_type": "currency", "reward_value": 600, "description": "Tìm 20 kho báu", "icon": "🏴‍☠️"},
+    {"id": "summer_race_win", "type": "boat_race_won", "target": 5, "reward_type": "title", "reward_value": "Thuyền Trưởng", "title_key": "thuyen_truong", "description": "Thắng 5 cuộc đua", "icon": "🏆"},
+    {"id": "summer_predict", "type": "boat_race_predict_streak", "target": 3, "reward_type": "badge", "reward_value": "🔮", "badge_name": "Nhà Tiên Tri", "description": "Đoán đúng 3 lần liên tiếp", "icon": "🔮"}
+  ],
+
+  "shop": [
+    {"key": "bg_summer", "name": "Background Hoàng Hôn Biển", "price": 600, "type": "background", "limit_per_user": 1},
+    {"key": "frame_summer", "name": "Frame Sóng Biển", "price": 350, "type": "frame", "limit_per_user": 1},
+    {"key": "golden_bait", "name": "Mồi Vàng x5", "price": 150, "type": "consumable", "limit_per_user": 10, "effect": {"type": "item", "item_key": "golden_bait", "quantity": 5}},
+    {"key": "coconut_ice", "name": "Kem Dừa", "price": 80, "type": "consumable", "limit_per_user": 10, "effect": {"type": "buff", "buff_type": "xp_x2", "duration_hours": 1}},
+    {"key": "badge_summer", "name": "Badge 🐚", "price": 1200, "type": "badge", "limit_per_user": 1}
+  ],
+
+  "minigame_config": {
+    "treasure_hunt": {
+      "spawn_type": "random",
+      "times_per_day": [4, 6],
+      "active_hours": [9, 22],
+      "grid_size": 9,
+      "treasure_count": 1,
+      "reward_range": [50, 100],
+      "timeout_seconds": 60
+    },
+    "boat_race": {
+      "spawn_type": "mixed",
+      "scheduled_times": ["20:00"],
+      "random_times_per_day": [2, 3],
+      "active_hours": [10, 22],
+      "boats": [
+        {"id": "song_bac", "emoji": "⛵", "name": "Sóng Bạc", "trait": "Cân bằng, ổn định", "speed": 2, "luck": 0.5, "resist": 0.3},
+        {"id": "gio_dong", "emoji": "🚤", "name": "Gió Đông", "trait": "Nhanh nhưng dễ gặp sự cố", "speed": 3, "luck": 0.3, "resist": 0.1},
+        {"id": "hai_au", "emoji": "🛥️", "name": "Hải Âu", "trait": "Chậm chắc, ít tai nạn", "speed": 1.5, "luck": 0.4, "resist": 0.6},
+        {"id": "dai_duong", "emoji": "🚢", "name": "Đại Dương", "trait": "Khổng lồ, immune sóng nhỏ", "speed": 1, "luck": 0.5, "resist": 0.8},
+        {"id": "thuy_trieu", "emoji": "⛴️", "name": "Thủy Triều", "trait": "Bí ẩn, không ai đoán được", "speed_range": [1, 4], "luck": 0.7, "resist": 0.2},
+        {"id": "song_than", "emoji": "🛶", "name": "Sóng Thần", "trait": "Cực nhanh, cực rủi ro", "speed": 4, "luck": 0.2, "resist": 0},
+        {"id": "rai_ca", "emoji": "🚣", "name": "Rái Cá", "trait": "Nhỏ gọn, dễ lách sóng", "speed": 2.5, "luck": 0.6, "resist": 0.4},
+        {"id": "long_vuong", "emoji": "🛳️", "name": "Long Vương", "trait": "Huyền thoại, khó lường", "speed_range": [0, 5], "luck": 0.8, "resist": 0.5}
+      ],
+      "track_length": 15,
+      "edit_interval_seconds": 2.5,
+      "selection_timeout_seconds": 30,
+      "rewards": {"first": 100, "second": 50, "third": 25, "participant": 10},
+      "events": [
+        {"id": "wind", "emoji": "💨", "name": "Gió Thuận", "chance": 0.15, "effect": 2},
+        {"id": "wave", "emoji": "🌊", "name": "Sóng Lớn", "chance": 0.12, "effect": -1},
+        {"id": "dolphin", "emoji": "🐬", "name": "Cá Heo Giúp", "chance": 0.08, "effect": 2},
+        {"id": "otter", "emoji": "🦦", "name": "Rái Cá Đẩy", "chance": 0.08, "effect": 3},
+        {"id": "seaweed", "emoji": "🌿", "name": "Mắc Rong Biển", "chance": 0.10, "effect": -2, "stun": true},
+        {"id": "turbo", "emoji": "⚡", "name": "Turbo", "chance": 0.05, "effect": 4},
+        {"id": "engine_fail", "emoji": "🔧", "name": "Động Cơ Hỏng", "chance": 0.05, "effect": 0, "stun": true},
+        {"id": "fog", "emoji": "🌫️", "name": "Sương Mù", "chance": 0.05, "effect": 0, "hide": true},
+        {"id": "swap", "emoji": "🔄", "name": "Hoán Đổi Vị Trí", "chance": 0.03, "effect": "swap"},
+        {"id": "mermaid", "emoji": "🧜‍♀️", "name": "Tiên Cá Giúp", "chance": 0.03, "effect": 5, "target": "last"},
+        {"id": "tsunami", "emoji": "🌊💥", "name": "Sóng Thần", "chance": 0.02, "effect": -2, "target": "all"}
+      ]
+    }
+  }
+}

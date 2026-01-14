@@ -1090,3 +1090,33 @@ async def ensure_phase4_tables():
         logger.info("✓ Phase 4 tables/columns ensured (shop_channel/message)")
     except Exception as e:
         logger.error(f"Error ensuring Phase 4 schema: {e}")
+
+async def ensure_seasonal_event_columns():
+    """Ensures columns for Seasonal Events exist in server_config and active_events."""
+    try:
+        server_config_columns = [
+            ("event_channel_id", "BIGINT DEFAULT NULL"),
+            ("event_auto_channel_id", "BIGINT DEFAULT NULL"),
+            ("event_role_id", "BIGINT DEFAULT NULL"),
+        ]
+        
+        for col_name, col_def in server_config_columns:
+            try:
+                await db_manager.modify(f"ALTER TABLE server_config ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
+            except Exception:
+                try:
+                    await db_manager.modify(f"ALTER TABLE server_config ADD COLUMN {col_name} {col_def}")
+                except Exception:
+                    pass
+
+        try:
+            await db_manager.modify("ALTER TABLE active_events ADD COLUMN IF NOT EXISTS milestones_reached TEXT DEFAULT '[]'")
+        except Exception:
+            try:
+                await db_manager.modify("ALTER TABLE active_events ADD COLUMN milestones_reached TEXT DEFAULT '[]'")
+            except Exception:
+                pass
+
+        logger.info("✓ Seasonal event columns ensured (event_channel_id, event_auto_channel_id, event_role_id, milestones_reached)")
+    except Exception as e:
+        logger.error(f"Error ensuring seasonal event columns: {e}")

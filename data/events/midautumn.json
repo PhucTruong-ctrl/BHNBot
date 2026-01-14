@@ -1,0 +1,67 @@
+{
+  "event_id": "midautumn_2026",
+
+  "milestones": [
+    {"percent": 50, "reward_type": "seeds", "amount": 100, "announcement": "🌙 Đạt 50%! Tất cả nhận +100 hạt giống!"},
+    {"percent": 100, "reward_type": "role", "role_name": "🌙 Trung Thu 2026", "role_color": "#FFD700", "extra_rewards": [{"type": "background", "key": "bg_midautumn", "name": "Background Trăng Rằm"}], "announcement": "🌙 HOÀN THÀNH! Thắp đủ 2000 đèn lồng!"}
+  ],
+
+  "fish": [
+    {"key": "ca_den_long_tt", "name": "Cá Đèn Lồng", "emoji": "🏮🐟", "tier": "common", "drop_rate": 0.40, "currency_reward": 5},
+    {"key": "ca_tho_ngoc", "name": "Cá Thỏ Ngọc", "emoji": "🐰🐟", "tier": "common", "drop_rate": 0.35, "currency_reward": 5},
+    {"key": "ca_trang_ram", "name": "Cá Trăng Rằm", "emoji": "🌕🐟", "tier": "rare", "drop_rate": 0.15, "currency_reward": 15},
+    {"key": "ca_hang_nga", "name": "Cá Hằng Nga", "emoji": "👸🐟", "tier": "rare", "drop_rate": 0.10, "currency_reward": 15}
+  ],
+
+  "daily_quests": [
+    {"id": "midautumn_lantern", "type": "lanterns_lit", "target": 10, "reward": 40, "description": "Thắp {target} đèn (voice 50 phút)", "icon": "🏮"},
+    {"id": "midautumn_quiz", "type": "quiz_correct", "target": 5, "reward": 30, "description": "Trả lời đúng {target} câu đố", "icon": "❓"},
+    {"id": "midautumn_fish", "type": "fish_count", "target": 15, "reward": 25, "description": "Câu {target} cá", "icon": "🎣"}
+  ],
+  "daily_quest_count": 2,
+
+  "fixed_quests": [
+    {"id": "midautumn_all_fish", "type": "collect_all_fish", "target": 4, "reward_type": "badge", "reward_value": "🌙", "description": "Sưu tầm 4 loại cá", "icon": "🏆"},
+    {"id": "midautumn_lantern_100", "type": "lanterns_lit_total", "target": 100, "reward_type": "title", "reward_value": "Ánh Trăng", "title_key": "anh_trang", "description": "Thắp 100 đèn lồng", "icon": "🏮"},
+    {"id": "midautumn_quiz_30", "type": "quiz_correct_total", "target": 30, "reward_type": "currency", "reward_value": 300, "description": "Trả lời đúng 30 câu", "icon": "❓"}
+  ],
+
+  "shop": [
+    {"key": "bg_midautumn", "name": "Background Trăng Rằm", "price": 350, "type": "background", "limit_per_user": 1},
+    {"key": "frame_midautumn", "name": "Frame Đèn Lồng", "price": 200, "type": "frame", "limit_per_user": 1},
+    {"key": "star_lantern", "name": "Đèn Ông Sao", "price": 80, "type": "decoration", "limit_per_user": 3},
+    {"key": "mooncake_gift", "name": "Bánh Dẻo", "price": 50, "type": "gift", "limit_per_user": -1},
+    {"key": "badge_midautumn", "name": "Badge 🌙", "price": 700, "type": "badge", "limit_per_user": 1}
+  ],
+
+  "minigame_config": {
+    "lantern_parade": {
+      "type": "voice_bonus",
+      "currency_per_5min": 5,
+      "lanterns_per_5min": 1,
+      "goal_contribution_per_lantern": 1,
+      "description": "Mỗi 5 phút voice = +1 đèn + 5 🥮"
+    },
+    "quiz": {
+      "spawn_type": "scheduled",
+      "scheduled_times": ["20:00"],
+      "question_count": [8, 10],
+      "timeout_per_question": 30,
+      "reward_per_correct": 10,
+      "questions": [
+        {"q": "Trung Thu diễn ra vào ngày nào âm lịch?", "a": ["15/8", "1/1", "15/1", "1/8"], "correct": 0},
+        {"q": "Bánh Trung Thu truyền thống có hình gì?", "a": ["Tròn", "Vuông", "Tam giác", "Lục giác"], "correct": 0},
+        {"q": "Chú Cuội ngồi gốc cây gì?", "a": ["Đa", "Bưởi", "Mít", "Xoài"], "correct": 0},
+        {"q": "Đèn ông sao có bao nhiêu cánh?", "a": ["5", "6", "7", "8"], "correct": 0},
+        {"q": "Trung Thu còn gọi là Tết gì?", "a": ["Tết Thiếu Nhi", "Tết Đoàn Viên", "Tết Nguyên Đán", "Tết Thanh Minh"], "correct": 1},
+        {"q": "Nhân vật nào sống trên cung trăng theo truyền thuyết?", "a": ["Hằng Nga", "Thánh Gióng", "Sơn Tinh", "Lạc Long Quân"], "correct": 0},
+        {"q": "Bánh Trung Thu có nhân gì phổ biến nhất?", "a": ["Đậu xanh", "Thịt", "Khoai môn", "Dừa"], "correct": 0},
+        {"q": "Đèn lồng Trung Thu thường làm bằng gì?", "a": ["Giấy", "Vải", "Nhựa", "Kim loại"], "correct": 0},
+        {"q": "Con vật nào là biểu tượng của Trung Thu?", "a": ["Thỏ", "Rồng", "Phượng hoàng", "Rùa"], "correct": 0},
+        {"q": "Trẻ em làm gì trong đêm Trung Thu?", "a": ["Rước đèn", "Đi biển", "Leo núi", "Đi cắm trại"], "correct": 0},
+        {"q": "Quả gì thường xuất hiện trong mâm cỗ Trung Thu?", "a": ["Bưởi", "Sầu riêng", "Chôm chôm", "Dừa"], "correct": 0},
+        {"q": "Múa gì trong đêm Trung Thu?", "a": ["Múa lân", "Múa rồng", "Múa quạt", "Múa sạp"], "correct": 0}
+      ]
+    }
+  }
+}

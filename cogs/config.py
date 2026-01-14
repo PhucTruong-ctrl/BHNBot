@@ -192,6 +192,9 @@ class ConfigCog(commands.Cog):
         kenh_log_bot="Kênh gửi log lỗi bot lên Discord",
         kenh_aquarium="Kênh Forum Làng Chài (Hồ Cá)",
         kenh_nhiemvu="Kênh thông báo nhiệm vụ hàng ngày",
+        kenh_sukien="Kênh thông báo sự kiện theo mùa",
+        kenh_sukien_auto="Kênh spawn minigame sự kiện tự động",
+        role_sukien="Role được ping khi có sự kiện mới",
         log_ping_user="Người nhận ping khi có lỗi ERROR/CRITICAL",
         log_level="Mức độ log gửi lên Discord (INFO/WARNING/ERROR/CRITICAL)"
     )
@@ -206,6 +209,9 @@ class ConfigCog(commands.Cog):
                          kenh_aquarium: discord.ForumChannel = None,
                          kenh_shop: discord.TextChannel = None,
                          kenh_nhiemvu: discord.TextChannel = None,
+                         kenh_sukien: discord.TextChannel = None,
+                         kenh_sukien_auto: discord.TextChannel = None,
+                         role_sukien: discord.Role = None,
                          log_ping_user: discord.Member = None,
                          log_level: str = None):
         
@@ -223,7 +229,7 @@ class ConfigCog(commands.Cog):
         except discord.errors.NotFound:
             return
 
-        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium, kenh_shop, kenh_nhiemvu]):
+        if not any([kenh_noitu, kenh_logs, kenh_cay, kenh_fishing, kenh_bump, kenh_log_bot, log_ping_user, log_level, kenh_aquarium, kenh_shop, kenh_nhiemvu, kenh_sukien, kenh_sukien_auto, role_sukien]):
             return await interaction.followup.send("Ko nhập thay đổi gì cả")
 
         try:
@@ -281,22 +287,19 @@ class ConfigCog(commands.Cog):
             new_log_level = log_level.upper() if log_level else None
             new_aquarium = kenh_aquarium.id if kenh_aquarium else None
             new_shop = kenh_shop.id if kenh_shop else None
-            
-            # Postgres UPSERT syntax
-            # Note: Postgres doesn't support 'CASE WHEN excluded.bump_channel_id ...' inside ON CONFLICT DO UPDATE cleanly alias 
-            # as SQLite does if referencing `excluded` in complex ways without strict typing.
-            # But the syntax is generally compatible.
-            # However, `bump_start_time` logic:
-            # CASE WHEN excluded.bump_channel_id IS NOT NULL THEN excluded.bump_start_time ELSE server_config.bump_start_time END
+            new_sukien = kenh_sukien.id if kenh_sukien else None
+            new_sukien_auto = kenh_sukien_auto.id if kenh_sukien_auto else None
+            new_role_sukien = role_sukien.id if role_sukien else None
             
             await db_manager.execute("""
                 INSERT INTO server_config (
                     guild_id, logs_channel_id, noitu_channel_id, fishing_channel_id, 
                     bump_channel_id, bump_start_time, log_discord_channel_id, 
                     log_ping_user_id, log_discord_level,
-                    aquarium_forum_channel_id, shop_channel_id
+                    aquarium_forum_channel_id, shop_channel_id,
+                    event_channel_id, event_auto_channel_id, event_role_id
                 ) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 ON CONFLICT(guild_id) DO UPDATE SET
                     logs_channel_id = COALESCE(EXCLUDED.logs_channel_id, server_config.logs_channel_id),
                     noitu_channel_id = COALESCE(EXCLUDED.noitu_channel_id, server_config.noitu_channel_id),
@@ -307,11 +310,14 @@ class ConfigCog(commands.Cog):
                     log_ping_user_id = COALESCE(EXCLUDED.log_ping_user_id, server_config.log_ping_user_id),
                     log_discord_level = COALESCE(EXCLUDED.log_discord_level, server_config.log_discord_level),
                     aquarium_forum_channel_id = COALESCE(EXCLUDED.aquarium_forum_channel_id, server_config.aquarium_forum_channel_id),
-                    shop_channel_id = COALESCE(EXCLUDED.shop_channel_id, server_config.shop_channel_id)
+                    shop_channel_id = COALESCE(EXCLUDED.shop_channel_id, server_config.shop_channel_id),
+                    event_channel_id = COALESCE(EXCLUDED.event_channel_id, server_config.event_channel_id),
+                    event_auto_channel_id = COALESCE(EXCLUDED.event_auto_channel_id, server_config.event_auto_channel_id),
+                    event_role_id = COALESCE(EXCLUDED.event_role_id, server_config.event_role_id)
             """, (
                 int(guild_id), new_logs, new_noitu, new_fishing, new_bump, 
                 bump_start_time, new_log_bot, new_ping_user, new_log_level,
-                new_aquarium, new_shop
+                new_aquarium, new_shop, new_sukien, new_sukien_auto, new_role_sukien
             ))
             
             if kenh_cay:
@@ -334,6 +340,9 @@ class ConfigCog(commands.Cog):
             if kenh_log_bot: msg += f"🤖 Log Bot: {kenh_log_bot.mention}\n"
             if kenh_aquarium: msg += f"🐟 Hồ Cá (Forum): {kenh_aquarium.mention}\n"
             if kenh_shop: msg += f"🏪 Tạp Hóa: {kenh_shop.mention}\n"
+            if kenh_sukien: msg += f"🎉 Sự Kiện: {kenh_sukien.mention}\n"
+            if kenh_sukien_auto: msg += f"🎮 Minigame Sự Kiện: {kenh_sukien_auto.mention}\n"
+            if role_sukien: msg += f"🔔 Role Sự Kiện: {role_sukien.mention}\n"
             if log_ping_user: msg += f"🔔 Ping User: {log_ping_user.mention}\n"
             if log_level: msg += f"📊 Log Level: {log_level.upper()}\n"
             

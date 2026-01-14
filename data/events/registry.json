@@ -1,0 +1,208 @@
+{
+  "events": {
+    "spring_2026": {
+      "name": "Lễ Hội Hoa Xuân",
+      "name_en": "Spring Festival",
+      "type": "major",
+      "start_date": "2026-02-01",
+      "end_date": "2026-02-15",
+      "currency": {
+        "emoji": "🌸",
+        "name": "Hoa Đào",
+        "name_en": "Cherry Blossom"
+      },
+      "color": "#FFB7C5",
+      "config_file": "spring.json",
+      "minigames": ["lixi_auto", "lixi_manual"],
+      "community_goal": {
+        "type": "currency_collected",
+        "target": 50000,
+        "description": "Thu thập {target} {currency}"
+      },
+      "banner_image": "https://i.imgur.com/spring_banner.gif",
+      "thumbnail": "https://i.imgur.com/spring_thumb.png",
+      "description": "🌸 **Mùa xuân đến rồi!** Hãy cùng đón Tết với những hoạt động thú vị!",
+      "guide": "**🎮 Cách chơi:**\n• Câu cá sự kiện để nhận 🌸 Hoa Đào\n• Gửi và nhận Lì Xì từ bạn bè\n• Hoàn thành nhiệm vụ hàng ngày\n• Mua vật phẩm độc quyền tại cửa hàng\n\n**🧧 Minigame Lì Xì:**\n• **Lì Xì Tự Động**: Xuất hiện ngẫu nhiên, bấm nhanh để nhận!\n• **Lì Xì Tặng Bạn**: Dùng `/lixi` để tặng bạn bè\n\n**💡 Mẹo:** Tham gia voice chat và chat nhiều để kiếm thêm Hoa Đào!"
+    },
+    "summer_2026": {
+      "name": "Lễ Hội Biển",
+      "name_en": "Summer Beach Festival",
+      "type": "major",
+      "start_date": "2026-06-01",
+      "end_date": "2026-06-21",
+      "currency": {
+        "emoji": "🐚",
+        "name": "Vỏ Sò",
+        "name_en": "Seashell"
+      },
+      "color": "#00CED1",
+      "config_file": "summer.json",
+      "minigames": ["treasure_hunt", "boat_race"],
+      "community_goal": {
+        "type": "treasure_found",
+        "target": 100,
+        "description": "Tìm {target} kho báu"
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "🏖️ **Hè đến rồi!** Cùng ra biển săn kho báu và đua thuyền nào!",
+      "guide": "**🎮 Cách chơi:**\n• Săn kho báu dưới đáy biển\n• Đua thuyền với bạn bè\n• Câu cá biển đặc biệt\n• Hoàn thành nhiệm vụ mùa hè"
+    },
+    "autumn_2026": {
+      "name": "Thu Hoạch Mùa Thu",
+      "name_en": "Autumn Harvest",
+      "type": "major",
+      "start_date": "2026-09-15",
+      "end_date": "2026-09-30",
+      "currency": {
+        "emoji": "🍂",
+        "name": "Lá Vàng",
+        "name_en": "Golden Leaf"
+      },
+      "color": "#DAA520",
+      "config_file": "autumn.json",
+      "minigames": ["thank_letter", "leaf_collect", "tea_brewing"],
+      "community_goal": {
+        "type": "letters_sent",
+        "target": 500,
+        "description": "Gửi {target} thư cảm ơn"
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "🍂 **Mùa thu vàng!** Hãy gửi lời cảm ơn đến những người bạn yêu thương!",
+      "guide": "**🎮 Cách chơi:**\n• Viết thư cảm ơn cho bạn bè\n• Thu thập lá vàng rơi\n• Pha trà thưởng thức\n• Hoàn thành nhiệm vụ mùa thu"
+    },
+    "winter_2026": {
+      "name": "Đông Ấm Áp",
+      "name_en": "Warm Winter",
+      "type": "major",
+      "start_date": "2026-12-20",
+      "end_date": "2027-01-05",
+      "currency": {
+        "emoji": "❄️",
+        "name": "Bông Tuyết",
+        "name_en": "Snowflake"
+      },
+      "color": "#4169E1",
+      "config_file": "winter.json",
+      "minigames": ["secret_santa", "snowman", "countdown"],
+      "community_goal": {
+        "type": "snowman_parts",
+        "target": 10000,
+        "description": "Xây {target} phần người tuyết"
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "❄️ **Giáng sinh và Năm mới!** Cùng trao quà Secret Santa và xây người tuyết!",
+      "guide": "**🎮 Cách chơi:**\n• Tham gia Secret Santa trao quà bí mật\n• Xây người tuyết cùng cộng đồng\n• Đếm ngược đón năm mới\n• Hoàn thành nhiệm vụ mùa đông"
+    },
+    "halloween_2026": {
+      "name": "Halloween Vui Vẻ",
+      "name_en": "Happy Halloween",
+      "type": "mini",
+      "start_date": "2026-10-25",
+      "end_date": "2026-10-31",
+      "currency": {
+        "emoji": "🍬",
+        "name": "Kẹo",
+        "name_en": "Candy"
+      },
+      "color": "#FF6600",
+      "config_file": "halloween.json",
+      "minigames": ["ghost_hunt", "trick_treat"],
+      "community_goal": {
+        "type": "ghosts_caught",
+        "target": 1000,
+        "description": "Bắt {target} con ma"
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "🎃 **Halloween đến rồi!** Săn ma, xin kẹo và hóa trang thôi nào!",
+      "guide": "**🎮 Cách chơi:**\n• Săn bắt những con ma xuất hiện\n• Trick or Treat xin kẹo\n• Hoàn thành nhiệm vụ Halloween"
+    },
+    "earthday_2026": {
+      "name": "Ngày Trái Đất",
+      "name_en": "Earth Day",
+      "type": "mini",
+      "start_date": "2026-04-20",
+      "end_date": "2026-04-24",
+      "currency": {
+        "emoji": "💧",
+        "name": "Giọt Sương",
+        "name_en": "Dewdrop"
+      },
+      "color": "#228B22",
+      "config_file": "earthday.json",
+      "minigames": ["trash_sort", "beach_cleanup"],
+      "community_goal": {
+        "type": "trash_collected",
+        "target": 5000,
+        "description": "Thu gom {target} rác"
+      },
+      "special_buffs": {
+        "tree_xp_multiplier": 2
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "🌍 **Bảo vệ Trái Đất!** Cùng dọn rác và trồng cây nào!",
+      "guide": "**🎮 Cách chơi:**\n• Phân loại rác thải\n• Dọn dẹp bãi biển\n• Trồng cây (x2 XP trong sự kiện!)\n• Hoàn thành nhiệm vụ môi trường"
+    },
+    "midautumn_2026": {
+      "name": "Tết Trung Thu",
+      "name_en": "Mid-Autumn Festival",
+      "type": "mini",
+      "start_date": "2026-09-10",
+      "end_date": "2026-09-15",
+      "currency": {
+        "emoji": "🥮",
+        "name": "Bánh Trung Thu",
+        "name_en": "Mooncake"
+      },
+      "color": "#FFD700",
+      "config_file": "midautumn.json",
+      "minigames": ["lantern_parade", "quiz"],
+      "community_goal": {
+        "type": "lanterns_lit",
+        "target": 2000,
+        "description": "Thắp {target} đèn lồng"
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "🏮 **Trung Thu đoàn viên!** Rước đèn, ăn bánh và vui chơi!",
+      "guide": "**🎮 Cách chơi:**\n• Rước đèn lồng cùng bạn bè\n• Trả lời câu đố Trung Thu\n• Hoàn thành nhiệm vụ lễ hội"
+    },
+    "birthday_2026": {
+      "name": "Sinh Nhật Server",
+      "name_en": "Server Birthday",
+      "type": "mini",
+      "start_date": "2026-07-01",
+      "end_date": "2026-07-03",
+      "currency": {
+        "emoji": "🎈",
+        "name": "Bong Bóng",
+        "name_en": "Balloon"
+      },
+      "color": "#FF69B4",
+      "config_file": "birthday.json",
+      "minigames": ["wishes", "balloon_pop"],
+      "community_goal": {
+        "type": "wishes_sent",
+        "target": 500,
+        "description": "Gửi {target} lời chúc"
+      },
+      "banner_image": "",
+      "thumbnail": "",
+      "description": "🎂 **Sinh nhật Server!** Cùng chúc mừng và nhận quà nào!",
+      "guide": "**🎮 Cách chơi:**\n• Gửi lời chúc sinh nhật\n• Bắn bóng bay\n• Nhận quà sinh nhật đặc biệt"
+    }
+  },
+  "settings": {
+    "auto_start": true,
+    "timezone": "Asia/Ho_Chi_Minh",
+    "announcement_channel_config": "kenh_sukien",
+    "minigame_channel_config": "kenh_sukien_auto",
+    "event_role_config": "role_sukien",
+    "event_fish_chance": 0.15,
+    "milestone_update_interval_hours": 6
+  }
+}

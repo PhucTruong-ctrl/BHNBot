@@ -1559,12 +1559,16 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                         await cog.bot.achievement_manager.check_unlock(user_id, "fishing", "total_fish_caught", current_total, channel)
                         from .mechanics.events import check_conditional_unlocks
                         await check_conditional_unlocks(user_id, "total_fish_caught", current_total, channel)
-                        
-                        from cogs.quest.services.quest_service import QuestService
-                        from cogs.quest.core.quest_types import QuestType
-                        await QuestService.add_contribution(guild_id, user_id, QuestType.FISH_TOTAL, num_fish)
                     except Exception as e:
                         logger.error(f"[ACHIEVEMENT] Error updating total_fish_caught for {user_id}: {e}")
+                    
+                    try:
+                        from cogs.quest.services.quest_service import QuestService
+                        from cogs.quest.core.quest_types import QuestType
+                        result = await QuestService.add_contribution(guild_id, user_id, QuestType.FISH_TOTAL, num_fish)
+                        logger.info(f"[QUEST] Fish contribution: guild={guild_id}, user={user_id}, fish={num_fish}, result={result}")
+                    except Exception as e:
+                        logger.error(f"[QUEST] Error adding fish contribution for {user_id}: {e}")
     
 
 

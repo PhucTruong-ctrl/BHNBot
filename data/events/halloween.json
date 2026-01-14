@@ -1,0 +1,57 @@
+{
+  "event_id": "halloween_2026",
+
+  "milestones": [
+    {"percent": 50, "reward_type": "seeds", "amount": 100, "announcement": "🎃 Đạt 50%! Tất cả nhận +100 hạt giống!"},
+    {"percent": 100, "reward_type": "role", "role_name": "🎃 Halloween 2026", "role_color": "#FF6600", "extra_rewards": [{"type": "background", "key": "bg_halloween", "name": "Background Đêm Ma"}], "announcement": "🎃 HOÀN THÀNH! Bắt đủ 1000 con ma!"}
+  ],
+
+  "fish": [
+    {"key": "ca_bi_ngo", "name": "Cá Bí Ngô", "emoji": "🎃🐟", "tier": "common", "drop_rate": 0.35, "currency_reward": 5},
+    {"key": "ca_doi", "name": "Cá Dơi", "emoji": "🦇🐟", "tier": "common", "drop_rate": 0.35, "currency_reward": 5},
+    {"key": "ca_ma", "name": "Cá Ma", "emoji": "👻🐟", "tier": "rare", "drop_rate": 0.15, "currency_reward": 15},
+    {"key": "ca_xuong", "name": "Cá Xương", "emoji": "💀🐟", "tier": "rare", "drop_rate": 0.10, "currency_reward": 15},
+    {"key": "ca_phu_thuy", "name": "Cá Phù Thủy", "emoji": "🧙✨", "tier": "epic", "drop_rate": 0.05, "currency_reward": 50}
+  ],
+
+  "daily_quests": [
+    {"id": "halloween_ghost", "type": "ghosts_caught", "target": 3, "reward": 40, "description": "Bắt {target} con ma", "icon": "👻"},
+    {"id": "halloween_trick", "type": "trick_treat_count", "target": 2, "reward": 30, "description": "Trick or treat {target} lần", "icon": "🎃"},
+    {"id": "halloween_fish", "type": "fish_count", "target": 10, "reward": 20, "description": "Câu {target} cá", "icon": "🎣"}
+  ],
+  "daily_quest_count": 2,
+
+  "fixed_quests": [
+    {"id": "halloween_epic_fish", "type": "catch_specific_fish", "fish_key": "ca_phu_thuy", "target": 1, "reward_type": "title", "reward_value": "Phù Thủy", "title_key": "phu_thuy", "description": "Câu được Cá Phù Thủy", "icon": "🧙"},
+    {"id": "halloween_ghost_50", "type": "ghosts_caught_total", "target": 50, "reward_type": "badge", "reward_value": "🎃", "description": "Bắt 50 con ma", "icon": "👻"},
+    {"id": "halloween_all_fish", "type": "collect_all_fish", "target": 5, "reward_type": "currency", "reward_value": 300, "description": "Sưu tầm 5 loại cá", "icon": "🏆"}
+  ],
+
+  "shop": [
+    {"key": "bg_halloween", "name": "Background Đêm Ma", "price": 400, "type": "background", "limit_per_user": 1},
+    {"key": "frame_halloween", "name": "Frame Bí Ngô", "price": 250, "type": "frame", "limit_per_user": 1},
+    {"key": "candy_boost", "name": "Kẹo Ngọt", "price": 50, "type": "consumable", "limit_per_user": 10, "effect": {"type": "buff", "buff_type": "luck_x2", "duration_hours": 1}},
+    {"key": "ghost_mask", "name": "Mặt Nạ Ma", "price": 150, "type": "cosmetic", "limit_per_user": 1},
+    {"key": "badge_halloween", "name": "Badge 🎃", "price": 800, "type": "badge", "limit_per_user": 1}
+  ],
+
+  "minigame_config": {
+    "ghost_hunt": {
+      "spawn_type": "random",
+      "times_per_day": [5, 8],
+      "active_hours": [18, 23],
+      "max_catches": 3,
+      "reward_range": [20, 50],
+      "timeout_seconds": 30,
+      "goal_contribution_per_catch": 1
+    },
+    "trick_treat": {
+      "cooldown_per_target_seconds": 86400,
+      "trick_chance": 0.3,
+      "treat_chance": 0.7,
+      "trick_penalty": 10,
+      "treat_reward": 30,
+      "target_bonus": 5
+    }
+  }
+}

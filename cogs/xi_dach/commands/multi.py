@@ -973,8 +973,8 @@ async def _finish_game(cog: "XiDachCog", channel, table: Table) -> None:
                 exc_info=True
             )
             fallback_text = "\n".join([
-                f"{r['player_name']}: {'🟢 THẮNG' if r['outcome'] == 'win' else '🔴 THUA' if r['outcome'] == 'lose' else '🟡 HÒA'} "
-                f"{r['profit']:+,} Hạt"
+                f"{r['username']}: {'🟢 THẮNG' if r['result'] in ('win', 'instant_win') else '🔴 THUA' if r['result'] == 'lose' else '🟡 HÒA'} "
+                f"{r['net_profit']:+,} Hạt"
                 for r in results
             ])
             await channel.send(

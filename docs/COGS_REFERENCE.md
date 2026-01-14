@@ -333,16 +333,49 @@ Tài liệu này được tạo ra để AI assistant có thể:
 ---
 
 ## 13. RELATIONSHIP MODULE
-**File**: `cogs/relationship/cog.py`
+**Files**: `cogs/relationship/` (cog.py, services/buddy_service.py, constants.py)
 
-### Commands
+### Slash Commands
+| Lệnh | Tham số | Chức năng |
+|------|---------|-----------|
+| `/tangqua` | user, item, message, an_danh | Tặng quà healing |
+| `/qua-thongke` | loai | Xem thống kê quà tặng |
+
+### Buddy System (Bạn Thân) - Command Group `/banthan`
 | Lệnh | Chức năng |
 |------|-----------|
-| `/tangqua` | Tặng quà (cafe, flower, ring...) |
+| `/banthan moi <user>` | Gửi lời mời kết bạn thân |
+| `/banthan chapnhan <user>` | Chấp nhận lời mời |
+| `/banthan tuchoi <user>` | Từ chối lời mời |
+| `/banthan danhsach` | Xem danh sách bạn thân (max 3) |
+| `/banthan cho` | Xem lời mời đang chờ |
+| `/banthan huy <user>` | Huỷ liên kết bạn thân |
+
+### Buddy Bond Levels
+| Level | Tên | XP yêu cầu | Bonus |
+|-------|-----|------------|-------|
+| 1 | Người quen | 0 | +10% |
+| 2 | Tri kỷ | 1,000 | +15% |
+| 3 | Thân thiết | 5,000 | +18% |
+| 4 | Đồng hành | 15,000 | +22% |
+| 5 | Chiến hữu | 50,000 | +25% |
 
 ### Features
-- Gửi ẩn danh
-- Lời nhắn ngẫu nhiên dí dỏm
+- Maximum 3 buddies per user
+- 10-25% XP bonus khi buddy online cùng câu cá
+- Shared XP tracking giữa 2 người
+- Auto level-up mỗi 1000 shared XP
+- Gửi quà ẩn danh với lời nhắn ngẫu nhiên
+
+### Database Tables
+```sql
+buddy_bonds (user1_id, user2_id, guild_id, bond_level, shared_xp, created_at)
+buddy_requests (from_user_id, to_user_id, guild_id, created_at)
+gift_history (sender_id, receiver_id, guild_id, item_key, is_anonymous, message, created_at)
+```
+
+### CRITICAL CONSTRAINT
+**NO ROMANCE**: Chỉ hệ thống bạn bè, KHÔNG có marriage/dating/romantic features.
 
 ---
 
@@ -370,6 +403,20 @@ Tài liệu này được tạo ra để AI assistant có thể:
 | `/reset` | Reset game trong kênh |
 | `/exclude` | Loại kênh khỏi nhận hạt |
 | `/exclude_list` | Xem danh sách exclude |
+
+### Config Set Options
+| Option | Description |
+|--------|-------------|
+| `kenh_noitu` | Kênh chơi nối từ |
+| `kenh_logs` | Kênh ghi log admin |
+| `kenh_cay` | Kênh trồng cây server |
+| `kenh_fishing` | Kênh thông báo sự kiện câu cá |
+| `kenh_bump` | Kênh nhắc bump Disboard |
+| `kenh_log_bot` | Kênh gửi log lỗi bot lên Discord |
+| `kenh_aquarium` | Kênh Forum Làng Chài (Hồ Cá) |
+| `kenh_nhiemvu` | Kênh thông báo nhiệm vụ hàng ngày |
+| `log_ping_user` | Người nhận ping khi có lỗi ERROR/CRITICAL |
+| `log_level` | Mức độ log gửi lên Discord (INFO/WARNING/ERROR/CRITICAL) |
 
 ---
 
@@ -652,8 +699,8 @@ auto_fish_storage (
 
 ---
 
-## 22. SOCIAL MODULE (Tử Tế & Voice Stats)
-**Files**: `cogs/social/` (cog.py, services/voice_service.py, services/kindness_service.py)
+## 22. SOCIAL MODULE (Tử Tế, Streak & Voice Rewards)
+**Files**: `cogs/social/` (cog.py, services/voice_service.py, services/kindness_service.py, services/streak_service.py, services/voice_reward_service.py)
 
 ### Slash Commands
 | Lệnh | Chức năng |
@@ -680,26 +727,44 @@ auto_fish_storage (
 - Vietnamese: `cảm ơn`, `cám ơn`, `camon`
 - English: `thanks`, `thank you`, `ty`, `tysm`
 
+### Kindness Streak System (NEW)
+Streak multipliers cho điểm tử tế:
+
+| Streak Days | Multiplier |
+|-------------|------------|
+| 7 ngày | x1.10 |
+| 14 ngày | x1.15 |
+| 30 ngày | x1.25 |
+| 60 ngày | x1.35 |
+| 90 ngày | x1.50 |
+
+**Features:**
+- Streak protection: Boolean flag bảo vệ streak khi miss 1 ngày
+- Auto-record khi thả reaction hoặc cảm ơn
+- Hiển thị streak trong `/tute` command
+
+### Voice Rewards System (NEW)
+Nhận Hạt khi ở trong voice channel:
+
+| Config | Value |
+|--------|-------|
+| Hạt mỗi 10 phút | 10 |
+| Daily cap | 300 Hạt |
+| Buddy online bonus | +20% |
+
+**Voice Streak Milestones:**
+| Streak | Bonus per interval |
+|--------|-------------------|
+| 7 ngày | +2 Hạt |
+| 14 ngày | +3 Hạt |
+| 30 ngày | +5 Hạt |
+
 ### Database Tables
 ```sql
-voice_stats (
-    user_id BIGINT,
-    guild_id BIGINT,
-    total_seconds BIGINT DEFAULT 0,
-    sessions_count INT DEFAULT 0,
-    last_session_start TIMESTAMP,
-    PRIMARY KEY (user_id, guild_id)
-)
-
-kindness_stats (
-    user_id BIGINT,
-    guild_id BIGINT,
-    reactions_given INT DEFAULT 0,
-    reactions_received INT DEFAULT 0,
-    thanks_given INT DEFAULT 0,
-    thanks_received INT DEFAULT 0,
-    PRIMARY KEY (user_id, guild_id)
-)
+voice_stats (user_id, guild_id, total_seconds, sessions_count, last_session_start)
+kindness_stats (user_id, guild_id, reactions_given, reactions_received, thanks_given, thanks_received)
+kindness_streaks (user_id, guild_id, current_streak, longest_streak, last_kind_action, streak_protected)
+voice_rewards (user_id, guild_id, rewarded_seconds, total_rewards_today, last_reward_date, voice_streak, last_voice_date)
 ```
 
 ---
@@ -735,12 +800,7 @@ kindness_stats (
 
 ### Database Table
 ```sql
-user_profiles (
-    user_id BIGINT PRIMARY KEY,
-    theme VARCHAR(32) DEFAULT 'forest',
-    badges_display VARCHAR(256),
-    bio VARCHAR(200) DEFAULT 'Một người bạn thân thiện 🌸'
-)
+user_profiles (user_id, theme, badges_display, bio)
 ```
 
 ### Assets
@@ -748,3 +808,58 @@ user_profiles (
 - `assets/profile/fonts/*.ttf`: 5 Google Fonts
 
 ---
+
+## 24. QUEST MODULE (Nhiệm Vụ Hàng Ngày)
+**Files**: `cogs/quest/` (cog.py, core/quest_types.py, services/quest_service.py)
+
+### Slash Commands
+| Lệnh | Chức năng | Quyền |
+|------|-----------|-------|
+| `/nv-test-sang` | Test trigger morning announcement | Admin |
+| `/nv-test-toi` | Test trigger evening summary | Admin |
+
+### Quest Types
+| Type | Name | Icon | Target | Reward Pool |
+|------|------|------|--------|-------------|
+| `fish_total` | Câu cá | 🎣 | 50 cá | 100 Hạt |
+| `voice_total` | Voice chat | 🎤 | 120 phút | 100 Hạt |
+| `gift_total` | Tặng quà | 🎁 | 5 quà | 75 Hạt |
+| `react_total` | Thả tim | ❤️ | 30 reactions | 50 Hạt |
+| `tree_water` | Tưới cây | 🌳 | 10 lần | 50 Hạt |
+| `thank_total` | Cảm ơn | 🙏 | 10 lần | 50 Hạt |
+
+### Daily Flow
+1. **7:00 AM** - Bot chọn random 3 quest và announce trong `kenh_nhiemvu`
+2. **Trong ngày** - Thành viên hoạt động, progress được track tự động
+3. **10:00 PM** - Bot tổng kết, phát thưởng theo tỉ lệ đóng góp
+
+### Server Streak System
+| Streak Days | Bonus Multiplier |
+|-------------|------------------|
+| 3 ngày | +10% |
+| 7 ngày | +25% |
+| 14 ngày | +50% |
+| 30 ngày | +100% |
+
+### Reward Distribution
+- Phần thưởng chia theo tỉ lệ % đóng góp của mỗi người
+- Bonus +50 Hạt nếu hoàn thành cả 3 quest
+- Streak bonus áp dụng cho toàn server
+
+### Integration Points
+Các module khác gọi `QuestService.add_contribution()`:
+- `cogs/social/cog.py` - on_reaction_add, on_message (thanks)
+- `cogs/fishing/commands/fish.py` - after catching fish
+- `cogs/tree/views.py` - when watering tree
+- `cogs/relationship/cog.py` - when sending gift
+
+### Database Tables
+```sql
+server_daily_quests (guild_id, quest_date, quests JSONB, completed_count, server_streak)
+quest_contributions (guild_id, quest_date, user_id, quest_type, contribution_amount)
+```
+
+### Critical Notes
+- Quest reset lúc 00:00 UTC+7 (Vietnam timezone)
+- Cần config `kenh_nhiemvu` channel trước khi dùng
+- Morning task chạy lúc 7:00 AM, evening lúc 10:00 PM

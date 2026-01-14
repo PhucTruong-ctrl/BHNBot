@@ -369,3 +369,8 @@ class QuestCog(commands.Cog):
         filled = int(percent / 100 * length)
         empty = length - filled
         return "█" * filled + "░" * empty
+
+
+async def setup(bot: commands.Bot) -> None:
+    """Load the QuestCog extension."""
+    await bot.add_cog(QuestCog(bot))

@@ -3,11 +3,73 @@ import os
 import asyncio
 import subprocess
 import logging
+import signal
+import atexit
 from discord.ext import commands
 from dotenv import load_dotenv
 
 # Load env vars FIRST
 load_dotenv()
+
+# =============================================================================
+# DOCKER LIFECYCLE MANAGEMENT
+# =============================================================================
+_docker_started = False
+
+def start_docker_services():
+    global _docker_started
+    if _docker_started:
+        return
+    
+    compose_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docker-compose.yml")
+    if not os.path.exists(compose_file):
+        return
+    
+    print("[DOCKER] Starting PostgreSQL and Lavalink...")
+    try:
+        subprocess.run(
+            ["docker", "compose", "-f", compose_file, "up", "-d"],
+            check=True,
+            capture_output=True,
+        )
+        _docker_started = True
+        print("[DOCKER] Services started successfully")
+    except subprocess.CalledProcessError as e:
+        print(f"[DOCKER] Failed to start: {e.stderr.decode() if e.stderr else e}")
+    except FileNotFoundError:
+        print("[DOCKER] docker command not found, skipping...")
+
+def stop_docker_services():
+    global _docker_started
+    if not _docker_started:
+        return
+    
+    compose_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docker-compose.yml")
+    if not os.path.exists(compose_file):
+        return
+    
+    print("\n[DOCKER] Stopping PostgreSQL and Lavalink...")
+    try:
+        subprocess.run(
+            ["docker", "compose", "-f", compose_file, "down"],
+            check=True,
+            capture_output=True,
+        )
+        _docker_started = False
+        print("[DOCKER] Services stopped successfully")
+    except subprocess.CalledProcessError as e:
+        print(f"[DOCKER] Failed to stop: {e.stderr.decode() if e.stderr else e}")
+    except FileNotFoundError:
+        pass
+
+atexit.register(stop_docker_services)
+
+def _signal_handler(signum, frame):
+    stop_docker_services()
+    raise SystemExit(0)
+
+signal.signal(signal.SIGTERM, _signal_handler)
+signal.signal(signal.SIGINT, _signal_handler)
 
 from core.achievement_system import AchievementManager
 
@@ -21,6 +83,8 @@ from core.orm import init_tortoise # Phase 1: Postgres ORM
 # 1. SETUP LOGGING
 setup_logger("Main", "main.log")
 logger = logging.getLogger("Main")
+
+logging.getLogger("wavelink").setLevel(logging.ERROR)
 
 # 2. CREATE BOT
 intents = discord.Intents.all()
@@ -110,6 +174,14 @@ async def on_ready():
         logger.info("✓ Phase 3.1 tables ensured")
     except Exception as e:
         logger.error(f"Failed to ensure Phase 3.1 tables: {e}")
+
+    # Ensure Seasonal Event columns
+    try:
+        from database_manager import ensure_seasonal_event_columns
+        await ensure_seasonal_event_columns()
+        logger.info("✓ Seasonal event columns ensured")
+    except Exception as e:
+        logger.error(f"Failed to ensure seasonal event columns: {e}")
     
     # Attach Discord logging handler (reads config from database)
     try:
@@ -250,6 +322,7 @@ async def main():
         await bot.start(os.getenv('DISCORD_TOKEN'))
 
 if __name__ == '__main__':
+    start_docker_services()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

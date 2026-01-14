@@ -151,6 +151,24 @@ def init_database():
         print("✓ Added log_discord_channel_id column to server_config table")
     except sqlite3.OperationalError:
         pass
+
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN event_channel_id INTEGER")
+        print("✓ Added event_channel_id column to server_config table")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN event_auto_channel_id INTEGER")
+        print("✓ Added event_auto_channel_id column to server_config table")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        c.execute("ALTER TABLE server_config ADD COLUMN event_role_id INTEGER")
+        print("✓ Added event_role_id column to server_config table")
+    except sqlite3.OperationalError:
+        pass
     
     c.execute('''CREATE TABLE IF NOT EXISTS server_tree (
                     guild_id INTEGER PRIMARY KEY,

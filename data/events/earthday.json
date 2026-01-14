@@ -1,0 +1,73 @@
+{
+  "event_id": "earthday_2026",
+
+  "milestones": [
+    {"percent": 50, "reward_type": "seeds", "amount": 100, "announcement": "💚 Đạt 50%! Tất cả nhận +100 hạt giống!"},
+    {"percent": 100, "reward_type": "role", "role_name": "💚 Earth Day 2026", "role_color": "#228B22", "extra_rewards": [{"type": "background", "key": "bg_earthday", "name": "Background Thiên Nhiên"}], "announcement": "🌍 HOÀN THÀNH! Thu gom đủ 5000 rác!"}
+  ],
+
+  "fish": [
+    {"key": "ca_la_sen", "name": "Cá Lá Sen", "emoji": "🪷🐟", "tier": "common", "drop_rate": 0.40, "currency_reward": 5},
+    {"key": "ca_co_xanh", "name": "Cá Cỏ Xanh", "emoji": "🌿🐟", "tier": "common", "drop_rate": 0.35, "currency_reward": 5},
+    {"key": "ca_cau_vong_xanh", "name": "Cá Cầu Vồng Xanh", "emoji": "🌈🐟", "tier": "rare", "drop_rate": 0.20, "currency_reward": 15},
+    {"key": "ca_than_rung", "name": "Cá Thần Rừng", "emoji": "🌲✨", "tier": "epic", "drop_rate": 0.05, "currency_reward": 50}
+  ],
+
+  "daily_quests": [
+    {"id": "earthday_trash", "type": "trash_disposed", "target": 10, "reward": 30, "description": "Vứt {target} rác", "icon": "🗑️"},
+    {"id": "earthday_tree", "type": "tree_contribute", "target": 50, "reward": 25, "description": "Góp {target} hạt cho cây", "icon": "🌳"},
+    {"id": "earthday_sort", "type": "trash_sorted_correct", "target": 10, "reward": 40, "description": "Phân loại đúng {target} rác", "icon": "♻️"}
+  ],
+  "daily_quest_count": 2,
+
+  "fixed_quests": [
+    {"id": "earthday_epic_fish", "type": "catch_specific_fish", "fish_key": "ca_than_rung", "target": 1, "reward_type": "title", "reward_value": "Thần Rừng", "title_key": "than_rung", "description": "Câu được Cá Thần Rừng", "icon": "🌲"},
+    {"id": "earthday_trash_100", "type": "trash_disposed_total", "target": 100, "reward_type": "badge", "reward_value": "💚", "description": "Vứt 100 rác", "icon": "🗑️"},
+    {"id": "earthday_all_fish", "type": "collect_all_fish", "target": 4, "reward_type": "currency", "reward_value": 200, "description": "Sưu tầm 4 loại cá", "icon": "🏆"}
+  ],
+
+  "shop": [
+    {"key": "bg_earthday", "name": "Background Thiên Nhiên", "price": 300, "type": "background", "limit_per_user": 1},
+    {"key": "frame_earthday", "name": "Frame Lá Xanh", "price": 200, "type": "frame", "limit_per_user": 1},
+    {"key": "special_fertilizer", "name": "Phân Bón Đặc Biệt", "price": 100, "type": "consumable", "limit_per_user": 5, "effect": {"type": "buff", "buff_type": "tree_xp_x3", "duration_uses": 10}},
+    {"key": "badge_earthday", "name": "Badge 💚", "price": 600, "type": "badge", "limit_per_user": 1}
+  ],
+
+  "minigame_config": {
+    "trash_sort": {
+      "spawn_type": "scheduled",
+      "scheduled_times": ["20:00", "21:00"],
+      "question_count": [5, 8],
+      "first_question_timeout": 60,
+      "subsequent_trigger": {"percent_answered": 0.8, "max_timeout": 120},
+      "categories": {
+        "recycle": {"emoji": "🟢", "name": "Tái Chế", "items": ["Chai nhựa", "Lon nước", "Giấy báo", "Hộp carton", "Chai thủy tinh", "Hộp sữa", "Túi giấy", "Lon bia"]},
+        "organic": {"emoji": "🟡", "name": "Hữu Cơ", "items": ["Vỏ chuối", "Cơm thừa", "Lá cây", "Xương cá", "Vỏ trứng", "Bã cà phê", "Vỏ cam", "Rau héo"]},
+        "hazardous": {"emoji": "🔴", "name": "Nguy Hại", "items": ["Pin cũ", "Bóng đèn", "Thuốc hết hạn", "Sơn", "Dầu máy", "Acquy", "Hóa chất", "Bình xịt"]}
+      },
+      "reward_per_correct": 5,
+      "goal_contribution_per_correct": 1
+    },
+    "beach_cleanup": {
+      "spawn_type": "random",
+      "times_per_day": [3, 4],
+      "active_hours": [9, 21],
+      "max_cleaners": 5,
+      "trash_items": ["🥤 Chai Nhựa", "🛍️ Túi Ni Lông", "🥾 Ủng Rách", "🪣 Xô Vỡ", "🎣 Dây Câu", "🥫 Lon Rỉ Sét"],
+      "rewards": [25, 20, 15, 10, 10],
+      "goal_contribution_range": [3, 5],
+      "timeout_seconds": 45
+    }
+  },
+
+  "special_buffs": {
+    "tree_xp_multiplier": 2,
+    "description": "/gophat nhận x2 XP trong sự kiện"
+  },
+
+  "trash_disposal": {
+    "currency_per_trash": 3,
+    "goal_contribution_per_trash": 1,
+    "note": "Khi câu cá có rác, button 🗑️ Vứt Rác sẽ cho currency thay vì tái chế thành phân bón"
+  }
+}

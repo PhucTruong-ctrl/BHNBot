@@ -115,13 +115,19 @@ class SocialCog(commands.Cog):
     ) -> None:
         if user.bot:
             return
-        if reaction.message.author.bot:
-            return
-        if user.id == reaction.message.author.id:
-            return
 
         guild = reaction.message.guild
         if not guild:
+            return
+
+        try:
+            await QuestService.add_contribution(guild.id, user.id, QuestType.REACT_TOTAL, 1)
+        except Exception as e:
+            logger.error(f"Quest contribution failed for reaction: {e}")
+
+        if reaction.message.author.bot:
+            return
+        if user.id == reaction.message.author.id:
             return
 
         cooldown_key = (user.id, reaction.message.author.id)
@@ -137,7 +143,6 @@ class SocialCog(commands.Cog):
         await KindnessService.increment_reaction_given(user.id, guild.id)
         await KindnessService.increment_reaction_received(reaction.message.author.id, guild.id)
         await StreakService.record_kind_action(user.id, guild.id)
-        await QuestService.add_contribution(guild.id, user.id, QuestType.REACT_TOTAL, 1)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:

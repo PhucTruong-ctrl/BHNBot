@@ -1,0 +1,155 @@
+{
+  "event_id": "spring_2026",
+
+  "milestones": [
+    {
+      "percent": 25,
+      "reward_type": "seeds",
+      "amount": 100,
+      "announcement": "🌸 Đạt 25%! Tất cả người tham gia nhận +100 hạt giống!"
+    },
+    {
+      "percent": 50,
+      "reward_type": "title",
+      "title_key": "xuan_den",
+      "title_name": "Xuân Đến",
+      "announcement": "🌸 Đạt 50%! Mở khóa danh hiệu \"Xuân Đến\" cho tất cả!"
+    },
+    {
+      "percent": 75,
+      "reward_type": "buff",
+      "buff_type": "fishing_x2",
+      "duration_hours": 24,
+      "announcement": "🌸 Đạt 75%! x2 cá trong 24 giờ tới!"
+    },
+    {
+      "percent": 100,
+      "reward_type": "role",
+      "role_name": "🌸 Xuân Đến 2026",
+      "role_color": "#FFB7C5",
+      "extra_rewards": [
+        {"type": "background", "key": "bg_spring", "name": "Background Hoa Đào"}
+      ],
+      "announcement": "🎉 HOÀN THÀNH 100%! Tạo role đặc biệt và tặng Background Hoa Đào!"
+    }
+  ],
+
+  "fish": [
+    {"key": "ca_hoa_dao", "name": "Cá Hoa Đào", "emoji": "🌸🐟", "tier": "common", "drop_rate": 0.30, "currency_reward": 5, "description": "Cá màu hồng nhạt, bơi nhẹ nhàng như cánh hoa đào"},
+    {"key": "ca_den_long", "name": "Cá Đèn Lồng", "emoji": "🏮🐟", "tier": "common", "drop_rate": 0.25, "currency_reward": 5, "description": "Phát sáng lung linh như đèn lồng đêm xuân"},
+    {"key": "ca_mai_vang", "name": "Cá Mai Vàng", "emoji": "🌼🐟", "tier": "common", "drop_rate": 0.15, "currency_reward": 5, "description": "Vảy vàng óng ánh như hoa mai nở rộ"},
+    {"key": "ca_than_tai", "name": "Cá Thần Tài", "emoji": "🧧🐟", "tier": "rare", "drop_rate": 0.12, "currency_reward": 15, "description": "Mang lại may mắn và tài lộc"},
+    {"key": "ca_phuc_loc", "name": "Cá Phúc Lộc", "emoji": "🎊🐟", "tier": "rare", "drop_rate": 0.08, "currency_reward": 15, "description": "Biểu tượng của phúc đức và thịnh vượng"},
+    {"key": "ca_phao_hoa", "name": "Cá Pháo Hoa", "emoji": "🎆🐟", "tier": "rare", "drop_rate": 0.05, "currency_reward": 15, "description": "Vảy lấp lánh như pháo hoa đêm giao thừa"},
+    {"key": "ca_rong_vang", "name": "Cá Rồng Vàng", "emoji": "🐉✨", "tier": "epic", "drop_rate": 0.05, "currency_reward": 50, "description": "Huyền thoại rồng vàng xuất hiện đầu xuân"}
+  ],
+
+  "daily_quests": [
+    {"id": "spring_fish", "type": "fish_count", "target": 20, "reward": 30, "description": "Câu {target} cá", "icon": "🎣"},
+    {"id": "spring_lixi", "type": "lixi_sent", "target": 3, "reward": 50, "description": "Gửi {target} lì xì", "icon": "🧧"},
+    {"id": "spring_chat", "type": "message_count", "target": 50, "reward": 20, "description": "Gửi {target} tin nhắn", "icon": "💬"},
+    {"id": "spring_react", "type": "reaction_count", "target": 20, "reward": 25, "description": "React {target} lần", "icon": "👍"},
+    {"id": "spring_voice", "type": "voice_minutes", "target": 30, "reward": 40, "description": "Voice chat {target} phút", "icon": "🎤"},
+    {"id": "spring_tree", "type": "tree_contribute", "target": 50, "reward": 25, "description": "Góp {target} hạt cho cây", "icon": "🌳"}
+  ],
+  "daily_quest_count": 3,
+
+  "fixed_quests": [
+    {
+      "id": "spring_epic_fish",
+      "type": "catch_specific_fish",
+      "fish_key": "ca_rong_vang",
+      "target": 1,
+      "reward_type": "title",
+      "reward_value": "Rồng Vàng",
+      "title_key": "rong_vang",
+      "description": "Câu được Cá Rồng Vàng",
+      "icon": "🐉"
+    },
+    {
+      "id": "spring_all_fish",
+      "type": "collect_all_fish",
+      "target": 7,
+      "reward_type": "badge",
+      "reward_value": "🌸",
+      "description": "Sưu tầm đủ 7 loại cá sự kiện",
+      "icon": "🏆"
+    },
+    {
+      "id": "spring_lixi_50",
+      "type": "lixi_sent_total",
+      "target": 50,
+      "reward_type": "currency",
+      "reward_value": 500,
+      "description": "Gửi tổng 50 lì xì",
+      "icon": "🧧"
+    },
+    {
+      "id": "spring_minigame",
+      "type": "minigame_participated",
+      "target": 20,
+      "reward_type": "currency",
+      "reward_value": 300,
+      "description": "Tham gia 20 minigames",
+      "icon": "🎮"
+    },
+    {
+      "id": "spring_currency_1000",
+      "type": "currency_earned",
+      "target": 1000,
+      "reward_type": "currency",
+      "reward_value": 200,
+      "description": "Kiếm tổng 1000 🌸",
+      "icon": "💰"
+    }
+  ],
+
+  "shop": [
+    {"key": "bg_spring", "name": "Background Hoa Đào", "price": 500, "type": "background", "limit_per_user": 1, "description": "Nền profile hoa đào rực rỡ"},
+    {"key": "frame_spring", "name": "Khung Đèn Lồng", "price": 300, "type": "frame", "limit_per_user": 1, "description": "Khung avatar đèn lồng lung linh"},
+    {"key": "lucky_envelope", "name": "Phong Bao May Mắn", "price": 100, "type": "consumable", "limit_per_user": 5, "description": "x2 seeds trong 1 giờ", "effect": {"type": "buff", "buff_type": "seeds_x2", "duration_hours": 1}},
+    {"key": "badge_spring", "name": "Badge 🌸", "price": 1000, "type": "badge", "limit_per_user": 1, "description": "Huy hiệu hoa đào vĩnh viễn"},
+    {"key": "valentine_card", "name": "Thiệp Valentine", "price": 150, "type": "gift", "limit_per_user": -1, "description": "+20 kindness khi tặng", "effect": {"type": "kindness", "amount": 20}}
+  ],
+
+  "minigame_config": {
+    "lixi_auto": {
+      "spawn_type": "random",
+      "times_per_day": [3, 5],
+      "active_hours": [8, 23],
+      "max_claims": 5,
+      "reward_range": [20, 100],
+      "timeout_seconds": 60
+    },
+    "lixi_manual": {
+      "cooldown_seconds": 86400,
+      "sender_reward_range": [5, 25],
+      "receiver_reward_range": [10, 50]
+    }
+  },
+
+  "special_days": {
+    "2026-02-14": {
+      "name": "Valentine's Day",
+      "multipliers": {
+        "lixi_reward": 2,
+        "fish_drop": 1.5
+      },
+      "exclusive_items": [
+        {"key": "love_letter", "name": "💌 Thiệp Tình Yêu", "price": 200, "type": "gift"}
+      ]
+    }
+  },
+
+  "currency_sources": {
+    "event_fish_common": 5,
+    "event_fish_rare": 15,
+    "event_fish_epic": 50,
+    "lixi_sender": [5, 25],
+    "lixi_receiver": [10, 50],
+    "lixi_auto": [20, 100],
+    "daily_checkin": 30,
+    "voice_per_10min": 15,
+    "thank_detected": 5
+  }
+}
