@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4
@@ -20,24 +18,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: bhnbot-postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: bhnbot_db
-      POSTGRES_USER: bhnbot
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bhnbot_secure_2026}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bhnbot -d bhnbot_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:

@@ -145,9 +145,12 @@ async def execute_query(query: str, params: tuple = ()) -> list[dict[str, Any]]:
     rows = await db_manager.fetchall(query, *params)
     if not rows:
         return []
-    if hasattr(rows[0], "keys"):
-        return [dict(row) for row in rows]
-    return [dict(row) for row in rows]
+    
+    query_converted = db_manager._convert_sql_params(query)
+    async with db_manager.pool.acquire() as conn:
+        records = await conn.fetch(query_converted, *params)
+        return [dict(record) for record in records]
+        return [dict(record) for record in records]
 
 
 async def execute_write(query: str, params: tuple = ()) -> int:

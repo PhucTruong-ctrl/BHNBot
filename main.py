@@ -25,7 +25,7 @@ def start_docker_services():
     if not os.path.exists(compose_file):
         return
     
-    print("[DOCKER] Starting PostgreSQL and Lavalink...")
+    print("[DOCKER] Starting Lavalink...")
     try:
         subprocess.run(
             ["docker", "compose", "-f", compose_file, "up", "-d"],
@@ -48,7 +48,7 @@ def stop_docker_services():
     if not os.path.exists(compose_file):
         return
     
-    print("\n[DOCKER] Stopping PostgreSQL and Lavalink...")
+    print("\n[DOCKER] Stopping Lavalink...")
     try:
         subprocess.run(
             ["docker", "compose", "-f", compose_file, "down"],

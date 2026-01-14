@@ -53,14 +53,23 @@ class SeasonalEventsCog(commands.Cog):
 
     async def cog_load(self) -> None:
         await init_seasonal_tables()
-        await self._restore_active_events()
+        self.restore_events_task.start()
         self.check_event_dates.start()
         self.update_announcement_task.start()
         logger.info("SeasonalEventsCog loaded")
 
     async def cog_unload(self) -> None:
+        self.restore_events_task.cancel()
         self.check_event_dates.cancel()
         self.update_announcement_task.cancel()
+
+    @tasks.loop(count=1)
+    async def restore_events_task(self) -> None:
+        await self._restore_active_events()
+
+    @restore_events_task.before_loop
+    async def before_restore_events(self) -> None:
+        await self.bot.wait_until_ready()
 
     async def _restore_active_events(self) -> None:
         for guild in self.bot.guilds:
@@ -332,7 +341,6 @@ class SeasonalEventsCog(commands.Cog):
     sukien_test_group = app_commands.Group(
         name="sukien-test",
         description="Test commands cho sự kiện (Admin)",
-        default_permissions=discord.Permissions(administrator=True),
     )
 
     @sukien_test_group.command(name="start", description="Bắt đầu sự kiện test")
@@ -453,11 +461,7 @@ class SeasonalEventsCog(commands.Cog):
         await interaction.response.send_message(f"📊 Community Goal: {new_progress:,} / {goal:,} ({percent:.1f}%)")
 
     @sukien_test_group.command(name="minigame", description="Spawn minigame test")
-    @app_commands.describe(minigame_type="Loại minigame")
-    @app_commands.choices(minigame_type=[
-        app_commands.Choice(name="Lì Xì Auto", value="lixi_auto"),
-        app_commands.Choice(name="Lì Xì Manual", value="lixi_manual"),
-    ])
+    @app_commands.describe(minigame_type="ID minigame (vd: lixi_auto, boat_race, ghost_hunt...)")
     async def test_minigame(self, interaction: discord.Interaction, minigame_type: str) -> None:
         if not interaction.guild or not interaction.channel:
             await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
@@ -474,16 +478,21 @@ class SeasonalEventsCog(commands.Cog):
             await interaction.response.send_message(f"❌ Không tìm thấy minigame `{minigame_type}`!", ephemeral=True)
             return
 
-        if isinstance(interaction.channel, discord.TextChannel):
-            await minigame.spawn(interaction.channel, interaction.guild.id)
-            await interaction.response.send_message(f"✅ Đã spawn minigame `{minigame_type}`!", ephemeral=True)
-        else:
+        if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("❌ Không thể spawn trong kênh này!", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        try:
+            await minigame.spawn(interaction.channel, interaction.guild.id)
+            await interaction.followup.send(f"✅ Đã spawn minigame `{minigame_type}`!", ephemeral=True)
+        except Exception as e:
+            logger.error(f"[MINIGAME] Error spawning {minigame_type}: {e}", exc_info=True)
+            await interaction.followup.send(f"❌ Lỗi spawn minigame: {e}", ephemeral=True)
 
     sukien_admin_group = app_commands.Group(
         name="sukien-admin",
         description="Admin commands cho sự kiện",
-        default_permissions=discord.Permissions(administrator=True),
     )
 
     @sukien_admin_group.command(name="start", description="Bắt đầu sự kiện thủ công")
