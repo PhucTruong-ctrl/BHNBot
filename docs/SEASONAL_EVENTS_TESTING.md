@@ -152,6 +152,33 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 
 ## 6. Test Minigames
 
+### 6.0. Trigger Minigame (Admin)
+```
+/sukien-test minigame type:<minigame_id>
+```
+Danh sách minigame_id theo từng sự kiện:
+
+| Sự kiện | Minigame ID | Loại |
+|---------|-------------|------|
+| Spring | `lixi_auto` | Auto-spawn |
+| Spring | `lixi_manual` | Manual `/lixi` |
+| Summer | `treasure_hunt` | Auto-spawn |
+| Summer | `boat_race` | Scheduled + Random |
+| Autumn | `thank_letter` | Channel-based |
+| Autumn | `leaf_collect` | Auto-spawn |
+| Autumn | `tea_brewing` | Manual (4h cooldown) |
+| Winter | `secret_santa` | Registration command |
+| Winter | `snowman` | Auto + Manual |
+| Winter | `countdown` | Auto-announce |
+| Halloween | `ghost_hunt` | Auto-spawn |
+| Halloween | `trick_treat` | Manual (24h/target) |
+| Earth Day | `trash_sort` | Scheduled |
+| Earth Day | `beach_cleanup` | Auto-spawn |
+| Mid-Autumn | `lantern_parade` | Voice-based auto |
+| Mid-Autumn | `quiz` | Scheduled |
+| Birthday | `wishes` | Channel-based |
+| Birthday | `balloon_pop` | Auto-spawn |
+
 ### 6.1. Lì Xì Tự Động (lixi_auto)
 
 **Trigger spawn (Admin):**
@@ -294,7 +321,10 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | 🐚 Vỏ Sò |
 | **Màu** | #00CED1 (Xanh biển) |
 | **Mục tiêu** | Tìm 100 kho báu |
-| **Minigames** | Săn Kho Báu, Đua Thuyền |
+| **Minigames** | treasure_hunt (auto), boat_race (scheduled) |
+| **Nhiệm vụ** | 5 daily, 5 fixed |
+| **Shop** | 5 items |
+| **Cá sự kiện** | ca_ngoc_trai, ca_cau_vong, ca_mat_troi, ca_than_bien (epic) |
 
 ---
 
@@ -306,7 +336,10 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | 🍂 Lá Vàng |
 | **Màu** | #DAA520 (Vàng) |
 | **Mục tiêu** | Gửi 500 thư cảm ơn |
-| **Minigames** | Thư Cảm Ơn, Thu Lá, Pha Trà |
+| **Minigames** | thank_letter (channel), leaf_collect (auto), tea_brewing (manual 4h) |
+| **Nhiệm vụ** | 5 daily, 5 fixed |
+| **Shop** | 5 items |
+| **Cá sự kiện** | ca_hoang_hon, ca_suong_mu, ca_trang_thu, ca_phuong_hoang (epic) |
 
 ---
 
@@ -318,7 +351,10 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | ❄️ Bông Tuyết |
 | **Màu** | #4169E1 (Xanh dương) |
 | **Mục tiêu** | Xây 10,000 phần người tuyết |
-| **Minigames** | Secret Santa, Người Tuyết, Đếm Ngược |
+| **Minigames** | secret_santa (register), snowman (auto+manual), countdown (auto) |
+| **Nhiệm vụ** | 4 daily, 5 fixed |
+| **Shop** | 9 items |
+| **Cá sự kiện** | ca_qua_tang, ca_ngoi_sao, ca_keo_gay, ca_ong_gia_noel (epic) |
 
 ---
 
@@ -330,7 +366,10 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | 🍬 Kẹo |
 | **Màu** | #FF6600 (Cam) |
 | **Mục tiêu** | Bắt 1,000 con ma |
-| **Minigames** | Săn Ma, Trick or Treat |
+| **Minigames** | ghost_hunt (auto), trick_treat (manual 24h/target) |
+| **Nhiệm vụ** | 3 daily, 3 fixed |
+| **Shop** | 5 items |
+| **Cá sự kiện** | ca_ma, ca_xuong, ca_phu_thuy (epic) |
 
 ---
 
@@ -342,8 +381,11 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | 💧 Giọt Sương |
 | **Màu** | #228B22 (Xanh lá) |
 | **Mục tiêu** | Thu gom 5,000 rác |
-| **Minigames** | Phân Loại Rác, Dọn Bãi Biển |
+| **Minigames** | trash_sort (scheduled), beach_cleanup (auto) |
+| **Nhiệm vụ** | 3 daily, 3 fixed |
+| **Shop** | 4 items |
 | **Buff đặc biệt** | x2 XP Trồng Cây |
+| **Cá sự kiện** | ca_cau_vong_xanh, ca_than_rung (epic) |
 
 ---
 
@@ -355,7 +397,10 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | 🥮 Bánh Trung Thu |
 | **Màu** | #FFD700 (Vàng) |
 | **Mục tiêu** | Thắp 2,000 đèn lồng |
-| **Minigames** | Rước Đèn, Câu Đố |
+| **Minigames** | lantern_parade (voice auto), quiz (scheduled) |
+| **Nhiệm vụ** | 3 daily, 3 fixed |
+| **Shop** | 5 items |
+| **Cá sự kiện** | ca_trang_ram, ca_hang_nga |
 
 ---
 
@@ -367,7 +412,10 @@ Nhiệm vụ hàng ngày reset lúc 00:00. Test bằng cách đổi ngày hệ t
 | **Tiền tệ** | 🎈 Bong Bóng |
 | **Màu** | #FF69B4 (Hồng) |
 | **Mục tiêu** | Gửi 500 lời chúc |
-| **Minigames** | Gửi Lời Chúc, Bắn Bóng |
+| **Minigames** | wishes (channel 3/day), balloon_pop (auto) |
+| **Nhiệm vụ** | 0 daily, 4 fixed |
+| **Shop** | 5 items |
+| **Cá sự kiện** | Không có |
 
 ---
 
