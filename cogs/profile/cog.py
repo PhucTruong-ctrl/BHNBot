@@ -17,6 +17,17 @@ from core.services.vip_service import VIPEngine
 logger = logging.getLogger(__name__)
 
 
+async def _get_active_title(user_id: int) -> str | None:
+    try:
+        from cogs.seasonal.services import get_active_title, get_title_display
+        title_key = await get_active_title(user_id)
+        if title_key:
+            return await get_title_display(title_key)
+        return None
+    except Exception:
+        return None
+
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ProfileCog(bot))
 
@@ -88,14 +99,20 @@ class ProfileCog(commands.Cog):
                 achievement_emojis=achievement_emojis,
             )
 
+            active_title = await _get_active_title(target.id)
+            title_text = f"🏅 **{active_title}**\n" if active_title else ""
+
             file = discord.File(io.BytesIO(image_bytes), filename="profile.png")
-            await interaction.followup.send(file=file)
+            await interaction.followup.send(content=title_text if title_text else None, file=file)
 
         except Exception as e:
             logger.error(f"Failed to render profile for {target.id}: {e}")
             theme = get_theme(profile.theme)
+            active_title = await _get_active_title(target.id)
+
+            title_display = f" | 🏅 {active_title}" if active_title else ""
             embed = discord.Embed(
-                title=f"{theme.emoji} Hồ Sơ - {target.display_name}",
+                title=f"{theme.emoji} Hồ Sơ - {target.display_name}{title_display}",
                 color=discord.Color.from_rgb(*theme.accent_color)
             )
             embed.set_thumbnail(url=target.display_avatar.url)

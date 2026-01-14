@@ -51,6 +51,9 @@ from database_manager import (
 # Import tournament
 from ..tournament import TournamentManager
 
+# Import seasonal event fish hook
+from cogs.seasonal.event_fish_hook import try_catch_event_fish
+
 logger = logging.getLogger(__name__)
 
 async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
@@ -1184,6 +1187,16 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                     # Exclude ca_isekai from sellable items
                     sell_items = {k: v for k, v in fish_only_items.items() if k != ItemKeys.CA_ISEKAI}
     
+                # ==================== EVENT FISH BONUS CATCH ====================
+                event_fish_result = None
+                try:
+                    event_fish_result = await try_catch_event_fish(cog.bot, user_id, guild_id)
+                    if event_fish_result:
+                        total_catches += 1
+                        logger.info(f"[EVENT_FISH] {username} caught event fish: {event_fish_result.fish.name}")
+                except Exception as e:
+                    logger.error(f"[EVENT_FISH] Hook failed: {e}")
+
                 # ==================== CHECK FOR LEGENDARY FISH ====================
                 current_hour = datetime.now().hour
                 legendary_fish = await check_legendary_spawn_conditions(user_id, channel.guild.id, current_hour, cog=cog)
@@ -1431,6 +1444,12 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                 elif trash_count > 0: # Fallback
                      trash_name = cog.apply_display_glitch("Rác")
                      items_value += f"🗑️ **{trash_name}** x{trash_count}\n"
+
+                # Event fish bonus (from seasonal events)
+                if event_fish_result:
+                    fish_info = event_fish_result.fish
+                    new_tag = " ✨🆕" if event_fish_result.is_new_collection else ""
+                    items_value += f"\n🎊 **SỰ KIỆN:** {fish_info.emoji} **{fish_info.name}** x1{new_tag}\n"
 
                 # If nothing caught
                 if not items_value:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import random
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -9,11 +11,13 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from .core.event_manager import get_event_manager
+from .minigames import get_minigame
 from .services import (
     add_currency,
     claim_quest_reward,
     end_event,
     get_active_event,
+    get_active_title,
     get_all_user_quests,
     get_announcement_message,
     get_community_progress,
@@ -22,13 +26,18 @@ from .services import (
     get_leaderboard,
     get_milestones_reached,
     get_participant_count,
+    get_purchase_history,
+    get_shop_items,
+    get_user_titles,
     init_seasonal_tables,
+    set_active_title,
     set_announcement_message,
     spend_currency,
     start_event,
     update_community_progress,
     update_last_progress,
 )
+from .services.database import execute_query
 from .ui import (
     ConfirmView,
     QuestView,
@@ -56,12 +65,14 @@ class SeasonalEventsCog(commands.Cog):
         self.restore_events_task.start()
         self.check_event_dates.start()
         self.update_announcement_task.start()
+        self.auto_spawn_minigames.start()
         logger.info("SeasonalEventsCog loaded")
 
     async def cog_unload(self) -> None:
         self.restore_events_task.cancel()
         self.check_event_dates.cancel()
         self.update_announcement_task.cancel()
+        self.auto_spawn_minigames.cancel()
 
     @tasks.loop(count=1)
     async def restore_events_task(self) -> None:
@@ -148,12 +159,61 @@ class SeasonalEventsCog(commands.Cog):
                 logger.info(f"Auto-started {current_event.event_id} for guild {guild.id}")
 
             elif active and not current_event:
+                # Skip test events - they should only be ended manually
+                if active.get("is_test_event"):
+                    continue
                 await end_event(guild.id)
                 logger.info(f"Auto-ended event for guild {guild.id}")
 
     @check_event_dates.before_loop
     async def before_check_event_dates(self) -> None:
         await self.bot.wait_until_ready()
+
+    @tasks.loop(minutes=30)
+    async def auto_spawn_minigames(self) -> None:
+        """Automatically spawn random minigames during active events."""
+        for guild in self.bot.guilds:
+            try:
+                active = await get_active_event(guild.id)
+                if not active:
+                    continue
+
+                event = self.event_manager.get_event(active["event_id"])
+                if not event or not event.minigames:
+                    continue
+
+                if random.random() > 0.5:
+                    continue
+
+                minigame_type = random.choice(event.minigames)
+
+                spawn_channel = None
+                for channel in guild.text_channels:
+                    if any(x in channel.name.lower() for x in ["chat", "general", "bot", "minigame"]):
+                        if channel.permissions_for(guild.me).send_messages:
+                            spawn_channel = channel
+                            break
+
+                if not spawn_channel:
+                    for channel in guild.text_channels:
+                        if channel.permissions_for(guild.me).send_messages:
+                            spawn_channel = channel
+                            break
+
+                if spawn_channel:
+                    minigame = get_minigame(minigame_type, self.bot, self.event_manager)
+                    if minigame:
+                        await minigame.spawn(spawn_channel, guild.id)
+                        logger.info(f"Auto-spawned {minigame_type} in {guild.name}#{spawn_channel.name}")
+
+            except Exception as e:
+                logger.error(f"Error auto-spawning minigame for guild {guild.id}: {e}")
+
+    @auto_spawn_minigames.before_loop
+    async def before_auto_spawn(self) -> None:
+        await self.bot.wait_until_ready()
+        # Wait 5 minutes after startup before first spawn
+        await asyncio.sleep(300)
 
     sukien_group = app_commands.Group(name="sukien", description="Các lệnh sự kiện theo mùa")
 
@@ -338,6 +398,157 @@ class SeasonalEventsCog(commands.Cog):
         embed = create_leaderboard_embed(event, leaderboard, self.bot)
         await interaction.response.send_message(embed=embed)
 
+    @sukien_group.command(name="bosuutap", description="Xem bộ sưu tập cá sự kiện")
+    async def sukien_collection(self, interaction: discord.Interaction) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Hiện không có sự kiện nào đang diễn ra!", ephemeral=True)
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        if not event:
+            await interaction.response.send_message("❌ Không tìm thấy cấu hình sự kiện!", ephemeral=True)
+            return
+
+        rows = await execute_query(
+            """
+            SELECT fish_key, COUNT(*) as count
+            FROM event_fish_collection
+            WHERE guild_id = $1 AND user_id = $2 AND event_id = $3
+            GROUP BY fish_key
+            """,
+            (interaction.guild.id, interaction.user.id, active["event_id"]),
+        )
+
+        caught_fish = {row["fish_key"]: row["count"] for row in rows}
+        all_fish = event.fish
+
+        tier_stars = {"common": 1, "rare": 2, "epic": 3, "legendary": 4}
+
+        embed = discord.Embed(
+            title=f"🎣 Bộ Sưu Tập Cá - {event.name}",
+            color=event.registry.color_int,
+        )
+
+        if not all_fish:
+            embed.description = "Sự kiện này không có cá đặc biệt."
+        else:
+            fish_lines = []
+            for fish in all_fish:
+                count = caught_fish.get(fish.key, 0)
+                status = "✅" if count > 0 else "❓"
+                name = fish.name if count > 0 else "???"
+                emoji = fish.emoji if count > 0 else "❓"
+                stars = tier_stars.get(fish.tier, 1) if count > 0 else 0
+                rarity = f"({'⭐' * stars})" if count > 0 else ""
+                fish_lines.append(f"{status} {emoji} **{name}** {rarity} x{count}")
+
+            embed.description = "\n".join(fish_lines)
+            collected = len([f for f in all_fish if caught_fish.get(f.key, 0) > 0])
+            embed.set_footer(text=f"Tiến độ: {collected}/{len(all_fish)} loại cá")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @sukien_group.command(name="lichsu", description="Xem lịch sử mua hàng")
+    async def sukien_history(self, interaction: discord.Interaction) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Hiện không có sự kiện nào đang diễn ra!", ephemeral=True)
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        if not event:
+            await interaction.response.send_message("❌ Không tìm thấy cấu hình sự kiện!", ephemeral=True)
+            return
+
+        history = await get_purchase_history(
+            interaction.guild.id, interaction.user.id, active["event_id"], limit=15
+        )
+
+        embed = discord.Embed(
+            title=f"📜 Lịch Sử Mua Hàng - {event.name}",
+            color=event.registry.color_int,
+        )
+
+        if not history:
+            embed.description = "Bạn chưa mua gì trong sự kiện này."
+        else:
+            lines = []
+            shop_items = {s.key: s for s in event.shop}
+            for purchase in history:
+                item = shop_items.get(purchase["item_key"])
+                item_name = item.name if item else purchase["item_key"]
+                ts = int(purchase["purchased_at"].timestamp())
+                lines.append(
+                    f"📦 **{item_name}** x{purchase['quantity']} "
+                    f"(-{purchase['price_paid']} {event.currency_emoji}) <t:{ts}:R>"
+                )
+            embed.description = "\n".join(lines)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    danhhieu_group = app_commands.Group(name="danhhieu", description="Quản lý danh hiệu")
+
+    @danhhieu_group.command(name="xem", description="Xem danh hiệu đã mở khóa")
+    async def danhhieu_view(self, interaction: discord.Interaction) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        titles = await get_user_titles(interaction.guild.id, interaction.user.id)
+        active_title = await get_active_title(interaction.user.id)
+
+        embed = discord.Embed(
+            title="🏅 Danh Hiệu Của Bạn",
+            color=discord.Color.gold(),
+        )
+
+        if not titles:
+            embed.description = "Bạn chưa mở khóa danh hiệu nào!\nTham gia sự kiện để nhận danh hiệu."
+        else:
+            title_lines = []
+            for title in titles:
+                is_active = "👑" if title["title_key"] == active_title else ""
+                title_lines.append(f"{is_active} **{title['title_key']}** - từ {title['event_id']}")
+            embed.description = "\n".join(title_lines)
+            embed.set_footer(text="Dùng /danhhieu set <tên> để đặt danh hiệu")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @danhhieu_group.command(name="set", description="Đặt danh hiệu hiển thị")
+    @app_commands.describe(title="Tên danh hiệu muốn dùng (để trống để bỏ)")
+    async def danhhieu_set(self, interaction: discord.Interaction, title: str | None = None) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        if title is None:
+            from .services import clear_active_title
+            await clear_active_title(interaction.user.id)
+            await interaction.response.send_message("✅ Đã bỏ danh hiệu.", ephemeral=True)
+            return
+
+        titles = await get_user_titles(interaction.guild.id, interaction.user.id)
+        title_keys = [t["title_key"] for t in titles]
+
+        if title not in title_keys:
+            await interaction.response.send_message(
+                f"❌ Bạn chưa mở khóa danh hiệu **{title}**!",
+                ephemeral=True,
+            )
+            return
+
+        await set_active_title(interaction.user.id, title)
+        await interaction.response.send_message(f"✅ Đã đặt danh hiệu: **{title}**", ephemeral=True)
+
     sukien_test_group = app_commands.Group(
         name="sukien-test",
         description="Test commands cho sự kiện (Admin)",
@@ -379,6 +590,7 @@ class SeasonalEventsCog(commands.Cog):
             event.registry.end_date,
             channel.id,
             announcement_msg.id,
+            is_test_event=True,
         )
         
         self.event_manager._active_events[interaction.guild.id] = event_id
@@ -589,4 +801,6 @@ class SeasonalEventsCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot) -> None:
-    await bot.add_cog(SeasonalEventsCog(bot))
+    cog = SeasonalEventsCog(bot)
+    cog.__cog_app_commands__.append(cog.danhhieu_group)
+    await bot.add_cog(cog)

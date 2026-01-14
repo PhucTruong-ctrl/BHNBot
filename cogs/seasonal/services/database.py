@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS active_events (
     milestones_reached TEXT DEFAULT '[]',
     announcement_channel_id BIGINT,
     announcement_message_id BIGINT,
-    last_progress_update INTEGER DEFAULT 0
+    last_progress_update INTEGER DEFAULT 0,
+    is_test_event BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS event_participation (
@@ -125,6 +126,121 @@ CREATE TABLE IF NOT EXISTS event_quests (
     claimed INTEGER DEFAULT 0,
     assigned_date TEXT,
     PRIMARY KEY (guild_id, user_id, event_id, quest_id)
+);
+
+CREATE TABLE IF NOT EXISTS ghost_hunt_daily (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    date TEXT,
+    catch_count INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS trick_treat_daily (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    date TEXT,
+    use_count INTEGER DEFAULT 0,
+    last_use TIMESTAMP,
+    PRIMARY KEY (guild_id, user_id, event_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS snowman_contributions (
+    id SERIAL PRIMARY KEY,
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    amount INTEGER DEFAULT 0,
+    contributed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS lantern_parade (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    lanterns INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id)
+);
+
+CREATE TABLE IF NOT EXISTS lantern_voice_time (
+    id SERIAL PRIMARY KEY,
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    minutes INTEGER DEFAULT 0,
+    tracked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS birthday_wishes (
+    id SERIAL PRIMARY KEY,
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    message TEXT,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS treasure_hunt_daily (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    date TEXT,
+    hunts_completed INTEGER DEFAULT 0,
+    treasures_found INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS beach_cleanup_daily (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    date TEXT,
+    trash_collected INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS quiz_scores (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    correct_answers INTEGER DEFAULT 0,
+    total_answers INTEGER DEFAULT 0,
+    best_streak INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id)
+);
+
+CREATE TABLE IF NOT EXISTS countdown_participants (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    participated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    bonus_received INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id)
+);
+
+CREATE TABLE IF NOT EXISTS balloon_pop_daily (
+    guild_id BIGINT,
+    user_id BIGINT,
+    event_id TEXT,
+    date TEXT,
+    pops_count INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id, event_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS user_active_title (
+    user_id BIGINT PRIMARY KEY,
+    title_key TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS event_milestones_reached (
+    guild_id BIGINT,
+    event_id TEXT,
+    milestone_percentage INTEGER,
+    reached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (guild_id, event_id, milestone_percentage)
 );
 """
 

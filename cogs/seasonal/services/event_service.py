@@ -32,13 +32,14 @@ async def start_event(
     ends_at: datetime,
     announcement_channel_id: int | None = None,
     announcement_message_id: int | None = None,
+    is_test_event: bool = False,
 ) -> None:
     now = datetime.now()
     await execute_write(
         """
         INSERT INTO active_events 
-        (guild_id, event_id, started_at, ends_at, community_progress, community_goal, milestones_reached, announcement_channel_id, announcement_message_id, last_progress_update)
-        VALUES (?, ?, ?, ?, 0, ?, '[]', ?, ?, 0)
+        (guild_id, event_id, started_at, ends_at, community_progress, community_goal, milestones_reached, announcement_channel_id, announcement_message_id, last_progress_update, is_test_event)
+        VALUES (?, ?, ?, ?, 0, ?, '[]', ?, ?, 0, ?)
         ON CONFLICT (guild_id) DO UPDATE SET
             event_id = EXCLUDED.event_id,
             started_at = EXCLUDED.started_at,
@@ -48,11 +49,12 @@ async def start_event(
             milestones_reached = '[]',
             announcement_channel_id = EXCLUDED.announcement_channel_id,
             announcement_message_id = EXCLUDED.announcement_message_id,
-            last_progress_update = 0
+            last_progress_update = 0,
+            is_test_event = EXCLUDED.is_test_event
         """,
-        (guild_id, event_id, now, ends_at, community_goal, announcement_channel_id, announcement_message_id),
+        (guild_id, event_id, now, ends_at, community_goal, announcement_channel_id, announcement_message_id, is_test_event),
     )
-    logger.info(f"Started event {event_id} for guild {guild_id}")
+    logger.info(f"Started event {event_id} for guild {guild_id} (test={is_test_event})")
 
 
 async def end_event(guild_id: int) -> dict | None:

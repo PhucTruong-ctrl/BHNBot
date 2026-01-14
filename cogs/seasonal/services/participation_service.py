@@ -96,3 +96,34 @@ async def get_participant_count(guild_id: int, event_id: str) -> int:
         (guild_id, event_id),
     )
     return rows[0]["count"] if rows else 0
+
+
+async def get_community_progress(guild_id: int, event_id: str) -> int:
+    rows = await execute_query(
+        "SELECT COALESCE(SUM(contributions), 0) as total FROM event_participation WHERE guild_id = $1 AND event_id = $2",
+        (guild_id, event_id),
+    )
+    return rows[0]["total"] if rows else 0
+
+
+async def update_community_progress(guild_id: int, event_id: str, progress: int) -> None:
+    pass
+
+
+async def get_milestones_reached(guild_id: int, event_id: str) -> list[int]:
+    rows = await execute_query(
+        "SELECT milestone_percentage FROM event_milestones_reached WHERE guild_id = $1 AND event_id = $2",
+        (guild_id, event_id),
+    )
+    return [row["milestone_percentage"] for row in rows]
+
+
+async def add_milestone_reached(guild_id: int, event_id: str, percentage: int) -> None:
+    await execute_write(
+        """
+        INSERT INTO event_milestones_reached (guild_id, event_id, milestone_percentage, reached_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (guild_id, event_id, milestone_percentage) DO NOTHING
+        """,
+        (guild_id, event_id, percentage),
+    )

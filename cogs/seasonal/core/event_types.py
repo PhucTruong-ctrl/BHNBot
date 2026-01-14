@@ -309,6 +309,10 @@ class EventConfig:
     def community_goal_description(self) -> str:
         return self.registry.community_goal.description
 
+    @property
+    def minigames(self) -> list[str]:
+        return self.registry.minigames
+
     def get_fish_by_key(self, key: str) -> EventFishConfig | None:
         """Get fish config by key."""
         for fish in self.fish:
