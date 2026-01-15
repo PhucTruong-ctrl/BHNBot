@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -16,6 +17,8 @@ if TYPE_CHECKING:
     from discord import Interaction, TextChannel
 
     from ..core.event_manager import EventManager
+
+logger = logging.getLogger("BoatRace")
 
 
 @dataclass
@@ -54,7 +57,7 @@ RACE_EVENTS = [
     {"emoji": "🧜‍♀️", "name": "Tiên Cá", "chance": 0.03, "effect": 5, "last_only": True, "message": "được tiên cá giúp đỡ!"},
 ]
 
-FINISH_LINE = 15
+FINISH_LINE = 25
 
 
 @register_minigame("boat_race")
@@ -75,7 +78,8 @@ class BoatRaceMinigame(BaseMinigame):
             "times_per_day": [2, 3],
             "active_hours": [10, 22],
             "registration_seconds": 60,
-            "race_interval_seconds": 2.5,
+            "race_interval_seconds": 3.5,
+            "suspense_interval_seconds": 5.0,
         }
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
@@ -96,6 +100,8 @@ class BoatRaceMinigame(BaseMinigame):
         embed = self._create_registration_embed(event, boat_stats, expire_time, 0)
         view = BoatSelectionView(self, guild_id, active["event_id"], expire_time)
         message = await channel.send(embed=embed, view=view)
+        
+        logger.info(f"[BOAT_RACE] Spawned in guild {guild_id}, channel {channel.id}, reg_time={reg_time}s")
 
         self._active_races[message.id] = {
             "guild_id": guild_id,
@@ -172,11 +178,18 @@ class BoatRaceMinigame(BaseMinigame):
         event_log: list[str] = []
 
         event = self.event_manager.get_event(data["event_id"])
-        interval = self.spawn_config.get("race_interval_seconds", 2.5)
+        interval = self.spawn_config.get("race_interval_seconds", 3.5)
+        suspense_interval = self.spawn_config.get("suspense_interval_seconds", 5.0)
+        
+        participant_count = len(data["participants"])
+        logger.info(f"[BOAT_RACE] Race started in guild {data['guild_id']} with {participant_count} participants")
 
         while max(positions.values()) < FINISH_LINE:
             round_num += 1
             round_events = []
+            
+            is_final_stretch = max(positions.values()) >= FINISH_LINE - 5
+            is_photo_finish = self._check_photo_finish(positions)
 
             for boat in BOATS:
                 if skip_next[boat.id]:
@@ -209,21 +222,36 @@ class BoatRaceMinigame(BaseMinigame):
             if round_events:
                 event_log = round_events[-3:]
 
-            embed = self._create_race_embed(event, positions, round_num, event_log)
+            embed = self._create_race_embed(event, positions, round_num, event_log, is_final_stretch)
             try:
                 await data["message"].edit(embed=embed)
             except discord.NotFound:
+                logger.warning(f"[BOAT_RACE] Message deleted during race in guild {data['guild_id']}")
                 return
 
-            await asyncio.sleep(interval)
+            if is_final_stretch and is_photo_finish:
+                await asyncio.sleep(suspense_interval)
+            else:
+                await asyncio.sleep(interval)
 
+        logger.info(f"[BOAT_RACE] Race finished in guild {data['guild_id']} after {round_num} rounds")
         await self._finish_race(message_id, positions)
+    
+    def _check_photo_finish(self, positions: dict) -> bool:
+        top_positions = sorted(positions.values(), reverse=True)[:3]
+        if len(top_positions) >= 2:
+            return top_positions[0] - top_positions[1] <= 3
+        return False
 
     def _create_race_embed(
-        self, event: Any, positions: dict, round_num: int, event_log: list[str]
+        self, event: Any, positions: dict, round_num: int, event_log: list[str], is_final_stretch: bool = False
     ) -> discord.Embed:
+        title = f"🏁 ĐUA THUYỀN - VÒNG {round_num}"
+        if is_final_stretch:
+            title = f"🔥 ĐUA THUYỀN - NƯỚC RÚT! VÒNG {round_num}"
+        
         embed = discord.Embed(
-            title=f"🏁 ĐUA THUYỀN - VÒNG {round_num}",
+            title=title,
             color=event.color if event else 0x00CED1,
         )
 
@@ -242,6 +270,9 @@ class BoatRaceMinigame(BaseMinigame):
 
         if event_log:
             embed.add_field(name="📢 Diễn Biến", value="\n".join(event_log), inline=False)
+        
+        if is_final_stretch:
+            embed.set_footer(text="⚡ NƯỚC RÚT! Ai sẽ về đích trước?!")
 
         return embed
 
@@ -275,32 +306,54 @@ class BoatRaceMinigame(BaseMinigame):
             color=event.color if event else 0x00CED1,
         )
 
-        winner_users = []
+        top_3_users: dict[int, list[int]] = {0: [], 1: [], 2: []}
+        other_users: list[tuple[int, int]] = []
+        
         for user_id, boat_id in data["participants"].items():
             rank = next((i for i, (bid, _) in enumerate(sorted_results) if bid == boat_id), -1)
             reward = rewards.get(rank, participation_reward)
 
             await add_currency(data["guild_id"], user_id, data["event_id"], reward)
             await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
-
             await self._update_user_streak(data["guild_id"], user_id, boat_id == winner_id)
 
-            if rank == 0:
-                user = self.bot.get_user(user_id)
-                winner_users.append(user.display_name if user else f"User {user_id}")
+            if rank in top_3_users:
+                top_3_users[rank].append(user_id)
+            else:
+                other_users.append((user_id, reward))
 
-        if winner_users:
+        winner_lines = []
+        for rank, users in top_3_users.items():
+            if users:
+                reward = rewards[rank]
+                mentions = " ".join([f"<@{uid}>" for uid in users[:5]])
+                if len(users) > 5:
+                    mentions += f" (+{len(users) - 5} người khác)"
+                winner_lines.append(f"{medals[rank]} {mentions} → **+{reward}** {emoji}")
+        
+        if winner_lines:
             embed.add_field(
                 name="🎉 Người chiến thắng",
-                value="\n".join([f"• {name} → +100 {emoji}" for name in winner_users[:10]]),
+                value="\n".join(winner_lines),
+                inline=False,
+            )
+        
+        if other_users:
+            other_count = len(other_users)
+            embed.add_field(
+                name="🎖️ Người tham gia",
+                value=f"{other_count} người khác nhận **+{participation_reward}** {emoji}",
                 inline=False,
             )
 
         embed.add_field(
-            name="💰 Phần thưởng",
+            name="💰 Bảng phần thưởng",
             value=f"🥇 +100 {emoji} │ 🥈 +50 {emoji} │ 🥉 +25 {emoji} │ 🎖️ +10 {emoji}",
             inline=False,
         )
+        
+        total_rewards = sum(rewards.get(next((i for i, (bid, _) in enumerate(sorted_results) if bid == bid_p), -1), participation_reward) for _, bid_p in data["participants"].items())
+        logger.info(f"[BOAT_RACE] Race completed in guild {data['guild_id']}, {len(data['participants'])} participants, {total_rewards} total rewards distributed")
 
         try:
             await data["message"].edit(embed=embed, view=None)

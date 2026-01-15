@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import random
 from datetime import datetime, timedelta
 from enum import Enum
@@ -15,6 +16,8 @@ if TYPE_CHECKING:
     from discord import Interaction, TextChannel
 
     from ..core.event_manager import EventManager
+
+logger = logging.getLogger("SecretSanta")
 
 
 class SecretSantaPhase(Enum):

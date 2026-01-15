@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
     from discord import Interaction, TextChannel
 
     from ..core.event_manager import EventManager
+
+logger = logging.getLogger("Countdown")
 
 
 @register_minigame("countdown")
