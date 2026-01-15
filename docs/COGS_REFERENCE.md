@@ -863,3 +863,122 @@ quest_contributions (guild_id, quest_date, user_id, quest_type, contribution_amo
 - Quest reset lúc 00:00 UTC+7 (Vietnam timezone)
 - Cần config `kenh_nhiemvu` channel trước khi dùng
 - Morning task chạy lúc 7:00 AM, evening lúc 10:00 PM
+
+---
+
+## 25. SEASONAL MODULE (Sự Kiện Theo Mùa)
+**Files**: `cogs/seasonal/` (cog.py, event_commands.py, event_fish_hook.py, minigames/, services/, ui/)
+
+### Slash Commands (Admin)
+| Lệnh | Chức năng | Quyền |
+|------|-----------|-------|
+| `/event-test start <event>` | Bắt đầu event test | Admin |
+| `/event-test stop` | Dừng event hiện tại | Admin |
+| `/event-test minigame <type>` | Spawn minigame thủ công | Admin |
+| `/event-test goal <type> <target>` | Tạo community goal test | Admin |
+
+### Event Types (4 Mùa)
+| Event | Thời gian | Theme |
+|-------|-----------|-------|
+| `lunar_new_year` | Tháng 1-2 | 🧧 Tết Nguyên Đán |
+| `mid_autumn` | Tháng 8-9 | 🥮 Trung Thu |
+| `halloween` | Tháng 10 | 🎃 Halloween |
+| `christmas` | Tháng 12 | 🎄 Giáng Sinh |
+
+### Minigame System (16 loại)
+| Minigame | Event | Mô tả |
+|----------|-------|-------|
+| `balloon_pop` | Lunar New Year | Bắn bóng bay lấy lì xì |
+| `tea_brewing` | Lunar New Year | Pha trà tết |
+| `wishes` | Lunar New Year | Viết lời chúc năm mới |
+| `thank_letter` | Lunar New Year | Viết thư cảm ơn |
+| `lantern_parade` | Mid Autumn | Diễu hành đèn lồng |
+| `quiz` | Mid Autumn | Đố vui Trung Thu |
+| `countdown` | Mid Autumn | Đếm ngược trăng tròn |
+| `boat_race` | Mid Autumn | Đua thuyền rồng |
+| `ghost_hunt` | Halloween | Săn ma |
+| `trick_treat` | Halloween | Trick or Treat |
+| `treasure_hunt` | Halloween | Tìm kho báu |
+| `trash_sort` | Halloween | Phân loại rác |
+| `snowman` | Christmas | Xây người tuyết |
+| `secret_santa` | Christmas | Tặng quà bí mật |
+| `leaf_collect` | Christmas | Thu thập lá |
+| `beach_cleanup` | Christmas | Dọn dẹp bãi biển |
+
+### Event Lifecycle (Docker Pattern)
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   PENDING   │ ──► │   ACTIVE    │ ──► │  COMPLETED  │
+└─────────────┘     └─────────────┘     └─────────────┘
+      │                   │                   │
+      │ schedule_event    │ random spawn      │ distribute_rewards
+      │                   │ minigames         │ cleanup
+      └───────────────────┴───────────────────┘
+```
+
+### Services Architecture
+| Service | Chức năng |
+|---------|-----------|
+| `EventService` | Quản lý lifecycle event (start/stop/status) |
+| `ParticipationService` | Track participation, rewards, stats |
+| `CommunityGoalService` | Server-wide goals với progress tracking |
+| `ShopService` | Event shop với seasonal items |
+
+### Community Goals
+Mục tiêu chung cho cả server, khi đạt được sẽ unlock rewards:
+- Progress tracking theo real-time
+- Tiered rewards (25%, 50%, 75%, 100%)
+- Bonus multipliers khi hoàn thành sớm
+
+### Event Currency
+| Currency | Nguồn | Sử dụng |
+|----------|-------|---------|
+| Event Tokens | Minigames, goals | Event Shop |
+| Seasonal Essence | Rare drops | Craft items |
+
+### Fishing Hook Integration
+`event_fish_hook.py` tích hợp với Fishing module:
+- Seasonal fish spawns trong thời gian event
+- Event-specific loot drops
+- Bonus XP khi câu cá trong event
+
+### Database Tables
+```sql
+seasonal_events (
+    guild_id BIGINT,
+    event_type VARCHAR(32),
+    status VARCHAR(16),  -- pending/active/completed
+    start_time TIMESTAMP,
+    end_time TIMESTAMP,
+    config JSONB
+)
+
+event_participation (
+    user_id BIGINT,
+    guild_id BIGINT,
+    event_type VARCHAR(32),
+    minigames_played INT DEFAULT 0,
+    tokens_earned INT DEFAULT 0,
+    goals_contributed INT DEFAULT 0
+)
+
+community_goals (
+    guild_id BIGINT,
+    event_type VARCHAR(32),
+    goal_type VARCHAR(32),
+    current_progress INT DEFAULT 0,
+    target INT,
+    completed BOOLEAN DEFAULT FALSE
+)
+```
+
+### Background Tasks
+- `event_scheduler_loop`: Kiểm tra và auto-start events theo lịch
+- `minigame_spawn_loop`: Random spawn minigames mỗi 30-60 phút
+- `goal_progress_sync`: Sync progress lên embed mỗi 5 phút
+
+### Critical Notes
+- Event config trong `data/seasonal/events.json`
+- Minigame spawn rate có thể config per-event
+- Rewards scale theo server size (anti-abuse)
+- Event shop items có expiry date sau event kết thúc
