@@ -802,5 +802,4 @@ class SeasonalEventsCog(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     cog = SeasonalEventsCog(bot)
-    cog.__cog_app_commands__.append(cog.danhhieu_group)
     await bot.add_cog(cog)
