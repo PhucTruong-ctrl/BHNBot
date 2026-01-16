@@ -38,16 +38,11 @@ class TreasureHuntMinigame(BaseMinigame):
     def name(self) -> str:
         return "Săn Kho Báu"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [4, 6],
-            "active_hours": [9, 22],
-            "timeout_seconds": 60,
-            "reward_range": [50, 100],
-            "community_contribution": 1,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("treasure_hunt", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -58,11 +53,12 @@ class TreasureHuntMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         timeout = config.get("timeout_seconds", 60)
         expire_time = datetime.now() + timedelta(seconds=timeout)
 
-        treasure_pos = random.randint(0, 8)
+        grid_size = config.get("grid_size", 9)
+        treasure_pos = random.randint(0, grid_size - 1)
 
         embed = self._create_hunt_embed(event, expire_time, 0, None)
         view = TreasureGridView(self, guild_id, active["event_id"], treasure_pos, expire_time)
@@ -130,7 +126,7 @@ class TreasureHuntMinigame(BaseMinigame):
         emoji = event.currency_emoji if event else "🐚"
 
         if position == data["treasure_pos"]:
-            config = self.spawn_config
+            config = self._get_config(event)
             reward_range = config.get("reward_range", [50, 100])
             contribution = config.get("community_contribution", 1)
             reward = random.randint(reward_range[0], reward_range[1])

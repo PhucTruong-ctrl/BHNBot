@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("BalloonPop")
 
 
-BALLOON_COLORS = ["🎈", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣"]
+DEFAULT_BALLOON_COLORS = ["🎈", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣"]
 
 
 @register_minigame("balloon_pop")
@@ -32,16 +32,11 @@ class BalloonPopMinigame(BaseMinigame):
     def name(self) -> str:
         return "Bóng Bay Sinh Nhật"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [5, 8],
-            "active_hours": [10, 22],
-            "timeout_seconds": 30,
-            "reward_range": [10, 30],
-            "max_pops": 5,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("balloon_pop", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -52,12 +47,13 @@ class BalloonPopMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         timeout = config.get("timeout_seconds", 30)
         max_pops = config.get("max_pops", 5)
+        balloon_colors = config.get("balloon_colors", DEFAULT_BALLOON_COLORS)
         expire_time = datetime.now() + timedelta(seconds=timeout)
 
-        balloon_emoji = random.choice(BALLOON_COLORS)
+        balloon_emoji = random.choice(balloon_colors)
 
         embed = discord.Embed(
             title="🎈 BÓNG BAY SINH NHẬT!",
@@ -105,7 +101,7 @@ class BalloonPopMinigame(BaseMinigame):
         data["poppers"].append(user_id)
         position = len(data["poppers"])
 
-        config = self.spawn_config
+        config = self._get_config(event)
         reward_range = config.get("reward_range", [10, 30])
         reward = random.randint(reward_range[0], reward_range[1])
 

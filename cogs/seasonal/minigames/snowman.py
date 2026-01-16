@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("Snowman")
 
 
-SNOWMAN_PARTS = [
+DEFAULT_SNOWMAN_PARTS = [
     {"emoji": "⛄", "name": "Tuyết", "contribution": 1},
     {"emoji": "🥕", "name": "Cà Rốt", "contribution": 2},
     {"emoji": "🎩", "name": "Mũ", "contribution": 3},
@@ -37,14 +37,10 @@ class SnowmanMinigame(BaseMinigame):
     def name(self) -> str:
         return "Người Tuyết Cộng Đồng"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "manual",
-            "goal_per_snowman": 100,
-            "reward_per_contribution": 5,
-            "daily_limit": 20,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("snowman", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         pass
@@ -70,7 +66,7 @@ class SnowmanMinigame(BaseMinigame):
             await interaction.response.send_message("❌ Không tìm thấy sự kiện!", ephemeral=True)
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         daily_limit = config.get("daily_limit", 20)
 
         today_contributions = await self._get_today_contributions(guild_id, user_id, active["event_id"])
@@ -115,7 +111,7 @@ class SnowmanMinigame(BaseMinigame):
             return
 
         event = self.event_manager.get_event(active["event_id"])
-        config = self.spawn_config
+        config = self._get_config(event)
         goal = config.get("goal_per_snowman", 100)
 
         progress = await self._get_snowman_progress(guild_id, active["event_id"])

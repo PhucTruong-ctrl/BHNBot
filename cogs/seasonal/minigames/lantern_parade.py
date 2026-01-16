@@ -28,14 +28,11 @@ class LanternParadeMinigame(BaseMinigame):
     def name(self) -> str:
         return "Rước Đèn Trung Thu"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "voice_tracking",
-            "reward_per_5_min": 5,
-            "lantern_per_5_min": 1,
-            "daily_cap_minutes": 60,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("lantern_parade", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         pass
@@ -52,10 +49,10 @@ class LanternParadeMinigame(BaseMinigame):
         if not event:
             return 0
 
-        config = self.spawn_config
+        config = self._get_config(event)
         daily_cap = config.get("daily_cap_minutes", 60)
-        reward_per_5 = config.get("reward_per_5_min", 5)
-        lantern_per_5 = config.get("lantern_per_5_min", 1)
+        reward_per_5 = config.get("currency_per_5min", 5)
+        lantern_per_5 = config.get("lanterns_per_5min", 1)
 
         today_minutes = await self._get_today_minutes(guild_id, user_id, active["event_id"])
         remaining_cap = max(0, daily_cap - today_minutes)

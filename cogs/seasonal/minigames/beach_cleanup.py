@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("BeachCleanup")
 
 
-TRASH_TYPES = [
+DEFAULT_TRASH_TYPES = [
     {"emoji": "🥤", "name": "Ly nhựa", "points": 10},
     {"emoji": "📦", "name": "Hộp giấy", "points": 15},
     {"emoji": "🍾", "name": "Chai thủy tinh", "points": 20},
@@ -39,15 +39,10 @@ class BeachCleanupMinigame(BaseMinigame):
     def name(self) -> str:
         return "Dọn Bãi Biển"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [3, 5],
-            "active_hours": [9, 18],
-            "timeout_seconds": 20,
-            "max_collectors": 5,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("beach_cleanup", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -58,12 +53,13 @@ class BeachCleanupMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         timeout = config.get("timeout_seconds", 20)
-        max_collectors = config.get("max_collectors", 5)
+        max_collectors = config.get("max_cleaners", 5)
+        trash_types = config.get("trash_types", DEFAULT_TRASH_TYPES)
         expire_time = datetime.now() + timedelta(seconds=timeout)
 
-        trash = random.choice(TRASH_TYPES)
+        trash = random.choice(trash_types)
 
         embed = discord.Embed(
             title="🏖️ DỌN BÃI BIỂN!",

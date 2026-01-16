@@ -37,16 +37,11 @@ class SecretSantaMinigame(BaseMinigame):
     def name(self) -> str:
         return "Secret Santa"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "scheduled",
-            "registration_hours": 48,
-            "gifting_hours": 72,
-            "min_participants": 4,
-            "reward_giver": 50,
-            "reward_receiver": 50,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("secret_santa", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         pass
@@ -63,7 +58,7 @@ class SecretSantaMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         registration_hours = config.get("registration_hours", 48)
         deadline = datetime.now() + timedelta(hours=registration_hours)
 
@@ -182,8 +177,8 @@ class SecretSantaMinigame(BaseMinigame):
             (message, datetime.now().isoformat(), guild_id, active["event_id"], user_id),
         )
 
-        config = self.spawn_config
-        reward = config.get("reward_giver", 50)
+        config = self._get_config(event)
+        reward = config.get("participation_reward", 50)
         await add_currency(guild_id, user_id, active["event_id"], reward)
         await add_contribution(guild_id, user_id, active["event_id"], reward)
 

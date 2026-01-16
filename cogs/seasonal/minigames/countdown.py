@@ -29,14 +29,11 @@ class CountdownMinigame(BaseMinigame):
     def name(self) -> str:
         return "Đếm Ngược Năm Mới"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "scheduled",
-            "reward_participant": 100,
-            "bonus_first_10": 50,
-            "reaction_window_seconds": 60,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("countdown", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         pass
@@ -118,8 +115,8 @@ class CountdownMinigame(BaseMinigame):
 
         data["triggered"] = True
         event = self.event_manager.get_event(data["event_id"])
-        config = self.spawn_config
-        window = config.get("reaction_window_seconds", 60)
+        config = self._get_config(event)
+        window = config.get("react_timeout_seconds", 60)
         expire_time = datetime.now() + timedelta(seconds=window)
 
         embed = discord.Embed(
@@ -155,9 +152,9 @@ class CountdownMinigame(BaseMinigame):
             await interaction.response.send_message("❌ Bạn đã nhận thưởng rồi!", ephemeral=True)
             return
 
-        config = self.spawn_config
-        base_reward = config.get("reward_participant", 100)
-        bonus = config.get("bonus_first_10", 50) if len(data["participants"]) < 10 else 0
+        config = self._get_config(event)
+        base_reward = config.get("react_reward", 100)
+        bonus = config.get("top_10_bonus", 50) if len(data["participants"]) < 10 else 0
         total_reward = base_reward + bonus
 
         data["participants"].append(user_id)

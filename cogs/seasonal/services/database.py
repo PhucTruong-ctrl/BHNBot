@@ -276,3 +276,15 @@ async def execute_write(query: str, params: tuple = ()) -> int:
 
 async def execute_many(query: str, params_list: list[tuple]) -> None:
     await db_manager.executemany(query, params_list)
+
+
+async def get_notification_role(guild_id: int) -> int | None:
+    """Get notification role from server_config.event_role_id.
+    
+    This uses the existing server_config table set via /config set role_sukien.
+    """
+    query = "SELECT event_role_id FROM server_config WHERE guild_id = ?"
+    row = await db_manager.fetchrow(query, guild_id)
+    if row and row.get("event_role_id"):
+        return row["event_role_id"]
+    return None

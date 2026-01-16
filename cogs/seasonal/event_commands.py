@@ -76,7 +76,7 @@ class EventCommandsCog(commands.Cog):
                     f"{interaction.user.mention} đã tạo một lì xì **{amount}** {event.currency_emoji}!\n\n"
                     f"Người đầu tiên dùng `/lixi` sẽ nhận được!"
                 ),
-                color=0xFF6B6B,
+                color=event.color,
             )
             self.bot._pending_lixi = {  # type: ignore
                 "guild_id": guild_id,
@@ -100,7 +100,7 @@ class EventCommandsCog(commands.Cog):
                         f"{interaction.user.mention} đã nhận được lì xì "
                         f"**{pending['amount']}** {event.currency_emoji}!"
                     ),
-                    color=0xFF6B6B,
+                    color=event.color,
                 )
                 self.bot._pending_lixi = None  # type: ignore
                 await interaction.response.send_message(embed=embed)
@@ -113,7 +113,7 @@ class EventCommandsCog(commands.Cog):
                         f"{interaction.user.mention} nhận được **{bonus}** {event.currency_emoji} "
                         f"từ lì xì may mắn!"
                     ),
-                    color=0xFF6B6B,
+                    color=event.color,
                 )
                 await interaction.response.send_message(embed=embed)
 
@@ -157,7 +157,7 @@ class EventCommandsCog(commands.Cog):
                     f"**{amount}** {event.currency_emoji}!\n\n"
                     "🎃 Happy Halloween!"
                 ),
-                color=0xFF8C00,
+                color=event.color,
             )
         else:
             steal_amount = random.randint(5, 15)
@@ -174,7 +174,7 @@ class EventCommandsCog(commands.Cog):
                         f"**{actual_steal}** {event.currency_emoji} từ {target.mention}!\n\n"
                         "🎃 Spooky!"
                     ),
-                    color=0x8B0000,
+                    color=event.color,
                 )
             else:
                 embed = discord.Embed(
@@ -183,7 +183,7 @@ class EventCommandsCog(commands.Cog):
                         f"{target.mention} không có gì để đánh cắp!\n\n"
                         "🎃 Better luck next time!"
                     ),
-                    color=0x696969,
+                    color=event.color,
                 )
 
         await interaction.response.send_message(embed=embed)
@@ -230,7 +230,7 @@ class EventCommandsCog(commands.Cog):
                 f"Đèn lồng của {interaction.user.mention} đã bay lên trời!\n"
                 f"+**{bonus}** {event.currency_emoji}"
             ),
-            color=0xFFD700,
+            color=event.color,
         )
         embed.set_footer(text="🌕 Trung Thu vui vẻ!")
 
@@ -290,7 +290,7 @@ class EventCommandsCog(commands.Cog):
                 f"BHNBot cảm ơn lời chúc từ {interaction.user.mention}!\n"
                 f"+**{bonus}** {event.currency_emoji}"
             ),
-            color=0xFF69B4,
+            color=event.color,
         )
         embed.set_footer(text="🎉 Happy Birthday BHNBot!")
 

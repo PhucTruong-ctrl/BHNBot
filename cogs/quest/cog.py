@@ -8,6 +8,8 @@ from .services.quest_service import QuestService
 from .core.quest_types import QuestType, QUEST_DEFINITIONS, ALL_QUEST_BONUS
 from core.database import db_manager
 from core.logger import setup_logger
+from cogs.seasonal.services import get_active_event, get_all_user_quests
+from cogs.seasonal.core.event_manager import get_event_manager
 
 logger = setup_logger("QuestCog", "cogs/quest.log")
 
@@ -94,6 +96,19 @@ class QuestCog(commands.Cog):
                 embed.add_field(name="💰 Phần Thưởng", value=bonus_text, inline=False)
                 embed.set_footer(text="Kết quả sẽ được công bố lúc 22:00")
                 
+                active_event = await get_active_event(guild_id)
+                if active_event:
+                    event_id = active_event.get("event_id")
+                    if event_id:
+                        event_manager = get_event_manager()
+                        event_config = event_manager.get_event(event_id)
+                        if event_config and event_config.daily_quests:
+                            embed.add_field(
+                                name=f"🎊 Sự Kiện: {event_config.name}",
+                                value=f"Có **{len(event_config.daily_quests[:event_config.daily_quest_count])}** nhiệm vụ sự kiện!\nDùng `/nhiemvu` để xem chi tiết.",
+                                inline=False
+                            )
+                
                 await channel.send(embed=embed)
                 logger.info(f"Morning announcement sent to guild {guild_id}")
                 
@@ -170,6 +185,19 @@ class QuestCog(commands.Cog):
                 total_distributed = sum(rewards.values())
                 embed.set_footer(text=f"Tổng phát: {total_distributed} Hạt cho {len(rewards)} người")
                 
+                active_event = await get_active_event(guild_id)
+                if active_event:
+                    event_id = active_event.get("event_id")
+                    if event_id:
+                        event_manager = get_event_manager()
+                        event_config = event_manager.get_event(event_id)
+                        if event_config:
+                            embed.add_field(
+                                name=f"🎊 Sự Kiện: {event_config.name}",
+                                value=f"Nhiệm vụ sự kiện riêng mỗi người.\nDùng `/nhiemvu` để xem tiến độ!",
+                                inline=False
+                            )
+                
                 await channel.send(embed=embed)
                 logger.info(f"Evening summary sent to guild {guild_id}, distributed {total_distributed} Hạt")
                 
@@ -191,8 +219,11 @@ class QuestCog(commands.Cog):
         if not interaction.guild:
             return await interaction.followup.send("Lệnh này chỉ dùng trong server!")
         
-        quests = await QuestService.generate_daily_quests(interaction.guild.id)
-        streak = await QuestService.get_streak(interaction.guild.id)
+        guild_id = interaction.guild.id
+        user_id = interaction.user.id
+        
+        quests = await QuestService.generate_daily_quests(guild_id)
+        streak = await QuestService.get_streak(guild_id)
         
         now = datetime.now(VN_TZ)
         embed = discord.Embed(
@@ -224,12 +255,116 @@ class QuestCog(commands.Cog):
         
         embed.add_field(name="💰 Bonus", value=bonus_text, inline=False)
         
+        event_section_added = await self._add_event_quests_section(
+            embed, guild_id, user_id
+        )
+        
         if completed_count == len(quests):
-            embed.set_footer(text="🎉 Tất cả nhiệm vụ đã hoàn thành! Chờ 22:00 để nhận thưởng.")
+            footer_text = "🎉 Tất cả nhiệm vụ đã hoàn thành! Chờ 22:00 để nhận thưởng."
         else:
-            embed.set_footer(text="Cùng nhau hoàn thành nhiệm vụ nào!")
+            footer_text = "Cùng nhau hoàn thành nhiệm vụ nào!"
+        
+        if event_section_added:
+            footer_text += " | Dùng /sukien nhiemvu để xem chi tiết nhiệm vụ sự kiện"
+        
+        embed.set_footer(text=footer_text)
         
         await interaction.followup.send(embed=embed)
+
+    async def _add_event_quests_section(
+        self, embed: discord.Embed, guild_id: int, user_id: int
+    ) -> bool:
+        try:
+            active_event = await get_active_event(guild_id)
+            if not active_event:
+                return False
+            
+            event_id = active_event.get("event_id")
+            if not event_id:
+                return False
+            
+            event_manager = get_event_manager()
+            event_config = event_manager.get_event(event_id)
+            if not event_config:
+                return False
+            
+            event_config_dict = {
+                "daily_quests": [
+                    {
+                        "id": q.id,
+                        "type": q.type,
+                        "target": q.target,
+                        "description": q.description,
+                        "icon": q.icon,
+                        "reward": q.reward,
+                    }
+                    for q in event_config.daily_quests
+                ],
+                "daily_quest_count": event_config.daily_quest_count,
+                "fixed_quests": [
+                    {
+                        "id": q.id,
+                        "type": q.type,
+                        "target": q.target,
+                        "description": q.description,
+                        "icon": q.icon,
+                        "reward_type": q.reward_type,
+                        "reward_value": q.reward_value,
+                    }
+                    for q in event_config.fixed_quests
+                ],
+            }
+            
+            user_quests = await get_all_user_quests(
+                guild_id, user_id, event_id, event_config_dict
+            )
+            
+            daily_quests = user_quests.get("daily", [])
+            if not daily_quests:
+                return False
+            
+            event_lines = []
+            event_completed = 0
+            for quest in daily_quests:
+                quest_data = quest.get("quest_data", {})
+                if isinstance(quest_data, str):
+                    import json
+                    quest_data = json.loads(quest_data)
+                
+                icon = quest_data.get("icon", "📋")
+                desc = quest_data.get("description", "Nhiệm vụ")
+                reward = quest_data.get("reward", 0)
+                progress = quest.get("progress", 0)
+                target = quest.get("target", 1)
+                completed = quest.get("completed", False)
+                
+                if completed:
+                    event_completed += 1
+                    status = "✅"
+                else:
+                    status = f"({progress}/{target})"
+                
+                percent = min(100, (progress / target * 100)) if target > 0 else 0
+                progress_bar = self._progress_bar(percent)
+                
+                event_lines.append(
+                    f"{icon} **{desc}** {status}\n"
+                    f"   {progress_bar} {percent:.0f}% → {reward} {event_config.currency_emoji}"
+                )
+            
+            if event_lines:
+                embed.add_field(
+                    name=f"🎊 Nhiệm Vụ Sự Kiện - {event_config.name} ({event_completed}/{len(daily_quests)})",
+                    value="\n\n".join(event_lines[:3]),
+                    inline=False
+                )
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Failed to add event quests section: {e}")
+            return False
 
     @app_commands.command(name="nv-test-sang", description="[Admin] Trigger thông báo nhiệm vụ buổi sáng")
     @app_commands.checks.has_permissions(administrator=True)

@@ -19,13 +19,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger("TrickTreat")
 
 
-TRICK_RESULTS = [
+DEFAULT_TRICK_RESULTS = [
     {"type": "trick", "emoji": "🎃", "message": "Trick! Bạn bị ném trứng!", "amount": -10},
     {"type": "trick", "emoji": "🕷️", "message": "Trick! Nhện chui vào túi bạn!", "amount": -15},
     {"type": "trick", "emoji": "💀", "message": "Trick! Ma dọa bạn chạy mất dép!", "amount": -5},
 ]
 
-TREAT_RESULTS = [
+DEFAULT_TREAT_RESULTS = [
     {"type": "treat", "emoji": "🍬", "message": "Treat! Nhận được kẹo ngọt!", "amount": 30},
     {"type": "treat", "emoji": "🍫", "message": "Treat! Socola thơm ngon!", "amount": 35},
     {"type": "treat", "emoji": "🧁", "message": "Treat! Cupcake Halloween!", "amount": 40},
@@ -43,14 +43,10 @@ class TrickTreatMinigame(BaseMinigame):
     def name(self) -> str:
         return "Trick or Treat"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "manual",
-            "daily_limit": 5,
-            "trick_chance": 0.3,
-            "cooldown_seconds": 300,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("trick_treat", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         pass
@@ -88,7 +84,7 @@ class TrickTreatMinigame(BaseMinigame):
             await interaction.response.send_message("❌ Không tìm thấy thông tin sự kiện!", ephemeral=True)
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         daily_limit = config.get("daily_limit", 5)
         cooldown = config.get("cooldown_seconds", 300)
 
@@ -110,12 +106,14 @@ class TrickTreatMinigame(BaseMinigame):
                 return
 
         trick_chance = config.get("trick_chance", 0.3)
+        trick_results = config.get("trick_results", DEFAULT_TRICK_RESULTS)
+        treat_results = config.get("treat_results", DEFAULT_TREAT_RESULTS)
         is_trick = random.random() < trick_chance
 
         if is_trick:
-            result = random.choice(TRICK_RESULTS)
+            result = random.choice(trick_results)
         else:
-            result = random.choice(TREAT_RESULTS)
+            result = random.choice(treat_results)
 
         await add_currency(guild_id, user_id, active["event_id"], result["amount"])
         await self._record_use(guild_id, user_id, active["event_id"])
@@ -134,7 +132,7 @@ class TrickTreatMinigame(BaseMinigame):
                 f"{result['emoji']} **{result['message']}**\n\n"
                 f"Kết quả: {amount_text}"
             ),
-            color=0xFF6600 if is_trick else 0x00FF00,
+            color=event.color if is_trick else event.color,
         )
         embed.set_footer(text=f"Còn {daily_limit - uses_today - 1} lượt hôm nay")
 

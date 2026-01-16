@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("GhostHunt")
 
 
-GHOST_TYPES = [
+DEFAULT_GHOST_TYPES = [
     {"emoji": "👻", "name": "Ma Trắng", "reward_range": [20, 30], "rarity": "common"},
     {"emoji": "🎃", "name": "Bí Ngô Ma", "reward_range": [25, 40], "rarity": "common"},
     {"emoji": "💀", "name": "Đầu Lâu", "reward_range": [30, 50], "rarity": "uncommon"},
@@ -42,15 +42,10 @@ class GhostHuntMinigame(BaseMinigame):
     def name(self) -> str:
         return "Săn Ma"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [5, 8],
-            "active_hours": [18, 23],
-            "max_catches": 3,
-            "timeout_seconds": 45,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("ghost_hunt", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -61,12 +56,13 @@ class GhostHuntMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         max_catches = config.get("max_catches", 3)
         timeout = config.get("timeout_seconds", 45)
+        ghost_types = config.get("ghost_types", DEFAULT_GHOST_TYPES)
         expire_time = datetime.now() + timedelta(seconds=timeout)
 
-        ghost = random.choice(GHOST_TYPES)
+        ghost = random.choice(ghost_types)
 
         embed = self._create_ghost_embed(event, ghost, max_catches, 0, expire_time)
         view = GhostCatchView(self, guild_id, active["event_id"], ghost, expire_time)
@@ -114,7 +110,9 @@ class GhostHuntMinigame(BaseMinigame):
         user_id = interaction.user.id
 
         user_catches = await self._get_user_daily_catches(data["guild_id"], user_id, data["event_id"])
-        daily_limit = 10
+        event = self.event_manager.get_event(data["event_id"])
+        config = self._get_config(event)
+        daily_limit = config.get("daily_limit", 10)
         if user_catches >= daily_limit:
             await interaction.response.send_message(
                 f"❌ Bạn đã bắt đủ {daily_limit} con ma hôm nay! Quay lại ngày mai nhé.",

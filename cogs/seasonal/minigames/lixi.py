@@ -28,16 +28,11 @@ class LixiAutoMinigame(BaseMinigame):
     def name(self) -> str:
         return "Lì Xì Trời Cho"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [3, 5],
-            "active_hours": [8, 23],
-            "max_claims": 5,
-            "reward_range": [20, 100],
-            "timeout_seconds": 60,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("lixi_auto", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -48,7 +43,7 @@ class LixiAutoMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         max_claims = config.get("max_claims", 5)
         timeout = config.get("timeout_seconds", 60)
 
@@ -95,7 +90,8 @@ class LixiAutoMinigame(BaseMinigame):
             await interaction.response.send_message("❌ Lì xì đã hết!", ephemeral=True)
             return
 
-        reward_range = self.spawn_config.get("reward_range", [20, 100])
+        event = self.event_manager.get_event(data["event_id"])
+        reward_range = self._get_config(event).get("reward_range", [20, 100])
         reward = random.randint(reward_range[0], reward_range[1])
 
         data["claims"].append(interaction.user.id)
@@ -104,7 +100,6 @@ class LixiAutoMinigame(BaseMinigame):
         await add_contribution(data["guild_id"], interaction.user.id, data["event_id"], reward)
         await update_community_progress(data["guild_id"], reward)
 
-        event = self.event_manager.get_event(data["event_id"])
         emoji = event.currency_emoji if event else "🌸"
 
         await interaction.response.send_message(f"🧧 Bạn nhận được **+{reward} {emoji}**!", ephemeral=True)
@@ -193,15 +188,11 @@ class LixiManualMinigame(BaseMinigame):
     def name(self) -> str:
         return "Lì Xì Tặng Bạn"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "manual",
-            "min_amount": 10,
-            "max_amount": 1000,
-            "max_claims": 10,
-            "timeout_seconds": 300,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        """Get minigame config from event with fallbacks."""
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("lixi_manual", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         pass
@@ -244,7 +235,7 @@ class LixiManualMinigame(BaseMinigame):
             await interaction.response.send_message("❌ Không tìm thấy thông tin sự kiện!", ephemeral=True)
             return False
 
-        config = self.spawn_config
+        config = self._get_config(event)
         min_amount = config.get("min_amount", 10)
         max_amount = config.get("max_amount", 1000)
         max_claims = config.get("max_claims", 10)

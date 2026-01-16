@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("Quiz")
 
 
-QUIZ_QUESTIONS = [
+DEFAULT_QUIZ_QUESTIONS = [
     {
         "question": "Tết Trung Thu diễn ra vào ngày nào âm lịch?",
         "options": ["15/7", "15/8", "15/9", "1/8"],
@@ -73,16 +73,10 @@ class QuizMinigame(BaseMinigame):
     def name(self) -> str:
         return "Đố Vui Trung Thu"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [4, 6],
-            "active_hours": [18, 22],
-            "timeout_seconds": 30,
-            "reward_correct": 25,
-            "reward_fast_bonus": 10,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("quiz", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -93,11 +87,12 @@ class QuizMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
-        timeout = config.get("timeout_seconds", 30)
+        config = self._get_config(event)
+        timeout = config.get("timeout_per_question", 30)
+        questions = config.get("questions", DEFAULT_QUIZ_QUESTIONS)
         expire_time = datetime.now() + timedelta(seconds=timeout)
 
-        question = random.choice(QUIZ_QUESTIONS)
+        question = random.choice(questions)
 
         embed = discord.Embed(
             title="🎑 ĐỐ VUI TRUNG THU!",
@@ -148,12 +143,12 @@ class QuizMinigame(BaseMinigame):
         is_correct = answer_idx == question["correct"]
         data["answers"][user_id] = {"answer": answer_idx, "correct": is_correct}
 
-        config = self.spawn_config
         event = self.event_manager.get_event(data["event_id"])
+        config = self._get_config(event)
         emoji = event.currency_emoji if event else "🥮"
 
         if is_correct:
-            base_reward = config.get("reward_correct", 25)
+            base_reward = config.get("reward_per_correct", 25)
             bonus = 0
 
             if data["first_correct"] is None:

@@ -13,7 +13,10 @@
       },
       "color": "#FFB7C5",
       "config_file": "spring.json",
-      "minigames": ["lixi_auto", "lixi_manual"],
+      "minigames": [
+        {"id": "lixi_auto", "name": "🧧 Lì Xì Tự Động"},
+        {"id": "lixi_manual", "name": "🧧 Lì Xì Tặng Bạn"}
+      ],
       "community_goal": {
         "type": "currency_collected",
         "target": 50000,
@@ -37,7 +40,10 @@
       },
       "color": "#00CED1",
       "config_file": "summer.json",
-      "minigames": ["treasure_hunt", "boat_race"],
+      "minigames": [
+        {"id": "treasure_hunt", "name": "🗺️ Săn Kho Báu"},
+        {"id": "boat_race", "name": "🚣 Đua Thuyền"}
+      ],
       "community_goal": {
         "type": "treasure_found",
         "target": 100,
@@ -61,7 +67,11 @@
       },
       "color": "#DAA520",
       "config_file": "autumn.json",
-      "minigames": ["thank_letter", "leaf_collect", "tea_brewing"],
+      "minigames": [
+        {"id": "thank_letter", "name": "💌 Thư Cảm Ơn"},
+        {"id": "leaf_collect", "name": "🍂 Nhặt Lá Vàng"},
+        {"id": "tea_brewing", "name": "🍵 Pha Trà"}
+      ],
       "community_goal": {
         "type": "letters_sent",
         "target": 500,
@@ -85,7 +95,11 @@
       },
       "color": "#4169E1",
       "config_file": "winter.json",
-      "minigames": ["secret_santa", "snowman", "countdown"],
+      "minigames": [
+        {"id": "secret_santa", "name": "🎅 Secret Santa"},
+        {"id": "snowman", "name": "⛄ Xây Người Tuyết"},
+        {"id": "countdown", "name": "🎆 Đếm Ngược"}
+      ],
       "community_goal": {
         "type": "snowman_parts",
         "target": 10000,
@@ -109,7 +123,10 @@
       },
       "color": "#FF6600",
       "config_file": "halloween.json",
-      "minigames": ["ghost_hunt", "trick_treat"],
+      "minigames": [
+        {"id": "ghost_hunt", "name": "👻 Săn Ma"},
+        {"id": "trick_treat", "name": "🍬 Trick or Treat"}
+      ],
       "community_goal": {
         "type": "ghosts_caught",
         "target": 1000,
@@ -133,7 +150,10 @@
       },
       "color": "#228B22",
       "config_file": "earthday.json",
-      "minigames": ["trash_sort", "beach_cleanup"],
+      "minigames": [
+        {"id": "trash_sort", "name": "♻️ Phân Loại Rác"},
+        {"id": "beach_cleanup", "name": "🧹 Dọn Bãi Biển"}
+      ],
       "community_goal": {
         "type": "trash_collected",
         "target": 5000,
@@ -160,7 +180,10 @@
       },
       "color": "#FFD700",
       "config_file": "midautumn.json",
-      "minigames": ["lantern_parade", "quiz"],
+      "minigames": [
+        {"id": "lantern_parade", "name": "🏮 Rước Đèn"},
+        {"id": "quiz", "name": "❓ Câu Đố Trung Thu"}
+      ],
       "community_goal": {
         "type": "lanterns_lit",
         "target": 2000,
@@ -184,7 +207,10 @@
       },
       "color": "#FF69B4",
       "config_file": "birthday.json",
-      "minigames": ["wishes", "balloon_pop"],
+      "minigames": [
+        {"id": "wishes", "name": "💌 Gửi Lời Chúc"},
+        {"id": "balloon_pop", "name": "🎈 Bóp Bóng Bay"}
+      ],
       "community_goal": {
         "type": "wishes_sent",
         "target": 500,

@@ -46,16 +46,7 @@ BOATS = [
     Boat("🛳️", "Long Vương", "Huyền thoại, khó lường", 0, 0.80, 0.50),
 ]
 
-RACE_EVENTS = [
-    {"emoji": "💨", "name": "Gió Thuận", "chance": 0.15, "effect": 2, "message": "đón gió thuận, tăng tốc!"},
-    {"emoji": "🌊", "name": "Sóng Lớn", "chance": 0.12, "effect": -1, "message": "gặp sóng lớn!"},
-    {"emoji": "🐬", "name": "Cá Heo Giúp", "chance": 0.08, "effect": 2, "message": "được cá heo đẩy!"},
-    {"emoji": "🦦", "name": "Rái Cá Đẩy", "chance": 0.08, "effect": 3, "message": "được đàn rái cá hỗ trợ!"},
-    {"emoji": "🌿", "name": "Mắc Rong", "chance": 0.10, "effect": -2, "message": "bị mắc rong biển!"},
-    {"emoji": "⚡", "name": "Turbo", "chance": 0.05, "effect": 4, "message": "kích hoạt TURBO!"},
-    {"emoji": "🔧", "name": "Hỏng Động Cơ", "chance": 0.05, "effect": 0, "skip": True, "message": "bị hỏng động cơ!"},
-    {"emoji": "🧜‍♀️", "name": "Tiên Cá", "chance": 0.03, "effect": 5, "last_only": True, "message": "được tiên cá giúp đỡ!"},
-]
+
 
 FINISH_LINE = 25
 
@@ -173,13 +164,16 @@ class BoatRaceMinigame(BaseMinigame):
             return
 
         positions = {boat.id: 0 for boat in BOATS}
-        skip_next = {boat.id: False for boat in BOATS}
+        stunned = {boat.id: False for boat in BOATS}
+        hidden = {boat.id: False for boat in BOATS}
         round_num = 0
         event_log: list[str] = []
 
         event = self.event_manager.get_event(data["event_id"])
         interval = self.spawn_config.get("race_interval_seconds", 3.5)
         suspense_interval = self.spawn_config.get("suspense_interval_seconds", 5.0)
+        
+        race_events = self._get_race_events(event)
         
         participant_count = len(data["participants"])
         logger.info(f"[BOAT_RACE] Race started in guild {data['guild_id']} with {participant_count} participants")
@@ -188,12 +182,48 @@ class BoatRaceMinigame(BaseMinigame):
             round_num += 1
             round_events = []
             
+            hidden = {boat.id: False for boat in BOATS}
+            
             is_final_stretch = max(positions.values()) >= FINISH_LINE - 5
             is_photo_finish = self._check_photo_finish(positions)
 
+            for race_event in race_events:
+                if random.random() >= race_event.get("chance", 0):
+                    continue
+                    
+                target = race_event.get("target")
+                effect = race_event.get("effect", 0)
+                
+                if target == "all":
+                    for boat in BOATS:
+                        if random.random() > boat.resist:
+                            self._apply_effect(boat, effect, positions, stunned, hidden, race_event)
+                    round_events.append(f"{race_event.get('emoji', '❓')} {race_event.get('name', 'Sự kiện')} ảnh hưởng tất cả!")
+                    
+                elif target == "last":
+                    last_boat_id = min(positions, key=lambda k: positions[k])
+                    boat = next((b for b in BOATS if b.id == last_boat_id), None)
+                    if boat and random.random() > boat.resist:
+                        self._apply_effect(boat, effect, positions, stunned, hidden, race_event)
+                        round_events.append(f"{race_event.get('emoji', '❓')} {boat.name} {race_event.get('name', '')}!")
+                        
+                elif effect == "swap":
+                    boat_ids = list(positions.keys())
+                    if len(boat_ids) >= 2:
+                        b1, b2 = random.sample(boat_ids, 2)
+                        positions[b1], positions[b2] = positions[b2], positions[b1]
+                        n1 = next((b.name for b in BOATS if b.id == b1), b1)
+                        n2 = next((b.name for b in BOATS if b.id == b2), b2)
+                        round_events.append(f"{race_event.get('emoji', '🔄')} {n1} ↔ {n2} hoán đổi vị trí!")
+                else:
+                    boat = random.choice(BOATS)
+                    if random.random() > boat.resist:
+                        self._apply_effect(boat, effect, positions, stunned, hidden, race_event)
+                        round_events.append(f"{race_event.get('emoji', '❓')} {boat.name} {race_event.get('name', '')}!")
+
             for boat in BOATS:
-                if skip_next[boat.id]:
-                    skip_next[boat.id] = False
+                if stunned[boat.id]:
+                    stunned[boat.id] = False
                     continue
 
                 if boat.base_speed == 0:
@@ -201,28 +231,12 @@ class BoatRaceMinigame(BaseMinigame):
                 else:
                     speed = boat.base_speed
 
-                for race_event in RACE_EVENTS:
-                    if random.random() < race_event["chance"]:
-                        if race_event.get("last_only"):
-                            last_boat = min(positions, key=positions.get)
-                            if boat.id != last_boat:
-                                continue
-
-                        if random.random() > boat.resist:
-                            if race_event.get("skip"):
-                                skip_next[boat.id] = True
-                                round_events.append(f"{race_event['emoji']} {boat.name} {race_event['message']}")
-                            else:
-                                speed += race_event["effect"]
-                                round_events.append(f"{race_event['emoji']} {boat.name} {race_event['message']}")
-                        break
-
                 positions[boat.id] = max(0, min(FINISH_LINE, positions[boat.id] + int(speed)))
 
             if round_events:
                 event_log = round_events[-3:]
 
-            embed = self._create_race_embed(event, positions, round_num, event_log, is_final_stretch)
+            embed = self._create_race_embed(event, positions, round_num, event_log, is_final_stretch, hidden)
             try:
                 await data["message"].edit(embed=embed)
             except discord.NotFound:
@@ -237,6 +251,28 @@ class BoatRaceMinigame(BaseMinigame):
         logger.info(f"[BOAT_RACE] Race finished in guild {data['guild_id']} after {round_num} rounds")
         await self._finish_race(message_id, positions)
     
+    def _get_race_events(self, event: Any) -> list[dict]:
+        if event and hasattr(event, "minigame_config"):
+            boat_config = event.minigame_config.get("boat_race", {})
+            return boat_config.get("events", [])
+        return []
+    
+    def _apply_effect(
+        self, 
+        boat: Boat, 
+        effect: int | str, 
+        positions: dict, 
+        stunned: dict, 
+        hidden: dict, 
+        race_event: dict
+    ) -> None:
+        if race_event.get("stun"):
+            stunned[boat.id] = True
+        if race_event.get("hide"):
+            hidden[boat.id] = True
+        if isinstance(effect, int):
+            positions[boat.id] = max(0, min(FINISH_LINE, positions[boat.id] + effect))
+    
     def _check_photo_finish(self, positions: dict) -> bool:
         top_positions = sorted(positions.values(), reverse=True)[:3]
         if len(top_positions) >= 2:
@@ -244,11 +280,11 @@ class BoatRaceMinigame(BaseMinigame):
         return False
 
     def _create_race_embed(
-        self, event: Any, positions: dict, round_num: int, event_log: list[str], is_final_stretch: bool = False
+        self, event: Any, positions: dict, round_num: int, event_log: list[str], is_final_stretch: bool = False, hidden: dict | None = None
     ) -> discord.Embed:
-        title = f"🏁 ĐUA THUYỀN - VÒNG {round_num}"
+        title = f"🏁 ĐUA THUYỀN"
         if is_final_stretch:
-            title = f"🔥 ĐUA THUYỀN - NƯỚC RÚT! VÒNG {round_num}"
+            title = f"🔥 ĐUA THUYỀN - NƯỚC RÚT!"
         
         embed = discord.Embed(
             title=title,
@@ -260,9 +296,14 @@ class BoatRaceMinigame(BaseMinigame):
         lines = ["🏆 **ĐÍCH** " + "═" * 30]
         for boat in sorted_boats:
             pos = positions[boat.id]
-            progress = int((pos / FINISH_LINE) * 20)
-            bar = "═" * progress + f" {boat.emoji} " + "░" * (20 - progress)
-            pct = int((pos / FINISH_LINE) * 100)
+            is_hidden = hidden and hidden.get(boat.id, False)
+            if is_hidden:
+                bar = "🌫️" * 20 + " ??? "
+                pct = "??"
+            else:
+                progress = int((pos / FINISH_LINE) * 20)
+                bar = "═" * progress + f" {boat.emoji} " + "░" * (20 - progress)
+                pct = str(int((pos / FINISH_LINE) * 100))
             lines.append(f"{boat.emoji} {boat.name} {bar} {pct}%")
         lines.append("🏁 **XUẤT PHÁT** " + "═" * 27)
 

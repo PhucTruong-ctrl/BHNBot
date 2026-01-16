@@ -200,3 +200,161 @@ class ProfileCog(commands.Cog):
             f"✅ Đã cập nhật bio: *\"{text}\"*", ephemeral=True
         )
         logger.info(f"User {interaction.user.id} updated bio")
+
+    @app_commands.command(name="thanhtuu", description="Xem thành tựu của bạn")
+    @app_commands.describe(
+        user="Người muốn xem (mặc định: bản thân)",
+        category="Loại game để lọc"
+    )
+    @app_commands.choices(category=[
+        app_commands.Choice(name="🎣 Câu Cá", value="fishing"),
+        app_commands.Choice(name="🐺 Ma Sói", value="werewolf"),
+        app_commands.Choice(name="🔤 Nối Từ", value="noitu"),
+        app_commands.Choice(name="🦀 Bầu Cua", value="baucua"),
+        app_commands.Choice(name="🃏 Xì Dách", value="xidach"),
+    ])
+    async def thanhtuu_cmd(
+        self,
+        interaction: discord.Interaction,
+        user: Optional[discord.Member] = None,
+        category: Optional[str] = None
+    ) -> None:
+        await interaction.response.defer()
+        
+        target = user or interaction.user
+        
+        try:
+            with open("data/achievements.json", "r", encoding="utf-8") as f:
+                achievements_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            await interaction.followup.send("❌ Không thể tải dữ liệu thành tựu!", ephemeral=True)
+            return
+        
+        from database_manager import db_manager
+        
+        rows = await db_manager.execute(
+            "SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = ?",
+            (target.id,)
+        )
+        unlocked_keys = {row[0]: row[1] for row in (rows or [])}
+        
+        categories_to_show = [category] if category else list(achievements_data.keys())
+        
+        pages = []
+        for cat in categories_to_show:
+            if cat not in achievements_data:
+                continue
+            
+            cat_achievements = achievements_data[cat]
+            cat_emoji = self._get_category_emoji(cat)
+            cat_name = self._get_category_name(cat)
+            
+            unlocked_in_cat = sum(1 for key in cat_achievements if key in unlocked_keys)
+            total_in_cat = len(cat_achievements)
+            
+            embed = discord.Embed(
+                title=f"{cat_emoji} Thành Tựu {cat_name} - {target.display_name}",
+                description=f"Đã mở khóa: **{unlocked_in_cat}/{total_in_cat}**",
+                color=0xFFD700 if unlocked_in_cat == total_in_cat else 0x5865F2
+            )
+            embed.set_thumbnail(url=target.display_avatar.url)
+            
+            lines = []
+            for key, ach in cat_achievements.items():
+                emoji = ach.get("emoji", "🏆")
+                name = ach.get("name", key)
+                desc = ach.get("description", "")
+                reward = ach.get("reward_seeds", 0)
+                
+                if key in unlocked_keys:
+                    unlock_time = unlocked_keys[key]
+                    if isinstance(unlock_time, str):
+                        from datetime import datetime
+                        try:
+                            unlock_time = datetime.fromisoformat(unlock_time.replace("Z", "+00:00"))
+                            date_str = unlock_time.strftime("%d/%m/%Y")
+                        except:
+                            date_str = "???"
+                    else:
+                        date_str = unlock_time.strftime("%d/%m/%Y") if unlock_time else "???"
+                    lines.append(f"✅ {emoji} **{name}**\n   _{desc}_ • {date_str}")
+                else:
+                    target_val = ach.get("target_value", 0)
+                    lines.append(f"🔒 {emoji} **{name}**\n   _{desc}_ • Mục tiêu: {target_val}")
+            
+            if len(lines) > 6:
+                mid = len(lines) // 2
+                embed.add_field(name="\u200b", value="\n".join(lines[:mid]), inline=True)
+                embed.add_field(name="\u200b", value="\n".join(lines[mid:]), inline=True)
+            else:
+                embed.add_field(name="Danh sách", value="\n".join(lines) if lines else "Không có thành tựu", inline=False)
+            
+            pages.append(embed)
+        
+        if not pages:
+            await interaction.followup.send("❌ Không tìm thấy thành tựu nào!", ephemeral=True)
+            return
+        
+        if len(pages) == 1:
+            await interaction.followup.send(embed=pages[0])
+        else:
+            view = AchievementPaginationView(pages, target.id)
+            pages[0].set_footer(text=f"Trang 1/{len(pages)} • Dùng nút bên dưới để chuyển trang")
+            await interaction.followup.send(embed=pages[0], view=view)
+
+    def _get_category_emoji(self, category: str) -> str:
+        mapping = {
+            "fishing": "🎣",
+            "werewolf": "🐺",
+            "noitu": "🔤",
+            "baucua": "🦀",
+            "xidach": "🃏",
+        }
+        return mapping.get(category, "🏆")
+
+    def _get_category_name(self, category: str) -> str:
+        mapping = {
+            "fishing": "Câu Cá",
+            "werewolf": "Ma Sói",
+            "noitu": "Nối Từ",
+            "baucua": "Bầu Cua",
+            "xidach": "Xì Dách",
+        }
+        return mapping.get(category, category.title())
+
+
+class AchievementPaginationView(discord.ui.View):
+    def __init__(self, pages: list[discord.Embed], owner_id: int):
+        super().__init__(timeout=180)
+        self.pages = pages
+        self.current_page = 0
+        self.owner_id = owner_id
+        self._update_buttons()
+
+    def _update_buttons(self):
+        self.prev_btn.disabled = self.current_page == 0
+        self.next_btn.disabled = self.current_page >= len(self.pages) - 1
+
+    @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.owner_id:
+            return await interaction.response.send_message("Không phải của bạn!", ephemeral=True)
+        
+        self.current_page = max(0, self.current_page - 1)
+        self._update_buttons()
+        
+        embed = self.pages[self.current_page]
+        embed.set_footer(text=f"Trang {self.current_page + 1}/{len(self.pages)} • Dùng nút bên dưới để chuyển trang")
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.secondary)
+    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.owner_id:
+            return await interaction.response.send_message("Không phải của bạn!", ephemeral=True)
+        
+        self.current_page = min(len(self.pages) - 1, self.current_page + 1)
+        self._update_buttons()
+        
+        embed = self.pages[self.current_page]
+        embed.set_footer(text=f"Trang {self.current_page + 1}/{len(self.pages)} • Dùng nút bên dưới để chuyển trang")
+        await interaction.response.edit_message(embed=embed, view=self)

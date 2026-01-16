@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("TrashSort")
 
 
-TRASH_ITEMS = [
+DEFAULT_TRASH_ITEMS = [
     {"emoji": "📦", "name": "Hộp giấy", "category": "recycle", "description": "Giấy carton"},
     {"emoji": "🍾", "name": "Chai nhựa", "category": "recycle", "description": "Nhựa tái chế"},
     {"emoji": "🥫", "name": "Lon thiếc", "category": "recycle", "description": "Kim loại"},
@@ -31,7 +31,7 @@ TRASH_ITEMS = [
     {"emoji": "🎨", "name": "Hộp sơn", "category": "hazardous", "description": "Hóa chất"},
 ]
 
-CATEGORY_INFO = {
+DEFAULT_CATEGORY_INFO = {
     "recycle": {"emoji": "🟢", "name": "Tái Chế", "color": 0x00FF00},
     "organic": {"emoji": "🟡", "name": "Hữu Cơ", "color": 0xFFFF00},
     "hazardous": {"emoji": "🔴", "name": "Nguy Hại", "color": 0xFF0000},
@@ -49,16 +49,10 @@ class TrashSortMinigame(BaseMinigame):
     def name(self) -> str:
         return "Phân Loại Rác"
 
-    @property
-    def spawn_config(self) -> dict[str, Any]:
-        return {
-            "spawn_type": "random",
-            "times_per_day": [4, 6],
-            "active_hours": [8, 20],
-            "timeout_seconds": 30,
-            "reward_correct": 20,
-            "penalty_wrong": -5,
-        }
+    def _get_config(self, event: Any) -> dict[str, Any]:
+        if event and hasattr(event, "minigame_config"):
+            return event.minigame_config.get("trash_sort", {})
+        return {}
 
     async def spawn(self, channel: TextChannel, guild_id: int) -> None:
         active = await get_active_event(guild_id)
@@ -69,11 +63,12 @@ class TrashSortMinigame(BaseMinigame):
         if not event:
             return
 
-        config = self.spawn_config
+        config = self._get_config(event)
         timeout = config.get("timeout_seconds", 30)
+        trash_items = config.get("trash_items", DEFAULT_TRASH_ITEMS)
         expire_time = datetime.now() + timedelta(seconds=timeout)
 
-        trash_item = random.choice(TRASH_ITEMS)
+        trash_item = random.choice(trash_items)
 
         embed = discord.Embed(
             title="🗑️ PHÂN LOẠI RÁC!",
@@ -117,29 +112,27 @@ class TrashSortMinigame(BaseMinigame):
         is_correct = category == data["correct_category"]
         data["answers"][user_id] = {"category": category, "correct": is_correct}
 
-        config = self.spawn_config
+        event = self.event_manager.get_event(data["event_id"])
+        config = self._get_config(event)
+        category_info = config.get("category_info", DEFAULT_CATEGORY_INFO)
+        cat_info = category_info[data["correct_category"]]
+        emoji = event.currency_emoji if event else "🌱"
+
         if is_correct:
-            reward = config.get("reward_correct", 20)
+            reward = config.get("reward_per_correct", 20)
             await add_currency(data["guild_id"], user_id, data["event_id"], reward)
             await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
             await update_community_progress(data["guild_id"], 1)
-        else:
-            penalty = config.get("penalty_wrong", -5)
-            await add_currency(data["guild_id"], user_id, data["event_id"], penalty)
-
-        event = self.event_manager.get_event(data["event_id"])
-        emoji = event.currency_emoji if event else "🌱"
-        cat_info = CATEGORY_INFO[data["correct_category"]]
-
-        if is_correct:
             await interaction.response.send_message(
-                f"✅ Chính xác! Đây là rác **{cat_info['name']}**! +**{config.get('reward_correct', 20)}** {emoji}",
+                f"✅ Chính xác! Đây là rác **{cat_info['name']}**! +**{reward}** {emoji}",
                 ephemeral=True,
             )
         else:
-            selected_cat = CATEGORY_INFO[category]
+            penalty = config.get("penalty_wrong", -5)
+            await add_currency(data["guild_id"], user_id, data["event_id"], penalty)
+            selected_cat = category_info[category]
             await interaction.response.send_message(
-                f"❌ Sai rồi! Đây là rác **{cat_info['name']}**, không phải {selected_cat['name']}. {config.get('penalty_wrong', -5)} {emoji}",
+                f"❌ Sai rồi! Đây là rác **{cat_info['name']}**, không phải {selected_cat['name']}. {penalty} {emoji}",
                 ephemeral=True,
             )
 
@@ -149,7 +142,10 @@ class TrashSortMinigame(BaseMinigame):
             return
 
         trash = data["trash_item"]
-        cat_info = CATEGORY_INFO[data["correct_category"]]
+        event = self.event_manager.get_event(data["event_id"])
+        config = self._get_config(event)
+        category_info = config.get("category_info", DEFAULT_CATEGORY_INFO)
+        cat_info = category_info[data["correct_category"]]
 
         correct_users = [uid for uid, ans in data["answers"].items() if ans["correct"]]
         wrong_users = [uid for uid, ans in data["answers"].items() if not ans["correct"]]
@@ -187,10 +183,10 @@ class TrashSortView(discord.ui.View):
         self.trash_item = trash_item
         self.message_id: int | None = None
 
-        for cat_id, cat_info in CATEGORY_INFO.items():
+        for cat_id, cat_data in DEFAULT_CATEGORY_INFO.items():
             button = discord.ui.Button(
-                emoji=cat_info["emoji"],
-                label=cat_info["name"],
+                emoji=cat_data["emoji"],
+                label=cat_data["name"],
                 style=discord.ButtonStyle.secondary,
                 custom_id=f"cat_{cat_id}",
             )

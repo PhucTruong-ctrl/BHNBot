@@ -604,6 +604,97 @@ class ConfigCog(commands.Cog):
         except Exception as e:
             traceback.print_exc()
             await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
+
+    @config_group.command(name="view", description="Xem tất cả cấu hình server")
+    async def config_view(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except discord.errors.NotFound:
+            return
+        
+        guild_id = interaction.guild.id
+        
+        try:
+            row = await db_manager.fetchrow(
+                """SELECT 
+                    noitu_channel_id, logs_channel_id, fishing_channel_id,
+                    bump_channel_id, log_discord_channel_id, log_ping_user_id,
+                    log_discord_level, aquarium_forum_channel_id, shop_channel_id,
+                    event_channel_id, event_auto_channel_id, event_role_id,
+                    exclude_chat_channels
+                FROM server_config WHERE guild_id = $1""",
+                (int(guild_id),)
+            )
+            
+            tree_row = await db_manager.fetchrow(
+                "SELECT tree_channel_id FROM server_tree WHERE guild_id = $1",
+                (int(guild_id),)
+            )
+            
+            embed = discord.Embed(
+                title="⚙️ Cấu hình Server",
+                color=discord.Color.blue()
+            )
+            
+            if not row:
+                embed.description = "Chưa có cấu hình nào. Dùng `/config set` để cấu hình."
+            else:
+                def fmt_channel(ch_id):
+                    if not ch_id:
+                        return "❌ Chưa set"
+                    ch = interaction.guild.get_channel(ch_id)
+                    return ch.mention if ch else f"❌ ID: {ch_id}"
+                
+                def fmt_role(role_id):
+                    if not role_id:
+                        return "❌ Chưa set"
+                    role = interaction.guild.get_role(role_id)
+                    return role.mention if role else f"❌ ID: {role_id}"
+                
+                def fmt_user(user_id):
+                    if not user_id:
+                        return "❌ Chưa set"
+                    user = interaction.guild.get_member(user_id)
+                    return user.mention if user else f"❌ ID: {user_id}"
+                
+                channels_text = ""
+                channels_text += f"📝 **Nối Từ:** {fmt_channel(row.get('noitu_channel_id'))}\n"
+                channels_text += f"📋 **Logs Admin:** {fmt_channel(row.get('logs_channel_id'))}\n"
+                channels_text += f"🎣 **Câu Cá:** {fmt_channel(row.get('fishing_channel_id'))}\n"
+                channels_text += f"⏰ **Bump:** {fmt_channel(row.get('bump_channel_id'))}\n"
+                channels_text += f"🤖 **Log Bot:** {fmt_channel(row.get('log_discord_channel_id'))}\n"
+                channels_text += f"🐟 **Hồ Cá:** {fmt_channel(row.get('aquarium_forum_channel_id'))}\n"
+                channels_text += f"🏪 **Tạp Hóa:** {fmt_channel(row.get('shop_channel_id'))}\n"
+                if tree_row:
+                    channels_text += f"🌳 **Cây:** {fmt_channel(tree_row.get('tree_channel_id'))}\n"
+                
+                embed.add_field(name="📺 Kênh", value=channels_text, inline=False)
+                
+                event_text = ""
+                event_text += f"🎉 **Kênh Sự Kiện:** {fmt_channel(row.get('event_channel_id'))}\n"
+                event_text += f"🎮 **Kênh Minigame:** {fmt_channel(row.get('event_auto_channel_id'))}\n"
+                event_text += f"🔔 **Role Ping:** {fmt_role(row.get('event_role_id'))}\n"
+                embed.add_field(name="🎊 Sự Kiện Theo Mùa", value=event_text, inline=False)
+                
+                other_text = ""
+                other_text += f"🔔 **Log Ping User:** {fmt_user(row.get('log_ping_user_id'))}\n"
+                other_text += f"📊 **Log Level:** {row.get('log_discord_level') or '❌ Chưa set'}\n"
+                
+                excluded = []
+                if row.get('exclude_chat_channels'):
+                    try:
+                        excluded = json.loads(row['exclude_chat_channels'])
+                    except:
+                        pass
+                other_text += f"🚫 **Kênh Loại Trừ:** {len(excluded)} kênh\n"
+                embed.add_field(name="🔧 Khác", value=other_text, inline=False)
+            
+            embed.set_footer(text="Dùng /config set để thay đổi cấu hình")
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        except Exception as e:
+            traceback.print_exc()
+            await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
     
 
 async def setup(bot):

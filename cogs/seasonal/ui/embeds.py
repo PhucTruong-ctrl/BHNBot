@@ -224,16 +224,7 @@ def create_event_start_embed(
         )
 
     if event.registry.minigames:
-        minigame_names = {
-            "lixi_auto": "🧧 Lì Xì Tự Động",
-            "lixi_manual": "🧧 Lì Xì Tặng Bạn",
-            "treasure_hunt": "🗺️ Săn Kho Báu",
-            "boat_race": "🚣 Đua Thuyền",
-            "thank_letter": "💌 Thư Cảm Ơn",
-            "ghost_hunt": "👻 Săn Ma",
-            "secret_santa": "🎅 Secret Santa",
-        }
-        games = [minigame_names.get(g, g) for g in event.registry.minigames]
+        games = [m.name for m in event.registry.minigames]
         embed.add_field(
             name="🎮 Minigames",
             value="\n".join(games),

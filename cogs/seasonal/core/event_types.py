@@ -170,6 +170,18 @@ class ShopItemConfig:
 
 
 @dataclass
+class MinigameEntry:
+    id: str
+    name: str
+
+    @classmethod
+    def from_data(cls, data: str | dict[str, Any]) -> MinigameEntry:
+        if isinstance(data, str):
+            return cls(id=data, name=data)
+        return cls(id=data["id"], name=data.get("name", data["id"]))
+
+
+@dataclass
 class EventRegistryEntry:
     event_id: str
     name: str
@@ -180,7 +192,7 @@ class EventRegistryEntry:
     currency: CurrencyConfig
     color: str
     config_file: str
-    minigames: list[str]
+    minigames: list[MinigameEntry]
     community_goal: CommunityGoalConfig
     special_buffs: dict[str, Any] = field(default_factory=dict)
     banner_image: str = ""
@@ -200,7 +212,7 @@ class EventRegistryEntry:
             currency=CurrencyConfig.from_dict(data["currency"]),
             color=data["color"],
             config_file=data["config_file"],
-            minigames=data.get("minigames", []),
+            minigames=[MinigameEntry.from_data(m) for m in data.get("minigames", [])],
             community_goal=CommunityGoalConfig.from_dict(data["community_goal"]),
             special_buffs=data.get("special_buffs", {}),
             banner_image=data.get("banner_image", ""),
@@ -310,8 +322,12 @@ class EventConfig:
         return self.registry.community_goal.description
 
     @property
-    def minigames(self) -> list[str]:
+    def minigames(self) -> list[MinigameEntry]:
         return self.registry.minigames
+
+    @property
+    def minigame_ids(self) -> list[str]:
+        return [m.id for m in self.registry.minigames]
 
     def get_fish_by_key(self, key: str) -> EventFishConfig | None:
         """Get fish config by key."""

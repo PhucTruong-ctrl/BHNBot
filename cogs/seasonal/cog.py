@@ -37,7 +37,10 @@ from .services import (
     update_community_progress,
     update_last_progress,
 )
-from .services.database import execute_query
+from .services.database import (
+    execute_query,
+    get_notification_role,
+)
 from .ui import (
     ConfirmView,
     QuestView,
@@ -83,13 +86,25 @@ class SeasonalEventsCog(commands.Cog):
         await self.bot.wait_until_ready()
 
     async def _restore_active_events(self) -> None:
+        logger.info(f"Starting event restoration for {len(self.bot.guilds)} guilds...")
+        restored_count = 0
         for guild in self.bot.guilds:
-            active = await get_active_event(guild.id)
-            if active:
-                event_id = active["event_id"]
-                if event_id in self.event_manager._registry:
-                    self.event_manager._active_events[guild.id] = event_id
-                    logger.info(f"Restored active event {event_id} for guild {guild.id}")
+            try:
+                active = await get_active_event(guild.id)
+                if active:
+                    event_id = active["event_id"]
+                    logger.debug(f"Found active event in DB: guild={guild.id}, event={event_id}")
+                    if event_id in self.event_manager._registry:
+                        self.event_manager._active_events[guild.id] = event_id
+                        restored_count += 1
+                        logger.info(f"Restored active event {event_id} for guild {guild.id} ({guild.name})")
+                    else:
+                        logger.warning(f"Event {event_id} not in registry for guild {guild.id} - skipping restore")
+                else:
+                    logger.debug(f"No active event found in DB for guild {guild.id}")
+            except Exception as e:
+                logger.error(f"Error restoring event for guild {guild.id}: {e}", exc_info=True)
+        logger.info(f"Event restoration complete: {restored_count}/{len(self.bot.guilds)} guilds have active events")
 
     @tasks.loop(minutes=5)
     async def update_announcement_task(self) -> None:
@@ -731,9 +746,19 @@ class SeasonalEventsCog(commands.Cog):
             event.community_goal_target,
             event.registry.end_date,
         )
+        self.event_manager._active_events[interaction.guild.id] = event_id
+        logger.info(f"Admin started event {event_id} for guild {interaction.guild.id}")
 
         embed = create_event_start_embed(event)
-        await interaction.response.send_message(embed=embed)
+        
+        notification_role_id = await get_notification_role(interaction.guild.id)
+        content = None
+        if notification_role_id:
+            role = interaction.guild.get_role(notification_role_id)
+            if role:
+                content = role.mention
+        
+        await interaction.response.send_message(content=content, embed=embed)
 
     @sukien_admin_group.command(name="end", description="Kết thúc sự kiện sớm")
     async def sukien_admin_end(self, interaction: discord.Interaction) -> None:
