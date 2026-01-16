@@ -232,9 +232,9 @@ class ProfileCog(commands.Cog):
         
         from database_manager import db_manager
         
-        rows = await db_manager.execute(
+        rows = await db_manager.fetchall(
             "SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = ?",
-            (target.id,)
+            target.id
         )
         unlocked_keys = {row[0]: row[1] for row in (rows or [])}
         

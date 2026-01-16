@@ -254,6 +254,17 @@ async def init_seasonal_tables() -> None:
             except Exception as e:
                 if "already exists" not in str(e).lower():
                     logger.warning(f"Table creation warning: {e}")
+    
+    migrations = [
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS quest_type TEXT DEFAULT 'daily'",
+    ]
+    for migration in migrations:
+        try:
+            await db_manager.execute(migration)
+        except Exception as e:
+            if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+                logger.debug(f"Migration skipped: {e}")
+    
     logger.info("Seasonal events tables initialized (PostgreSQL)")
 
 

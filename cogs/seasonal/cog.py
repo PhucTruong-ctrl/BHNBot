@@ -296,45 +296,6 @@ class SeasonalEventsCog(commands.Cog):
         embed = create_leaderboard_embed(event, leaderboard, self.bot)
         await interaction.response.send_message(embed=embed)
 
-    @sukien_group.command(name="nhiemvu", description="Xem nhiệm vụ sự kiện")
-    async def sukien_quests(self, interaction: discord.Interaction) -> None:
-        if not interaction.guild:
-            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
-            return
-
-        active = await get_active_event(interaction.guild.id)
-        if not active:
-            await interaction.response.send_message("❌ Hiện không có sự kiện nào đang diễn ra!", ephemeral=True)
-            return
-
-        event = self.event_manager.get_event(active["event_id"])
-        if not event:
-            await interaction.response.send_message("❌ Không tìm thấy cấu hình sự kiện!", ephemeral=True)
-            return
-
-        event_config = {
-            "daily_quests": [q.__dict__ for q in event.daily_quests],
-            "fixed_quests": [q.__dict__ for q in event.fixed_quests],
-            "daily_quest_count": event.daily_quest_count,
-        }
-        quests = await get_all_user_quests(interaction.guild.id, interaction.user.id, active["event_id"], event_config)
-
-        guild_id = interaction.guild.id
-        user_id = interaction.user.id
-        event_id = active["event_id"]
-
-        async def claim_callback(inter: discord.Interaction, quest_id: str) -> bool:
-            result = await claim_quest_reward(guild_id, user_id, event_id, quest_id)
-            if result:
-                reward = result.get("reward_value", 0)
-                await inter.followup.send(f"✅ Nhận thưởng thành công! +{reward} {event.currency_emoji}", ephemeral=True)
-                return True
-            return False
-
-        view = QuestView(event, interaction.user.id, quests, claim_callback)
-        embed = view.create_embed()
-        await interaction.response.send_message(embed=embed, view=view)
-
     @sukien_group.command(name="cuahang", description="Cửa hàng sự kiện")
     async def sukien_shop(self, interaction: discord.Interaction) -> None:
         if not interaction.guild:
