@@ -5,6 +5,7 @@ Quản lý tất cả thành tựu của bot một cách tập trung và hướn
 
 import json
 import discord
+from pathlib import Path
 from database_manager import db_manager, add_seeds
 
 # Load achievement config
@@ -16,6 +17,35 @@ except FileNotFoundError:
     print("[WARNING] achievements.json not found. Achievement system disabled.")
 except Exception as e:
     print(f"[ERROR] Failed to load achievements.json: {e}")
+
+# Load seasonal achievement config from all event files
+SEASONAL_ACHIEVEMENT_DATA = {}  # {event_id: {achievement_key: achievement_data}}
+def load_seasonal_achievements():
+    """Load achievements from all event JSON files."""
+    global SEASONAL_ACHIEVEMENT_DATA
+    SEASONAL_ACHIEVEMENT_DATA = {}
+    events_dir = Path("./data/events")
+    
+    if not events_dir.exists():
+        print("[WARNING] data/events directory not found. Seasonal achievements disabled.")
+        return
+    
+    for event_file in events_dir.glob("*.json"):
+        if event_file.name == "registry.json":
+            continue
+        try:
+            with open(event_file, "r", encoding="utf-8") as f:
+                event_data = json.load(f)
+            
+            if "achievements" in event_data:
+                event_id = event_data.get("event_id", event_file.stem)
+                SEASONAL_ACHIEVEMENT_DATA[event_id] = event_data["achievements"]
+                print(f"[ACHIEVEMENT] Loaded {len(event_data['achievements'])} seasonal achievements from {event_file.name}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load seasonal achievements from {event_file.name}: {e}")
+
+# Load seasonal achievements at startup
+load_seasonal_achievements()
 
 # Load server config for role mappings
 SERVER_CONFIG = {}
@@ -66,6 +96,49 @@ class AchievementManager:
                     continue
 
                 # UNLOCK ACHIEVEMENT!
+                await self.unlock_achievement(user_id, achievement_key, achievement_data, channel)
+
+    async def check_seasonal_unlock(
+        self, 
+        user_id: int, 
+        event_id: str, 
+        condition_type: str, 
+        condition_key: str = None, 
+        current_value: int = 1, 
+        channel: discord.TextChannel = None
+    ):
+        """
+        Check if any seasonal achievements should be unlocked.
+        
+        Args:
+            user_id: Discord user ID
+            event_id: Event identifier (e.g., 'spring_2026')
+            condition_type: Type of condition ('catch_specific_fish', 'collect_all', 'community_goal', etc.)
+            condition_key: Specific item key for 'catch_specific_fish' type
+            current_value: Current progress value
+            channel: Discord channel to send notification
+        """
+        if not SEASONAL_ACHIEVEMENT_DATA:
+            return
+        
+        event_achievements = SEASONAL_ACHIEVEMENT_DATA.get(event_id, {})
+        if not event_achievements:
+            return
+        
+        for achievement_key, achievement_data in event_achievements.items():
+            if achievement_data.get("condition_type") != condition_type:
+                continue
+            
+            # For specific item achievements, check condition_key matches
+            if condition_type == "catch_specific_fish":
+                if achievement_data.get("condition_key") != condition_key:
+                    continue
+            
+            target_value = achievement_data.get("target_value", 1)
+            if current_value >= target_value:
+                if await self.is_unlocked(user_id, achievement_key):
+                    continue
+                
                 await self.unlock_achievement(user_id, achievement_key, achievement_data, channel)
 
     async def is_unlocked(self, user_id: int, achievement_key: str) -> bool:

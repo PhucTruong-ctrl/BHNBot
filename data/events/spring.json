@@ -1,6 +1,55 @@
 {
   "event_id": "spring_2026",
 
+  "achievements": {
+    "spring_epic_fish": {
+      "name": "Rồng Vàng",
+      "description": "Câu được Cá Rồng Vàng trong Lễ Hội Hoa Xuân",
+      "condition_type": "catch_specific_fish",
+      "condition_key": "ca_rong_vang",
+      "target_value": 1,
+      "reward_type": "title",
+      "reward_value": "Rồng Vàng",
+      "emoji": "🐉"
+    },
+    "spring_all_fish": {
+      "name": "Bộ Sưu Tập Xuân",
+      "description": "Sưu tầm đủ 7 loại cá sự kiện",
+      "condition_type": "collect_all_fish",
+      "target_value": 7,
+      "reward_type": "badge",
+      "reward_value": "🌸",
+      "emoji": "🏆"
+    },
+    "spring_lixi_50": {
+      "name": "Người Hào Phóng",
+      "description": "Gửi tổng 50 lì xì",
+      "condition_type": "lixi_sent_total",
+      "target_value": 50,
+      "reward_type": "currency",
+      "reward_value": 500,
+      "emoji": "🧧"
+    },
+    "spring_currency_1000": {
+      "name": "Triệu Phú Hoa Đào",
+      "description": "Kiếm được 1000 🌸 Hoa Đào",
+      "condition_type": "currency_earned",
+      "target_value": 1000,
+      "reward_type": "currency",
+      "reward_value": 200,
+      "emoji": "💰"
+    },
+    "spring_community_100": {
+      "name": "🌸 Xuân Đến 2026",
+      "description": "Góp phần đạt 100% Community Goal",
+      "condition_type": "community_goal",
+      "target_value": 100,
+      "reward_type": "role",
+      "reward_role_key": "role_spring_2026",
+      "emoji": "🎉"
+    }
+  },
+
   "milestones": [
     {
       "percent": 25,

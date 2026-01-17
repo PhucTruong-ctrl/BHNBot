@@ -1,6 +1,46 @@
 {
   "event_id": "earthday_2026",
 
+  "achievements": {
+    "earthday_epic_fish": {
+      "name": "Thần Rừng",
+      "description": "Câu được Cá Thần Rừng trong Ngày Trái Đất",
+      "condition_type": "catch_specific_fish",
+      "condition_key": "ca_than_rung",
+      "target_value": 1,
+      "reward_type": "title",
+      "reward_value": "Thần Rừng",
+      "emoji": "🌲"
+    },
+    "earthday_trash_100": {
+      "name": "Chiến Binh Môi Trường",
+      "description": "Vứt rác đúng cách 100 lần",
+      "condition_type": "trash_disposed_total",
+      "target_value": 100,
+      "reward_type": "badge",
+      "reward_value": "💚",
+      "emoji": "🗑️"
+    },
+    "earthday_all_fish": {
+      "name": "Bộ Sưu Tập Xanh",
+      "description": "Sưu tầm đủ 4 loại cá sự kiện",
+      "condition_type": "collect_all_fish",
+      "target_value": 4,
+      "reward_type": "currency",
+      "reward_value": 200,
+      "emoji": "🏆"
+    },
+    "earthday_community_100": {
+      "name": "💚 Earth Day 2026",
+      "description": "Góp phần đạt 100% Community Goal",
+      "condition_type": "community_goal",
+      "target_value": 100,
+      "reward_type": "role",
+      "reward_role_key": "role_earthday_2026",
+      "emoji": "🎉"
+    }
+  },
+
   "milestones": [
     {"percent": 50, "reward_type": "seeds", "amount": 100, "announcement": "💚 Đạt 50%! Tất cả nhận +100 hạt giống!"},
     {"percent": 100, "reward_type": "role", "role_name": "💚 Earth Day 2026", "role_color": "#228B22", "extra_rewards": [{"type": "background", "key": "bg_earthday", "name": "Background Thiên Nhiên"}], "announcement": "🌍 HOÀN THÀNH! Thu gom đủ 5000 rác!"}

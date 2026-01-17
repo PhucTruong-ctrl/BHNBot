@@ -1,6 +1,64 @@
 {
   "event_id": "autumn_2026",
 
+  "achievements": {
+    "autumn_epic_fish": {
+      "name": "Phượng Hoàng",
+      "description": "Câu được Cá Phượng Hoàng trong Thu Hoạch Mùa Thu",
+      "condition_type": "catch_specific_fish",
+      "condition_key": "ca_phuong_hoang",
+      "target_value": 1,
+      "reward_type": "title",
+      "reward_value": "Phượng Hoàng",
+      "emoji": "🔥"
+    },
+    "autumn_letters_30": {
+      "name": "Người Biết Ơn",
+      "description": "Gửi 30 thư cảm ơn",
+      "condition_type": "letters_sent_total",
+      "target_value": 30,
+      "reward_type": "badge",
+      "reward_value": "🍂",
+      "emoji": "✉️"
+    },
+    "autumn_golden_tea": {
+      "name": "Trà Sư",
+      "description": "Pha được Golden Recipe",
+      "condition_type": "golden_recipe",
+      "target_value": 1,
+      "reward_type": "title",
+      "reward_value": "Trà Sư",
+      "emoji": "🍵"
+    },
+    "autumn_received_20": {
+      "name": "Được Yêu Thương",
+      "description": "Nhận 20 thư cảm ơn",
+      "condition_type": "letters_received",
+      "target_value": 20,
+      "reward_type": "currency",
+      "reward_value": 300,
+      "emoji": "💌"
+    },
+    "autumn_all_fish": {
+      "name": "Bộ Sưu Tập Thu",
+      "description": "Sưu tầm đủ 7 loại cá sự kiện",
+      "condition_type": "collect_all_fish",
+      "target_value": 7,
+      "reward_type": "currency",
+      "reward_value": 400,
+      "emoji": "🏆"
+    },
+    "autumn_community_100": {
+      "name": "🍂 Thu Vàng 2026",
+      "description": "Góp phần đạt 100% Community Goal",
+      "condition_type": "community_goal",
+      "target_value": 100,
+      "reward_type": "role",
+      "reward_role_key": "role_autumn_2026",
+      "emoji": "🎉"
+    }
+  },
+
   "milestones": [
     {"percent": 25, "reward_type": "seeds", "amount": 100, "announcement": "🍂 Đạt 25%! Tất cả nhận +100 hạt giống!"},
     {"percent": 50, "reward_type": "title", "title_key": "long_biet_on", "title_name": "Lòng Biết Ơn", "announcement": "🍂 Đạt 50%! Mở khóa danh hiệu \"Lòng Biết Ơn\"!"},

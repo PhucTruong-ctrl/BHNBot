@@ -1,6 +1,54 @@
 {
   "event_id": "birthday_2026",
 
+  "achievements": {
+    "birthday_wish": {
+      "name": "Người Chúc Phúc",
+      "description": "Gửi lời chúc sinh nhật server",
+      "condition_type": "wishes_sent",
+      "target_value": 1,
+      "reward_type": "currency",
+      "reward_value": 50,
+      "emoji": "💌"
+    },
+    "birthday_cake": {
+      "name": "Tiệc Sinh Nhật",
+      "description": "Nhận bánh sinh nhật miễn phí",
+      "condition_type": "cake_claimed",
+      "target_value": 1,
+      "reward_type": "currency",
+      "reward_value": 100,
+      "emoji": "🎂"
+    },
+    "birthday_balloon": {
+      "name": "Thợ Săn Bong Bóng",
+      "description": "Bắt 10 bóng bay",
+      "condition_type": "balloons_popped",
+      "target_value": 10,
+      "reward_type": "currency",
+      "reward_value": 40,
+      "emoji": "🎈"
+    },
+    "birthday_top_wish": {
+      "name": "Lời Chúc Hay Nhất",
+      "description": "Lời chúc được vote vào top 10",
+      "condition_type": "wish_voted_top",
+      "target_value": 1,
+      "reward_type": "badge",
+      "reward_value": "🎂",
+      "emoji": "🏆"
+    },
+    "birthday_community_100": {
+      "name": "🎂 Sinh Nhật Server 2026",
+      "description": "Góp phần đạt 100% Community Goal",
+      "condition_type": "community_goal",
+      "target_value": 100,
+      "reward_type": "role",
+      "reward_role_key": "role_birthday_2026",
+      "emoji": "🎉"
+    }
+  },
+
   "milestones": [
     {"percent": 100, "reward_type": "multi", "rewards": [{"type": "seeds", "amount": 200}, {"type": "badge", "value": "🎂"}], "announcement": "🎂 HOÀN THÀNH! Tất cả nhận +200 hạt giống và Badge 🎂!"}
   ],

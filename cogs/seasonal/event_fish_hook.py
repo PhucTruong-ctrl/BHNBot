@@ -15,7 +15,7 @@ from .services import (
     get_active_event,
     update_quest_progress,
 )
-from .services.community_goal_service import add_community_contribution
+from .services.community_goal_service import add_community_contribution, distribute_milestone_rewards
 from .services.database import execute_write
 from .core.event_manager import EventManager
 
@@ -33,8 +33,9 @@ class EventFishCatch:
 
 
 async def try_catch_event_fish(
-    guild_id: int,
+    bot,
     user_id: int,
+    guild_id: int,
     event_manager: EventManager | None = None,
 ) -> EventFishCatch | None:
     """Attempt to catch an event fish during fishing.
@@ -43,8 +44,9 @@ async def try_catch_event_fish(
     to catch an event fish if an event is active.
 
     Args:
-        guild_id: The guild ID.
+        bot: Bot instance for achievement tracking.
         user_id: The user ID.
+        guild_id: The guild ID.
         event_manager: Optional EventManager instance.
 
     Returns:
@@ -80,7 +82,20 @@ async def try_catch_event_fish(
 
     await _add_to_collection(guild_id, user_id, active["event_id"], chosen.key)
     await update_quest_progress(guild_id, user_id, active["event_id"], "catch_event_fish", 1)
-    await add_community_contribution(guild_id, active["event_id"], 1)
+    
+    newly_reached = await add_community_contribution(guild_id, active["event_id"], 1)
+    for milestone in newly_reached:
+        await distribute_milestone_rewards(guild_id, active["event_id"], milestone, bot)
+    
+    if bot and hasattr(bot, "achievement_manager") and bot.achievement_manager:
+        await bot.achievement_manager.check_seasonal_unlock(
+            user_id=user_id,
+            event_id=active["event_id"],
+            condition_type="catch_specific_fish",
+            condition_key=chosen.key,
+            current_value=1,
+            channel=None,
+        )
 
     return EventFishCatch(
         fish=chosen,

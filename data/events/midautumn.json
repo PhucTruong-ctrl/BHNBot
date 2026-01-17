@@ -1,6 +1,45 @@
 {
   "event_id": "midautumn_2026",
 
+  "achievements": {
+    "midautumn_all_fish": {
+      "name": "Bộ Sưu Tập Trăng",
+      "description": "Sưu tầm đủ 4 loại cá sự kiện",
+      "condition_type": "collect_all_fish",
+      "target_value": 4,
+      "reward_type": "badge",
+      "reward_value": "🌙",
+      "emoji": "🏆"
+    },
+    "midautumn_lantern_100": {
+      "name": "Ánh Trăng",
+      "description": "Thắp 100 đèn lồng",
+      "condition_type": "lanterns_lit_total",
+      "target_value": 100,
+      "reward_type": "title",
+      "reward_value": "Ánh Trăng",
+      "emoji": "🏮"
+    },
+    "midautumn_quiz_30": {
+      "name": "Học Giả Trung Thu",
+      "description": "Trả lời đúng 30 câu đố",
+      "condition_type": "quiz_correct_total",
+      "target_value": 30,
+      "reward_type": "currency",
+      "reward_value": 300,
+      "emoji": "❓"
+    },
+    "midautumn_community_100": {
+      "name": "🌙 Trung Thu 2026",
+      "description": "Góp phần đạt 100% Community Goal",
+      "condition_type": "community_goal",
+      "target_value": 100,
+      "reward_type": "role",
+      "reward_role_key": "role_midautumn_2026",
+      "emoji": "🎉"
+    }
+  },
+
   "milestones": [
     {"percent": 50, "reward_type": "seeds", "amount": 100, "announcement": "🌙 Đạt 50%! Tất cả nhận +100 hạt giống!"},
     {"percent": 100, "reward_type": "role", "role_name": "🌙 Trung Thu 2026", "role_color": "#FFD700", "extra_rewards": [{"type": "background", "key": "bg_midautumn", "name": "Background Trăng Rằm"}], "announcement": "🌙 HOÀN THÀNH! Thắp đủ 2000 đèn lồng!"}

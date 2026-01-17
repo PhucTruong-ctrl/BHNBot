@@ -168,7 +168,7 @@ async def add_community_contribution(
 
 
 async def distribute_milestone_rewards(
-    guild_id: int, event_id: str, milestone: Milestone
+    guild_id: int, event_id: str, milestone: Milestone, bot=None
 ) -> list[int]:
     """Distribute rewards to all participants for reaching a milestone.
 
@@ -176,6 +176,7 @@ async def distribute_milestone_rewards(
         guild_id: The guild ID.
         event_id: The event ID.
         milestone: The milestone that was reached.
+        bot: Optional bot instance for role granting at 100%.
 
     Returns:
         List of user IDs who received rewards.
@@ -195,10 +196,70 @@ async def distribute_milestone_rewards(
 
         rewarded_users.append(user_id)
 
+    if milestone.percentage == 100 and bot:
+        await _grant_community_goal_role(guild_id, event_id, participants, bot)
+
     logger.info(
         f"Distributed {milestone.percentage}% milestone rewards to "
         f"{len(rewarded_users)} users in guild {guild_id}"
     )
+
+    return rewarded_users
+
+
+async def _grant_community_goal_role(
+    guild_id: int, event_id: str, participants: list[int], bot
+) -> None:
+    """Grant the Community Goal role to all participants when 100% is reached."""
+    base_type = event_id.split("_")[0]
+    year = event_id.split("_")[1] if "_" in event_id else "2026"
+    role_key = f"role_{base_type}_{year}"
+    
+    try:
+        from core.server_config import get_server_config
+        config = await get_server_config(guild_id)
+        role_id = config.get(role_key)
+        
+        if not role_id:
+            logger.warning(f"No role configured for {role_key} in guild {guild_id}")
+            return
+        
+        guild = bot.get_guild(guild_id)
+        if not guild:
+            logger.warning(f"Guild {guild_id} not found")
+            return
+        
+        role = guild.get_role(int(role_id))
+        if not role:
+            logger.warning(f"Role {role_id} not found in guild {guild_id}")
+            return
+        
+        granted_count = 0
+        for user_id in participants:
+            try:
+                member = guild.get_member(user_id)
+                if member and role not in member.roles:
+                    await member.add_roles(role, reason=f"Community Goal 100% - {event_id}")
+                    granted_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to grant role to {user_id}: {e}")
+        
+        logger.info(
+            f"Granted {role.name} role to {granted_count}/{len(participants)} "
+            f"participants in guild {guild_id} for {event_id}"
+        )
+        
+        if bot.achievement_manager:
+            for user_id in participants:
+                await bot.achievement_manager.check_seasonal_unlock(
+                    user_id=user_id,
+                    event_id=event_id,
+                    condition_type="community_goal",
+                    current_value=100,
+                    channel=None,
+                )
+    except Exception as e:
+        logger.exception(f"Failed to grant community goal role: {e}")
 
     return rewarded_users
 

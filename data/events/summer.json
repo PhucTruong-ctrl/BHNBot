@@ -1,6 +1,64 @@
 {
   "event_id": "summer_2026",
 
+  "achievements": {
+    "summer_epic_fish": {
+      "name": "Vua Biển Cả",
+      "description": "Câu được Cá Thần Biển trong Lễ Hội Biển",
+      "condition_type": "catch_specific_fish",
+      "condition_key": "ca_than_bien",
+      "target_value": 1,
+      "reward_type": "title",
+      "reward_value": "Vua Biển Cả",
+      "emoji": "🔱"
+    },
+    "summer_all_fish": {
+      "name": "Bộ Sưu Tập Biển",
+      "description": "Sưu tầm đủ 7 loại cá sự kiện",
+      "condition_type": "collect_all_fish",
+      "target_value": 7,
+      "reward_type": "badge",
+      "reward_value": "🐚",
+      "emoji": "🏆"
+    },
+    "summer_treasure_20": {
+      "name": "Thợ Săn Kho Báu",
+      "description": "Tìm được 20 kho báu",
+      "condition_type": "treasure_found_total",
+      "target_value": 20,
+      "reward_type": "currency",
+      "reward_value": 600,
+      "emoji": "🏴‍☠️"
+    },
+    "summer_race_win": {
+      "name": "Thuyền Trưởng",
+      "description": "Thắng 5 cuộc đua thuyền",
+      "condition_type": "boat_race_won",
+      "target_value": 5,
+      "reward_type": "title",
+      "reward_value": "Thuyền Trưởng",
+      "emoji": "🏆"
+    },
+    "summer_predict": {
+      "name": "Nhà Tiên Tri",
+      "description": "Đoán đúng 3 cuộc đua liên tiếp",
+      "condition_type": "boat_race_predict_streak",
+      "target_value": 3,
+      "reward_type": "badge",
+      "reward_value": "🔮",
+      "emoji": "🔮"
+    },
+    "summer_community_100": {
+      "name": "🌊 Thủy Thủ 2026",
+      "description": "Góp phần đạt 100% Community Goal",
+      "condition_type": "community_goal",
+      "target_value": 100,
+      "reward_type": "role",
+      "reward_role_key": "role_summer_2026",
+      "emoji": "🎉"
+    }
+  },
+
   "milestones": [
     {"percent": 25, "reward_type": "seeds", "amount": 150, "announcement": "🌊 Đạt 25%! Tất cả người tham gia nhận +150 hạt giống!"},
     {"percent": 50, "reward_type": "title", "title_key": "thuy_thu", "title_name": "Thủy Thủ", "announcement": "🌊 Đạt 50%! Mở khóa danh hiệu \"Thủy Thủ\"!"},

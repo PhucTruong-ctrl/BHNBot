@@ -212,6 +212,7 @@ class ProfileCog(commands.Cog):
         app_commands.Choice(name="🔤 Nối Từ", value="noitu"),
         app_commands.Choice(name="🦀 Bầu Cua", value="baucua"),
         app_commands.Choice(name="🃏 Xì Dách", value="xidach"),
+        app_commands.Choice(name="🎋 Sự Kiện", value="seasonal"),
     ])
     async def thanhtuu_cmd(
         self,
@@ -219,32 +220,69 @@ class ProfileCog(commands.Cog):
         user: Optional[discord.Member] = None,
         category: Optional[str] = None
     ) -> None:
-        await interaction.response.defer()
+        logger.info(f"[thanhtuu] Command invoked by {interaction.user.id}, target={user}, category={category}")
+        
+        try:
+            await interaction.response.defer()
+            logger.debug("[thanhtuu] Deferred response")
+        except Exception as e:
+            logger.error(f"[thanhtuu] Failed to defer: {e}")
+            return
         
         target = user or interaction.user
+        logger.debug(f"[thanhtuu] Target user: {target.id}")
         
         try:
             with open("data/achievements.json", "r", encoding="utf-8") as f:
                 achievements_data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+            logger.debug(f"[thanhtuu] Loaded achievements.json with {len(achievements_data)} categories")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.error(f"[thanhtuu] Failed to load achievements.json: {e}")
             await interaction.followup.send("❌ Không thể tải dữ liệu thành tựu!", ephemeral=True)
             return
         
+        if category == "seasonal":
+            achievements_data = self._load_seasonal_achievements()
+            if not achievements_data:
+                await interaction.followup.send("❌ Không có sự kiện nào đang hoạt động!", ephemeral=True)
+                return
+        elif category is None:
+            seasonal_data = self._load_seasonal_achievements()
+            if seasonal_data:
+                achievements_data.update(seasonal_data)
+        
         from database_manager import db_manager
         
-        rows = await db_manager.fetchall(
-            "SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = ?",
-            (target.id,)
-        )
-        unlocked_keys = {row["achievement_key"]: row["unlocked_at"] for row in (rows or [])}
+        try:
+            logger.debug(f"[thanhtuu] Querying user_achievements for user_id={target.id}")
+            rows = await db_manager.fetchall(
+                "SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = ?",
+                (target.id,)
+            )
+            logger.debug(f"[thanhtuu] Query returned {len(rows) if rows else 0} rows")
+        except Exception as e:
+            logger.error(f"[thanhtuu] Database query failed: {e}", exc_info=True)
+            await interaction.followup.send("❌ Lỗi truy vấn database!", ephemeral=True)
+            return
         
-        categories_to_show = [category] if category else list(achievements_data.keys())
+        try:
+            unlocked_keys = {row[0]: row[1] for row in (rows or [])}
+            logger.debug(f"[thanhtuu] Unlocked keys: {len(unlocked_keys)}")
+        except Exception as e:
+            logger.error(f"[thanhtuu] Failed to parse rows: {e}, rows={rows}", exc_info=True)
+            await interaction.followup.send("❌ Lỗi xử lý dữ liệu!", ephemeral=True)
+            return
+        
+        categories_to_show = list(achievements_data.keys()) if (category == "seasonal" or not category) else [category]
+        logger.debug(f"[thanhtuu] Categories to show: {categories_to_show}")
         
         pages = []
         for cat in categories_to_show:
             if cat not in achievements_data:
+                logger.debug(f"[thanhtuu] Category '{cat}' not found in achievements_data, skipping")
                 continue
             
+            logger.debug(f"[thanhtuu] Processing category: {cat}")
             cat_achievements = achievements_data[cat]
             cat_emoji = self._get_category_emoji(cat)
             cat_name = self._get_category_name(cat)
@@ -282,25 +320,53 @@ class ProfileCog(commands.Cog):
                     target_val = ach.get("target_value", 0)
                     lines.append(f"🔒 {emoji} **{name}**\n   _{desc}_ • Mục tiêu: {target_val}")
             
-            if len(lines) > 6:
-                mid = len(lines) // 2
-                embed.add_field(name="\u200b", value="\n".join(lines[:mid]), inline=True)
-                embed.add_field(name="\u200b", value="\n".join(lines[mid:]), inline=True)
-            else:
-                embed.add_field(name="Danh sách", value="\n".join(lines) if lines else "Không có thành tựu", inline=False)
+            def chunk_lines(lines: list, max_chars: int = 1000) -> list:
+                chunks = []
+                current_chunk = []
+                current_len = 0
+                
+                for line in lines:
+                    line_len = len(line) + 1
+                    if current_len + line_len > max_chars and current_chunk:
+                        chunks.append("\n".join(current_chunk))
+                        current_chunk = [line]
+                        current_len = line_len
+                    else:
+                        current_chunk.append(line)
+                        current_len += line_len
+                
+                if current_chunk:
+                    chunks.append("\n".join(current_chunk))
+                return chunks
+            
+            chunks = chunk_lines(lines) if lines else ["Không có thành tựu"]
+            for i, chunk in enumerate(chunks):
+                field_name = "Danh sách" if i == 0 else "\u200b"
+                embed.add_field(name=field_name, value=chunk, inline=False)
             
             pages.append(embed)
+            logger.debug(f"[thanhtuu] Built page for category '{cat}'")
+        
+        logger.info(f"[thanhtuu] Built {len(pages)} pages total")
         
         if not pages:
+            logger.warning("[thanhtuu] No pages to show")
             await interaction.followup.send("❌ Không tìm thấy thành tựu nào!", ephemeral=True)
             return
         
-        if len(pages) == 1:
-            await interaction.followup.send(embed=pages[0])
-        else:
-            view = AchievementPaginationView(pages, target.id)
-            pages[0].set_footer(text=f"Trang 1/{len(pages)} • Dùng nút bên dưới để chuyển trang")
-            await interaction.followup.send(embed=pages[0], view=view)
+        try:
+            if len(pages) == 1:
+                logger.debug("[thanhtuu] Sending single page")
+                await interaction.followup.send(embed=pages[0])
+            else:
+                logger.debug("[thanhtuu] Sending paginated view")
+                view = AchievementPaginationView(pages, target.id)
+                pages[0].set_footer(text=f"Trang 1/{len(pages)} • Dùng nút bên dưới để chuyển trang")
+                await interaction.followup.send(embed=pages[0], view=view)
+            logger.info(f"[thanhtuu] Command completed successfully for user {interaction.user.id}")
+        except Exception as e:
+            logger.error(f"[thanhtuu] Failed to send response: {e}", exc_info=True)
+            await interaction.followup.send("❌ Lỗi gửi kết quả!", ephemeral=True)
 
     def _get_category_emoji(self, category: str) -> str:
         mapping = {
@@ -309,6 +375,15 @@ class ProfileCog(commands.Cog):
             "noitu": "🔤",
             "baucua": "🦀",
             "xidach": "🃏",
+            "seasonal": "🎋",
+            "spring": "🌸", "spring_2026": "🌸",
+            "summer": "☀️", "summer_2026": "☀️",
+            "autumn": "🍂", "autumn_2026": "🍂",
+            "winter": "❄️", "winter_2026": "❄️",
+            "halloween": "🎃", "halloween_2026": "🎃",
+            "earthday": "🌍", "earthday_2026": "🌍",
+            "midautumn": "🥮", "midautumn_2026": "🥮",
+            "birthday": "🎂", "birthday_2026": "🎂",
         }
         return mapping.get(category, "🏆")
 
@@ -319,8 +394,40 @@ class ProfileCog(commands.Cog):
             "noitu": "Nối Từ",
             "baucua": "Bầu Cua",
             "xidach": "Xì Dách",
+            "seasonal": "Sự Kiện",
+            "spring": "Lễ Hội Hoa Xuân", "spring_2026": "Lễ Hội Hoa Xuân 2026",
+            "summer": "Lễ Hội Biển", "summer_2026": "Lễ Hội Biển 2026",
+            "autumn": "Lễ Hội Thu Hoạch", "autumn_2026": "Lễ Hội Thu Hoạch 2026",
+            "winter": "Lễ Hội Mùa Đông", "winter_2026": "Lễ Hội Mùa Đông 2026",
+            "halloween": "Lễ Hội Halloween", "halloween_2026": "Lễ Hội Halloween 2026",
+            "earthday": "Ngày Trái Đất", "earthday_2026": "Ngày Trái Đất 2026",
+            "midautumn": "Tết Trung Thu", "midautumn_2026": "Tết Trung Thu 2026",
+            "birthday": "Sinh Nhật Bot", "birthday_2026": "Sinh Nhật Bot 2026",
         }
         return mapping.get(category, category.title())
+
+    def _load_seasonal_achievements(self) -> dict:
+        import glob
+        from pathlib import Path
+        
+        seasonal_data = {}
+        events_dir = Path("data/events")
+        
+        for event_file in events_dir.glob("*.json"):
+            if event_file.name == "registry.json":
+                continue
+            try:
+                with open(event_file, "r", encoding="utf-8") as f:
+                    event_data = json.load(f)
+                
+                if "achievements" in event_data:
+                    event_id = event_data.get("event_id", event_file.stem)
+                    seasonal_data[event_id] = event_data["achievements"]
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning(f"[thanhtuu] Failed to load {event_file}: {e}")
+                continue
+        
+        return seasonal_data
 
 
 class AchievementPaginationView(discord.ui.View):
