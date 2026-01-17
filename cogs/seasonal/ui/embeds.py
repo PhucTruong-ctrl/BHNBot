@@ -243,7 +243,7 @@ def create_event_start_embed(
         value=(
             "`/sukien` - Xem thông tin sự kiện\n"
             "`/sukien cuahang` - Cửa hàng sự kiện\n"
-            "`/sukien nhiemvu` - Nhiệm vụ hàng ngày\n"
+            "`/nhiemvu` - Nhiệm vụ (gồm cả nhiệm vụ sự kiện)\n"
             "`/sukien xephang` - Bảng xếp hạng"
         ),
         inline=False,

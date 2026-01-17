@@ -213,13 +213,14 @@ ls data/events/
 
 **Bước 1:**
 ```
-/sukien nhiemvu
+/nhiemvu
 ```
+> **📝 Note:** Event quests đã được gộp vào `/nhiemvu`. Khi có sự kiện, embed sẽ có thêm section "🎪 Nhiệm vụ Sự Kiện".
 
 **Kỳ vọng:**
-- ✅ Tab "Hàng Ngày" mặc định được chọn
-- ✅ Hiển thị 3 nhiệm vụ ngẫu nhiên (từ 6 loại)
-- ✅ Mỗi nhiệm vụ có: tên, mô tả, tiến độ (0/X), phần thưởng
+- ✅ Hiển thị nhiệm vụ server hàng ngày
+- ✅ Nếu có event active: hiển thị thêm section nhiệm vụ sự kiện
+- ✅ Mỗi nhiệm vụ có: tên, mô tả, tiến độ, phần thưởng
 
 ### 4.2. Chuyển tab nhiệm vụ
 
@@ -241,7 +242,7 @@ ls data/events/
 
 **Bước 2:** Xem lại nhiệm vụ
 ```
-/sukien nhiemvu
+/nhiemvu
 ```
 
 **Kỳ vọng:**
@@ -276,7 +277,7 @@ Nhiệm vụ hàng ngày reset lúc 00:00 UTC.
 
 **Test:**
 - Đợi qua ngày mới hoặc thay đổi ngày hệ thống
-- Chạy `/sukien nhiemvu`
+- Chạy `/nhiemvu`
 
 **Kỳ vọng:**
 - ✅ Nhiệm vụ mới được gán (có thể khác hôm trước)
@@ -1075,7 +1076,7 @@ Một số item có `stock` giới hạn toàn server.
 **Bước 2:** Các lệnh khác
 
 **Kỳ vọng:**
-- ✅ `/sukien nhiemvu` → Lỗi: Không có sự kiện
+- ✅ `/nhiemvu` → Không hiển thị section sự kiện (vì không có event)
 - ✅ `/sukien cuahang` → Lỗi: Không có sự kiện
 - ✅ `/sukien muctieu` → Lỗi: Không có sự kiện
 
@@ -1251,7 +1252,7 @@ Một số item có `stock` giới hạn toàn server.
 ### ✅ Lệnh User
 
 - [ ] `/sukien` - Xem thông tin sự kiện
-- [ ] `/sukien nhiemvu` - Xem và nhận nhiệm vụ
+- [ ] `/nhiemvu` - Xem nhiệm vụ (gồm cả event quests khi có sự kiện)
 - [ ] `/sukien cuahang` - Mua vật phẩm
 - [ ] `/sukien muctieu` - Xem mục tiêu cộng đồng
 - [ ] `/sukien xephang` - Bảng xếp hạng

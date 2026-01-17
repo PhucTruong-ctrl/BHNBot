@@ -265,7 +265,7 @@ class QuestCog(commands.Cog):
             footer_text = "Cùng nhau hoàn thành nhiệm vụ nào!"
         
         if event_section_added:
-            footer_text += " | Dùng /sukien nhiemvu để xem chi tiết nhiệm vụ sự kiện"
+            footer_text += " | Dùng /sukien để xem thông tin sự kiện"
         
         embed.set_footer(text=footer_text)
         

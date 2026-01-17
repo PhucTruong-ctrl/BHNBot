@@ -64,13 +64,15 @@
 | Command | Mô Tả |
 |---------|-------|
 | `/sukien` | Xem sự kiện hiện tại, currency, tiến độ cá nhân |
-| `/sukien nhiemvu` | Xem daily + fixed quests của event |
 | `/sukien shop` | Cửa hàng sự kiện |
 | `/sukien rank` | Bảng xếp hạng currency |
 | `/sukien bosuutap` | Bộ sưu tập cá sự kiện (Kỷ Vật) |
 | `/sukien vuirac` | Vứt rác đúng cách (Earth Day only) |
+| `/nhiemvu` | Xem tất cả nhiệm vụ (daily + event quests) - **Đã gộp** |
 | `/danhhieu` | Xem danh sách title đã unlock |
 | `/danhhieu set <name>` | Đổi title hiển thị trong profile |
+
+> **📝 Note (2026-01):** `/sukien nhiemvu` đã được gộp vào `/nhiemvu`. Event quests hiển thị cùng với daily quests trong một embed thống nhất.
 
 #### Admin Commands
 
@@ -1619,10 +1621,10 @@ data/events/
 - [ ] Scheduler (check start/end, milestone distribution)
 
 #### Phase 2: Quest System (2-3 ngày)
-- [ ] Event quest types (daily + fixed)
-- [ ] Quest progress tracking
-- [ ] Quest reward distribution
-- [ ] /sukien nhiemvu command
+- [x] Event quest types (daily + fixed)
+- [x] Quest progress tracking
+- [x] Quest reward distribution
+- [x] Event quests merged into `/nhiemvu` command (no separate `/sukien nhiemvu`)
 
 #### Phase 3: Community Goal (2 ngày)
 - [ ] Community progress tracking
@@ -1967,11 +1969,12 @@ async def handle_catch_specific_fish(user_id: int, event_id: str, fish_key: str,
 
 #### Scenario 4: Quest System
 ```
-1. /sukien nhiemvu → See daily + fixed quests
+1. /nhiemvu → See daily quests + event quests (merged display)
 2. Complete quest action (e.g., fish 20 times)
 3. Verify progress updates
 4. Verify reward given on completion
 5. Verify daily quest resets at midnight
+6. Verify event quests section appears when event is active
 ```
 
 #### Scenario 5: Minigame Spawn
