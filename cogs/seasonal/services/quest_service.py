@@ -73,7 +73,7 @@ async def init_daily_quests(
         await execute_write(
             """INSERT INTO event_quests 
                (guild_id, user_id, event_id, quest_id, quest_type, quest_data, progress, target, completed, assigned_date)
-               VALUES (?, ?, ?, ?, 'daily', ?, 0, ?, 0, ?)""",
+               VALUES (?, ?, ?, ?, 'daily', ?, 0, ?, FALSE, ?)""",
             (guild_id, user_id, event_id, quest["id"], quest_data, quest["target"], today),
         )
         result.append({
@@ -111,7 +111,7 @@ async def init_fixed_quests(
         await execute_write(
             """INSERT INTO event_quests 
                (guild_id, user_id, event_id, quest_id, quest_type, quest_data, progress, target, completed, assigned_date)
-               VALUES (?, ?, ?, ?, 'fixed', ?, 0, ?, 0, ?)""",
+               VALUES (?, ?, ?, ?, 'fixed', ?, 0, ?, FALSE, ?)""",
             (guild_id, user_id, event_id, quest["id"], quest_data, quest["target"], datetime.now().date().isoformat()),
         )
         result.append({
@@ -147,7 +147,7 @@ async def update_quest_progress(
     """
     quests = await execute_query(
         """SELECT * FROM event_quests 
-           WHERE guild_id = ? AND user_id = ? AND event_id = ? AND completed = 0""",
+           WHERE guild_id = ? AND user_id = ? AND event_id = ? AND completed = FALSE""",
         (guild_id, user_id, event_id),
     )
 
@@ -164,7 +164,7 @@ async def update_quest_progress(
         await execute_write(
             """UPDATE event_quests SET progress = ?, completed = ? 
                WHERE guild_id = ? AND user_id = ? AND event_id = ? AND quest_id = ?""",
-            (new_progress, 1 if new_progress >= quest["target"] else 0, guild_id, user_id, event_id, quest["quest_id"]),
+            (new_progress, new_progress >= quest["target"], guild_id, user_id, event_id, quest["quest_id"]),
         )
 
         if just_completed:
@@ -206,7 +206,7 @@ async def claim_quest_reward(
         await add_currency(guild_id, user_id, event_id, reward_value)
 
     await execute_write(
-        "UPDATE event_quests SET claimed = 1 WHERE guild_id = ? AND user_id = ? AND event_id = ? AND quest_id = ?",
+        "UPDATE event_quests SET claimed = TRUE WHERE guild_id = ? AND user_id = ? AND event_id = ? AND quest_id = ?",
         (guild_id, user_id, event_id, quest_id),
     )
 
@@ -237,8 +237,8 @@ async def get_quest_stats(guild_id: int, user_id: int, event_id: str) -> dict:
     rows = await execute_query(
         """SELECT 
              COUNT(*) as total,
-             SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed,
-             SUM(CASE WHEN claimed = 1 THEN 1 ELSE 0 END) as claimed
+             SUM(CASE WHEN completed = TRUE THEN 1 ELSE 0 END) as completed,
+              SUM(CASE WHEN claimed = TRUE THEN 1 ELSE 0 END) as claimed
            FROM event_quests 
            WHERE guild_id = ? AND user_id = ? AND event_id = ?""",
         (guild_id, user_id, event_id),

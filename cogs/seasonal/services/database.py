@@ -257,6 +257,12 @@ async def init_seasonal_tables() -> None:
     
     migrations = [
         "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS quest_type TEXT DEFAULT 'daily'",
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS quest_data TEXT",
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0",
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS target INTEGER DEFAULT 1",
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS completed INTEGER DEFAULT 0",
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS claimed INTEGER DEFAULT 0",
+        "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS assigned_date TEXT",
     ]
     for migration in migrations:
         try:

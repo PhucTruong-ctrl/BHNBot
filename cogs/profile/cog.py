@@ -234,9 +234,9 @@ class ProfileCog(commands.Cog):
         
         rows = await db_manager.fetchall(
             "SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = ?",
-            target.id
+            (target.id,)
         )
-        unlocked_keys = {row[0]: row[1] for row in (rows or [])}
+        unlocked_keys = {row["achievement_key"]: row["unlocked_at"] for row in (rows or [])}
         
         categories_to_show = [category] if category else list(achievements_data.keys())
         
