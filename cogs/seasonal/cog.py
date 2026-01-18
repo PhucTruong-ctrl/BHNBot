@@ -15,6 +15,7 @@ from .minigames import get_minigame
 from .services import (
     add_currency,
     claim_quest_reward,
+    distribute_milestone_rewards,
     end_event,
     get_active_event,
     get_active_title,
@@ -27,15 +28,19 @@ from .services import (
     get_milestones_reached,
     get_participant_count,
     get_purchase_history,
+    get_quest_stats,
     get_shop_items,
     get_user_titles,
     init_seasonal_tables,
+    reset_community_goal,
     set_active_title,
     set_announcement_message,
     spend_currency,
     start_event,
+    unlock_title,
     update_community_progress,
     update_last_progress,
+    update_quest_progress,
 )
 from .services.database import (
     execute_query,
@@ -677,6 +682,476 @@ class SeasonalEventsCog(commands.Cog):
         except Exception as e:
             logger.error(f"[MINIGAME] Error spawning {minigame_type}: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi spawn minigame: {e}", ephemeral=True)
+
+    @sukien_test_group.command(name="quest", description="Test cập nhật tiến độ quest")
+    @app_commands.describe(
+        quest_type="Loại quest (fish_count, messages_sent, voice_minutes, lixi_sent, ...)",
+        progress="Số lượng thêm vào",
+        user="User (mặc định là bạn)",
+    )
+    async def test_quest(
+        self,
+        interaction: discord.Interaction,
+        quest_type: str,
+        progress: int = 1,
+        user: discord.Member | None = None,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện nào đang chạy!", ephemeral=True)
+            return
+
+        target_user = user or interaction.user
+        completed = await update_quest_progress(
+            interaction.guild.id,
+            target_user.id,
+            active["event_id"],
+            quest_type,
+            progress,
+        )
+
+        if completed:
+            completed_str = ", ".join([q["quest_id"] for q in completed])
+            await interaction.response.send_message(
+                f"✅ +{progress} tiến độ `{quest_type}` cho {target_user.mention}\n"
+                f"🎉 Hoàn thành: {completed_str}"
+            )
+        else:
+            await interaction.response.send_message(
+                f"✅ +{progress} tiến độ `{quest_type}` cho {target_user.mention}"
+            )
+
+    @sukien_test_group.command(name="fish", description="Test thêm cá sự kiện")
+    @app_commands.describe(
+        fish_key="Key của cá (vd: ca_dao, ca_linh, ca_tuyet...)",
+        quantity="Số lượng",
+        user="User (mặc định là bạn)",
+    )
+    async def test_fish(
+        self,
+        interaction: discord.Interaction,
+        fish_key: str,
+        quantity: int = 1,
+        user: discord.Member | None = None,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện nào đang chạy!", ephemeral=True)
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        if event:
+            fish_keys = [f.key for f in event.fish]
+            if fish_key not in fish_keys:
+                await interaction.response.send_message(
+                    f"❌ Không tìm thấy cá `{fish_key}`!\n"
+                    f"Có sẵn: {', '.join(fish_keys)}",
+                    ephemeral=True,
+                )
+                return
+
+        target_user = user or interaction.user
+
+        # Add fish directly to collection
+        for _ in range(quantity):
+            await execute_query(
+                """
+                INSERT INTO event_fish_collection (guild_id, user_id, event_id, fish_key, caught_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                """,
+                (interaction.guild.id, target_user.id, active["event_id"], fish_key),
+            )
+
+        fish_name = fish_key
+        fish_emoji = "🐟"
+        if event:
+            for f in event.fish:
+                if f.key == fish_key:
+                    fish_name = f.name
+                    fish_emoji = f.emoji
+                    break
+
+        await interaction.response.send_message(
+            f"✅ Đã thêm {quantity}x {fish_emoji} **{fish_name}** cho {target_user.mention}"
+        )
+
+    @sukien_test_group.command(name="title", description="Test grant/revoke danh hiệu")
+    @app_commands.describe(
+        action="Hành động",
+        title_key="Key danh hiệu (vd: Ngư dân xuất sắc)",
+        user="User (mặc định là bạn)",
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="grant", value="grant"),
+        app_commands.Choice(name="revoke", value="revoke"),
+        app_commands.Choice(name="list", value="list"),
+    ])
+    async def test_title(
+        self,
+        interaction: discord.Interaction,
+        action: str,
+        title_key: str | None = None,
+        user: discord.Member | None = None,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        target_user = user or interaction.user
+
+        if action == "list":
+            titles = await get_user_titles(target_user.id)
+            if titles:
+                title_list = "\n".join([f"• **{t['title_key']}** (từ {t['event_id']})" for t in titles])
+                await interaction.response.send_message(
+                    f"🏅 Danh hiệu của {target_user.mention}:\n{title_list}",
+                    ephemeral=True,
+                )
+            else:
+                await interaction.response.send_message(
+                    f"❌ {target_user.mention} chưa có danh hiệu nào!",
+                    ephemeral=True,
+                )
+            return
+
+        if not title_key:
+            await interaction.response.send_message("❌ Cần nhập title_key!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        event_id = active["event_id"] if active else "test"
+
+        if action == "grant":
+            success = await unlock_title(target_user.id, title_key, title_key, event_id)
+            if success:
+                await interaction.response.send_message(
+                    f"✅ Đã cấp danh hiệu **{title_key}** cho {target_user.mention}"
+                )
+            else:
+                await interaction.response.send_message(
+                    f"ℹ️ {target_user.mention} đã có danh hiệu **{title_key}**"
+                )
+        else:  # revoke
+            await execute_query(
+                "DELETE FROM user_titles WHERE user_id = $1 AND title_key = $2",
+                (target_user.id, title_key),
+            )
+            await interaction.response.send_message(
+                f"✅ Đã thu hồi danh hiệu **{title_key}** từ {target_user.mention}"
+            )
+
+    @sukien_test_group.command(name="reward", description="Test phát thưởng milestone")
+    @app_commands.describe(milestone_percent="Mốc % cần phát thưởng (25, 50, 75, 100)")
+    async def test_reward(
+        self,
+        interaction: discord.Interaction,
+        milestone_percent: int,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện nào đang chạy!", ephemeral=True)
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        if not event:
+            await interaction.response.send_message("❌ Không tìm thấy cấu hình sự kiện!", ephemeral=True)
+            return
+
+        milestone_config = None
+        for m in event.milestones:
+            if m.percent == milestone_percent:
+                milestone_config = m
+                break
+
+        if not milestone_config:
+            available = [str(m.percent) for m in event.milestones]
+            await interaction.response.send_message(
+                f"❌ Không tìm thấy milestone {milestone_percent}%!\n"
+                f"Có sẵn: {', '.join(available)}%",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer()
+
+        from .services.community_goal_service import Milestone
+        milestone = Milestone(
+            percentage=milestone_config.percent,
+            title_key=milestone_config.title_key,
+            currency_bonus=milestone_config.amount or 0,
+            description=milestone_config.announcement or f"Milestone {milestone_config.percent}%",
+        )
+
+        rewarded_users = await distribute_milestone_rewards(
+            interaction.guild.id,
+            active["event_id"],
+            milestone,
+            self.bot,
+        )
+
+        await interaction.followup.send(
+            f"✅ Đã phát thưởng milestone {milestone_percent}% cho {len(rewarded_users)} người!"
+        )
+
+    @sukien_test_group.command(name="reset", description="Test reset dữ liệu sự kiện")
+    @app_commands.describe(
+        target="Mục tiêu reset",
+        user="User cần reset (chỉ dùng cho user-data)",
+    )
+    @app_commands.choices(target=[
+        app_commands.Choice(name="community-goal", value="community"),
+        app_commands.Choice(name="user-data", value="user"),
+        app_commands.Choice(name="all-quests", value="quests"),
+        app_commands.Choice(name="all-fish", value="fish"),
+        app_commands.Choice(name="all-purchases", value="purchases"),
+    ])
+    async def test_reset(
+        self,
+        interaction: discord.Interaction,
+        target: str,
+        user: discord.Member | None = None,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện nào đang chạy!", ephemeral=True)
+            return
+
+        event_id = active["event_id"]
+
+        if target == "community":
+            await reset_community_goal(interaction.guild.id, event_id)
+            await interaction.response.send_message("✅ Đã reset Community Goal về 0!")
+
+        elif target == "user":
+            if not user:
+                await interaction.response.send_message("❌ Cần chọn user để reset!", ephemeral=True)
+                return
+
+            # Reset user participation
+            await execute_query(
+                "DELETE FROM event_participation WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, user.id, event_id),
+            )
+            # Reset user quests
+            await execute_query(
+                "DELETE FROM event_quests WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, user.id, event_id),
+            )
+            # Reset user fish
+            await execute_query(
+                "DELETE FROM event_fish_collection WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, user.id, event_id),
+            )
+            # Reset user purchases
+            await execute_query(
+                "DELETE FROM event_shop_purchases WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, user.id, event_id),
+            )
+
+            await interaction.response.send_message(
+                f"✅ Đã reset toàn bộ dữ liệu sự kiện của {user.mention}!"
+            )
+
+        elif target == "quests":
+            target_user = user or interaction.user
+            await execute_query(
+                "DELETE FROM event_quests WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, target_user.id, event_id),
+            )
+            await interaction.response.send_message(
+                f"✅ Đã reset quests của {target_user.mention}!"
+            )
+
+        elif target == "fish":
+            target_user = user or interaction.user
+            await execute_query(
+                "DELETE FROM event_fish_collection WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, target_user.id, event_id),
+            )
+            await interaction.response.send_message(
+                f"✅ Đã reset bộ sưu tập cá của {target_user.mention}!"
+            )
+
+        elif target == "purchases":
+            target_user = user or interaction.user
+            await execute_query(
+                "DELETE FROM event_shop_purchases WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
+                (interaction.guild.id, target_user.id, event_id),
+            )
+            await interaction.response.send_message(
+                f"✅ Đã reset lịch sử mua hàng của {target_user.mention}!"
+            )
+
+    @sukien_test_group.command(name="debug", description="Xem dữ liệu sự kiện của user")
+    @app_commands.describe(user="User cần xem (mặc định là bạn)")
+    async def test_debug(
+        self,
+        interaction: discord.Interaction,
+        user: discord.Member | None = None,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện nào đang chạy!", ephemeral=True)
+            return
+
+        target_user = user or interaction.user
+        event_id = active["event_id"]
+
+        # Get participation data
+        currency = await get_currency(interaction.guild.id, target_user.id, event_id)
+
+        # Get quest stats
+        quest_stats = await get_quest_stats(interaction.guild.id, target_user.id, event_id)
+
+        # Get fish collection
+        fish_rows = await execute_query(
+            """
+            SELECT fish_key, COUNT(*) as count
+            FROM event_fish_collection
+            WHERE guild_id = $1 AND user_id = $2 AND event_id = $3
+            GROUP BY fish_key
+            """,
+            (interaction.guild.id, target_user.id, event_id),
+        )
+        fish_count = sum(row["count"] for row in fish_rows)
+        fish_types = len(fish_rows)
+
+        # Get titles
+        titles = await get_user_titles(target_user.id)
+        title_count = len(titles)
+
+        # Get purchases
+        purchase_rows = await execute_query(
+            """
+            SELECT COUNT(*) as count, SUM(quantity) as total_qty
+            FROM event_shop_purchases
+            WHERE guild_id = $1 AND user_id = $2 AND event_id = $3
+            """,
+            (interaction.guild.id, target_user.id, event_id),
+        )
+        purchase_count = purchase_rows[0]["count"] if purchase_rows else 0
+        purchase_qty = purchase_rows[0]["total_qty"] or 0 if purchase_rows else 0
+
+        event = self.event_manager.get_event(event_id)
+        emoji = event.currency_emoji if event else "💰"
+
+        embed = discord.Embed(
+            title=f"🔍 Debug Data - {target_user.display_name}",
+            color=discord.Color.blue(),
+        )
+        embed.add_field(name="💰 Tiền tệ", value=f"{currency} {emoji}", inline=True)
+        embed.add_field(
+            name="📋 Quests",
+            value=f"{quest_stats.get('completed', 0)}/{quest_stats.get('total', 0)} hoàn thành",
+            inline=True,
+        )
+        embed.add_field(
+            name="🎣 Cá",
+            value=f"{fish_count} con ({fish_types} loại)",
+            inline=True,
+        )
+        embed.add_field(name="🏅 Danh hiệu", value=str(title_count), inline=True)
+        embed.add_field(
+            name="🛒 Mua hàng",
+            value=f"{purchase_count} lần ({purchase_qty} items)",
+            inline=True,
+        )
+        embed.set_footer(text=f"Event: {event_id}")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @sukien_test_group.command(name="simulate", description="Giả lập hành động để test quest")
+    @app_commands.describe(
+        action="Hành động giả lập",
+        count="Số lần thực hiện",
+        user="User (mặc định là bạn)",
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="gửi tin nhắn (messages_sent)", value="messages_sent"),
+        app_commands.Choice(name="voice (voice_minutes)", value="voice_minutes"),
+        app_commands.Choice(name="câu cá (fish_count)", value="fish_count"),
+        app_commands.Choice(name="lì xì (lixi_sent)", value="lixi_sent"),
+        app_commands.Choice(name="tìm kho báu (treasure_found)", value="treasure_found"),
+        app_commands.Choice(name="đua thuyền (boat_race_participated)", value="boat_race_participated"),
+        app_commands.Choice(name="thu lá (leaves_collected)", value="leaves_collected"),
+        app_commands.Choice(name="pha trà (tea_brewed)", value="tea_brewed"),
+        app_commands.Choice(name="gửi thư (letters_sent)", value="letters_sent"),
+        app_commands.Choice(name="săn ma (ghosts_caught)", value="ghosts_caught"),
+        app_commands.Choice(name="trick/treat (trick_treat_count)", value="trick_treat_count"),
+        app_commands.Choice(name="xây người tuyết (snowman_contributed)", value="snowman_contributed"),
+        app_commands.Choice(name="reaction (reaction_count)", value="reaction_count"),
+    ])
+    async def test_simulate(
+        self,
+        interaction: discord.Interaction,
+        action: str,
+        count: int = 1,
+        user: discord.Member | None = None,
+    ) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện nào đang chạy!", ephemeral=True)
+            return
+
+        target_user = user or interaction.user
+
+        # Call update_quest_progress with the action type
+        completed = await update_quest_progress(
+            interaction.guild.id,
+            target_user.id,
+            active["event_id"],
+            action,
+            count,
+        )
+
+        action_names = {
+            "messages_sent": "gửi tin nhắn",
+            "voice_minutes": "voice",
+            "fish_count": "câu cá",
+            "lixi_sent": "phát lì xì",
+            "treasure_found": "tìm kho báu",
+            "boat_race_participated": "đua thuyền",
+            "leaves_collected": "thu lá",
+            "tea_brewed": "pha trà",
+            "letters_sent": "gửi thư",
+            "ghosts_caught": "săn ma",
+            "trick_treat_count": "trick or treat",
+            "snowman_contributed": "xây người tuyết",
+            "reaction_count": "reaction",
+        }
+        action_name = action_names.get(action, action)
+
+        result_msg = f"✅ Đã giả lập {count}x **{action_name}** cho {target_user.mention}"
+
+        if completed:
+            completed_str = ", ".join([q["quest_id"] for q in completed])
+            result_msg += f"\n🎉 Hoàn thành quest: {completed_str}"
+
+        await interaction.response.send_message(result_msg)
 
     sukien_admin_group = app_commands.Group(
         name="sukien-admin",

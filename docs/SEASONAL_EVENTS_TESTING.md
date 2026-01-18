@@ -230,43 +230,64 @@ ls data/events/
 - ✅ Hiển thị nhiệm vụ cố định (achievement)
 - ✅ Nhiệm vụ có target lớn hơn (collect 100 fish, etc.)
 
-### 4.3. Cập nhật tiến độ nhiệm vụ
+### 4.3. Cập nhật tiến độ nhiệm vụ (Admin Test)
 
-> **⚠️ Note:** Không có lệnh `/sukien-test quest`. Tiến độ nhiệm vụ sự kiện được cập nhật tự động khi user thực hiện hành động tương ứng (câu cá, góp mục tiêu, v.v.).
+> **✅ NEW:** Sử dụng lệnh `/sukien-test quest` để test cập nhật tiến độ quest.
 
-**Test thủ công:**
-1. Câu cá: `/cauca` → Quest "Câu X cá" tự động cập nhật
-2. Góp mục tiêu: `/sukien-test milestone progress:100` → Quest "Góp vào mục tiêu" cập nhật
-
-**Bước 1:** Thực hiện hành động tương ứng với quest
-
-**Bước 2:** Xem lại nhiệm vụ
+**Bước 1:** Cập nhật quest loại câu cá
 ```
-/nhiemvu
+/sukien-test quest quest_type:fish_count progress:5
 ```
 
 **Kỳ vọng:**
-- ✅ Tiến độ hiển thị đúng
+- ✅ Thông báo: "+5 tiến độ fish_count cho @User"
+- ✅ Nếu hoàn thành: hiển thị quest đã hoàn thành
 
-### 4.4. Hoàn thành nhiệm vụ
+**Bước 2:** Cập nhật quest cho user khác
+```
+/sukien-test quest quest_type:messages_sent progress:10 user:@OtherUser
+```
 
-Nhiệm vụ sự kiện hoàn thành tự động khi đạt target.
+**Các quest_type có sẵn:**
+- `fish_count` - Câu cá
+- `messages_sent` - Gửi tin nhắn
+- `voice_minutes` - Voice chat
+- `lixi_sent` - Phát lì xì
+- `treasure_found` - Tìm kho báu
+- `boat_race_participated` - Đua thuyền
+- `leaves_collected` - Thu lá
+- `tea_brewed` - Pha trà
+- `letters_sent` - Gửi thư
+- `ghosts_caught` - Săn ma
+- `trick_treat_count` - Trick or treat
+- `snowman_contributed` - Xây người tuyết
+- `reaction_count` - Reaction
 
-**Test:** Thực hiện đủ số lần yêu cầu (ví dụ: câu đủ 20 cá)
+### 4.4. Giả lập hành động quest (Admin Test)
 
-**Bước 1:** Xem nhiệm vụ
+> **✅ NEW:** Sử dụng lệnh `/sukien-test simulate` để giả lập hành động.
+
+**Bước 1:** Giả lập voice 30 phút
+```
+/sukien-test simulate action:voice_minutes count:30
+```
 
 **Kỳ vọng:**
-- ✅ Trạng thái: "✅ Hoàn thành"
-- ✅ Phần thưởng đã được tự động cộng
+- ✅ Cập nhật quest `voice_minutes` +30
+- ✅ Thông báo các quest đã hoàn thành (nếu có)
 
-### 4.5. Phần thưởng nhiệm vụ
+### 4.5. Reset nhiệm vụ để test lại (Admin)
 
-Phần thưởng được cộng tự động khi hoàn thành nhiệm vụ (không cần bấm claim).
+> **✅ NEW:** Sử dụng lệnh `/sukien-test reset` để reset quests.
+
+**Bước 1:**
+```
+/sukien-test reset target:all-quests user:@TestUser
+```
 
 **Kỳ vọng:**
-- ✅ Số dư tự động tăng khi hoàn thành
-- ✅ Thông báo (nếu có): "+50 🌸"
+- ✅ Xóa tất cả quest progress của user
+- ✅ User có thể nhận quest mới
 
 ### 4.6. Reset nhiệm vụ hàng ngày
 
@@ -325,7 +346,35 @@ Nhiệm vụ hàng ngày reset lúc 00:00 UTC.
 - ✅ Tất cả người tham gia nhận bonus (currency hoặc item)
 - ✅ Mốc 25% chuyển thành "✅ Đã đạt"
 
-### 5.4. Đạt mốc 50%, 75%, 100%
+### 5.4. Test phát thưởng milestone thủ công (Admin)
+
+> **✅ NEW:** Sử dụng `/sukien-test reward` để phát thưởng milestone mà không cần đạt tiến độ.
+
+**Bước 1:**
+```
+/sukien-test reward milestone_percent:50
+```
+
+**Kỳ vọng:**
+- ✅ Thông báo: "Đã phát thưởng milestone 50% cho X người!"
+- ✅ Tất cả người tham gia nhận thưởng của mốc 50%
+
+**Lưu ý:** Milestone phải tồn tại trong config (thường là 25, 50, 75, 100).
+
+### 5.5. Reset mục tiêu cộng đồng (Admin)
+
+> **✅ NEW:** Sử dụng `/sukien-test reset` để reset community goal.
+
+**Bước 1:**
+```
+/sukien-test reset target:community-goal
+```
+
+**Kỳ vọng:**
+- ✅ Thông báo: "Đã reset Community Goal về 0!"
+- ✅ Progress bar reset về 0%
+
+### 5.6. Đạt mốc 50%, 75%, 100%
 
 Lặp lại bước 5.3 với các mốc:
 - 50%: 25,000
@@ -432,7 +481,35 @@ Một số item có `stock` giới hạn toàn server.
 **Kỳ vọng (chưa có danh hiệu):**
 - ✅ Thông báo: "Bạn chưa mở khóa danh hiệu nào!"
 
-### 7.2. Mở khóa danh hiệu qua milestone
+### 7.2. Test grant/revoke danh hiệu (Admin)
+
+> **✅ NEW:** Sử dụng lệnh `/sukien-test title` để quản lý danh hiệu.
+
+**Bước 1:** Xem danh hiệu của user
+```
+/sukien-test title action:list user:@TestUser
+```
+
+**Kỳ vọng:**
+- ✅ Hiển thị danh sách danh hiệu đã mở khóa
+
+**Bước 2:** Grant danh hiệu
+```
+/sukien-test title action:grant title_key:Người Hái Hoa user:@TestUser
+```
+
+**Kỳ vọng:**
+- ✅ Thông báo: "Đã cấp danh hiệu **Người Hái Hoa** cho @TestUser"
+
+**Bước 3:** Revoke danh hiệu
+```
+/sukien-test title action:revoke title_key:Người Hái Hoa user:@TestUser
+```
+
+**Kỳ vọng:**
+- ✅ Thông báo: "Đã thu hồi danh hiệu **Người Hái Hoa** từ @TestUser"
+
+### 7.3. Mở khóa danh hiệu qua milestone
 
 **Bước 1:** Đạt mốc 75% (xem phần 5.4)
 
@@ -503,30 +580,31 @@ Một số item có `stock` giới hạn toàn server.
 - ✅ Tất cả hiển thị: "❓ ??? x0"
 - ✅ Tiến độ: "0/7 loại cá"
 
-### 8.2. Câu cá sự kiện
+### 8.2. Thêm cá sự kiện (Admin Test)
 
-> **⚠️ Note:** Không có lệnh `/sukien-test fish`. Cá sự kiện được thêm tự động khi user câu cá bình thường.
+> **✅ NEW:** Sử dụng lệnh `/sukien-test fish` để thêm cá vào bộ sưu tập.
 
-**Test:** Câu cá trong khi có event active
+**Bước 1:** Thêm cá cho mình
 ```
-/cauca
-```
-
-**Kỳ vọng (15% cơ hội):**
-- ✅ Có thể câu được cá sự kiện
-- ✅ Thông báo: "🎉 Bạn câu được cá sự kiện: **Cá Đào**! +10 🌸"
-- ✅ Cá tự động thêm vào bộ sưu tập
-
-**Bước 2:** Xem bộ sưu tập
-```
-/sukien bosuutap
+/sukien-test fish fish_key:ca_dao quantity:3
 ```
 
 **Kỳ vọng:**
-- ✅ Cá "Cá Đào" hiển thị: "✅ 🐡 **Cá Đào** (⭐) x1"
-- ✅ Tiến độ: "1/7 loại cá"
+- ✅ Thông báo: "Đã thêm 3x 🐡 **Cá Đào** cho @User"
 
-### 8.3. Câu cá mới vs cá đã có
+**Bước 2:** Thêm cá cho user khác
+```
+/sukien-test fish fish_key:ca_linh quantity:1 user:@OtherUser
+```
+
+**Các fish_key theo sự kiện:**
+- **Spring:** ca_dao, ca_linh, ca_hoa, ca_ngu_sac, ca_phuoc, ca_rong_vang, ca_than_xuan
+- **Summer:** ca_sao_bien, ca_than_bien, ca_san_ho, ca_oc_bien, ca_muc, ca_kim_cuong, ca_vang
+- **Autumn:** ca_la_phong, ca_phuong_hoang, ca_rong_thu, ca_vang_thu, ca_ngoc_bich
+- **Winter:** ca_tuyet, ca_ong_gia_noel, ca_bang_gia, ca_bac_cuc
+- **Halloween:** ca_bi_ngo, ca_phu_thuy, ca_zombie, ca_ma_ca_rong, ca_da_quai
+
+### 8.3. Câu cá sự kiện (tự động)
 
 **Cá mới:**
 - ✅ Thông báo: "🆕 Cá mới trong bộ sưu tập!"
@@ -1242,19 +1320,23 @@ Sau khi đủ người đăng ký hoặc hết thời gian đăng ký:
 
 ### ✅ Lệnh Admin Test
 
-> **⚠️ QUAN TRỌNG:** Chỉ có các lệnh sau thực sự tồn tại. Các lệnh khác trong doc cũ đã bị loại bỏ.
+> **📋 Danh sách đầy đủ:** 12 lệnh test có sẵn để kiểm tra mọi khía cạnh của seasonal events.
 
+**Lệnh cơ bản:**
 - [ ] `/sukien-test start event_id:X` - Bắt đầu sự kiện
 - [ ] `/sukien-test end` - Kết thúc sự kiện
 - [ ] `/sukien-test currency action:X amount:Y` - Thao tác tiền tệ (add/spend/check)
 - [ ] `/sukien-test milestone progress:X` - Thêm tiến độ mục tiêu cộng đồng
 - [ ] `/sukien-test minigame minigame_type:X` - Spawn minigame thủ công
 
-**Lệnh KHÔNG tồn tại (đã loại bỏ khỏi checklist):**
-- ❌ `/sukien-test quest` - Quest tự động cập nhật, không có lệnh test
-- ❌ `/sukien-test fish` - Cá sự kiện qua câu cá, không có lệnh test
-- ❌ `/sukien-test title` - Danh hiệu qua milestone, không có lệnh test
-- ❌ `/sukien-test reset` - Không có lệnh reset
+**Lệnh test nâng cao (MỚI):**
+- [ ] `/sukien-test quest quest_type:X progress:Y [user:@U]` - Cập nhật tiến độ quest theo loại
+- [ ] `/sukien-test fish fish_key:X quantity:Y [user:@U]` - Thêm cá sự kiện vào bộ sưu tập
+- [ ] `/sukien-test title action:X title_key:Y [user:@U]` - Grant/revoke/list danh hiệu
+- [ ] `/sukien-test reward milestone_percent:X` - Phát thưởng milestone thủ công
+- [ ] `/sukien-test reset target:X [user:@U]` - Reset dữ liệu (community/user/quests/fish/purchases)
+- [ ] `/sukien-test debug [user:@U]` - Xem debug data của user (tiền, quest, cá, danh hiệu, mua hàng)
+- [ ] `/sukien-test simulate action:X count:Y [user:@U]` - Giả lập hành động quest (messages_sent, voice_minutes, fish_count, etc.)
 
 ### ✅ Services
 
@@ -1331,6 +1413,34 @@ Sau khi đủ người đăng ký hoặc hết thời gian đăng ký:
 ---
 
 ## Ghi Chú Test
+
+### Debug User Data
+
+> **✅ NEW:** Sử dụng `/sukien-test debug` để xem dữ liệu chi tiết của user.
+
+```
+/sukien-test debug user:@TestUser
+```
+
+**Kỳ vọng:**
+- ✅ Embed hiển thị:
+  - 💰 Tiền tệ: số dư hiện tại
+  - 📋 Quests: X/Y hoàn thành
+  - 🎣 Cá: X con (Y loại)
+  - 🏅 Danh hiệu: số lượng
+  - 🛒 Mua hàng: X lần (Y items)
+
+### Reset toàn bộ user data
+
+> **✅ NEW:** Sử dụng `/sukien-test reset` với target `user-data`.
+
+```
+/sukien-test reset target:user-data user:@TestUser
+```
+
+**Kỳ vọng:**
+- ✅ Xóa: participation, quests, fish, purchases
+- ✅ User bắt đầu lại từ đầu
 
 ### Môi trường test:
 - Sử dụng server test riêng

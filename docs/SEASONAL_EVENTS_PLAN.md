@@ -1924,19 +1924,45 @@ async def handle_catch_specific_fish(user_id: int, event_id: str, fish_key: str,
 
 ### 17.1 Test Commands
 
+> **📋 UPDATED (2026-01):** Đầy đủ 12 lệnh test cho mọi khía cạnh của seasonal events.
+
+**Lệnh cơ bản:**
 ```
 /sukien-test start <event_id>      # Force start any event (bypass date check)
 /sukien-test end                    # Force end current event
 /sukien-test currency <action> <amount>  # Add/spend/check currency (action: add/spend/check)
 /sukien-test milestone <progress>   # Add progress to community goal
 /sukien-test minigame <name>        # Spawn a minigame now
+```
 
-# NOTE (2026-01): Các lệnh sau KHÔNG TỒN TẠI (quest/fish/title được xử lý tự động):
-# /sukien-test goal       → Dùng /sukien-test milestone thay thế
-# /sukien-test quest      → Quest progress tự động cập nhật
-# /sukien-test fish       → Cá sự kiện qua fishing hook
-# /sukien-test title      → Title qua milestone
-# /sukien-test reset      → Không có lệnh này
+**Lệnh nâng cao (MỚI THÊM):**
+```
+/sukien-test quest <quest_type> <progress> [user]    # Update quest progress
+  # quest_type: fish_count, messages_sent, voice_minutes, lixi_sent, 
+  #             treasure_found, boat_race_participated, leaves_collected,
+  #             tea_brewed, letters_sent, ghosts_caught, trick_treat_count,
+  #             snowman_contributed, reaction_count
+
+/sukien-test fish <fish_key> <quantity> [user]       # Add event fish to collection
+  # fish_key: ca_dao, ca_linh, ca_tuyet, ca_ong_gia_noel, etc.
+
+/sukien-test title <action> <title_key> [user]       # Grant/revoke/list titles
+  # action: grant, revoke, list
+
+/sukien-test reward <milestone_percent>              # Distribute milestone rewards
+  # milestone_percent: 25, 50, 75, 100
+
+/sukien-test reset <target> [user]                   # Reset event data
+  # target: community-goal, user-data, all-quests, all-fish, all-purchases
+
+/sukien-test debug [user]                            # View user event data
+  # Shows: currency, quests, fish, titles, purchases
+
+/sukien-test simulate <action> <count> [user]        # Simulate quest actions
+  # action: messages_sent, voice_minutes, fish_count, lixi_sent,
+  #         treasure_found, boat_race_participated, leaves_collected,
+  #         tea_brewed, letters_sent, ghosts_caught, trick_treat_count,
+  #         snowman_contributed, reaction_count
 ```
 
 ### 17.2 Test Scenarios
@@ -1972,14 +1998,41 @@ async def handle_catch_specific_fish(user_id: int, event_id: str, fish_key: str,
 #### Scenario 4: Quest System
 ```
 1. /nhiemvu → See daily quests + event quests (merged display)
-2. Complete quest action (e.g., fish 20 times)
-3. Verify progress updates
-4. Verify reward given on completion
-5. Verify daily quest resets at midnight
-6. Verify event quests section appears when event is active
+2. /sukien-test quest quest_type:fish_count progress:5 → Test manual progress update
+3. /sukien-test simulate action:messages_sent count:10 → Simulate chat activity
+4. Verify progress updates in /nhiemvu
+5. Verify reward given on completion
+6. /sukien-test reset target:all-quests → Reset to test again
+7. Verify event quests section appears when event is active
 ```
 
-#### Scenario 5: Minigame Spawn
+#### Scenario 5: Fish Collection Testing
+```
+1. /sukien-test fish fish_key:ca_dao quantity:3 → Add 3 event fish
+2. /sukien bosuutap → Verify fish appears in collection
+3. /sukien-test fish fish_key:ca_linh quantity:1 user:@OtherUser → Add for other user
+4. /sukien-test debug user:@OtherUser → Check their fish count
+5. /sukien-test reset target:all-fish → Reset fish collection
+```
+
+#### Scenario 6: Title Management Testing
+```
+1. /sukien-test title action:list → View current titles
+2. /sukien-test title action:grant title_key:Người Hái Hoa → Grant title
+3. /danhhieu xem → Verify title appears
+4. /sukien-test title action:revoke title_key:Người Hái Hoa → Revoke title
+5. /danhhieu xem → Verify title removed
+```
+
+#### Scenario 7: User Data Debug & Reset
+```
+1. /sukien-test debug → View your own debug data
+2. /sukien-test debug user:@TestUser → View other user's data
+3. /sukien-test reset target:user-data user:@TestUser → Full reset
+4. /sukien-test debug user:@TestUser → Verify all data cleared
+```
+
+#### Scenario 8: Minigame Spawn
 ```
 1. /sukien-test minigame lixi_auto
 2. Verify embed appears in kenh_sukien_auto
