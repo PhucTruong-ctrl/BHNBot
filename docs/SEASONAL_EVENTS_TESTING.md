@@ -230,15 +230,15 @@ ls data/events/
 - ✅ Hiển thị nhiệm vụ cố định (achievement)
 - ✅ Nhiệm vụ có target lớn hơn (collect 100 fish, etc.)
 
-### 4.3. Cập nhật tiến độ nhiệm vụ (Admin test)
+### 4.3. Cập nhật tiến độ nhiệm vụ
 
-**Bước 1:**
-```
-/sukien-test quest type:catch_fish progress:5
-```
+> **⚠️ Note:** Không có lệnh `/sukien-test quest`. Tiến độ nhiệm vụ sự kiện được cập nhật tự động khi user thực hiện hành động tương ứng (câu cá, góp mục tiêu, v.v.).
 
-**Kỳ vọng:**
-- ✅ Tiến độ nhiệm vụ "Câu X cá" tăng 5
+**Test thủ công:**
+1. Câu cá: `/cauca` → Quest "Câu X cá" tự động cập nhật
+2. Góp mục tiêu: `/sukien-test milestone progress:100` → Quest "Góp vào mục tiêu" cập nhật
+
+**Bước 1:** Thực hiện hành động tương ứng với quest
 
 **Bước 2:** Xem lại nhiệm vụ
 ```
@@ -246,30 +246,27 @@ ls data/events/
 ```
 
 **Kỳ vọng:**
-- ✅ Tiến độ hiển thị: 5/X
+- ✅ Tiến độ hiển thị đúng
 
 ### 4.4. Hoàn thành nhiệm vụ
 
-**Bước 1:** Đẩy tiến độ đến target
-```
-/sukien-test quest type:catch_fish progress:100
-```
+Nhiệm vụ sự kiện hoàn thành tự động khi đạt target.
 
-**Bước 2:** Xem nhiệm vụ
+**Test:** Thực hiện đủ số lần yêu cầu (ví dụ: câu đủ 20 cá)
 
-**Kỳ vọng:**
-- ✅ Nút "✅ Nhận" xuất hiện (trước đó là disabled)
-- ✅ Trạng thái: "Hoàn thành"
-
-### 4.5. Nhận thưởng nhiệm vụ
-
-**Bước 1:** Bấm nút "✅ Nhận"
+**Bước 1:** Xem nhiệm vụ
 
 **Kỳ vọng:**
-- ✅ Thông báo ephemeral: "Nhận thành công +50 🌸"
-- ✅ Số dư tăng lên
-- ✅ Nút chuyển thành "✓ Đã nhận" (disabled)
-- ✅ Không thể bấm lần 2
+- ✅ Trạng thái: "✅ Hoàn thành"
+- ✅ Phần thưởng đã được tự động cộng
+
+### 4.5. Phần thưởng nhiệm vụ
+
+Phần thưởng được cộng tự động khi hoàn thành nhiệm vụ (không cần bấm claim).
+
+**Kỳ vọng:**
+- ✅ Số dư tự động tăng khi hoàn thành
+- ✅ Thông báo (nếu có): "+50 🌸"
 
 ### 4.6. Reset nhiệm vụ hàng ngày
 
@@ -304,7 +301,7 @@ Nhiệm vụ hàng ngày reset lúc 00:00 UTC.
 
 **Bước 1:** Thêm tiến độ
 ```
-/sukien-test goal progress:10000
+/sukien-test milestone progress:10000
 ```
 
 **Kỳ vọng:**
@@ -319,7 +316,7 @@ Nhiệm vụ hàng ngày reset lúc 00:00 UTC.
 
 **Bước 1:**
 ```
-/sukien-test goal progress:2500
+/sukien-test milestone progress:2500
 ```
 (Tổng = 12,500 = 25%)
 
@@ -506,32 +503,30 @@ Một số item có `stock` giới hạn toàn server.
 - ✅ Tất cả hiển thị: "❓ ??? x0"
 - ✅ Tiến độ: "0/7 loại cá"
 
-### 8.2. Câu cá sự kiện (mô phỏng)
+### 8.2. Câu cá sự kiện
 
-**Bước 1:** Thêm cá vào collection (Admin test)
-```
-/sukien-test fish key:ca_dao amount:1
-```
+> **⚠️ Note:** Không có lệnh `/sukien-test fish`. Cá sự kiện được thêm tự động khi user câu cá bình thường.
 
-**Bước 2:** Xem lại bộ sưu tập
-
-**Kỳ vọng:**
-- ✅ Cá "Cá Đào" hiển thị: "✅ 🐡 **Cá Đào** (⭐) x1"
-- ✅ Tiến độ: "1/7 loại cá"
-
-### 8.3. Câu cá qua fishing hook (integration)
-
-**Bước 1:** Đi câu cá bình thường
+**Test:** Câu cá trong khi có event active
 ```
 /cauca
 ```
 
 **Kỳ vọng (15% cơ hội):**
-- ✅ Có thể nhận được cá sự kiện
+- ✅ Có thể câu được cá sự kiện
 - ✅ Thông báo: "🎉 Bạn câu được cá sự kiện: **Cá Đào**! +10 🌸"
-- ✅ Cá được thêm vào bộ sưu tập
+- ✅ Cá tự động thêm vào bộ sưu tập
 
-### 8.4. Câu cá mới vs cá đã có
+**Bước 2:** Xem bộ sưu tập
+```
+/sukien bosuutap
+```
+
+**Kỳ vọng:**
+- ✅ Cá "Cá Đào" hiển thị: "✅ 🐡 **Cá Đào** (⭐) x1"
+- ✅ Tiến độ: "1/7 loại cá"
+
+### 8.3. Câu cá mới vs cá đã có
 
 **Cá mới:**
 - ✅ Thông báo: "🆕 Cá mới trong bộ sưu tập!"
@@ -718,19 +713,19 @@ Một số item có `stock` giới hạn toàn server.
 
 ### 12.1. Thư Cảm Ơn (thank_letter)
 
-**Bước 1:**
+> **⚠️ Note:** Tính năng này hoạt động qua minigame auto-spawn, không có lệnh thủ công.
+
+**Trigger (Admin):**
 ```
-/sukien camonsend user:@NgườiNhận
+/sukien-test minigame minigame_type:thank_letter
 ```
 
-**Kỳ vọng:**
+**User gửi thư:**
+- ✅ Bấm nút trong embed minigame
 - ✅ Modal xuất hiện: "Gửi Thư Cảm Ơn"
 - ✅ TextInput: "Lời cảm ơn của bạn" (10-500 ký tự)
 
-**Bước 2:** Nhập lời cảm ơn và gửi
-
-**Kỳ vọng:**
-- ✅ Thông báo: "Đã gửi thư cảm ơn đến @NgườiNhận!"
+**Sau khi gửi:**
 - ✅ Người gửi: +20 🍂
 - ✅ Người nhận: +10 🍂
 - ✅ Tiến độ cộng đồng +1
@@ -756,13 +751,15 @@ Một số item có `stock` giới hạn toàn server.
 
 ### 12.3. Pha Trà (tea_brewing)
 
-**Bước 1:**
+> **⚠️ Note:** Tính năng này hoạt động qua minigame auto-spawn, không có lệnh thủ công.
+
+**Trigger (Admin):**
 ```
-/sukien phatra
+/sukien-test minigame minigame_type:tea_brewing
 ```
 
-**Kỳ vọng:**
-- ✅ Minigame pha trà bắt đầu
+**User pha trà:**
+- ✅ Bấm nút trong embed minigame
 - ✅ Các bước: Chọn lá trà → Đun nước → Pha → Đợi
 - ✅ Thời gian mỗi bước
 
@@ -770,64 +767,51 @@ Một số item có `stock` giới hạn toàn server.
 - ✅ +50 🍂
 - ✅ Cooldown 4 giờ
 
-**Pha lại trong cooldown:**
-- ✅ Lỗi: "Bạn cần đợi X giờ nữa!"
-
 ---
 
 ## 13. Test Minigames - Winter
 
 ### 13.1. Secret Santa (secret_santa)
 
+> **⚠️ Note:** Secret Santa là minigame phức tạp với nhiều phase. Hiện tại hoạt động qua buttons trong embed minigame.
+
 **Phase 1: Đăng ký**
 
-**Bước 1:**
+**Trigger (Admin):**
 ```
-/sukien secretsanta dangky
+/sukien-test minigame minigame_type:secret_santa
 ```
 
-**Kỳ vọng:**
-- ✅ Đăng ký thành công
+**User đăng ký:**
+- ✅ Bấm nút "🎄 Đăng ký" trong embed
 - ✅ Xác nhận tham gia
 
-**Phase 2: Ghép cặp (Admin)**
+**Phase 2: Ghép cặp**
 
-```
-/sukien-test minigame type:secret_santa action:pair
-```
-
-**Kỳ vọng:**
+Sau khi đủ người đăng ký hoặc hết thời gian đăng ký:
 - ✅ Mỗi người được gán 1 người nhận quà ngẫu nhiên
 - ✅ DM thông báo: "Bạn sẽ tặng quà cho @NgườiNhận"
 
 **Phase 3: Gửi quà**
 
-**Bước 1:**
-```
-/sukien secretsanta tangqua
-```
-
-**Kỳ vọng:**
+- ✅ Bấm nút "🎁 Gửi Quà" trong embed
 - ✅ Modal: "Lời nhắn tặng quà"
 - ✅ TextInput: 5-300 ký tự
-
-**Bước 2:** Gửi lời nhắn
-
-**Kỳ vọng:**
-- ✅ Quà được đánh dấu đã gửi
 - ✅ +50 ❄️ cho người gửi
 
-**Phase 4: Mở quà (ngày cuối)**
+**Phase 4: Mở quà (tự động cuối event)**
 
-```
-/sukien-test minigame type:secret_santa action:reveal
-```
-
-**Kỳ vọng:**
 - ✅ Tất cả được công bố: Ai tặng ai
 - ✅ Người nhận quà: +30 ❄️
 
 ### 13.2. Người Tuyết (snowman)
+
+> **⚠️ Note:** Người tuyết hoạt động qua auto-spawn minigame, không có lệnh thủ công `/sukien goptuyet`.
+
+**Trigger (Admin):**
+```
+/sukien-test minigame minigame_type:snowman
+```
 
 **Tự động spawn:**
 - ✅ Thông báo: "☃️ Hãy cùng xây người tuyết!"
@@ -848,11 +832,6 @@ Một số item có `stock` giới hạn toàn server.
 **Hoàn thành người tuyết (100 phần):**
 - ✅ Thông báo: "☃️ Người tuyết hoàn thành!"
 - ✅ Bonus cho tất cả người đóng góp
-
-**Lệnh thủ công:**
-```
-/sukien goptuyet
-```
 
 ### 13.3. Đếm Ngược (countdown)
 
@@ -1263,15 +1242,19 @@ Một số item có `stock` giới hạn toàn server.
 
 ### ✅ Lệnh Admin Test
 
+> **⚠️ QUAN TRỌNG:** Chỉ có các lệnh sau thực sự tồn tại. Các lệnh khác trong doc cũ đã bị loại bỏ.
+
 - [ ] `/sukien-test start event_id:X` - Bắt đầu sự kiện
 - [ ] `/sukien-test end` - Kết thúc sự kiện
-- [ ] `/sukien-test currency action:X amount:Y` - Tiền tệ
-- [ ] `/sukien-test goal progress:X` - Tiến độ cộng đồng
-- [ ] `/sukien-test quest type:X progress:Y` - Nhiệm vụ
-- [ ] `/sukien-test fish key:X amount:Y` - Thêm cá
-- [ ] `/sukien-test minigame type:X` - Spawn minigame
-- [ ] `/sukien-test title key:X` - Mở khóa danh hiệu
-- [ ] `/sukien-test reset` - Reset dữ liệu test
+- [ ] `/sukien-test currency action:X amount:Y` - Thao tác tiền tệ (add/spend/check)
+- [ ] `/sukien-test milestone progress:X` - Thêm tiến độ mục tiêu cộng đồng
+- [ ] `/sukien-test minigame minigame_type:X` - Spawn minigame thủ công
+
+**Lệnh KHÔNG tồn tại (đã loại bỏ khỏi checklist):**
+- ❌ `/sukien-test quest` - Quest tự động cập nhật, không có lệnh test
+- ❌ `/sukien-test fish` - Cá sự kiện qua câu cá, không có lệnh test
+- ❌ `/sukien-test title` - Danh hiệu qua milestone, không có lệnh test
+- ❌ `/sukien-test reset` - Không có lệnh reset
 
 ### ✅ Services
 

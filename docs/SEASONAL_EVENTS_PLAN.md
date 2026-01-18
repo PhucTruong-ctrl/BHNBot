@@ -1927,14 +1927,16 @@ async def handle_catch_specific_fish(user_id: int, event_id: str, fish_key: str,
 ```
 /sukien-test start <event_id>      # Force start any event (bypass date check)
 /sukien-test end                    # Force end current event
-/sukien-test currency <amount>      # Add currency to self
-/sukien-test goal <amount>          # Add to community goal
-/sukien-test milestone <percent>    # Trigger milestone manually
-/sukien-test quest <quest_id>       # Complete a quest instantly
-/sukien-test fish <fish_key>        # Add fish to collection
-/sukien-test title <title_key>      # Unlock a title
+/sukien-test currency <action> <amount>  # Add/spend/check currency (action: add/spend/check)
+/sukien-test milestone <progress>   # Add progress to community goal
 /sukien-test minigame <name>        # Spawn a minigame now
-/sukien-test reset                  # Reset all event data for guild
+
+# NOTE (2026-01): Các lệnh sau KHÔNG TỒN TẠI (quest/fish/title được xử lý tự động):
+# /sukien-test goal       → Dùng /sukien-test milestone thay thế
+# /sukien-test quest      → Quest progress tự động cập nhật
+# /sukien-test fish       → Cá sự kiện qua fishing hook
+# /sukien-test title      → Title qua milestone
+# /sukien-test reset      → Không có lệnh này
 ```
 
 ### 17.2 Test Scenarios
@@ -1961,10 +1963,10 @@ async def handle_catch_specific_fish(user_id: int, event_id: str, fish_key: str,
 #### Scenario 3: Community Goal & Milestones
 ```
 1. Start event with goal 1000
-2. /sukien-test goal 250 → Verify 25% milestone triggered
+2. /sukien-test milestone progress:250 → Verify 25% milestone triggered
 3. Check all participants got +100 seeds
-4. /sukien-test goal 500 → Verify 50% milestone (title unlocked)
-5. /sukien-test goal 1000 → Verify 100% (role created)
+4. /sukien-test milestone progress:250 → Verify 50% milestone (title unlocked)
+5. /sukien-test milestone progress:500 → Verify 100% (role created)
 ```
 
 #### Scenario 4: Quest System

@@ -332,11 +332,17 @@ class QuestCog(commands.Cog):
                     quest_data = json.loads(quest_data)
                 
                 icon = quest_data.get("icon", "📋")
-                desc = quest_data.get("description", "Nhiệm vụ")
+                desc_template = quest_data.get("description", "Nhiệm vụ")
                 reward = quest_data.get("reward", 0)
                 progress = quest.get("progress", 0)
                 target = quest.get("target", 1)
                 completed = quest.get("completed", False)
+                
+                # Format {target} placeholder in description
+                try:
+                    desc = desc_template.format(target=target)
+                except (KeyError, ValueError):
+                    desc = desc_template
                 
                 if completed:
                     event_completed += 1
