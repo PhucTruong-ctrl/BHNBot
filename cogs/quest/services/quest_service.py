@@ -8,7 +8,8 @@ from core.database import db_manager
 from core.logger import setup_logger
 from ..core.quest_types import (
     QuestType, QuestDefinition, QUEST_DEFINITIONS, 
-    DAILY_QUEST_COUNT, STREAK_BONUSES, ALL_QUEST_BONUS
+    DAILY_QUEST_COUNT, STREAK_BONUSES, ALL_QUEST_BONUS,
+    EVENT_TO_SERVER_QUEST_MAP
 )
 
 logger = setup_logger("QuestService", "cogs/quest.log")
@@ -136,6 +137,28 @@ class QuestService:
             ]
         
         available_types = list(QUEST_DEFINITIONS.keys())
+        
+        # Filter out quest types that overlap with active event quests
+        # This prevents duplicate quests (e.g., both server "Câu cá" and event "Câu 20 cá")
+        try:
+            from cogs.seasonal.services.event_service import get_active_event
+            from cogs.seasonal.core.event_manager import get_event_manager
+            
+            active_event = await get_active_event(guild_id)
+            if active_event:
+                event_manager = get_event_manager()
+                event_config = event_manager.get_event(active_event["event_id"])
+                if event_config and event_config.daily_quests:
+                    event_quest_types = {q.get("type") for q in event_config.daily_quests}
+                    for event_type, server_type in EVENT_TO_SERVER_QUEST_MAP.items():
+                        if event_type in event_quest_types and server_type in available_types:
+                            available_types.remove(server_type)
+                            logger.info(f"Excluded {server_type.value} from daily quests (overlaps with event quest {event_type})")
+        except ImportError:
+            logger.warning("Could not import seasonal event services - skipping overlap filter")
+        except Exception as e:
+            logger.warning(f"Error checking active event for overlap filter: {e}")
+        
         selected_types = random.sample(available_types, min(DAILY_QUEST_COUNT, len(available_types)))
         
         quests = []

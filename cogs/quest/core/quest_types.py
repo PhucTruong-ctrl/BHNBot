@@ -75,6 +75,17 @@ QUEST_DEFINITIONS: dict[QuestType, QuestDefinition] = {
 
 DAILY_QUEST_COUNT = 3
 
+# Mapping from event quest types to server quest types
+# Used to prevent duplicate quests when an event is active
+# Event quests are personal, server quests are cooperative
+# If an event has a "fish_count" quest, we exclude FISH_TOTAL from server daily quests
+EVENT_TO_SERVER_QUEST_MAP: dict[str, QuestType] = {
+    "fish_count": QuestType.FISH_TOTAL,
+    "voice_minutes": QuestType.VOICE_TOTAL,
+    "reaction_count": QuestType.REACT_TOTAL,
+    "tree_contribute": QuestType.TREE_WATER,
+}
+
 STREAK_BONUSES = {
     3: 0.10,
     7: 0.25,

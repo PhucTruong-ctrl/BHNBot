@@ -93,7 +93,7 @@
 | Badges | Emoji, lưu trong `badges_display`, hiển thị `/hoso` |
 | Titles | Text hiển thị dưới username trong `/hoso` |
 | Roles | Chỉ tạo Discord Role khi đạt 100% Community Goal |
-| Daily Quests | Event quests SONG SONG với daily quests thường |
+| Daily Quests | Event quests SONG SONG với daily quests, **loại bỏ trùng lặp tự động** |
 | Minigames | Healing theme - không ai mất tiền, tất cả có thưởng |
 
 ---
@@ -178,6 +178,23 @@
 | Thay thế? | ❌ Vẫn chạy | ➕ Thêm vào |
 
 **Kết luận:** Event Quests chạy SONG SONG với Daily Quests, không thay thế.
+
+### 3.1.1 Quest Overlap Prevention (Implemented 2026-01)
+
+Để tránh trùng lặp quest khi event đang chạy (ví dụ: cả server daily quest "Câu cá" và event quest "Câu 20 cá" đều yêu cầu câu cá), hệ thống tự động **loại bỏ** các server quest type trùng lặp.
+
+**Mapping:**
+| Event Quest Type | Server Quest Type (Loại bỏ) |
+|------------------|------------------------------|
+| `fish_count` | `FISH_TOTAL` |
+| `voice_minutes` | `VOICE_TOTAL` |
+| `reaction_count` | `REACT_TOTAL` |
+| `tree_contribute` | `TREE_WATER` |
+
+**Implementation:**
+- File: `cogs/quest/core/quest_types.py` → `EVENT_TO_SERVER_QUEST_MAP`
+- File: `cogs/quest/services/quest_service.py` → `generate_daily_quests()` filters overlapping types
+- Graceful degradation: Nếu seasonal cog không load, server quests vẫn hoạt động bình thường
 
 ### 3.2 Event Daily Quests
 
