@@ -17,6 +17,10 @@ LOG_DIR.mkdir(exist_ok=True)
 # Keep track of listeners to prevent GC
 _listeners = []
 
+# Track file handlers by path to prevent duplicate handlers for same file
+_file_handlers: dict[str, TimedRotatingFileHandler] = {}
+_file_handler_lock = __import__("threading").Lock()
+
 
 class DiscordLogHandler(logging.Handler):
     """Custom logging handler that sends critical logs to Discord channel via embeds."""
@@ -89,6 +93,7 @@ def setup_logger(logger_name: str, file_path: str, level=logging.INFO) -> loggin
         return logger
         
     full_log_path = LOG_DIR / file_path
+    full_log_path_str = str(full_log_path)
     os.makedirs(os.path.dirname(full_log_path), exist_ok=True)
     
     formatter = logging.Formatter(
@@ -96,32 +101,31 @@ def setup_logger(logger_name: str, file_path: str, level=logging.INFO) -> loggin
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # 1. File Handler (Blocking) - will run in background thread
-    file_handler = TimedRotatingFileHandler(
-        filename=full_log_path,
-        when="midnight",
-        interval=1,
-        backupCount=30,
-        encoding="utf-8"
-    )
-    file_handler.setFormatter(formatter)
+    with _file_handler_lock:
+        if full_log_path_str in _file_handlers:
+            file_handler = _file_handlers[full_log_path_str]
+        else:
+            file_handler = TimedRotatingFileHandler(
+                filename=full_log_path,
+                when="midnight",
+                interval=1,
+                backupCount=30,
+                encoding="utf-8"
+            )
+            file_handler.setFormatter(formatter)
+            _file_handlers[full_log_path_str] = file_handler
     
-    # 2. Console Handler (Blocking but fast)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     
-    # 3. Queue Setup for Non-Blocking I/O
-    log_queue = queue.Queue(-1) # Infinite queue
+    log_queue = queue.Queue(-1)
     queue_handler = QueueHandler(log_queue)
     
-    # 4. Listener runs in a separate thread
     listener = QueueListener(log_queue, file_handler, console_handler, respect_handler_level=True)
     listener.start()
     
-    # Keep reference to prevent GC
     _listeners.append(listener)
     
-    # 5. Add QueueHandler to logger
     logger.addHandler(queue_handler)
     
     return logger
