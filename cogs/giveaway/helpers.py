@@ -156,7 +156,7 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
                 
                 await user.send(embed=dm_embed)
                 dm_success.append(winner_id)
-                logger.debug("[giveaway]_✅_dm_sent_to_winner", user.name=user.name)
+                logger.debug("[giveaway]_dm_sent_to_winner", username=user.name)
                 
                 # Small delay to avoid rate limits
                 await asyncio.sleep(0.3)
@@ -168,7 +168,7 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
                 dm_failed.append(winner_id)
                 logger.debug("[giveaway]_❌_error_dming_winne", winner_id=winner_id)
         
-        logger.debug("[giveaway]_dm_results_-_succes", len(dm_success)=len(dm_success))
+        logger.debug("[giveaway]_dm_results", success_count=len(dm_success))
     
     # 5. Update Status
     import json

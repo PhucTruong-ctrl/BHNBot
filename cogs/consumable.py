@@ -51,7 +51,7 @@ class MemoryGameView(discord.ui.View):
                     
                     # Set buff for guaranteed catch
                     self.bot.get_cog("FishingCog").guaranteed_catch_users[self.user_id] = True
-                    logger.debug("[consumable]_tinh_cau_success_", self.user_id=self.user_id)
+                    logger.debug("[consumable]_tinh_cau_success", user_id=self.user_id)
                     username = self.user.display_name if self.user else "Unknown"
                     embed = discord.Embed(
                         title=f"🎉 {username} - TRIỆU HỒI THÀNH CÔNG!",
@@ -63,7 +63,7 @@ class MemoryGameView(discord.ui.View):
                     from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
                     # Item already deducted at start
                     await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
-                    logger.debug("[consumable]_tinh_cau_failure_", self.user_id=self.user_id)
+                    logger.debug("[consumable]_tinh_cau_failure", user_id=self.user_id)
                     username = self.user.display_name if self.user else "Unknown"
                     embed = discord.Embed(
                         title=f"❌ {username} - TRIỆU HỒI THẤT BẠI",
@@ -85,7 +85,7 @@ class MemoryGameView(discord.ui.View):
             from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
             # Item already deducted
             await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
-            logger.debug("[consumable]_tinh_cau_timeout_", self.user_id=self.user_id)
+            logger.debug("[consumable]_tinh_cau_timeout", user_id=self.user_id)
             username = self.user.display_name if self.user else "Unknown"
             embed = discord.Embed(
                 title=f"⏰ {username} - HẾT THỜI GIAN",
@@ -582,7 +582,7 @@ class ConsumableCog(commands.Cog):
                         try:
                             await fishing_cog.add_inventory_item(user_id, fish['key'], ItemType.FISH)
                         except Exception as e:
-                            logger.debug("[premium_consumable]_error_add", fish['key']=fish['key'])
+                            logger.debug("[premium_consumable]_error_add", fish_key=fish['key'])
                 
                 await increment_consumable_usage(user_id, item_key)
                 

@@ -139,7 +139,7 @@ async def handle_bet_win(result: dict, event_data: dict, **kwargs) -> dict:
     amount = random.randint(200, 400)
     result["gain_money"] = amount
     if "user_id" in kwargs:
-        logger.debug("[event]_handle_bet_win:_user_i", kwargs['user_id']=kwargs['user_id'])
+        logger.debug("[event]_handle_bet_win", user_id=kwargs['user_id'])
     return result
 
 async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
@@ -147,7 +147,7 @@ async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
     amount = random.randint(50, 150)
     result["lose_money"] = amount
     if "user_id" in kwargs:
-        logger.debug("[event]_handle_bet_loss:_user_", kwargs['user_id']=kwargs['user_id'])
+        logger.debug("[event]_handle_bet_loss", user_id=kwargs['user_id'])
     return result
 
 async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
@@ -163,7 +163,7 @@ async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
             lost = CRYPTO_LOSS_CAP
             
         result["lose_money"] = lost
-        logger.debug("[event]_handle_crypto_loss:_us", kwargs['user_id']=kwargs['user_id'])
+        logger.debug("[event]_handle_crypto_loss", user_id=kwargs['user_id'])
     else:
         result["lose_money"] = 200
     return result

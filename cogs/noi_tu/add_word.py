@@ -88,7 +88,7 @@ class QuickAddWordView(discord.ui.View):
                         logger.warning("dictionary_reload_failed", error=str(e))
                     
                     await interaction.followup.send(f"Từ `{self.word}` đã được thêm vào từ điển (admin auto-approve)", ephemeral=True)
-                    logger.debug("[add_word]_admin__auto-approve", interaction.user.name=interaction.user.name)
+                    logger.debug("[add_word]_admin_auto_approve", username=interaction.user.name)
                 else:
                     await interaction.followup.send(f"Từ `{self.word}` đã tồn tại", ephemeral=True)
                 return
@@ -118,7 +118,7 @@ class QuickAddWordView(discord.ui.View):
             await admin_channel.send(embed=embed, view=view)
             
             await interaction.followup.send(f"Từ `{self.word}` đã được gửi tới admin phê duyệt", ephemeral=True)
-            logger.debug("[add_word]__proposed_word_from", self.proposer_user.name=self.proposer_user.name)
+            logger.debug("[add_word]_proposed_word", proposer=self.proposer_user.name)
             
         except Exception as e:
             await interaction.followup.send(f"Lỗi: {e}", ephemeral=True)
@@ -342,7 +342,7 @@ class AddWordCog(commands.Cog):
             if isinstance(ctx_or_interaction, commands.Context):
                 await ctx_or_interaction.send(f"Từ **{word}** đã được gửi tới admin phê duyệt")
             
-            logger.debug("[add_word]__proposed_word:_{wo", user.name=user.name)
+            logger.debug("[add_word]_proposed_word", username=user.name)
             
         except Exception as e:
             logger.debug("[add_word]_error:_", e=e)

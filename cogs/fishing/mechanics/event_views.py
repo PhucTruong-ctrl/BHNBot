@@ -100,9 +100,9 @@ class GenericActionView(discord.ui.View):
         # Config IS in data.data.mechanics.buttons (double nested structure is REAL!)
         self.buttons_config = self.event_data.get("data", {}).get("mechanics", {}).get("buttons", [])
         
-        logger.debug("⚠️_[generic_view]_[init]_event", self.manager.current_event.get('key', 'unknown')=self.manager.current_event.get('key', 'unknown'))
-        logger.debug("⚠️_[generic_view]_[init]_butto", len(self.buttons_config)=len(self.buttons_config))
-        logger.debug("⚠️_[generic_view]_[init]_butto", self.buttons_config=self.buttons_config)
+        logger.debug("generic_view_init", event_key=self.manager.current_event.get('key', 'unknown'))
+        logger.debug("generic_view_init", button_count=len(self.buttons_config))
+        logger.debug("generic_view_init", buttons_config=str(self.buttons_config))
         
         self._setup_buttons()
         

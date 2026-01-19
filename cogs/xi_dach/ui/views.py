@@ -190,16 +190,16 @@ class MultiGameView(ui.View):
 
     def _is_active_and_turn(self, interaction: discord.Interaction) -> bool:
         if self.table.status != TableStatus.PLAYING:
-            logger.debug("not_playing._status:_", self.table.status=self.table.status)
+            logger.debug("not_playing", status=str(self.table.status))
             return False
             
         current = self.table.current_player
         if not current:
-            logger.debug("no_current_player._index:_,_or", self.table.current_player_idx=self.table.current_player_idx)
+            logger.debug("no_current_player", player_idx=self.table.current_player_idx)
             return False
             
         if current.user_id != interaction.user.id:
-            logger.debug("wrong_turn._expected:_,_got:_{", current.user_id=current.user_id)
+            logger.debug("wrong_turn", expected_user_id=current.user_id)
             return False
             
         return True

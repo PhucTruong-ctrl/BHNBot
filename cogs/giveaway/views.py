@@ -38,7 +38,7 @@ class GiveawayEndSelectView(discord.ui.View):
             await interaction.response.defer()
             await interaction.edit_original_response(view=self)
             
-            logger.debug("[giveaway]_admin__({interactio", interaction.user=interaction.user)
+            logger.debug("[giveaway]_admin_end", user=str(interaction.user))
             
             # End the giveaway
             await end_giveaway(message_id, self.bot)
@@ -214,7 +214,7 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
                 
                 result_text = f"👑 **Người thắng mới:** {new_winners_text}"
                 
-                logger.debug("[giveaway]_rerolled_giveaway_i", self.giveaway_id=self.giveaway_id)
+                logger.debug("[giveaway]_rerolled", giveaway_id=self.giveaway_id)
                 
                 # Edit the result message
                 embed = discord.Embed(
@@ -245,7 +245,7 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
         except ValueError:
             await interaction.response.send_message("❌ Số lượng không hợp lệ!", ephemeral=True)
         except Exception as e:
-            logger.debug("[giveaway]_error_rerolling_giv", self.giveaway_id=self.giveaway_id)
+            logger.debug("[giveaway]_error_rerolling", giveaway_id=self.giveaway_id)
             await interaction.followup.send("❌ Có lỗi xảy ra khi reroll!", ephemeral=True)
 
     @discord.ui.button(label="🏁 Kết Thúc", style=discord.ButtonStyle.danger, emoji="🏁")
@@ -275,11 +275,11 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
 
             await interaction.message.edit(embed=embed, view=self)
 
-            logger.debug("[giveaway]_giveaway_id__comple", self.giveaway_id=self.giveaway_id)
+            logger.debug("[giveaway]_completed", giveaway_id=self.giveaway_id)
 
             await interaction.followup.send("✅ Đã kết thúc giveaway hoàn toàn!", ephemeral=True)
-            logger.debug("[giveaway]_giveaway__completed", self.giveaway_id=self.giveaway_id)
+            logger.debug("[giveaway]_completed_final", giveaway_id=self.giveaway_id)
 
         except Exception as e:
-            logger.debug("[giveaway]_error_completing_gi", self.giveaway_id=self.giveaway_id)
+            logger.debug("[giveaway]_error_completing", giveaway_id=self.giveaway_id)
             await interaction.followup.send("❌ Có lỗi xảy ra khi kết thúc!", ephemeral=True)
