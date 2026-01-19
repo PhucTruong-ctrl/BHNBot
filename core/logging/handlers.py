@@ -8,8 +8,7 @@ utilities for managing log file lifecycle.
 
 import glob
 import json
-from core.logging import get_logger
-logger = get_logger("logging_handlers")
+import logging
 import os
 import time
 from logging.handlers import TimedRotatingFileHandler

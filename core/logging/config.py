@@ -51,7 +51,9 @@ def configure_logging(
             cache_logger_on_first_use=True,
         )
         
-        root_logger = get_logger("logging_config")
+        _configured = True
+        
+        root_logger = logging.getLogger()
         root_logger.setLevel(level)
         
         for handler in root_logger.handlers[:]:
@@ -92,8 +94,6 @@ def configure_logging(
         _listeners.append(listener)
         
         root_logger.addHandler(queue_handler)
-        
-        _configured = True
 
 
 def get_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:

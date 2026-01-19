@@ -5,9 +5,8 @@ from typing import Any, Optional
 
 import structlog
 
-from core.logging import get_logger
-
-_log = get_logger("canonical")
+# Use structlog directly to avoid circular import with core.logging
+_log = structlog.get_logger("canonical")
 
 
 def log_command_complete(

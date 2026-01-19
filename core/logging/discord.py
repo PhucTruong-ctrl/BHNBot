@@ -5,8 +5,7 @@ to a Discord channel as embeds, with optional user pinging for critical events.
 """
 
 import json
-from core.logging import get_logger
-logger = get_logger("logging_discord")
+import logging
 import sys
 from typing import Any, Optional, Tuple
 

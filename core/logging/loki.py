@@ -1,8 +1,7 @@
 """Loki log handler for pushing structured logs to Grafana Loki."""
 
 import json
-from core.logging import get_logger
-logger = get_logger("logging_loki")
+import logging
 import os
 import time
 from typing import Optional
