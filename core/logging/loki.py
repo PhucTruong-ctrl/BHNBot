@@ -20,7 +20,10 @@ class LokiHandler(logging.Handler):
         flush_interval: float = 5.0,
     ):
         super().__init__()
-        self.url = url or os.getenv("LOKI_URL", "http://localhost:3100/loki/api/v1/push")
+        base_url = url or os.getenv("LOKI_URL", "http://localhost:3100")
+        if not base_url.endswith("/loki/api/v1/push"):
+            base_url = base_url.rstrip("/") + "/loki/api/v1/push"
+        self.url = base_url
         self.labels = labels or {"service": "bhnbot", "env": os.getenv("ENVIRONMENT", "dev")}
         self.batch_size = batch_size
         self.flush_interval = flush_interval
