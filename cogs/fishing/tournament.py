@@ -1,11 +1,11 @@
-import logging
+from core.logging import get_logger
 import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Tuple
 from core.database import db_manager, add_seeds
 import discord
 
-logger = logging.getLogger("TournamentManager")
+logger = get_logger("fishing_tournament")
 
 class TournamentManager:
     """

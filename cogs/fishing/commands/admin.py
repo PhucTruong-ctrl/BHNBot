@@ -3,13 +3,13 @@
 Contains commands for manually triggering events (owner only).
 """
 import json
-import logging
+from core.logging import get_logger
 from datetime import datetime
 import discord
 
 from ..constants import DISASTER_EVENTS_PATH, FISHING_EVENTS_PATH, SELL_EVENTS_PATH, NPC_EVENTS_PATH
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_commands_admin")
 
 
 async def trigger_event_action(cog, ctx_or_interaction, target_user_id: int, 

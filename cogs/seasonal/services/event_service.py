@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import logging
+from core.logging import get_logger
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -10,7 +10,7 @@ from .database import execute_query, execute_write
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_event_servic")
 
 
 async def get_active_event(guild_id: int) -> dict | None:

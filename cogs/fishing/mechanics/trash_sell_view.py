@@ -3,9 +3,8 @@ import random
 from discord.ui import View, Button
 from database_manager import add_seeds
 from ..constants import TRASH_ITEMS
-import logging
-
-logger = logging.getLogger("fishing")
+from core.logging import get_logger
+logger = get_logger("fishing_mechanics_trash_sell_v")
 
 class TrashSellView(View):
     """View for Black Market trash selling."""

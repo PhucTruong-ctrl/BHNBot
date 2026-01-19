@@ -1,13 +1,12 @@
 
 import discord
 from typing import Optional
-import logging
-
+from core.logging import get_logger
 from .logic.housing import HousingEngine
 from .logic.render import RenderEngine
 from .ui.embeds import create_aquarium_dashboard
 
-logger = logging.getLogger("AquariumUtils")
+logger = get_logger("aquarium_utils")
 
 async def refresh_aquarium_dashboard(user_id: int, bot: discord.Client) -> bool:
     """

@@ -3,9 +3,8 @@ from typing import List, Optional, Dict
 from tortoise.transactions import in_transaction
 from ..models import UserAquarium, HomeSlot, UserDecor, HomeVisit
 from ..constants import DECOR_ITEMS, FENG_SHUI_SETS
-import logging
-
-logger = logging.getLogger("HousingEngine")
+from core.logging import get_logger
+logger = get_logger("aquarium_logic_housing")
 
 class HousingEngine:
     """

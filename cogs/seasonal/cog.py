@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import logging
+from core.logging import get_logger
 import random
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -60,7 +60,7 @@ from .ui import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_cog")
 
 
 class SeasonalEventsCog(commands.Cog):

@@ -6,6 +6,10 @@ from configs.item_constants import ItemKeys
 
 from database_manager import increment_stat
 
+from core.logging import get_logger
+logger = get_logger("fishing_events")
+
+
 # ==================== EFFECT HANDLERS ====================
 # Each handler function processes one effect type
 # This replaces the long if/elif chain
@@ -135,7 +139,7 @@ async def handle_bet_win(result: dict, event_data: dict, **kwargs) -> dict:
     amount = random.randint(200, 400)
     result["gain_money"] = amount
     if "user_id" in kwargs:
-        print(f"[EVENT] handle_bet_win: user_id={kwargs['user_id']} gain_money={amount}")
+        logger.debug("[event]_handle_bet_win:_user_i", kwargs['user_id']=kwargs['user_id'])
     return result
 
 async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
@@ -143,7 +147,7 @@ async def handle_bet_loss(result: dict, event_data: dict, **kwargs) -> dict:
     amount = random.randint(50, 150)
     result["lose_money"] = amount
     if "user_id" in kwargs:
-        print(f"[EVENT] handle_bet_loss: user_id={kwargs['user_id']} lose_money={amount}")
+        logger.debug("[event]_handle_bet_loss:_user_", kwargs['user_id']=kwargs['user_id'])
     return result
 
 async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
@@ -159,7 +163,7 @@ async def handle_crypto_loss(result: dict, event_data: dict, **kwargs) -> dict:
             lost = CRYPTO_LOSS_CAP
             
         result["lose_money"] = lost
-        print(f"[EVENT] handle_crypto_loss: user_id={kwargs['user_id']} balance={balance} lost={lost} (Capped at {CRYPTO_LOSS_CAP})")
+        logger.debug("[event]_handle_crypto_loss:_us", kwargs['user_id']=kwargs['user_id'])
     else:
         result["lose_money"] = 200
     return result
@@ -359,7 +363,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
     # CHECK FOR PENDING FISHING EVENT FIRST
     if hasattr(cog, "pending_fishing_event") and user_id in cog.pending_fishing_event:
         pending_event_key = cog.pending_fishing_event.pop(user_id)
-        print(f"[EVENTS] Triggering pending fishing event: {pending_event_key} for user {user_id}")
+        logger.debug("[events]_triggering_pending_fi", pending_event_key=pending_event_key)
         
         if pending_event_key in RANDOM_EVENTS:
             event_data = RANDOM_EVENTS[pending_event_key]
@@ -376,9 +380,9 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                     current_value = await get_stat(user_id, "fishing", stat_key)
                     if hasattr(cog, 'bot') and hasattr(cog.bot, 'achievement_manager'):
                         await cog.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
-                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {user_id} on pending fishing event {pending_event_key}")
+                    logger.debug("[achievement]_tracked__for_use", stat_key=stat_key)
                 except Exception as e:
-                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {user_id}: {e}")
+                    logger.debug("[achievement]_error_tracking__", stat_key=stat_key)
             
             # ===== STRATEGY PATTERN: Call appropriate handler =====
             effect = event_data.get("effect")
@@ -387,11 +391,11 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             if handler:
                 result = await handler(result, event_data, user_id=user_id, cog=cog, luck=luck)
             else:
-                print(f"[EVENTS] Warning: No handler for effect '{effect}'")
+                logger.debug("[events]_warning:_no_handler_f", effect=effect)
             
             return result
         else:
-            print(f"[EVENTS] Pending fishing event key {pending_event_key} not found in RANDOM_EVENTS")
+            logger.debug("[events]_pending_fishing_event", pending_event_key=pending_event_key)
     
     # Check for protection
     has_protection = hasattr(cog, "avoid_event_users") and cog.avoid_event_users.get(user_id, False)
@@ -498,7 +502,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
             if handler:
                 result = await handler(result, event_data, user_id=user_id, cog=cog, luck=luck)
             else:
-                print(f"[EVENTS] Warning: No handler for effect '{effect}'")
+                logger.debug("[events]_warning:_no_handler_f", effect=effect)
             
             return result
     

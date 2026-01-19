@@ -6,7 +6,7 @@ milestone completion rewards.
 from __future__ import annotations
 
 import json
-import logging
+from core.logging import get_logger
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,7 +20,7 @@ from .participation_service import (
     update_community_progress,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_community_go")
 
 
 @dataclass

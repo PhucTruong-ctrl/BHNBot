@@ -2,7 +2,6 @@ import discord
 import os
 import asyncio
 import subprocess
-import logging
 import signal
 import atexit
 from discord.ext import commands
@@ -10,6 +9,16 @@ from dotenv import load_dotenv
 
 # Load env vars FIRST
 load_dotenv()
+
+# =============================================================================
+# OBSERVABILITY INITIALIZATION (MUST BE FIRST)
+# =============================================================================
+from core.logging import configure_logging, get_logger, attach_loki_handler
+from core.telemetry import configure_telemetry
+
+configure_logging()
+attach_loki_handler()
+configure_telemetry()
 
 # =============================================================================
 # DOCKER LIFECYCLE MANAGEMENT
@@ -73,18 +82,15 @@ signal.signal(signal.SIGINT, _signal_handler)
 
 from core.achievement_system import AchievementManager
 
-# 1. SETUP LOGGING
-from core.logging import setup_logger
 from core.timeout_monitor import get_monitor as get_timeout_monitor
 from core.database import db_manager
 from core.inventory_cache import InventoryCache
-from core.orm import init_tortoise # Phase 1: Postgres ORM
+from core.orm import init_tortoise
 
-# 1. SETUP LOGGING
-setup_logger("Main", "main.log")
-logger = logging.getLogger("Main")
+logger = get_logger("main")
 
-logging.getLogger("wavelink").setLevel(logging.ERROR)
+import logging as stdlib_logging
+stdlib_logging.getLogger("wavelink").setLevel(stdlib_logging.ERROR)
 
 # 2. CREATE BOT
 intents = discord.Intents.all()

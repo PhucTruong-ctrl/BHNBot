@@ -12,9 +12,9 @@ from database_manager import (
     get_leaderboard,
     batch_update_seeds
 )
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("EconomyCog", "cogs/economy.log")
+logger = get_logger("EconomyCog")
 
 # Constants
 DAILY_BONUS = 10  # Hạt received from /chao

@@ -1,8 +1,7 @@
 from tortoise import Tortoise
 import os
-import logging
-
-logger = logging.getLogger("Tortoise")
+from core.logging import get_logger
+logger = get_logger("orm")
 
 TORTOISE_ORM = {
     "connections": {

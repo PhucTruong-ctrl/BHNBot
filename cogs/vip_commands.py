@@ -8,9 +8,9 @@ from typing import Optional
 
 from database_manager import db_manager, get_user_balance, add_seeds
 from core.services.vip_service import VIPEngine, TIER_CONFIG
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("VIPCommands", "cogs/vip_commands.log")
+logger = get_logger("VIPCommands")
 
 class VIPCommandsCog(commands.Cog):
     """VIP purchase, leaderboard, and status commands."""

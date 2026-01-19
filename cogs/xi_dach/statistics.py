@@ -4,10 +4,10 @@ Tracks game statistics and triggers achievement checks.
 """
 
 from typing import Dict, List
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager
 
-logger = setup_logger("XiDachStats", "cogs/xidach.log")
+logger = get_logger("XiDachStats")
 
 class StatisticsTracker:
     """Manages statistics tracking for Xi Dach achievement system.

@@ -2,7 +2,7 @@
 
 Handles chest opening, trash recycling, phan_bon usage, and collection viewing.
 """
-import logging
+from core.logging import get_logger
 import random
 import asyncio
 import discord
@@ -21,7 +21,7 @@ from ..mechanics.glitch import apply_display_glitch
 from configs.item_constants import ItemKeys
 from core.item_system import item_system
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_commands_bucket")
 
 
 async def open_chest_action(cog, ctx_or_interaction, quantity: int = 1):

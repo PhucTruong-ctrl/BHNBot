@@ -4,6 +4,9 @@ import json
 from .constants import DB_PATH, COMMON_FISH_KEYS, RARE_FISH_KEYS, LEGENDARY_FISH_KEYS, ALL_FISH
 from database_manager import db_manager
 
+from core.logging import get_logger
+logger = get_logger("fishing_helpers")
+
 async def track_caught_fish(user_id: int, fish_key: str) -> bool:
     """Tracks a caught fish in the user's collection.
 
@@ -29,7 +32,7 @@ async def track_caught_fish(user_id: int, fish_key: str) -> bool:
             )
             return True
     except Exception as e:
-        print(f"[COLLECTION] Error tracking fish {fish_key} for user {user_id}: {e}")
+        logger.debug("[collection]_error_tracking_fi", fish_key=fish_key)
     
     return False
 
@@ -49,7 +52,7 @@ async def get_collection(user_id: int) -> dict:
         )
         return {row[0]: row[1] for row in rows} if rows else {}
     except Exception as e:
-        print(f"[COLLECTION] Error getting collection for user {user_id}: {e}")
+        logger.debug("[collection]_error_getting_col", user_id=user_id)
         return {}
 
 async def check_collection_complete(user_id: int) -> bool:

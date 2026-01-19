@@ -18,9 +18,9 @@ import datetime
 import psutil
 import os
 
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("HealthCheck", "logs/cogs/health.log")
+logger = get_logger("HealthCheck")
 
 
 class HealthCheckCog(commands.Cog):

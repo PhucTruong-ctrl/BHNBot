@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from typing import TYPE_CHECKING
 
 from .. import register_role
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ...engine.game import WerewolfGame
     from ...engine.state import PlayerState
 
-logger = logging.getLogger("werewolf")
+logger = get_logger("werewolf_roles_villagers_hypno")
 
 
 @register_role

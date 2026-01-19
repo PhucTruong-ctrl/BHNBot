@@ -3,9 +3,9 @@ from discord import app_commands
 from discord.ext import commands
 import os
 
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("AdminCog", "cogs/admin.log")
+logger = get_logger("AdminCog")
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):

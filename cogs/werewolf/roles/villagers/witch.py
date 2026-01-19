@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from .. import register_role
 from ..base import Alignment, Expansion, Role, RoleMetadata
 
-logger = logging.getLogger("werewolf")
+logger = get_logger("werewolf_roles_villagers_witch")
 
 
 @register_role

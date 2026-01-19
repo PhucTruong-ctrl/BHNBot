@@ -5,6 +5,7 @@ from core.logging.discord import (
     attach_discord_handler,
     get_log_config_from_db,
 )
+from core.logging.loki import attach_loki_handler
 from core.logging.canonical import log_command_complete, CommandTimer
 from core.logging.handlers import AsyncFileHandler, cleanup_old_logs
 
@@ -19,6 +20,7 @@ __all__ = [
     "DiscordLogHandler",
     "attach_discord_handler",
     "get_log_config_from_db",
+    "attach_loki_handler",
     "log_command_complete",
     "CommandTimer",
     "AsyncFileHandler",

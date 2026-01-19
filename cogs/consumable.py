@@ -9,6 +9,10 @@ from database_manager import db_manager, get_user_balance
 from .fishing.utils.consumables import CONSUMABLE_ITEMS, get_consumable_info, is_consumable
 from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
 
+from core.logging import get_logger
+logger = get_logger("consumable")
+
+
 # Symbols for memory game
 MEMORY_SYMBOLS = ["🌕", "🌟", "☄️", "🌍", "⭐", "🌌", "🌙", "💫"]
 
@@ -47,7 +51,7 @@ class MemoryGameView(discord.ui.View):
                     
                     # Set buff for guaranteed catch
                     self.bot.get_cog("FishingCog").guaranteed_catch_users[self.user_id] = True
-                    print(f"[CONSUMABLE] Tinh cau success for {self.user_id}")
+                    logger.debug("[consumable]_tinh_cau_success_", self.user_id=self.user_id)
                     username = self.user.display_name if self.user else "Unknown"
                     embed = discord.Embed(
                         title=f"🎉 {username} - TRIỆU HỒI THÀNH CÔNG!",
@@ -59,7 +63,7 @@ class MemoryGameView(discord.ui.View):
                     from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
                     # Item already deducted at start
                     await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
-                    print(f"[CONSUMABLE] Tinh cau failure for {self.user_id}")
+                    logger.debug("[consumable]_tinh_cau_failure_", self.user_id=self.user_id)
                     username = self.user.display_name if self.user else "Unknown"
                     embed = discord.Embed(
                         title=f"❌ {username} - TRIỆU HỒI THẤT BẠI",
@@ -81,7 +85,7 @@ class MemoryGameView(discord.ui.View):
             from .fishing.mechanics.legendary_quest_helper import set_has_tinh_cau, set_tinh_cau_cooldown
             # Item already deducted
             await set_tinh_cau_cooldown(self.user_id)  # Set cooldown
-            print(f"[CONSUMABLE] Tinh cau timeout failure for {self.user_id}")
+            logger.debug("[consumable]_tinh_cau_timeout_", self.user_id=self.user_id)
             username = self.user.display_name if self.user else "Unknown"
             embed = discord.Embed(
                 title=f"⏰ {username} - HẾT THỜI GIAN",
@@ -339,7 +343,7 @@ class ConsumableCog(commands.Cog):
         
         user_id = ctx_or_interaction.user.id if is_slash else ctx_or_interaction.author.id
         user = ctx_or_interaction.user if is_slash else ctx_or_interaction.author
-        print(f"[CONSUMABLE] User {user_id} attempting to use {item_key}")
+        logger.debug("[consumable]_user__attempting_", user_id=user_id)
         
         # Validate item exists
         if not is_consumable(item_key):
@@ -441,7 +445,7 @@ class ConsumableCog(commands.Cog):
              # ... Phoenix Game ...
              # Note: Original code checked long_vu_lua again via inventory.get.
              # We just consumed it. So we proceed.
-             print(f"[CONSUMABLE] Starting long_vu_lua game for {user_id}")
+             logger.debug("[consumable]_starting_long_vu_", user_id=user_id)
              
              view = PhoenixEggView(user_id, self.bot, ctx_or_interaction.channel if not is_slash else ctx_or_interaction.channel, user)
              embed = view._make_embed()
@@ -463,7 +467,7 @@ class ConsumableCog(commands.Cog):
              fishing_cog.dark_map_casts[user_id] = 10 # 10 casts
              fishing_cog.dark_map_cast_count[user_id] = 0
              
-             print(f"[CONSUMABLE] ban_do_ham_am activated for {user_id}")
+             logger.debug("[consumable]_ban_do_ham_am_act", user_id=user_id)
              
              embed = discord.Embed(
                  title="🗺️ BẢN ĐỒ HẮC ÁM ĐÃ MỞ!",
@@ -578,7 +582,7 @@ class ConsumableCog(commands.Cog):
                         try:
                             await fishing_cog.add_inventory_item(user_id, fish['key'], ItemType.FISH)
                         except Exception as e:
-                            print(f"[PREMIUM_CONSUMABLE] Error adding fish {fish['key']}: {e}")
+                            logger.debug("[premium_consumable]_error_add", fish['key']=fish['key'])
                 
                 await increment_consumable_usage(user_id, item_key)
                 
@@ -627,7 +631,7 @@ class ConsumableCog(commands.Cog):
             "effect_value": item_info["effect_value"],
         }
         
-        print(f"[CONSUMABLE] Applied effect for {item_key} to {user_id}")
+        logger.debug("[consumable]_applied_effect_fo", item_key=item_key)
         
         embed = discord.Embed(
             title=f"✅ Đã Sử Dụng {item_info['name']}",

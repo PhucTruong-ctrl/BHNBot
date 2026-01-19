@@ -4,9 +4,9 @@ from typing import Optional
 from dataclasses import dataclass
 
 from core.database import db_manager
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("VoiceRewardService", "cogs/social.log")
+logger = get_logger("VoiceRewardService")
 
 REWARD_PER_INTERVAL = 10
 REWARD_INTERVAL_SECONDS = 600

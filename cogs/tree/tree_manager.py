@@ -6,7 +6,7 @@ Manages core tree mechanics including contributions, level ups, and harvest even
 import discord
 import asyncio
 from typing import Optional
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import (
     get_user_balance,
     add_seeds,
@@ -20,7 +20,7 @@ from .models import TreeData, HarvestBuff
 from .helpers import create_tree_embed, create_contribution_success_embed, create_harvest_announcement_embed
 from .views import TreeContributeView
 
-logger = setup_logger("TreeManager", "logs/cogs/tree.log")
+logger = get_logger("TreeManager")
 
 
 # PERFORMANCE FIX #15: Monitoring decorator

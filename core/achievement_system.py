@@ -7,16 +7,18 @@ import json
 import discord
 from pathlib import Path
 from database_manager import db_manager, add_seeds
+from core.logging import get_logger
 
-# Load achievement config
+logger = get_logger("achievement")
+
 ACHIEVEMENT_DATA = {}
 try:
     with open("./data/achievements.json", "r", encoding="utf-8") as f:
         ACHIEVEMENT_DATA = json.load(f)
 except FileNotFoundError:
-    print("[WARNING] achievements.json not found. Achievement system disabled.")
+    logger.warning("achievements_config_missing", file="achievements.json")
 except Exception as e:
-    print(f"[ERROR] Failed to load achievements.json: {e}")
+    logger.error("achievements_config_load_failed", error=str(e))
 
 # Load seasonal achievement config from all event files
 SEASONAL_ACHIEVEMENT_DATA = {}  # {event_id: {achievement_key: achievement_data}}
@@ -27,7 +29,7 @@ def load_seasonal_achievements():
     events_dir = Path("./data/events")
     
     if not events_dir.exists():
-        print("[WARNING] data/events directory not found. Seasonal achievements disabled.")
+        logger.warning("seasonal_achievements_dir_missing", path="data/events")
         return
     
     for event_file in events_dir.glob("*.json"):
@@ -40,22 +42,21 @@ def load_seasonal_achievements():
             if "achievements" in event_data:
                 event_id = event_data.get("event_id", event_file.stem)
                 SEASONAL_ACHIEVEMENT_DATA[event_id] = event_data["achievements"]
-                print(f"[ACHIEVEMENT] Loaded {len(event_data['achievements'])} seasonal achievements from {event_file.name}")
+                logger.info("seasonal_achievements_loaded", count=len(event_data['achievements']), file=event_file.name)
         except Exception as e:
-            print(f"[ERROR] Failed to load seasonal achievements from {event_file.name}: {e}")
+            logger.error("seasonal_achievements_load_failed", file=event_file.name, error=str(e))
 
 # Load seasonal achievements at startup
 load_seasonal_achievements()
 
-# Load server config for role mappings
 SERVER_CONFIG = {}
 try:
     with open("./configs/server_config.json", "r", encoding="utf-8") as f:
         SERVER_CONFIG = json.load(f)
 except FileNotFoundError:
-    print("[WARNING] server_config.json not found. Role rewards disabled.")
+    logger.warning("server_config_missing", file="server_config.json")
 except Exception as e:
-    print(f"[ERROR] Failed to load server_config.json: {e}")
+    logger.error("server_config_load_failed", error=str(e))
 
 class AchievementManager:
     """
@@ -150,10 +151,10 @@ class AchievementManager:
             )
             unlocked = bool(row)
             if unlocked:
-                print(f"[ACHIEVEMENT] User {user_id} has already unlocked {achievement_key}")
+                logger.debug("achievement_already_unlocked", user_id=user_id, achievement_key=achievement_key)
             return unlocked
         except Exception as e:
-            print(f"[ACHIEVEMENT] Error checking unlock status for {achievement_key}: {e}")
+            logger.error("achievement_unlock_check_failed", achievement_key=achievement_key, error=str(e))
             return True  # Assume unlocked to prevent spam if DB error
 
     async def unlock_achievement(self, user_id: int, achievement_key: str, achievement_data: dict, channel: discord.TextChannel = None):
@@ -161,7 +162,7 @@ class AchievementManager:
         try:
             # Double-check if already unlocked (prevent race conditions)
             if await self.is_unlocked(user_id, achievement_key):
-                print(f"[ACHIEVEMENT] Achievement {achievement_key} already unlocked for user {user_id}, skipping")
+                logger.debug("achievement_skip_already_unlocked", achievement_key=achievement_key, user_id=user_id)
                 return
 
             # 1. Save to database
@@ -170,9 +171,9 @@ class AchievementManager:
                     "INSERT INTO user_achievements (user_id, achievement_key) VALUES (?, ?) ON CONFLICT (user_id, achievement_key) DO NOTHING",
                     (user_id, achievement_key)
                 )
-                print(f"[ACHIEVEMENT] Successfully inserted {achievement_key} for user {user_id}")
+                logger.info("achievement_inserted", achievement_key=achievement_key, user_id=user_id)
             except Exception as e:
-                print(f"[ACHIEVEMENT] Failed to insert {achievement_key} for user {user_id}: {e}")
+                logger.error("achievement_insert_failed", achievement_key=achievement_key, user_id=user_id, error=str(e))
                 return  # Don't proceed if can't save to DB
 
             # 2. Give reward
@@ -189,10 +190,10 @@ class AchievementManager:
             # 4. Send notification in the game channel
             await self._send_unlock_notification(user_id, achievement_key, achievement_data, channel, role_assigned)
 
-            print(f"[ACHIEVEMENT] Unlocked {achievement_key} for user {user_id} (+{reward_seeds} seeds, role: {role_assigned})")
+            logger.info("achievement_unlocked", achievement_key=achievement_key, user_id=user_id, reward_seeds=reward_seeds, role_assigned=role_assigned)
 
         except Exception as e:
-            print(f"[ACHIEVEMENT] Error unlocking {achievement_key} for user {user_id}: {e}")
+            logger.error("achievement_unlock_failed", achievement_key=achievement_key, user_id=user_id, error=str(e))
 
     async def _assign_role_reward(self, user_id: int, role_key: str, channel: discord.TextChannel = None) -> bool:
         """Assign role reward to user if role exists in server config."""
@@ -205,33 +206,33 @@ class AchievementManager:
             role_id = default_server.get(role_key)
 
             if not role_id:
-                print(f"[ACHIEVEMENT] Role key '{role_key}' not found in server config")
+                logger.warning("role_key_not_found", role_key=role_key)
                 return False
 
             # Get the role object
             role = channel.guild.get_role(role_id)
             if not role:
-                print(f"[ACHIEVEMENT] Role with ID {role_id} not found in guild {channel.guild.id}")
+                logger.warning("role_not_found", role_id=role_id, guild_id=channel.guild.id)
                 return False
 
             # Get the member
             member = channel.guild.get_member(user_id)
             if not member:
-                print(f"[ACHIEVEMENT] Member {user_id} not found in guild {channel.guild.id}")
+                logger.warning("member_not_found", user_id=user_id, guild_id=channel.guild.id)
                 return False
 
             # Check if member already has the role
             if role in member.roles:
-                print(f"[ACHIEVEMENT] Member {user_id} already has role {role.name}")
+                logger.debug("member_already_has_role", user_id=user_id, role_name=role.name)
                 return True  # Consider it successful since they have the role
 
             # Assign the role
             await member.add_roles(role)
-            print(f"[ACHIEVEMENT] Assigned role '{role.name}' to user {user_id}")
+            logger.info("role_assigned", role_name=role.name, user_id=user_id)
             return True
 
         except Exception as e:
-            print(f"[ACHIEVEMENT] Error assigning role reward '{role_key}' to user {user_id}: {e}")
+            logger.error("role_assign_failed", role_key=role_key, user_id=user_id, error=str(e))
             return False
 
     async def _send_unlock_notification(self, user_id: int, achievement_key: str, achievement_data: dict, channel: discord.TextChannel = None, role_assigned: bool = False):
@@ -289,7 +290,7 @@ class AchievementManager:
             await channel.send(content=f"👏 Chúc mừng <@{user_id}>!", embed=embed)
 
         except Exception as e:
-            print(f"[ACHIEVEMENT] Error sending notification for {achievement_key}: {e}")
+            logger.error("notification_failed", achievement_key=achievement_key, error=str(e))
 
     async def get_user_achievements(self, user_id: int, game_category: str = None) -> list:
         """Get list of unlocked achievements for a user."""
@@ -317,7 +318,7 @@ class AchievementManager:
 
             return rows or []
         except Exception as e:
-            print(f"[ACHIEVEMENT] Error getting achievements for user {user_id}: {e}")
+            logger.error("get_achievements_failed", user_id=user_id, error=str(e))
             return []
 
     async def get_achievement_progress(self, user_id: int, game_category: str, stat_key: str) -> dict:

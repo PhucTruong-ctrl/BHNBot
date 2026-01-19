@@ -7,11 +7,11 @@ import pytz
 from .services.quest_service import QuestService
 from .core.quest_types import QuestType, QUEST_DEFINITIONS, ALL_QUEST_BONUS
 from core.database import db_manager
-from core.logging import setup_logger
+from core.logging import get_logger
 from cogs.seasonal.services import get_active_event, get_all_user_quests
 from cogs.seasonal.core.event_manager import get_event_manager
 
-logger = setup_logger("QuestCog", "cogs/quest.log")
+logger = get_logger("QuestCog")
 
 VN_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
 MORNING_HOUR = 7

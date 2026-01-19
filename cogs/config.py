@@ -5,9 +5,9 @@ import traceback
 import json
 
 from database_manager import db_manager  # Use singleton instead of direct connections
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("ConfigCog", "cogs/config.log")
+logger = get_logger("config")
 
 DB_PATH = "./data/database.db"
 
@@ -174,8 +174,7 @@ class ConfigCog(commands.Cog):
                 await response_obj.followup.send(msg)
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error in _handle_reset: {e}", exc_info=True)
             error_msg = f"❌ Lỗi: {str(e)}"
             if isinstance(response_obj, commands.Context):
                 await response_obj.send(error_msg)
@@ -235,7 +234,7 @@ class ConfigCog(commands.Cog):
         try:
             guild_id = interaction.guild.id
             
-            print(f"CONFIG [Guild {guild_id}] Setting channels")
+            logger.info(f"Setting channels for Guild {guild_id}")
             # Postgres: No context manager needed for updates
             
             # Get old config
@@ -329,7 +328,7 @@ class ConfigCog(commands.Cog):
                         tree_channel_id = EXCLUDED.tree_channel_id
                 """, (int(guild_id), kenh_cay.id))
             
-            print(f"CONFIG_SAVED [Guild {guild_id}]")
+            logger.info(f"Configuration saved for Guild {guild_id}")
 
             msg = "✅ Setup ok:\n"
             if kenh_noitu: msg += f"📝 Nối Từ: {kenh_noitu.mention}\n"
@@ -355,9 +354,9 @@ class ConfigCog(commands.Cog):
                     channel_id, ping_user_id, level = await get_log_config_from_db(guild_id)
                     if channel_id > 0:
                         attach_discord_handler(self.bot, channel_id, ping_user_id, level)
-                        print(f"[CONFIG] Discord logger: channel={channel_id}, ping={ping_user_id}, level={level}")
+                        logger.info(f"Discord logger attached: channel={channel_id}, ping={ping_user_id}, level={level}")
                 except Exception as e:
-                    print(f"[CONFIG] Failed to attach Discord logger: {e}")
+                    logger.error(f"Failed to attach Discord logger: {e}")
 
             # Reload Game
             if kenh_noitu:
@@ -368,20 +367,19 @@ class ConfigCog(commands.Cog):
                             del game_cog.games[guild_id]
                             if guild_id in game_cog.game_locks:
                                  del game_cog.game_locks[guild_id]
-                            print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {old_noitu}")
+                            logger.info(f"Stopped old game at channel {old_noitu} for Guild {guild_id}")
                     
                     await game_cog.start_new_round(guild_id, kenh_noitu)
-                    print(f"GAME_START [Guild {guild_id}] Started new game at channel {kenh_noitu.id}")
+                    logger.info(f"Started new game at channel {kenh_noitu.id} for Guild {guild_id}")
             
             if kenh_cay:
                 tree_cog = self.bot.get_cog("TreeCog")
                 if tree_cog:
                     await tree_cog.tree_manager.update_tree_message(guild_id, kenh_cay.id)
-                    print(f"TREE_SETUP [Guild {guild_id}] Created tree message in channel {kenh_cay.id}")
+                    logger.info(f"Created tree message in channel {kenh_cay.id} for Guild {guild_id}")
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error in config_set: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi: {str(e)}")
 
     # --- Prefix commands for easier access ---
@@ -458,7 +456,7 @@ class ConfigCog(commands.Cog):
             channel_mention = f"<#{channel.id}>"
             
             await ctx.send(f"✅ **{msg_key}** được đặt thành {channel_mention}")
-            print(f"CONFIG [Guild {guild_id}] Set {key} to {channel_mention}")
+            logger.info(f"Set {key} to {channel_mention} for Guild {guild_id}")
             
             # Start game if setting kenh_noitu
             if key == "kenh_noitu":
@@ -471,15 +469,14 @@ class ConfigCog(commands.Cog):
                             # Also clean up lock
                             if guild_id in game_cog.game_locks:
                                 del game_cog.game_locks[guild_id]
-                            print(f"GAME_STOP [Guild {guild_id}] Stopped old game at channel {current_noitu}")
+                            logger.info(f"Stopped old game at channel {current_noitu} for Guild {guild_id}")
                     
                     # Start new game
                     await game_cog.start_new_round(guild_id, channel)
-                    print(f"GAME_START [Guild {guild_id}] Started new game at channel {channel.id}")
+                    logger.info(f"Started new game at channel {channel.id} for Guild {guild_id}")
                 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error in config_prefix: {e}", exc_info=True)
             await ctx.send(f"❌ Lỗi: {str(e)}")
 
     # ==================== EXCLUDE CHANNELS ====================
@@ -550,10 +547,10 @@ class ConfigCog(commands.Cog):
             """, (int(guild_id), json.dumps(excluded)))
             
             await interaction.followup.send(msg, ephemeral=True)
-            print(f"[EXCLUDE] {interaction.user.name} {action}ed {channel.name}")
+            logger.info(f"[EXCLUDE] {interaction.user.name} {action}ed {channel.name}")
         
         except Exception as e:
-            traceback.print_exc()
+            logger.error(f"Error in exclude_channel: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="exclude_list", description="Xem danh sách kênh loại trừ")
@@ -602,7 +599,7 @@ class ConfigCog(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
         
         except Exception as e:
-            traceback.print_exc()
+            logger.error(f"Error in exclude_list: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
 
     @config_group.command(name="view", description="Xem tất cả cấu hình server")
@@ -684,8 +681,9 @@ class ConfigCog(commands.Cog):
                 if row.get('exclude_chat_channels'):
                     try:
                         excluded = json.loads(row['exclude_chat_channels'])
-                    except:
-                        pass
+                    except (json.JSONDecodeError, TypeError) as e:
+                        logger.warning("config_parse_failed", field="exclude_chat_channels", error=str(e))
+                        excluded = []
                 other_text += f"🚫 **Kênh Loại Trừ:** {len(excluded)} kênh\n"
                 embed.add_field(name="🔧 Khác", value=other_text, inline=False)
             
@@ -693,7 +691,7 @@ class ConfigCog(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
         
         except Exception as e:
-            traceback.print_exc()
+            logger.error(f"Error in config_view: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Lỗi: {str(e)}", ephemeral=True)
     
 

@@ -2,10 +2,10 @@
 Inventory Cache System - Direct Read Strategy
 Prioritizes data strict consistency over aggressive caching.
 """
-import logging
+from core.logging import get_logger
 from typing import Dict, Any
 
-logger = logging.getLogger("InventoryCache")
+logger = get_logger("inventory_cache")
 
 class InventoryCache:
     """

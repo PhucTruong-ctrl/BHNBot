@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import logging
+from core.logging import get_logger
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from ..core.event_manager import EventManager
 
-logger = logging.getLogger("BoatRace")
+logger = get_logger("seasonal_minigames_boat_race")
 
 
 @dataclass

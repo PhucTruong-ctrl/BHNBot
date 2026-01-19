@@ -7,14 +7,14 @@ Moved from cogs/aquarium/logic/vip.py to prevent dependency hell.
 
 from typing import Tuple, Optional, Dict
 from datetime import datetime, timedelta
-import logging
+from core.logging import get_logger
 import discord
 import random
 
 from core.database import db_manager  # SQLite
 # Note: VIPSubscription model imported dynamically to avoid circular imports
 
-logger = logging.getLogger("VIPService")
+logger = get_logger("services_vip_service")
 
 # --- VIP CONFIGURATION ---
 VIP_QUOTES = [

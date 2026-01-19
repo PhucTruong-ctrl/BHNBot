@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from typing import TYPE_CHECKING
 
 from .database import execute_query, execute_write
@@ -8,7 +8,7 @@ from .database import execute_query, execute_write
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_participatio")
 
 
 async def get_participation(guild_id: int, user_id: int, event_id: str) -> dict | None:

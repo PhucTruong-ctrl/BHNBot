@@ -8,9 +8,9 @@ from typing import Optional
 from dataclasses import dataclass
 
 from core.database import db_manager
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("BuddyService", "cogs/relationship.log")
+logger = get_logger("BuddyService")
 
 MAX_BUDDIES = 3
 REQUEST_EXPIRY_HOURS = 24

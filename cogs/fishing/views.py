@@ -5,9 +5,9 @@ import random
 from database_manager import add_seeds
 from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
 from .mechanics.glitch import apply_display_glitch
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("FishingViews", "cogs/fishing/fishing.log")
+logger = get_logger("FishingViews")
 
 class FishSellView(discord.ui.View):
     """Display-only view for fishing results (sell buttons removed)."""
@@ -33,7 +33,7 @@ class FishSellView(discord.ui.View):
                     content="⏰ **Hết thời gian!** Phiên hiển thị đã kết thúc.",
                     view=None
                 )
-        except:
+        except (discord.NotFound, discord.HTTPException):
             pass
         
         if self.user_id in self.cog.caught_items:

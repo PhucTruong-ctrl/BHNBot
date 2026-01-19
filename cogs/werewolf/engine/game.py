@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
+from core.logging import get_logger
+logger = get_logger("werewolf_engine_game")
 import random
 from collections import Counter
 from datetime import datetime, timezone
@@ -19,7 +20,7 @@ from ..roles import get_role_class, load_all_roles
 from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
 from .voting import VoteSession
-from core.logging import setup_logger
+from core.logging import get_logger
 
 DB_PATH = "./data/database.db"
 CARD_BACK_URL = "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/banner.png"
@@ -28,7 +29,7 @@ MIN_PLAYERS = 4
 
 load_all_roles()
 
-logger = setup_logger("WerewolfGame", "cogs/werewolf/werewolf.log")
+logger = get_logger("WerewolfGame")
 
 
 class WerewolfGame:

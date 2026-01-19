@@ -4,9 +4,9 @@ Contains Modal and View for seed contribution.
 """
 
 import discord
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("TreeViews", "logs/cogs/tree.log")
+logger = get_logger("TreeViews")
 
 
 class ContributeModal(discord.ui.Modal):

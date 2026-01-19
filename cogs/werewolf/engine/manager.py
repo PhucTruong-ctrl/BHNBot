@@ -11,9 +11,9 @@ import discord
 from ..roles.base import Expansion
 from .game import WerewolfGame
 from database_manager import db_manager, get_server_config
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("WerewolfManager", "cogs/werewolf/werewolf.log")
+logger = get_logger("WerewolfManager")
 
 DB_PATH = "./data/database.db"
 

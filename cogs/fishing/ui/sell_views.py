@@ -7,10 +7,10 @@ from typing import Dict, Any
 from discord.ui import View, Button
 
 from database_manager import add_seeds, db_manager, increment_stat, get_stat
-from core.logging import setup_logger
+from core.logging import get_logger
 from ..constants import ALL_FISH, TRASH_ITEMS
 
-logger = setup_logger("FishingSellViews", "cogs/fishing/fishing.log")
+logger = get_logger("FishingSellViews")
 
 
 class FishSellView(discord.ui.View):
@@ -31,7 +31,7 @@ class FishSellView(discord.ui.View):
                     content="⏰ **Hết thời gian!** Phiên hiển thị đã kết thúc.",
                     view=None
                 )
-        except:
+        except (discord.NotFound, discord.HTTPException):
             pass
         
         if self.user_id in self.cog.caught_items:

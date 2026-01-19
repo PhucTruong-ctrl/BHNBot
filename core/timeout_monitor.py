@@ -7,9 +7,9 @@ import asyncio
 import time
 from collections import defaultdict, deque
 from typing import Optional, Dict, Deque
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("TimeoutMonitor", "logs/timeout_monitor.log")
+logger = get_logger("TimeoutMonitor")
 
 
 class TimeoutMonitor:

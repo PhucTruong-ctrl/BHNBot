@@ -4,9 +4,9 @@ import discord
 from discord import ui
 
 from ..constants import COMMON_FISH, RARE_FISH, LEGENDARY_FISH_KEYS, ALL_FISH
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("CollectionViews", "cogs/fishing/fishing.log")
+logger = get_logger("CollectionViews")
 
 
 class FishingCollectionView(ui.View):

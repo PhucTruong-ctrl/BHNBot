@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 import aiosqlite
 from datetime import datetime, timezone
 from typing import Optional
-from core.logging import setup_logger
+from core.logging import get_logger
 # Use DB Manager singleton instead of direct connection
 from core.database import db_manager
 
@@ -25,7 +25,7 @@ from .helpers import (
     calculate_time_remaining
 )
 
-logger = setup_logger("BumpTask", "cogs/disboard.log")
+logger = get_logger("BumpTask")
 
 
 class BumpReminderTask:

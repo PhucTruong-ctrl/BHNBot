@@ -2,16 +2,16 @@
 
 Contains views for meteor shower wishes and NPC encounters.
 """
-import logging
 import random
 import asyncio
 from datetime import datetime
 import discord
 
+from core.logging import get_logger
 from database_manager import add_seeds, get_stat, increment_stat, db_manager
 from .legendary_quest_helper import increment_manh_sao_bang
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_event_views")
 
 
 class MeteorWishView(discord.ui.View):
@@ -80,6 +80,10 @@ class MeteorWishView(discord.ui.View):
 
 from ..constants import ALL_FISH, ALL_ITEMS_DATA
 
+from core.logging import get_logger
+logger = get_logger("event_views")
+
+
 class GenericActionView(discord.ui.View):
     """Universal View for configured button-based events.
     
@@ -96,9 +100,9 @@ class GenericActionView(discord.ui.View):
         # Config IS in data.data.mechanics.buttons (double nested structure is REAL!)
         self.buttons_config = self.event_data.get("data", {}).get("mechanics", {}).get("buttons", [])
         
-        print(f"⚠️ [GENERIC_VIEW] [INIT] Event: {self.manager.current_event.get('key', 'unknown')}")
-        print(f"⚠️ [GENERIC_VIEW] [INIT] buttons_config count: {len(self.buttons_config)}")
-        print(f"⚠️ [GENERIC_VIEW] [INIT] buttons_config: {self.buttons_config}")
+        logger.debug("⚠️_[generic_view]_[init]_event", self.manager.current_event.get('key', 'unknown')=self.manager.current_event.get('key', 'unknown'))
+        logger.debug("⚠️_[generic_view]_[init]_butto", len(self.buttons_config)=len(self.buttons_config))
+        logger.debug("⚠️_[generic_view]_[init]_butto", self.buttons_config=self.buttons_config)
         
         self._setup_buttons()
         

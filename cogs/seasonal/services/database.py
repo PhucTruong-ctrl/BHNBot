@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from typing import TYPE_CHECKING, Any
 
 from core.database import DatabaseManager
@@ -8,7 +8,7 @@ from core.database import DatabaseManager
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_database")
 
 db_manager = DatabaseManager()
 

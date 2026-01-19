@@ -6,6 +6,10 @@ from .helpers import check_requirements, end_giveaway
 from .constants import *
 from .models import Giveaway
 
+from core.logging import get_logger
+logger = get_logger("giveaway_views")
+
+
 class GiveawayEndSelectView(discord.ui.View):
     """View for selecting and ending a giveaway."""
     def __init__(self, bot, options):
@@ -34,7 +38,7 @@ class GiveawayEndSelectView(discord.ui.View):
             await interaction.response.defer()
             await interaction.edit_original_response(view=self)
             
-            print(f"[Giveaway] Admin {interaction.user} ({interaction.user.id}) manually ended giveaway ID {message_id}")
+            logger.debug("[giveaway]_admin__({interactio", interaction.user=interaction.user)
             
             # End the giveaway
             await end_giveaway(message_id, self.bot)
@@ -47,7 +51,7 @@ class GiveawayEndSelectView(discord.ui.View):
             await interaction.followup.send(embed=embed, ephemeral=True)
             
         except Exception as e:
-            print(f"[Giveaway] Error ending giveaway: {e}")
+            logger.debug("[giveaway]_error_ending_giveaw", e=e)
             embed = discord.Embed(
                 title="❌ Lỗi",
                 description=f"Có lỗi xảy ra: {e}",
@@ -210,7 +214,7 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
                 
                 result_text = f"👑 **Người thắng mới:** {new_winners_text}"
                 
-                print(f"[Giveaway] Rerolled giveaway ID {self.giveaway_id} by admin {interaction.user} ({interaction.user.id}) - New winners: {new_winners_ids}, Total unique: {len(unique_winners)}, All: {unique_winners}")
+                logger.debug("[giveaway]_rerolled_giveaway_i", self.giveaway_id=self.giveaway_id)
                 
                 # Edit the result message
                 embed = discord.Embed(
@@ -241,7 +245,7 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
         except ValueError:
             await interaction.response.send_message("❌ Số lượng không hợp lệ!", ephemeral=True)
         except Exception as e:
-            print(f"[Giveaway] Error rerolling giveaway {self.giveaway_id}: {e}")
+            logger.debug("[giveaway]_error_rerolling_giv", self.giveaway_id=self.giveaway_id)
             await interaction.followup.send("❌ Có lỗi xảy ra khi reroll!", ephemeral=True)
 
     @discord.ui.button(label="🏁 Kết Thúc", style=discord.ButtonStyle.danger, emoji="🏁")
@@ -271,11 +275,11 @@ class RerollModal(discord.ui.Modal, title="Reroll Giveaway"):
 
             await interaction.message.edit(embed=embed, view=self)
 
-            print(f"[Giveaway] Giveaway ID {self.giveaway_id} completed by admin {interaction.user} ({interaction.user.id})")
+            logger.debug("[giveaway]_giveaway_id__comple", self.giveaway_id=self.giveaway_id)
 
             await interaction.followup.send("✅ Đã kết thúc giveaway hoàn toàn!", ephemeral=True)
-            print(f"[Giveaway] Giveaway {self.giveaway_id} completed by admin")
+            logger.debug("[giveaway]_giveaway__completed", self.giveaway_id=self.giveaway_id)
 
         except Exception as e:
-            print(f"[Giveaway] Error completing giveaway {self.giveaway_id}: {e}")
+            logger.debug("[giveaway]_error_completing_gi", self.giveaway_id=self.giveaway_id)
             await interaction.followup.send("❌ Có lỗi xảy ra khi kết thúc!", ephemeral=True)

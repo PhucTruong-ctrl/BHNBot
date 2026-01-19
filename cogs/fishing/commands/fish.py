@@ -14,8 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import discord
 
-import logging
-
+from core.logging import get_logger
 # Import constants from parent package
 from ..constants import (
     ALL_FISH, ALL_ITEMS_DATA, CATCH_COUNT_WEIGHTS,
@@ -54,7 +53,7 @@ from ..tournament import TournamentManager
 # Import seasonal event fish hook
 from cogs.seasonal.event_fish_hook import try_catch_event_fish
 
-logger = logging.getLogger(__name__)
+logger = get_logger("fishing_commands_fish")
 
 async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
     """Executes the core fishing logic, delegating to helper functions.

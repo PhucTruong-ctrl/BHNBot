@@ -1,12 +1,12 @@
 import os
 import asyncio
-import logging
+from core.logging import get_logger
 import re
 import asyncpg
 from typing import Optional, List, Any, Dict, Tuple
 from contextlib import asynccontextmanager
 
-logger = logging.getLogger(__name__)
+logger = get_logger("database")
 
 class DatabaseManager:
     """PostgreSQL Database Manager using asyncpg.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -9,7 +9,7 @@ from .database import execute_query, execute_write
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_title_servic")
 
 
 async def unlock_title(user_id: int, title_key: str, title_name: str, source: str) -> bool:

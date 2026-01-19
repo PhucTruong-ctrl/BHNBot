@@ -2,11 +2,11 @@
 
 Handles emotional states (suy, keo_ly, lag) for players.
 """
-import logging
+from core.logging import get_logger
 import time
 from typing import Dict, Optional
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_mechanics_buffs")
 
 
 class EmotionalStateManager:

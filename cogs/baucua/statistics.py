@@ -4,10 +4,10 @@ Tracks game statistics and triggers achievement checks.
 """
 
 from typing import Dict
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager
 
-logger = setup_logger("BauCuaStats", "logs/cogs/baucua.log")
+logger = get_logger("BauCuaStats")
 
 
 class StatisticsTracker:

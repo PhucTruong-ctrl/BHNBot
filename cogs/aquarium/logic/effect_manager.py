@@ -1,9 +1,9 @@
 import json
 import os
-import logging
+from core.logging import get_logger
 from typing import Dict, List, Any, Optional
 
-logger = logging.getLogger("EffectManager")
+logger = get_logger("aquarium_logic_effect_manager")
 
 class EffectManager:
     """

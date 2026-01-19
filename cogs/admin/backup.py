@@ -12,9 +12,9 @@ import subprocess
 import os
 from pathlib import Path
 from datetime import datetime
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("BACKUP", "cogs/database.log")
+logger = get_logger("BACKUP")
 
 # Configuration (defaults match docker/local setup)
 BACKUP_DIR = "./data/backups/auto"

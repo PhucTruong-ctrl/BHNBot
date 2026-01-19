@@ -1,10 +1,10 @@
 """Rod upgrade and durability system."""
 
-import logging
 from ..constants import DB_PATH, ROD_LEVELS
 from database_manager import db_manager, increment_stat, get_stat, add_seeds, get_user_balance
 
-logger = logging.getLogger(__name__)
+from core.logging import get_logger
+logger = get_logger("rod_system")
 
 async def get_rod_data(user_id: int) -> tuple:
     """Retrieves the user's rod level and durability.
@@ -33,7 +33,7 @@ async def get_rod_data(user_id: int) -> tuple:
                     (user_id, 1, ROD_LEVELS[1]["durability"])
                 )
             except Exception as e:
-                print(f"[ROD] Error creating fishing profile for {user_id}: {e}")
+                logger.debug("[rod]_error_creating_fishing_p", user_id=user_id)
             return 1, ROD_LEVELS[1]["durability"]
             
         # Ensure level fallback only when None/invalid, and do NOT override legitimate 0 durability
@@ -44,7 +44,7 @@ async def get_rod_data(user_id: int) -> tuple:
         
         return rod_level, rod_durability
     except Exception as e:
-        print(f"[ROD] Error getting rod data: {e}")
+        logger.debug("[rod]_error_getting_rod_data:_", e=e)
         return 1, ROD_LEVELS[1]["durability"]
 
 async def update_rod_data(user_id: int, durability: int, level: int | None = None):
@@ -61,15 +61,15 @@ async def update_rod_data(user_id: int, durability: int, level: int | None = Non
                 "UPDATE fishing_profiles SET rod_durability = $1, rod_level = $2 WHERE user_id = $3",
                 (durability, level, user_id)
             )
-            print(f"[ROD] [UPDATE] user_id={user_id} durability={durability} level={level}")
+            logger.debug("[rod]_[update]_user_id=_durabi", user_id=user_id)
         else:
             await db_manager.execute(
                 "UPDATE fishing_profiles SET rod_durability = $1 WHERE user_id = $2",
                 (durability, user_id)
             )
-            print(f"[ROD] [UPDATE] user_id={user_id} durability={durability}")
+            logger.debug("[rod]_[update]_user_id=_durabi", user_id=user_id)
     except Exception as e:
-        print(f"[ROD] Error updating rod data for {user_id}: {e}")
+        logger.debug("[rod]_error_updating_rod_data_", user_id=user_id)
 
 
 async def check_and_repair_rod(

@@ -6,12 +6,12 @@ Defines dataclasses for tree state, contributor tracking, and harvest buffs.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple, Dict
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager
 
 from .constants import BASE_LEVEL_REQS, SEASON_SCALING, HARVEST_BUFF_HOURS
 
-logger = setup_logger("TreeModels", "logs/cogs/tree.log")
+logger = get_logger("TreeModels")
 
 
 # PERFORMANCE FIX #11: Module-level cache for TreeData

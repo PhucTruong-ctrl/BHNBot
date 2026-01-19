@@ -6,10 +6,10 @@ from datetime import datetime, timedelta
 from cogs.fishing.constants import ALL_ITEMS_DATA
 from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
 from .services.buddy_service import BuddyService
-from core.logging import setup_logger
+from core.logging import get_logger
 from core.database import db_manager
 
-logger = setup_logger("RelationshipCog", "cogs/relationship.log")
+logger = get_logger("RelationshipCog")
 
 # Build local mapping for relationship items
 # We only care about buyable items or explicit gifts

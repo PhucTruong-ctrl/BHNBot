@@ -51,7 +51,7 @@ def configure_logging(
             cache_logger_on_first_use=True,
         )
         
-        root_logger = logging.getLogger()
+        root_logger = get_logger("logging_config")
         root_logger.setLevel(level)
         
         for handler in root_logger.handlers[:]:
@@ -110,7 +110,7 @@ def setup_logger(
     if not _configured:
         configure_logging(level=level)
     
-    logger = logging.getLogger(logger_name)
+    logger = get_logger("logging_config")
     logger.setLevel(level)
     
     if logger.handlers:

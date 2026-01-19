@@ -6,7 +6,7 @@ Each event has its own shop defined in data/events/{event_type}.json.
 from __future__ import annotations
 
 import json
-import logging
+from core.logging import get_logger
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +18,7 @@ from .participation_service import get_currency, spend_currency
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_shop_service")
 
 
 @dataclass

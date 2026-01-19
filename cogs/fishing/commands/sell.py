@@ -6,10 +6,10 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager
 
-logger = setup_logger("SellCommand", "cogs/fishing/fishing.log")
+logger = get_logger("SellCommand")
 
 
 async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = None, mode: str = "all"):

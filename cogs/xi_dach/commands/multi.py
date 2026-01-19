@@ -15,7 +15,7 @@ import time
 from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import get_user_balance, add_seeds, batch_update_seeds, get_or_create_user, db_manager
 
 from ..core.game_manager import game_manager
@@ -39,7 +39,7 @@ from ..ui.render import render_game_state, render_player_hand
 if TYPE_CHECKING:
     from ..cog import XiDachCog
 
-logger = setup_logger("XiDachMulti", "cogs/xidach_multi.log")
+logger = get_logger("XiDachMulti")
 
 # Constants
 LOBBY_DURATION = 30  # seconds (betting time)

@@ -7,9 +7,9 @@ import asyncio
 from typing import Optional, Dict, List, Any, Tuple
 from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard, get_db_connection
 from configs.settings import DB_PATH
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("DBManager", "core/database.log")
+logger = get_logger("DBManager")
 
 
 async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:

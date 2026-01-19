@@ -3,21 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, Response
-import logging
 import os
 
+from core.logging import get_logger
 from .config import HOST, PORT, DEBUG, CORS_ORIGINS
 from .routers import stats, users, roles, config as config_router, export, system, modules, audit, auth, cog_config, websocket, bot_logs
 import traceback
 from fastapi.responses import JSONResponse
 from fastapi import Request
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("AdminPanel")
+# Setup structured logging
+logger = get_logger("AdminPanel")
 
 # Create FastAPI app
 app = FastAPI(
@@ -31,8 +27,8 @@ app = FastAPI(
 # Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    error_msg = f"Global Error: {str(exc)}\n{traceback.format_exc()}"
-    logging.error(error_msg)
+    error_msg = f"Global Error: {str(exc)}\\n{traceback.format_exc()}"
+    logger.error("global_exception", error=str(exc), trace=traceback.format_exc())
     return JSONResponse(
         status_code=500,
         content={"message": "Internal Server Error", "detail": str(exc), "trace": traceback.format_exc()},

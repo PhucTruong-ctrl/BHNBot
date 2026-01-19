@@ -1,6 +1,6 @@
 import io
 import json
-import logging
+from core.logging import get_logger
 from typing import Optional
 
 import discord
@@ -14,7 +14,7 @@ from .ui.views import ThemeSelectView, ThemePreviewView
 from .ui.renderer import render_profile
 from core.services.vip_service import VIPEngine
 
-logger = logging.getLogger(__name__)
+logger = get_logger("profile_cog")
 
 
 async def _get_active_title(user_id: int) -> str | None:
@@ -317,7 +317,7 @@ class ProfileCog(commands.Cog):
                         try:
                             unlock_time = datetime.fromisoformat(unlock_time.replace("Z", "+00:00"))
                             date_str = unlock_time.strftime("%d/%m/%Y")
-                        except:
+                        except (ValueError, TypeError):
                             date_str = "???"
                     else:
                         date_str = unlock_time.strftime("%d/%m/%Y") if unlock_time else "???"

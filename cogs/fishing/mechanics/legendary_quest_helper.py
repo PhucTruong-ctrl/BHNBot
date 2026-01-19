@@ -5,6 +5,10 @@ Quản lý tiến độ quest cho các cá huyền thoại
 
 from database_manager import db_manager
 
+from core.logging import get_logger
+logger = get_logger("legendary_quest")
+
+
 
 # ==================== THUỒNG LUỒNG - Hiến Tế Cá ====================
 
@@ -17,7 +21,7 @@ async def get_sacrifice_count(user_id: int, fish_key: str = "thuong_luong") -> i
         )
         return row['quest_status'] if row else 0
     except Exception as e:
-        print(f"[LEGENDARY] Error getting sacrifice count: {e}")
+        logger.debug("[legendary]_error_getting_sacr", e=e)
         return 0
 
 
@@ -33,10 +37,10 @@ async def increment_sacrifice_count(user_id: int, amount: int = 1, fish_key: str
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_status = $3""",
             (user_id, fish_key, new_count)
         )
-        print(f"[LEGENDARY] {user_id} sacrifice count: {current} → {new_count}")
+        logger.debug("[legendary]__sacrifice_count:_", user_id=user_id)
         return new_count
     except Exception as e:
-        print(f"[LEGENDARY] Error incrementing sacrifice count: {e}")
+        logger.debug("[legendary]_error_incrementing", e=e)
         return await get_sacrifice_count(user_id, fish_key)
 
 
@@ -47,9 +51,9 @@ async def reset_sacrifice_count(user_id: int, fish_key: str = "thuong_luong") ->
             "UPDATE legendary_quests SET quest_status = 0 WHERE user_id = $1 AND fish_key = $2",
             (user_id, fish_key)
         )
-        print(f"[LEGENDARY] Reset sacrifice count for {user_id}")
+        logger.debug("[legendary]_reset_sacrifice_co", user_id=user_id)
     except Exception as e:
-        print(f"[LEGENDARY] Error resetting sacrifice count: {e}")
+        logger.debug("[legendary]_error_resetting_sa", e=e)
 
 
 # ==================== CÁ NGÂN HÀ - Chế Tạo Mồi ====================
@@ -63,7 +67,7 @@ async def get_crafted_bait_status(user_id: int, fish_key: str = "ca_ngan_ha") ->
         )
         return row['quest_status'] == 1 if row else False
     except Exception as e:
-        print(f"[LEGENDARY] Error checking crafted bait status: {e}")
+        logger.debug("[legendary]_error_checking_cra", e=e)
         return False
 
 
@@ -77,9 +81,9 @@ async def set_crafted_bait_status(user_id: int, completed: bool = True, fish_key
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_status = $3""",
             (user_id, fish_key, status)
         )
-        print(f"[LEGENDARY] Set {fish_key} crafted_bait_status: {completed}")
+        logger.debug("[legendary]_set__crafted_bait_", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting crafted bait status: {e}")
+        logger.debug("[legendary]_error_setting_craf", e=e)
 
 
 # ==================== CÁ PHƯỢNG HOÀNG - Chuẩn Bị Vật Phẩm ====================
@@ -93,7 +97,7 @@ async def get_phoenix_prep_status(user_id: int, fish_key: str = "ca_phuong_hoang
         )
         return row['quest_status'] == 1 if row else False
     except Exception as e:
-        print(f"[LEGENDARY] Error checking phoenix prep status: {e}")
+        logger.debug("[legendary]_error_checking_pho", e=e)
         return False
 
 
@@ -107,9 +111,9 @@ async def set_phoenix_prep_status(user_id: int, prepared: bool = True, fish_key:
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_status = $3""",
             (user_id, fish_key, status)
         )
-        print(f"[LEGENDARY] Set {fish_key} prep_status: {prepared}")
+        logger.debug("[legendary]_set__prep_status:_", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting phoenix prep status: {e}")
+        logger.debug("[legendary]_error_setting_phoe", e=e)
 
 
 # ==================== CTHULHU - Ghép Bản Đồ ====================
@@ -123,7 +127,7 @@ async def get_map_pieces_count(user_id: int, fish_key: str = "cthulhu_con") -> i
         )
         return row['quest_status'] if row else 0
     except Exception as e:
-        print(f"[LEGENDARY] Error getting map pieces count: {e}")
+        logger.debug("[legendary]_error_getting_map_", e=e)
         return 0
 
 
@@ -137,9 +141,9 @@ async def set_map_pieces_count(user_id: int, pieces: int, fish_key: str = "cthul
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_status = $3""",
             (user_id, fish_key, pieces)
         )
-        print(f"[LEGENDARY] Set {fish_key} map_pieces: {pieces}")
+        logger.debug("[legendary]_set__map_pieces:_{", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting map pieces count: {e}")
+        logger.debug("[legendary]_error_setting_map_", e=e)
 
 
 async def is_quest_completed(user_id: int, fish_key: str) -> bool:
@@ -151,7 +155,7 @@ async def is_quest_completed(user_id: int, fish_key: str) -> bool:
         )
         return row['quest_completed'] if row else False
     except Exception as e:
-        print(f"[LEGENDARY] Error checking quest completed: {e}")
+        logger.debug("[legendary]_error_checking_que", e=e)
         return False
 
 
@@ -164,9 +168,9 @@ async def set_quest_completed(user_id: int, fish_key: str, completed: bool = Tru
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_completed = $3""",
             (user_id, fish_key, completed)
         )
-        print(f"[LEGENDARY] Set {fish_key} quest_completed: {completed}")
+        logger.debug("[legendary]_set__quest_complet", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting quest completed: {e}")
+        logger.debug("[legendary]_error_setting_ques", e=e)
 
 
 # ==================== CÁ VỎI 52HZ - Dò Sóng ====================
@@ -185,7 +189,7 @@ async def get_frequency_hunt_status(user_id: int, fish_key: str = "ca_voi_52hz")
         )
         return row['quest_status'] if row else 0
     except Exception as e:
-        print(f"[LEGENDARY] Error getting frequency hunt status: {e}")
+        logger.debug("[legendary]_error_getting_freq", e=e)
         return 0
 
 
@@ -204,9 +208,9 @@ async def set_frequency_hunt_status(user_id: int, status: int, fish_key: str = "
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_status = $3""",
             (user_id, fish_key, status)
         )
-        print(f"[LEGENDARY] Set {fish_key} frequency_hunt_status: {status}")
+        logger.debug("[legendary]_set__frequency_hun", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting frequency hunt status: {e}")
+        logger.debug("[legendary]_error_setting_freq", e=e)
 
 
 # ==================== CÁ NGÂN HÀ - Mảnh Sao Băng & Tinh Cầu ====================
@@ -223,7 +227,7 @@ async def increment_manh_sao_bang(bot, user_id: int, amount: int = 1) -> int:
         # Return new count
         return await bot.inventory.get(user_id, "manh_sao_bang")
     except Exception as e:
-        print(f"[LEGENDARY] Error incrementing manh sao bang: {e}")
+        logger.debug("[legendary]_error_incrementing", e=e)
         return 0
 
 # NOTE: Unused legacy functions removed (has_tinh_cau, craft_tinh_cau etc)
@@ -240,7 +244,7 @@ async def is_legendary_caught(user_id: int, fish_key: str) -> bool:
         )
         return row['legendary_caught'] if row else False
     except Exception as e:
-        print(f"[LEGENDARY] Error checking legendary caught: {e}")
+        logger.debug("[legendary]_error_checking_leg", e=e)
         return False
 
 
@@ -253,9 +257,9 @@ async def set_legendary_caught(user_id: int, fish_key: str, caught: bool = True)
                ON CONFLICT(user_id, fish_key) DO UPDATE SET legendary_caught = $3""",
             (user_id, fish_key, caught)
         )
-        print(f"[LEGENDARY] Set {fish_key} legendary_caught: {caught}")
+        logger.debug("[legendary]_set__legendary_cau", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting legendary caught: {e}")
+        logger.debug("[legendary]_error_setting_lege", e=e)
 
 
 # ==================== RESET QUEST ====================
@@ -267,9 +271,9 @@ async def reset_legendary_quest(user_id: int, fish_key: str) -> None:
             "UPDATE legendary_quests SET quest_status = 0, quest_completed = FALSE WHERE user_id = $1 AND fish_key = $2",
             (user_id, fish_key)
         )
-        print(f"[LEGENDARY] Reset quest for {fish_key}")
+        logger.debug("[legendary]_reset_quest_for_", fish_key=fish_key)
     except Exception as e:
-        print(f"[LEGENDARY] Error resetting quest: {e}")
+        logger.debug("[legendary]_error_resetting_qu", e=e)
 
 
 # ==================== CÁ PHƯỢNG HOÀNG - Lông Vũ Lửa & Buff ====================
@@ -283,7 +287,7 @@ async def get_long_vu_lua_count(user_id: int) -> int:
         )
         return row['quest_status'] if row else 0
     except Exception as e:
-        print(f"[LEGENDARY] Error getting long vu lua count: {e}")
+        logger.debug("[legendary]_error_getting_long", e=e)
         return 0
 
 
@@ -296,9 +300,9 @@ async def set_long_vu_lua_count(user_id: int, count: int) -> None:
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_status = $2""",
             (user_id, count)
         )
-        print(f"[LEGENDARY] Set long vu lua count for {user_id}: {count}")
+        logger.debug("[legendary]_set_long_vu_lua_co", user_id=user_id)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting long vu lua count: {e}")
+        logger.debug("[legendary]_error_setting_long", e=e)
 
 
 async def increment_long_vu_lua(user_id: int, amount: int = 1) -> int:
@@ -309,7 +313,7 @@ async def increment_long_vu_lua(user_id: int, amount: int = 1) -> int:
         await set_long_vu_lua_count(user_id, new_count)
         return new_count
     except Exception as e:
-        print(f"[LEGENDARY] Error incrementing long vu lua: {e}")
+        logger.debug("[legendary]_error_incrementing", e=e)
         return await get_long_vu_lua_count(user_id)
 
 
@@ -322,7 +326,7 @@ async def get_phoenix_energy(user_id: int) -> int:
         )
         return int(row['quest_completed']) if row else 0
     except Exception as e:
-        print(f"[LEGENDARY] Error getting phoenix energy: {e}")
+        logger.debug("[legendary]_error_getting_phoe", e=e)
         return 0
 
 async def has_phoenix_buff(user_id: int) -> bool:
@@ -340,14 +344,14 @@ async def set_phoenix_buff(user_id: int, energy: int) -> None:
                ON CONFLICT(user_id, fish_key) DO UPDATE SET quest_completed = $2""",
             (user_id, int(energy))
         )
-        print(f"[LEGENDARY] Set phoenix buff: user={user_id}, energy={energy}%")
+        logger.debug("[legendary]_set_phoenix_buff:_", user_id=user_id)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting phoenix buff: {e}")
+        logger.debug("[legendary]_error_setting_phoe", e=e)
 
 async def consume_phoenix_buff(user_id: int) -> None:
     """Remove phoenix buff (set energy to 0)"""
     await set_phoenix_buff(user_id, 0)
-    print(f"[LEGENDARY] Consumed phoenix buff for user {user_id}")
+    logger.debug("[legendary]_consumed_phoenix_b", user_id=user_id)
 
 
 async def get_phoenix_last_play(user_id: int) -> str:
@@ -359,7 +363,7 @@ async def get_phoenix_last_play(user_id: int) -> str:
         )
         return row['last_progress_time'] if row and row['last_progress_time'] else None
     except Exception as e:
-        print(f"[LEGENDARY] Error getting phoenix last play: {e}")
+        logger.debug("[legendary]_error_getting_phoe", e=e)
         return None
 
 
@@ -370,6 +374,6 @@ async def set_phoenix_last_play(user_id: int) -> None:
             "UPDATE legendary_quests SET last_progress_time = CURRENT_TIMESTAMP WHERE user_id = $1 AND fish_key = 'ca_phuong_hoang'",
             (user_id,)
         )
-        print(f"[LEGENDARY] Set phoenix last play for {user_id}")
+        logger.debug("[legendary]_set_phoenix_last_p", user_id=user_id)
     except Exception as e:
-        print(f"[LEGENDARY] Error setting phoenix last play: {e}")
+        logger.debug("[legendary]_error_setting_phoe", e=e)

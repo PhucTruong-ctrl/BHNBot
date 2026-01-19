@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import logging
+from core.logging import get_logger
+logger = get_logger("werewolf_engine_voting")
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -110,35 +111,39 @@ class VoteSession:
     async def handle_vote(self, voter_id: int, target_id: Optional[int]) -> None:
         # SECURITY: Validate voter exists and target is valid
         if voter_id not in self._votes:
-            logging.getLogger("werewolf").warning(
-                "Attempted vote from ineligible voter | voter=%s title=%s",
-                voter_id, self.title
+            logger.warning(
+                "attempted_vote_ineligible",
+                voter=voter_id,
+                title=self.title,
             )
             return
         
         # SECURITY: Check if voter is disabled (e.g., by Pharmacist's sleeping potion)
         if voter_id in self.disabled_voters:
-            logging.getLogger("werewolf").warning(
-                "Vote blocked: voter is disabled | voter=%s title=%s",
-                voter_id, self.title
+            logger.warning(
+                "vote_blocked_disabled_voter",
+                voter=voter_id,
+                title=self.title,
             )
             return
         
         # SECURITY: Validate target_id is None or in options
         if target_id is not None and target_id not in self.options:
-            logging.getLogger("werewolf").warning(
-                "Attempted vote for invalid target | voter=%s target=%s title=%s",
-                voter_id, target_id, self.title
+            logger.warning(
+                "attempted_vote_invalid_target",
+                voter=voter_id,
+                target=target_id,
+                title=self.title,
             )
             return
         
         self._votes[voter_id] = target_id
         await self._refresh_message()
-        logging.getLogger("werewolf").info(
-            "Vote recorded | voter=%s target=%s title=%s",
-            voter_id,
-            target_id,
-            self.title,
+        logger.info(
+            "vote_recorded",
+            voter=voter_id,
+            target=target_id,
+            title=self.title,
         )
         # Don't end early - wait for full duration to show all actions
 
@@ -187,9 +192,9 @@ class VoteSession:
                 continue
             # SECURITY: Only count votes from eligible voters
             if voter not in self.eligible_voters:
-                logging.getLogger("werewolf").warning(
-                    "Discarding vote from ineligible voter in result | voter=%s",
-                    voter
+                logger.warning(
+                    "discarding_ineligible_vote",
+                    voter=voter,
                 )
                 continue
             weight = self.vote_weights.get(voter, 1)
@@ -201,13 +206,13 @@ class VoteSession:
             return VoteResult(winning_target_id=None, tally=counts, is_tie=True, votes_by_voter=dict(self._votes))
         top = counts.most_common()
         if len(top) > 1 and top[0][1] == top[1][1]:
-            logging.getLogger("werewolf").info("Vote result tie | title=%s", self.title)
+            logger.info("vote_result_tie", title=self.title)
             return VoteResult(winning_target_id=None, tally=counts, is_tie=True, votes_by_voter=dict(self._votes))
-        logging.getLogger("werewolf").info(
-            "Vote result | title=%s winner=%s votes=%s",
-            self.title,
-            top[0][0],
-            counts,
+        logger.info(
+            "vote_result",
+            title=self.title,
+            winner=top[0][0],
+            votes=dict(counts),
         )
         return VoteResult(winning_target_id=top[0][0], tally=counts, is_tie=False, votes_by_voter=dict(self._votes))
 

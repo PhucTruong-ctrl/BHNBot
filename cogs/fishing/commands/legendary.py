@@ -2,13 +2,13 @@
 
 Displays all legendary fish with their catchers and unlock conditions.
 """
-import logging
+from core.logging import get_logger
 import discord
 
 from database_manager import db_manager
 from ..constants import LEGENDARY_FISH
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_commands_legendary")
 
 
 class LegendaryHallView(discord.ui.View):

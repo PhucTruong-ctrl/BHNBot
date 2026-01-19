@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 import random
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from ..core.event_manager import EventManager
 
-logger = logging.getLogger("LeafCollect")
+logger = get_logger("seasonal_minigames_leaf_collec")
 
 
 LEAF_TYPES = [

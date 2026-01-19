@@ -7,9 +7,9 @@ import random
 import asyncio
 from typing import Dict, Any, Optional
 from database_manager import db_manager, increment_stat, get_stat
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("InteractiveSellViews", "cogs/fishing/fishing.log")
+logger = get_logger("InteractiveSellViews")
 
 
 class InteractiveSellEventView(discord.ui.View):

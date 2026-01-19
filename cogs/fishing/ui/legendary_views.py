@@ -2,13 +2,12 @@
 
 import discord
 import random
-import logging
-
+from core.logging import get_logger
 from database_manager import get_fish_collection, increment_stat, get_stat
 from ..constants import LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, ROD_LEVELS
 from ..mechanics.glitch import apply_display_glitch
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_ui_legendary_views")
 
 
 class LegendaryBossFightView(discord.ui.View):

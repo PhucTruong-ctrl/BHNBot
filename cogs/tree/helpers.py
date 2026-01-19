@@ -5,7 +5,7 @@ Contains pure functions for creating embeds, progress bars, and text formatting.
 
 import discord
 from typing import List, Tuple
-from core.logging import setup_logger
+from core.logging import get_logger
 
 from .constants import (
     TREE_IMAGES,
@@ -16,7 +16,7 @@ from .constants import (
 from .models import TreeData, ContributorData
 from configs.item_constants import ItemKeys
 
-logger = setup_logger("TreeHelpers", "logs/cogs/tree.log")
+logger = get_logger("TreeHelpers")
 
 
 def create_progress_bar(progress: int, requirement: int, length: int = PROGRESS_BAR_LENGTH) -> str:

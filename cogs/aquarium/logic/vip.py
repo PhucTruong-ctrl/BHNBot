@@ -1,7 +1,7 @@
 
 from typing import Tuple, Optional, Dict, List
 from datetime import datetime, timedelta
-import logging
+from core.logging import get_logger
 import discord
 import random
 
@@ -9,7 +9,7 @@ from core.database import db_manager # SQLite
 from ..models import VIPSubscription # Postgres
 from ..constants import VIP_PRICES, VIP_NAMES, VIP_COLORS
 
-logger = logging.getLogger("VIPEngine")
+logger = get_logger("aquarium_logic_vip")
 
 # --- VIP CONFIGURATION ---
 VIP_QUOTES = [

@@ -4,13 +4,13 @@ BHNBot Admin Panel - Database Connection (PostgreSQL)
 Asyncpg connection pool for the web interface.
 """
 import asyncpg
-import logging
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
+from core.logging import get_logger
 from .config import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD
 
-logger = logging.getLogger("AdminPanel.DB")
+logger = get_logger("AdminPanel.DB")
 
 # Global pool
 pool: Optional[asyncpg.Pool] = None

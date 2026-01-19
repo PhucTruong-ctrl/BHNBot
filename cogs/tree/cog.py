@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime, timedelta, time, timezone
 from database_manager import db_manager
 from core.services.vip_service import VIPEngine
-from core.logging import setup_logger
+from core.logging import get_logger
 
 from .tree_manager import TreeManager
 from .contributor_manager import ContributorManager
@@ -13,7 +13,7 @@ from .models import TreeData, HarvestBuff
 from .helpers import create_tree_embed, format_contributor_list, format_all_time_contributors
 from .views import ContributeModal, AutoWaterView
 
-logger = setup_logger("TreeCog", "logs/cogs/tree.log")
+logger = get_logger("TreeCog")
 
 
 class TreeCog(commands.Cog):

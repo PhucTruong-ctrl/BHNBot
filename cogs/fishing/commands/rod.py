@@ -1,12 +1,12 @@
 
-import logging
+from core.logging import get_logger
 import discord
 from database_manager import db_manager, get_user_balance, add_seeds, increment_stat, get_stat
 from ..constants import ROD_LEVELS
 from ..mechanics.rod_system import get_rod_data, update_rod_data
 from core.utils import format_currency
 
-logger = logging.getLogger("FishingCog")
+logger = get_logger("fishing_commands_rod")
 
 
 async def nangcap_action(ctx_or_interaction):

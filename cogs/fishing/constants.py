@@ -27,10 +27,10 @@ def load_fishing_data():
                 data = json.load(f)
                 return data.get("fishing_data", {})
         except Exception as e:
-            print(f"[WARNING] Failed to load common/rare fish from JSON: {e}")
+            logger.warning("failed_to_load_common/rare_fis", e=e)
             return {}
     else:
-        print(f"[WARNING] {FISHING_DATA_PATH} not found.")
+        logger.warning("_not_found.", FISHING_DATA_PATH=FISHING_DATA_PATH)
         return {}
 
 def load_legendary_fish_data():
@@ -41,10 +41,10 @@ def load_legendary_fish_data():
                 data = json.load(f)
                 return data.get("legendary_data", {})
         except Exception as e:
-            print(f"[WARNING] Failed to load legendary fish from JSON: {e}")
+            logger.warning("failed_to_load_legendary_fish_", e=e)
             return {}
     else:
-        print(f"[WARNING] {LEGENDARY_FISH_PATH} not found.")
+        logger.warning("_not_found.", LEGENDARY_FISH_PATH=LEGENDARY_FISH_PATH)
         return {}
 
 # Load data once at import time
@@ -105,7 +105,7 @@ if FISHING_DATA:
             RARE_FISH.append(fish)
             RARE_FISH_KEYS.append(key)
 else:
-    print("[WARNING] No common/rare fish data loaded!")
+    logger.info("[warning]_no_common/rare_fish_")
 
 # Load legendary fish
 if LEGENDARY_FISH_DATA:
@@ -115,7 +115,7 @@ if LEGENDARY_FISH_DATA:
         LEGENDARY_FISH.append(fish)
         LEGENDARY_FISH_KEYS.append(key)
 else:
-    print("[WARNING] No legendary fish data loaded!")
+    logger.info("[warning]_no_legendary_fish_da")
 
 # Load VIP fish into ALL_FISH for lookup
 for vip_fish in VIP_FISH_DATA:
@@ -123,10 +123,10 @@ for vip_fish in VIP_FISH_DATA:
     ALL_FISH[key] = vip_fish
 
 if not FISHING_DATA and not LEGENDARY_FISH_DATA:
-    print("[ERROR] No fish data loaded! Game will not work properly.")
+    logger.info("[error]_no_fish_data_loaded!_g")
 
 if not FISHING_DATA and not LEGENDARY_FISH_DATA:
-    print("[ERROR] No fish data loaded! Game will not work properly.")
+    logger.info("[error]_no_fish_data_loaded!_g")
 
 # ==================== SPECIAL ITEMS (Added to ALL_FISH after loading) ====================
 # Add special items that aren't in JSON
@@ -163,14 +163,17 @@ def load_json_config(path: str, default):
             with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[WARNING] Failed to load {path}: {e}")
+            logger.warning("failed_to_load_:_{e}", path=path)
     else:
-        print(f"[WARNING] {path} not found.")
+        logger.warning("_not_found.", path=path)
     return default
 
 
 # ==================== LOAD ALL ITEMS FROM JSON ====================
 from core.item_system import item_system
+
+from core.logging import get_logger
+logger = get_logger("fishing_constants")
 
 # ... existing code ...
 

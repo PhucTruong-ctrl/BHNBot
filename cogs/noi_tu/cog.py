@@ -10,9 +10,9 @@ import os
 import traceback
 from datetime import datetime
 from database_manager import db_manager, get_stat, get_or_create_user, get_server_config
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("NoiTu", "cogs/noitu.log")
+logger = get_logger("NoiTu")
 
 DB_PATH = os.path.abspath("./data/database.db")
 WORDS_DICT_PATH = os.path.abspath("./data/words_dict.json")

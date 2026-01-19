@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -9,7 +9,7 @@ from .event_types import EventConfig, EventRegistryEntry, get_registry_settings,
 if TYPE_CHECKING:
     from discord.ext.commands import Bot
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_core_event_manager")
 
 
 class EventManager:

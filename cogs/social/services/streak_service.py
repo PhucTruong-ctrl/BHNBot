@@ -7,9 +7,9 @@ from typing import Optional
 from dataclasses import dataclass
 
 from core.database import db_manager
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("StreakService", "cogs/social.log")
+logger = get_logger("StreakService")
 
 STREAK_MULTIPLIERS = {
     7: 1.10,

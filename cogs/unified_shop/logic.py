@@ -2,9 +2,8 @@
 from core.database import db_manager, get_user_balance
 from core.item_system import item_system
 from cogs.aquarium.logic.market import MarketEngine
-import logging
-
-logger = logging.getLogger("UnifiedShopLogic")
+from core.logging import get_logger
+logger = get_logger("unified_shop_logic")
 
 class ShopController:
     @staticmethod

@@ -39,9 +39,9 @@ class Giveaway:
                         end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S.%f")
                     except ValueError:
                         # Critical error: cannot parse timestamp
-                        import logging
-                        logger = logging.getLogger("GiveawayCog")
-                        logger.error(f"Failed to parse end_time: {end_time} for giveaway {row[0]}")
+                        from core.logging import get_logger
+                        logger = get_logger("giveaway_models")
+                        logger.error("timestamp_parse_failed", end_time=end_time, message_id=row[0])
                         raise ValueError(f"Cannot parse end_time: {end_time}")
 
         if end_time.tzinfo is None:

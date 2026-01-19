@@ -4,12 +4,12 @@ Coordinates the bump detection and reminder task systems.
 """
 
 from discord.ext import commands
-from core.logging import setup_logger
+from core.logging import get_logger
 
 from .detector import BumpDetector
 from .task import BumpReminderTask
 
-logger = setup_logger("BumpReminderCog", "cogs/disboard.log")
+logger = get_logger("BumpReminderCog")
 
 
 class BumpReminderCog(commands.Cog):

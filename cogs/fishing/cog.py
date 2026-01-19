@@ -9,9 +9,9 @@ import random
 import time
 import json
 from typing import Optional
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("FishingCog", "cogs/fishing/fishing.log")
+logger = get_logger("FishingCog")
 
 from .constants import *
 from configs.item_constants import ItemKeys, ItemType

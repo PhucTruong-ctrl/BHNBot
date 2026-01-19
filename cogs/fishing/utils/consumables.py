@@ -7,6 +7,9 @@ from configs.item_constants import ItemKeys
 
 from core.item_system import item_system
 
+from core.logging import get_logger
+logger = get_logger("fishing_consumables")
+
 def _load_consumable_items():
     """Load consumable items from ItemSystem."""
     all_items = item_system.get_all_items()
@@ -37,7 +40,7 @@ CONSUMABLE_ITEMS = _load_consumable_items()
 
 # Fallback if JSON doesn't exist or is empty - provide default consumables
 if not CONSUMABLE_ITEMS:
-    print("[WARNING] No consumable items loaded from JSON. Using fallback defaults.")
+    logger.info("[warning]_no_consumable_items_")
     CONSUMABLE_ITEMS = {
         ItemKeys.NUOC_TANG_LUC: {
             "key": ItemKeys.NUOC_TANG_LUC,

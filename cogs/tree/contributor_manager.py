@@ -4,14 +4,14 @@ Manages contributor statistics, rankings, and reward calculations.
 """
 
 from typing import List, Dict, Tuple
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager
 
 from .constants import HARVEST_REWARDS
 from .models import ContributorData
 from .helpers import get_contribution_exp
 
-logger = setup_logger("ContributorManager", "logs/cogs/tree.log")
+logger = get_logger("ContributorManager")
 
 
 class ContributorManager:

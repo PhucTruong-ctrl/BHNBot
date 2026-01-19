@@ -9,6 +9,10 @@ from ..constants import DB_PATH, LEGENDARY_FISH, LEGENDARY_FISH_KEYS, ALL_FISH, 
 from .glitch import apply_display_glitch
 from database_manager import get_fish_collection
 
+from core.logging import get_logger
+logger = get_logger("legendary")
+
+
 class LegendaryBossFightView(discord.ui.View):
     """Interactive boss fight for legendary fish with balanced difficulty."""
     def __init__(self, cog, user_id, legendary_fish: dict, rod_durability: int, rod_level: int, channel=None, guild_id=None, user=None):
@@ -91,20 +95,20 @@ class LegendaryBossFightView(discord.ui.View):
                     await increment_stat(self.user_id, "fishing", stat_key, 1)
                     current_value = await get_stat(self.user_id, "fishing", stat_key)
                     await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", stat_key, current_value, self.channel)
-                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {self.user_id} on legendary catch {legendary_key}")
+                    logger.info("achievement_tracked", user_id=self.user_id, stat_key=stat_key, legendary_key=legendary_key)
                     
                     # Track boss_caught (count all legendary catches)
                     await increment_stat(self.user_id, "fishing", "boss_caught", 1)
                     current_boss = await get_stat(self.user_id, "fishing", "boss_caught")
                     await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "boss_caught", current_boss, self.channel)
-                    print(f"[ACHIEVEMENT] Tracked boss_caught for user {self.user_id}: {current_boss} total")
+                    logger.info("achievement_tracked_boss", user_id=self.user_id, total_bosses=current_boss)
                 except Exception as e:
-                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {self.user_id}: {e}")
+                    logger.error("achievement_track_error", user_id=self.user_id, stat_key=stat_key, error=str(e))
             
             await increment_stat(self.user_id, "fishing", "legendary_caught", 1)
             current_legendary = await get_stat(self.user_id, "fishing", "legendary_caught")
             await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "legendary_caught", current_legendary, self.channel)
-            print(f"[ACHIEVEMENT] Tracked legendary_caught for user {self.user_id}: {current_legendary} total")
+            logger.info("achievement_tracked_legendary", user_id=self.user_id, total_legendary=current_legendary)
             
             # Check if all legendary fish caught
             from ..utils.legendary_quest_helper import get_legendary_caught_list
@@ -114,7 +118,7 @@ class LegendaryBossFightView(discord.ui.View):
             if len(caught_legendary) >= len(LEGENDARY_FISH_KEYS):
                 current_all = await get_stat(self.user_id, "fishing", "all_legendary_caught")
                 await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "all_legendary_caught", current_all, self.channel)
-                print(f"[ACHIEVEMENT] all_legendary_caught unlocked for user {self.user_id}!")
+                logger.info("achievement_unlocked_all_legendary", user_id=self.user_id)
             
             # Clean up dark map if caught Cthulhu non
             if legendary_key == "cthulhu_con":
@@ -208,21 +212,21 @@ class LegendaryBossFightView(discord.ui.View):
                     await increment_stat(self.user_id, "fishing", stat_key, 1)
                     current_value = await get_stat(self.user_id, "fishing", stat_key)
                     await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", stat_key, current_value, self.channel)
-                    print(f"[ACHIEVEMENT] Tracked {stat_key} for user {self.user_id} on legendary catch {legendary_key}")
+                    logger.info("achievement_tracked", user_id=self.user_id, stat_key=stat_key, legendary_key=legendary_key)
                     
                     # Track boss_caught (count all legendary catches)
                     await increment_stat(self.user_id, "fishing", "boss_caught", 1)
                     current_boss = await get_stat(self.user_id, "fishing", "boss_caught")
                     await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "boss_caught", current_boss, self.channel)
-                    print(f"[ACHIEVEMENT] Tracked boss_caught for user {self.user_id}: {current_boss} total")
+                    logger.info("achievement_tracked_boss", user_id=self.user_id, total_bosses=current_boss)
                 except Exception as e:
-                    print(f"[ACHIEVEMENT] Error tracking {stat_key} for {self.user_id}: {e}")
+                    logger.error("achievement_track_error", user_id=self.user_id, stat_key=stat_key, error=str(e))
             
             # Track legendary_caught (general achievement for ANY legendary fish)
             await increment_stat(self.user_id, "fishing", "legendary_caught", 1)
             current_legendary = await get_stat(self.user_id, "fishing", "legendary_caught")
             await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "legendary_caught", current_legendary, self.channel)
-            print(f"[ACHIEVEMENT] Tracked legendary_caught for user {self.user_id}: {current_legendary} total")
+            logger.info("achievement_tracked_legendary", user_id=self.user_id, total_legendary=current_legendary)
             
             # Check if all legendary fish caught
             from ..utils.legendary_quest_helper import get_legendary_caught_list
@@ -232,7 +236,7 @@ class LegendaryBossFightView(discord.ui.View):
             if len(caught_legendary) >= len(LEGENDARY_FISH_KEYS):
                 current_all = await get_stat(self.user_id, "fishing", "all_legendary_caught")
                 await self.cog.bot.achievement_manager.check_unlock(self.user_id, "fishing", "all_legendary_caught", current_all, self.channel)
-                print(f"[ACHIEVEMENT] all_legendary_caught unlocked for user {self.user_id}!")
+                logger.info("achievement_unlocked_all_legendary", user_id=self.user_id)
             
             # Clean up dark map if caught Cthulhu non
             if legendary_key == "cthulhu_con":
@@ -281,7 +285,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     Checks for special summoning conditions: sacrifice, crafted bait, map, frequency, etc."""
     import json
     # [CACHE] get_inventory removed
-    print(f"[LEGENDARY_CHECK] START: user_id={user_id}, hour={current_hour}")
+    logger.debug("spawn_check_start", user_id=user_id, hour=current_hour)
     import random
 
     try:
@@ -324,12 +328,12 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 continue
             if energy > 0:
                 roll = random.randint(1, 100)
-                print(f"[PHOENIX_RNG] user={user_id}, energy={energy}%, roll={roll}")
+                logger.debug("[phoenix_rng]_user=,_energy={e", user_id=user_id)
                 if roll > energy:
                     await consume_phoenix_buff(user_id)
                     return {"spawn_failed": "ca_phuong_hoang", "energy": energy, "roll": roll}
                 await consume_phoenix_buff(user_id)
-                print(f"[PHOENIX] user={user_id} spawn SUCCESS at {energy}%")
+                logger.debug("[phoenix]_user=_spawn_success_", user_id=user_id)
                 return legendary
         if already_caught:
             # Special handling for each legendary
@@ -365,7 +369,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     # RECOVERY LOGIC: If timer missing (restart?) but count >= 3, restart timer!
                     cog.thuong_luong_timers[user_id] = time.time()
                     start_time = cog.thuong_luong_timers[user_id]
-                    print(f"[RECOVERY] Resumed Thuong Luong ritual for {user_id}")
+                    logger.debug("[recovery]_resumed_thuong_luon", user_id=user_id)
 
 
                 elapsed = time.time() - start_time
@@ -464,7 +468,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 # 100% spawn and reset flag
                 consumable_cog.clear_52hz_signal(user_id)
                 return legendary
-                print(f"[PHOENIX] user={user_id} SUCCESS - boss spawned")
+                logger.debug("[phoenix]_user=_success_-_boss", user_id=user_id)
                 return legendary
             continue
             if not (start_hour <= current_hour < end_hour):
@@ -508,7 +512,7 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
             # Import achievement manager - will be available from bot context when called
             pass  # Achievement check done in LegendaryBossFightView
         except Exception as e:
-            print(f"[ACHIEVEMENT] Error checking legendary_caught for {user_id}: {e}")
+            logger.debug("[achievement]_error_checking_l", user_id=user_id)
         
         # Check if all legendary fish caught
         from ..constants import LEGENDARY_FISH_KEYS
@@ -518,9 +522,9 @@ async def add_legendary_fish_to_user(user_id: int, legendary_key: str):
                 await increment_stat(user_id, "fishing", "all_legendary_caught", 1)
                 current_all = await get_stat(user_id, "fishing", "all_legendary_caught")
                 # Achievement trigger will be checked in caller context
-                print(f"[ACHIEVEMENT] User {user_id} has caught all {len(LEGENDARY_FISH_KEYS)} legendary fish!")
+                logger.debug("[achievement]_user__has_caught", user_id=user_id)
             except Exception as e:
-                print(f"[ACHIEVEMENT] Error tracking all_legendary_caught for {user_id}: {e}")
+                logger.debug("[achievement]_error_tracking_a", user_id=user_id)
             
             return legendary_list
     except Exception as e:

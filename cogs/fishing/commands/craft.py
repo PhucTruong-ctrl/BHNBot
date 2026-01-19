@@ -3,7 +3,7 @@
 Handles sacrifice (hiente), crafting (chetao), frequency detection (dosong),
 and map assembly (ghepbando) for legendary fish quests.
 """
-import logging
+from core.logging import get_logger
 import asyncio
 import random
 import time
@@ -27,7 +27,7 @@ from ..utils.helpers import (
     create_fishing_embed, create_error_embed, create_success_embed
 )
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_commands_craft")
 
 
 async def hiente_action(cog, ctx_or_interaction, fish_key: str, is_slash: bool):

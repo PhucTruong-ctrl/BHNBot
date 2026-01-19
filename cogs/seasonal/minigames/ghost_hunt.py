@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 import random
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from ..core.event_manager import EventManager
 
-logger = logging.getLogger("GhostHunt")
+logger = get_logger("seasonal_minigames_ghost_hunt")
 
 
 DEFAULT_GHOST_TYPES = [

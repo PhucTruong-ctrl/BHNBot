@@ -2,7 +2,7 @@
 
 Extracted from fishing/cog.py to improve maintainability.
 """
-import logging
+from core.logging import get_logger
 import time
 from typing import Optional, Dict, Any, Union
 import discord
@@ -12,7 +12,7 @@ from configs.item_constants import ItemKeys
 from ..mechanics.rod_system import ROD_LEVELS
 from ..mechanics.glitch import apply_glitch_lite, apply_glitch_moderate, apply_glitch_aggressive, DISPLAY_GLITCH_ACTIVE
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_utils_helpers")
 
 
 # ==================== RESPONSE HELPERS ====================

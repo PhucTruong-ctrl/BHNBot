@@ -1,7 +1,7 @@
 
 import discord
 from discord import ui
-import logging
+from core.logging import get_logger
 from typing import List, Dict, Optional
 
 from core.item_system import item_system
@@ -12,7 +12,7 @@ from cogs.aquarium.logic.market import MarketEngine # Reuse buy logic or refacto
 # and ShopCog logic for others? 
 # Better: Create a unified 'buy_item' in this module's logic.py
 
-logger = logging.getLogger("UnifiedShopUI")
+logger = get_logger("unified_shop_views")
 
 # ==================== CONSTANTS ====================
 # ==================== CONSTANTS ====================

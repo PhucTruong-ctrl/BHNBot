@@ -2,10 +2,10 @@ from typing import Tuple, Dict
 from core.database import db_manager, get_user_balance
 from ..models import UserAquarium, UserDecor
 from ..constants import LEAF_COIN_RATE, DECOR_ITEMS, TRASH_ITEM_IDS
-import logging
+from core.logging import get_logger
 import random
 
-logger = logging.getLogger("MarketEngine")
+logger = get_logger("aquarium_logic_market")
 
 class MarketEngine:
     """

@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import wavelink
 import asyncio
-import logging
+from core.logging import get_logger
 import re
 import aiohttp
 from typing import Optional, cast
@@ -11,7 +11,7 @@ from typing import Optional, cast
 from .ui.views import MusicControlView, create_now_playing_embed
 from .services import PlaylistService
 
-logger = logging.getLogger(__name__)
+logger = get_logger("music_cog")
 
 LAVALINK_URI = "http://localhost:2333"
 LAVALINK_PASSWORD = "bhnbot_lavalink_2026"

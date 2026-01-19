@@ -5,11 +5,11 @@ import asyncio
 from datetime import datetime
 from discord.ext import tasks
 import discord
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager, add_seeds, get_stat, increment_stat, set_global_state, get_global_state
 from ..ui import MeteorWishView
 
-logger = setup_logger("GlobalEvents", "cogs/fishing/global_events.log")
+logger = get_logger("GlobalEvents")
 
 class GlobalEventManager:
     """Manages global time-based events for the fishing system.

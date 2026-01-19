@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from ..core.event_manager import EventManager
 
-logger = logging.getLogger("Wishes")
+logger = get_logger("seasonal_minigames_wishes")
 
 
 @register_minigame("wishes")

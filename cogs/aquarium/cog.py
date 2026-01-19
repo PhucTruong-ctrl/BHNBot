@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 from typing import Optional
-import logging
+from core.logging import get_logger
 from datetime import datetime, timedelta, time
 
 from core.database import db_manager
@@ -14,7 +14,7 @@ from .ui.embeds import create_aquarium_dashboard
 from .ui.views import DecorShopView, AutoVisitView
 from .constants import AQUARIUM_FORUM_CHANNEL_ID
 
-logger = logging.getLogger("AquariumCog")
+logger = get_logger("aquarium_cog")
 
 class AquariumCog(commands.Cog):
     def __init__(self, bot):

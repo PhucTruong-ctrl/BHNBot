@@ -6,9 +6,9 @@ import asyncio
 from typing import Dict, Any, List
 
 from database_manager import db_manager, increment_stat, get_stat
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("NPCViews", "cogs/fishing/fishing.log")
+logger = get_logger("NPCViews")
 
 
 RARE_FISH_POOL = [

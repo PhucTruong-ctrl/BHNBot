@@ -174,12 +174,15 @@ async def adjust_seeds(user_id: int, adjustment: SeedAdjustment) -> Dict[str, An
     )
     
     # Log the adjustment
-    import logging
-    logger = logging.getLogger("AdminPanel")
+    from core.logging import get_logger
+    logger = get_logger("AdminPanel")
     logger.info(
-        f"[ADMIN] Hạt adjusted: user={user_id} "
-        f"old={old_balance} new={new_balance} "
-        f"change={adjustment.amount} reason={adjustment.reason}"
+        "admin_hat_adjustment",
+        user_id=user_id,
+        old_balance=old_balance,
+        new_balance=new_balance,
+        change=adjustment.amount,
+        reason=adjustment.reason
     )
     
     return {

@@ -11,6 +11,9 @@ from ..core.table import Table, TableStatus
 from ..core.player import Player, PlayerStatus
 from .embeds import create_lobby_embed
 
+from core.logging import get_logger
+logger = get_logger("xi_dach_views")
+
 if TYPE_CHECKING:
     from ..cog import XiDachCog
 
@@ -187,16 +190,16 @@ class MultiGameView(ui.View):
 
     def _is_active_and_turn(self, interaction: discord.Interaction) -> bool:
         if self.table.status != TableStatus.PLAYING:
-            print(f"[DEBUG] Not Playing. Status: {self.table.status}")
+            logger.debug("not_playing._status:_", self.table.status=self.table.status)
             return False
             
         current = self.table.current_player
         if not current:
-            print(f"[DEBUG] No current player. Index: {self.table.current_player_idx}, Order: {self.table._turn_order}")
+            logger.debug("no_current_player._index:_,_or", self.table.current_player_idx=self.table.current_player_idx)
             return False
             
         if current.user_id != interaction.user.id:
-            print(f"[DEBUG] Wrong Turn. Expected: {current.user_id}, Got: {interaction.user.id}")
+            logger.debug("wrong_turn._expected:_,_got:_{", current.user_id=current.user_id)
             return False
             
         return True
@@ -236,7 +239,7 @@ class MultiGameView(ui.View):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"[ERROR] double_button failed: {e}")
+            logger.error("double_button_failed:_", e=e)
             await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
 
     async def on_timeout(self) -> None:

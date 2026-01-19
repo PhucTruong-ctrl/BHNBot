@@ -11,14 +11,14 @@ import httpx
 import asyncio
 import uuid
 import time
-import logging
 import json
 
+from core.logging import get_logger
 from ..config import DISCORD_TOKEN, DISCORD_API_BASE, DEFAULT_GUILD_ID
 from database_manager import get_server_config, db_manager
 
 router = APIRouter()
-logger = logging.getLogger("AdminPanel.Roles")
+logger = get_logger("AdminPanel.Roles")
 
 # Headers for Discord API
 HEADERS = {

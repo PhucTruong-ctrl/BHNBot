@@ -5,14 +5,14 @@ from dataclasses import dataclass
 import pytz
 
 from core.database import db_manager
-from core.logging import setup_logger
+from core.logging import get_logger
 from ..core.quest_types import (
     QuestType, QuestDefinition, QUEST_DEFINITIONS, 
     DAILY_QUEST_COUNT, STREAK_BONUSES, ALL_QUEST_BONUS,
     EVENT_TO_SERVER_QUEST_MAP
 )
 
-logger = setup_logger("QuestService", "cogs/quest.log")
+logger = get_logger("QuestService")
 
 VN_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
 

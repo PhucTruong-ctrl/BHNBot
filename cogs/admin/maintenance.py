@@ -6,9 +6,9 @@ Uses db_manager singleton instead of direct connections.
 import discord
 from discord.ext import commands, tasks
 from pathlib import Path
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("Maintenance", "cogs/admin/maintenance.log")
+logger = get_logger("Maintenance")
 
 CHECKPOINT_INTERVAL_HOURS = 4  # Run every 4 hours
 

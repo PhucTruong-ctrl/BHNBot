@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import logging
+from core.logging import get_logger
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,7 +13,7 @@ from .participation_service import add_currency
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+logger = get_logger("seasonal_services_quest_servic")
 
 
 async def get_user_quests(guild_id: int, user_id: int, event_id: str) -> list[dict]:

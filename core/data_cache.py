@@ -25,9 +25,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor
-from core.logging import setup_logger
+from core.logging import get_logger
 
-logger = setup_logger("DataCache", "core/data_cache.log")
+logger = get_logger("data_cache")
 
 
 class DataCache:
@@ -103,7 +103,7 @@ class DataCache:
         }
         
         self._initialized = True
-        logger.info("DataCache initialized with %d registered files", len(self._registry))
+        logger.info("datacache_initialized_with_%d_", len(self._registry))
     
     def _load_json_sync(self, file_path: Path) -> Optional[Dict]:
         """
@@ -117,7 +117,7 @@ class DataCache:
         """
         try:
             if not file_path.exists():
-                logger.warning("File not found: %s", file_path)
+                logger.warning("file_not_found:_%s", file_path)
                 return None
             
             with open(file_path, "r", encoding="utf-8") as f:
@@ -126,10 +126,10 @@ class DataCache:
             return data
             
         except json.JSONDecodeError as e:
-            logger.error("JSON parse error in %s: %s", file_path, e)
+            logger.error("json_parse_error_in_%s:_%s", file_path, e)
             return None
         except Exception as e:
-            logger.error("Failed to load %s: %s", file_path, e)
+            logger.error("failed_to_load_%s:_%s", file_path, e)
             return None
     
     def _load_all_sync(self) -> Dict[str, Any]:
@@ -185,7 +185,7 @@ class DataCache:
                 return len(loaded) == len(self._registry)
                 
             except Exception as e:
-                logger.error("Failed to load all data: %s", e)
+                logger.error("failed_to_load_all_data:_%s", e)
                 return False
     
     async def reload(self, cache_key: str) -> bool:
@@ -199,7 +199,7 @@ class DataCache:
             True if reload successful
         """
         if cache_key not in self._registry:
-            logger.warning("Unknown cache key: %s", cache_key)
+            logger.warning("unknown_cache_key:_%s", cache_key)
             return False
         
         async with self._reload_lock:
@@ -215,13 +215,13 @@ class DataCache:
                 
                 if data is not None:
                     self._cache[cache_key] = data
-                    logger.info("Reloaded: %s", cache_key)
+                    logger.info("reloaded:_%s", cache_key)
                     return True
                 
                 return False
                 
             except Exception as e:
-                logger.error("Failed to reload %s: %s", cache_key, e)
+                logger.error("failed_to_reload_%s:_%s", cache_key, e)
                 return False
     
     async def reload_all(self) -> bool:
@@ -362,7 +362,7 @@ class DataCache:
     def clear(self):
         """Clear all cached data (for testing)."""
         self._cache.clear()
-        logger.info("Cache cleared")
+        logger.info("cache_cleared")
 
 
 # Global singleton instance

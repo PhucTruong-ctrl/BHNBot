@@ -9,7 +9,7 @@ from discord.ext import commands
 import asyncio
 import time
 
-from core.logging import setup_logger
+from core.logging import get_logger
 from database_manager import db_manager, get_user_balance
 
 from .constants import MIN_BET, TURN_TIMEOUT
@@ -25,7 +25,7 @@ from .statistics import StatisticsTracker
 # from .commands import solo as solo_cmd  # REMOVED
 from .commands import multi as multi_cmd
 
-logger = setup_logger("XiDachCog", "cogs/xidach.log")
+logger = get_logger("XiDachCog")
 
 class XiDachCog(commands.Cog):
     """Cog for Xi Dach (Vietnamese Blackjack) game."""

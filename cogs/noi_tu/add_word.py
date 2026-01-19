@@ -7,6 +7,10 @@ import shutil
 import os
 from database_manager import get_server_config
 
+from core.logging import get_logger
+logger = get_logger("noi_tu")
+
+
 DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
 TU_DIEN_PATH = "./data/tu_dien.txt"
@@ -16,9 +20,9 @@ def add_word_to_tu_dien(word: str):
     try:
         with open(TU_DIEN_PATH, "a", encoding="utf-8") as f:
             f.write(f'{{"text": "{word}", "source": ["user_added"]}}\n')
-        print(f"[ADD_WORD] Added to tu_dien.txt: {word}")
+        logger.debug("[add_word]_added_to_tu_dien.tx", word=word)
     except Exception as e:
-        print(f"[ADD_WORD] Error adding to tu_dien.txt: {e}")
+        logger.debug("[add_word]_error_adding_to_tu_", e=e)
 
 class QuickAddWordView(discord.ui.View):
     """Quick add word view for game players - 25s timeout"""
@@ -65,7 +69,7 @@ class QuickAddWordView(discord.ui.View):
                             tmp_path = tmp.name
                         shutil.move(tmp_path, WORDS_DICT_PATH)
                     except Exception as e:
-                        print(f"[ADD_WORD] Error writing to file: {e}")
+                        logger.debug("[add_word]_error_writing_to_fi", e=e)
                         if os.path.exists(tmp_path):
                             os.unlink(tmp_path)
                         raise
@@ -79,12 +83,12 @@ class QuickAddWordView(discord.ui.View):
                         noitu_cog = interaction.client.get_cog("GameNoiTu")
                         if noitu_cog:
                             await noitu_cog.reload_words_dict()
-                            print(f"[ADD_WORD] Dictionary reloaded in NoiTu cog")
+                            logger.debug("[add_word]_dictionary_reloaded")
                     except Exception as e:
-                        print(f"[ADD_WORD] Warning: Could not reload dictionary: {e}")
+                        logger.warning("dictionary_reload_failed", error=str(e))
                     
                     await interaction.followup.send(f"Từ `{self.word}` đã được thêm vào từ điển (admin auto-approve)", ephemeral=True)
-                    print(f"[ADD_WORD] Admin {interaction.user.name} auto-approved word: {self.word}")
+                    logger.debug("[add_word]_admin__auto-approve", interaction.user.name=interaction.user.name)
                 else:
                     await interaction.followup.send(f"Từ `{self.word}` đã tồn tại", ephemeral=True)
                 return
@@ -114,11 +118,11 @@ class QuickAddWordView(discord.ui.View):
             await admin_channel.send(embed=embed, view=view)
             
             await interaction.followup.send(f"Từ `{self.word}` đã được gửi tới admin phê duyệt", ephemeral=True)
-            print(f"[ADD_WORD] {self.proposer_user.name} proposed word from game: {self.word}")
+            logger.debug("[add_word]__proposed_word_from", self.proposer_user.name=self.proposer_user.name)
             
         except Exception as e:
             await interaction.followup.send(f"Lỗi: {e}", ephemeral=True)
-            print(f"[ADD_WORD] Error quick adding word: {e}")
+            logger.debug("[add_word]_error_quick_adding_", e=e)
     
     async def on_timeout(self):
         # Disable button on timeout
@@ -163,7 +167,7 @@ class PendingWordView(discord.ui.View):
                         tmp_path = tmp.name
                     shutil.move(tmp_path, WORDS_DICT_PATH)
                 except Exception as e:
-                    print(f"[ADD_WORD] Error writing to file: {e}")
+                    logger.debug("[add_word]_error_writing_to_fi", e=e)
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
                     raise
@@ -177,9 +181,9 @@ class PendingWordView(discord.ui.View):
                     noitu_cog = interaction.client.get_cog("GameNoiTu")
                     if noitu_cog:
                         await noitu_cog.reload_words_dict()
-                        print(f"[ADD_WORD] Dictionary reloaded in NoiTu cog")
+                        logger.debug("[add_word]_dictionary_reloaded")
                 except Exception as e:
-                    print(f"[ADD_WORD] Warning: Could not reload dictionary: {e}")
+                    logger.warning("dictionary_reload_failed", error=str(e))
                 
                 # Disable button
                 for item in self.children:
@@ -194,7 +198,7 @@ class PendingWordView(discord.ui.View):
                 )
                 await self.admin_channel.send(embed=embed)
                 
-                print(f"[ADD_WORD] Added word '{word_normalized}' from {self.proposer_mention}")
+                logger.debug("[add_word]_added_word_''_from_", word_normalized=word_normalized)
             else:
                 # Disable button
                 for item in self.children:
@@ -210,7 +214,7 @@ class PendingWordView(discord.ui.View):
                 
         except Exception as e:
             await interaction.message.reply(f"Lỗi: {e}")
-            print(f"[ADD_WORD] Error: {e}")
+            logger.debug("[add_word]_error:_", e=e)
     
     @discord.ui.button(label="Từ chối", style=discord.ButtonStyle.red)
     async def reject_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -305,7 +309,7 @@ class AddWordCog(commands.Cog):
                     await ctx_or_interaction.send(msg)
                 else:
                     await ctx_or_interaction.followup.send(msg, ephemeral=True)
-                print(f"[ADD_WORD] Word '{word}' already exists in dictionary")
+                logger.debug("[add_word]_word_''_already_exi", word=word)
                 return
             
             # Get admin channel from config
@@ -338,10 +342,10 @@ class AddWordCog(commands.Cog):
             if isinstance(ctx_or_interaction, commands.Context):
                 await ctx_or_interaction.send(f"Từ **{word}** đã được gửi tới admin phê duyệt")
             
-            print(f"[ADD_WORD] {user.name} proposed word: {word}")
+            logger.debug("[add_word]__proposed_word:_{wo", user.name=user.name)
             
         except Exception as e:
-            print(f"[ADD_WORD] Error: {e}")
+            logger.debug("[add_word]_error:_", e=e)
             if isinstance(ctx_or_interaction, commands.Context):
                 await ctx_or_interaction.send(f"Lỗi: {e}")
 

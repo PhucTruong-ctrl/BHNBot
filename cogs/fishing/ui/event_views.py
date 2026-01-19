@@ -1,6 +1,6 @@
 """Event-related views for fishing system."""
 
-import logging
+from core.logging import get_logger
 import random
 import asyncio
 from datetime import datetime
@@ -10,7 +10,7 @@ import discord
 from database_manager import add_seeds, get_stat, increment_stat, db_manager
 from ..constants import ALL_FISH, ALL_ITEMS_DATA
 
-logger = logging.getLogger("fishing")
+logger = get_logger("fishing_ui_event_views")
 
 
 class MeteorWishView(discord.ui.View):

@@ -1,12 +1,11 @@
 
 import discord
 from discord.ext import commands
-import logging
-
+from core.logging import get_logger
 from database_manager import db_manager
 from .views import ShopLauncher
 
-logger = logging.getLogger("UnifiedShopCog")
+logger = get_logger("unified_shop_cog")
 
 class UnifiedShopCog(commands.Cog):
     def __init__(self, bot):

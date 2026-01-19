@@ -1,4 +1,4 @@
-import logging
+from core.logging import get_logger
 from datetime import datetime
 from typing import Optional
 
@@ -14,7 +14,7 @@ from cogs.relationship.services.buddy_service import BuddyService
 from cogs.quest.services.quest_service import QuestService
 from cogs.quest.core.quest_types import QuestType
 
-logger = logging.getLogger(__name__)
+logger = get_logger("social_cog")
 
 
 async def setup(bot: commands.Bot) -> None:

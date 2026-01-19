@@ -4,14 +4,14 @@ import discord
 from discord.ext import commands, tasks
 import importlib
 import sys
-import logging
+from core.logging import get_logger
 from database_manager import db_manager
 import configs.settings as settings
 
 class SystemMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.logger = logging.getLogger("SystemMonitor")
+        self.logger = get_logger("admin_monitor")
         self.db = db_manager
         self.last_config_time = 0
         self._reload_lock = asyncio.Lock()

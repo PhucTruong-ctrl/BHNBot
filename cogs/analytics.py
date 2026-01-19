@@ -3,7 +3,7 @@ Analytics Cog - Track command usage across all cogs
 """
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -14,7 +14,7 @@ from discord.ext import commands
 if TYPE_CHECKING:
     from main import BHNBot
 
-logger = logging.getLogger(__name__)
+logger = get_logger("analytics")
 
 
 class AnalyticsCog(commands.Cog):

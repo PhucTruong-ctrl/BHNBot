@@ -3,11 +3,15 @@ import random
 import discord
 from database_manager import db_manager, get_rod_data, get_user_balance
 
-from core.logging import setup_logger
+from core.logging import get_logger
 from .constants import COLOR_GIVEAWAY, EMOJI_WINNER
 from .models import Giveaway
 
-logger = setup_logger("GiveawayHelpers", "cogs/giveaway.log")
+from core.logging import get_logger
+logger = get_logger("giveaway")
+
+
+logger = get_logger("GiveawayHelpers")
 
 async def join_giveaway_transaction(giveaway_id: int, user_id: int, cost: int) -> tuple[bool, str]:
     """
@@ -121,11 +125,11 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
     if user_ids:
         count = min(len(user_ids), ga.winners_count)
         winners_ids = random.sample(user_ids, count)
-        print(f"[Giveaway] Winner Selection - ID: {giveaway_id}, Participants: {len(user_ids)}, Winners: {count}, Selected: {winners_ids}")
+        logger.debug("[giveaway]_winner_selection_-_", giveaway_id=giveaway_id)
     else:
-        print(f"[Giveaway] No participants for giveaway {giveaway_id}")
+        logger.debug("[giveaway]_no_participants_for", giveaway_id=giveaway_id)
     
-    print(f"[Giveaway] Giveaway ID {giveaway_id} ended - Prize: {ga.prize}, Winners: {winners_ids}, Participants: {len(user_ids)}")
+    logger.debug("[giveaway]_giveaway_id__ended_", giveaway_id=giveaway_id)
     
     # 4. Send DMs to Winners
     dm_success = []
@@ -152,19 +156,19 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
                 
                 await user.send(embed=dm_embed)
                 dm_success.append(winner_id)
-                print(f"[Giveaway] ✅ DM sent to winner {user.name} ({winner_id})")
+                logger.debug("[giveaway]_✅_dm_sent_to_winner", user.name=user.name)
                 
                 # Small delay to avoid rate limits
                 await asyncio.sleep(0.3)
                 
             except discord.Forbidden:
                 dm_failed.append(winner_id)
-                print(f"[Giveaway] ❌ Failed to DM winner {winner_id} (DMs closed)")
+                logger.debug("[giveaway]_❌_failed_to_dm_winn", winner_id=winner_id)
             except Exception as e:
                 dm_failed.append(winner_id)
-                print(f"[Giveaway] ❌ Error DMing winner {winner_id}: {e}")
+                logger.debug("[giveaway]_❌_error_dming_winne", winner_id=winner_id)
         
-        print(f"[Giveaway] DM Results - Success: {len(dm_success)}/{len(winners_ids)}, Failed: {len(dm_failed)}")
+        logger.debug("[giveaway]_dm_results_-_succes", len(dm_success)=len(dm_success))
     
     # 5. Update Status
     import json
@@ -226,5 +230,5 @@ async def end_giveaway(giveaway_id: int, bot: discord.Client):
             await channel.send(embed=embed, view=result_view)
             
     except Exception as e:
-        print(f"Error ending giveaway {giveaway_id}: {e}")
+        logger.debug("error_ending_giveaway_:_{e}", giveaway_id=giveaway_id)
 

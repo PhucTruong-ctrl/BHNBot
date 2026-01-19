@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from core.logging import get_logger
 import random
 from datetime import datetime, timedelta
 from enum import Enum
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from ..core.event_manager import EventManager
 
-logger = logging.getLogger("SecretSanta")
+logger = get_logger("seasonal_minigames_secret_sant")
 
 
 class SecretSantaPhase(Enum):

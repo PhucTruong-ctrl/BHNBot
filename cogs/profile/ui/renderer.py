@@ -246,7 +246,7 @@ async def fetch_avatar(url: str) -> bytes:
                 if resp.status == 200:
                     return await resp.read()
                 return b""
-        except:
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             return b""
 
 

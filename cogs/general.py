@@ -7,10 +7,9 @@ import io
 import asyncio
 import functools
 
+from core.logging import get_logger
+logger = get_logger("general")
 
-from core.logging import setup_logger
-
-logger = setup_logger("GeneralCog", "cogs/general.log")
 
 class General(commands.Cog):
     def __init__(self, bot):
@@ -18,7 +17,7 @@ class General(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print('Module General!')
+        logger.info("module_loaded", module="general")
 
     @commands.command()
     async def ping(self, ctx):

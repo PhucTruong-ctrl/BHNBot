@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from typing import Optional
 
-from core.logging import setup_logger
+from core.logging import get_logger
 from .services.fishing_service import AutoFishingService, AutoFishData
 from .ui.views import (
     create_status_embed,
@@ -15,7 +15,7 @@ from .ui.views import (
     SellView,
 )
 
-logger = setup_logger("AutoFishingCog", "cogs/auto_fishing.log")
+logger = get_logger("AutoFishingCog")
 
 
 class AutoFishingCog(commands.Cog):

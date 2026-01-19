@@ -4,11 +4,11 @@ Contains Modal and View classes for betting interface.
 """
 
 import discord
-from core.logging import setup_logger
+from core.logging import get_logger
 
 from .constants import ANIMALS
 
-logger = setup_logger("BauCuaViews", "logs/cogs/baucua.log")
+logger = get_logger("BauCuaViews")
 
 
 class BauCuaBetModal(discord.ui.Modal):
