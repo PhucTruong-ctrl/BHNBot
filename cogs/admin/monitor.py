@@ -1,4 +1,5 @@
 
+import asyncio
 import discord
 from discord.ext import commands, tasks
 import importlib
@@ -13,6 +14,7 @@ class SystemMonitor(commands.Cog):
         self.logger = logging.getLogger("SystemMonitor")
         self.db = db_manager
         self.last_config_time = 0
+        self._reload_lock = asyncio.Lock()
         self.monitor_config_changes.start()
 
     def cog_unload(self):
@@ -49,27 +51,24 @@ class SystemMonitor(commands.Cog):
             self.logger.error(f"Monitor error: {e}")
 
     async def reload_system(self):
-        """Reload configuration and modules."""
-        try:
-            # 1. Reload Settings Module
-            importlib.reload(settings)
-            self.logger.info("✓ Reloaded configs.settings")
+        """Reload configuration and modules (non-blocking)."""
+        async with self._reload_lock:
+            try:
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, importlib.reload, settings)
+                self.logger.info("✓ Reloaded configs.settings")
 
-            # 2. Reload Dependent Cogs
-            # Add cogs that use settings here
-            target_cogs = ['cogs.fishing.cog', 'cogs.shop']
-            
-            for cog_name in target_cogs:
-                try:
-                    await self.bot.reload_extension(cog_name)
-                    self.logger.info(f"✓ Reloaded {cog_name}")
-                except Exception as e:
-                    self.logger.error(f"Failed to reload {cog_name}: {e}")
-            
-            # Notify owner/log channel if configured (optional)
-            
-        except Exception as e:
-            self.logger.error(f"Hot Reload Failed: {e}")
+                target_cogs = ['cogs.fishing.cog', 'cogs.shop']
+                
+                for cog_name in target_cogs:
+                    try:
+                        await self.bot.reload_extension(cog_name)
+                        self.logger.info(f"✓ Reloaded {cog_name}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to reload {cog_name}: {e}")
+                
+            except Exception as e:
+                self.logger.error(f"Hot Reload Failed: {e}")
 
     @monitor_config_changes.before_loop
     async def before_monitor(self):
