@@ -136,16 +136,6 @@ def attach_discord_handler(bot: discord.Client, channel_id: int = 0, ping_user_i
         ping_user_id: User ID to ping on ERROR/CRITICAL (0 = no ping)
         log_level: Minimum level to log (INFO/WARNING/ERROR/CRITICAL)
     """
-    # ==================== EMERGENCY MIGRATION RECOVERY ====================
-    # TEMPORARY DISABLE: Discord handler causing 429 rate limit spam
-    # TODO: Re-enable after PostgreSQL migration is stable
-    # =====================================================================
-    print("[Logger] ⚠️ EMERGENCY MODE: Discord logging DISABLED during migration recovery")
-    print("[Logger] Logs will only go to console and file")
-    return
-    
-    # ORIGINAL CODE COMMENTED OUT BELOW:
-    '''
     try:
         if channel_id <= 0:
             print("[Logger] No channel_id provided, Discord logging disabled")
@@ -192,7 +182,6 @@ def attach_discord_handler(bot: discord.Client, channel_id: int = 0, ping_user_i
         
     except Exception as e:
         print(f"[Logger] Discord logging failed: {e}")
-    '''
 
 
 async def get_log_config_from_db(guild_id: int = None) -> Tuple[int, int, str]:
