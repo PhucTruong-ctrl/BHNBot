@@ -140,6 +140,8 @@ class QuestService:
         
         # Filter out quest types that overlap with active event quests
         # This prevents duplicate quests (e.g., both server "Câu cá" and event "Câu 20 cá")
+        # We prioritize non-overlapping types, but if not enough, include overlapping ones
+        overlapping_types: set[QuestType] = set()
         try:
             from cogs.seasonal.services.event_service import get_active_event
             from cogs.seasonal.core.event_manager import get_event_manager
@@ -149,17 +151,27 @@ class QuestService:
                 event_manager = get_event_manager()
                 event_config = event_manager.get_event(active_event["event_id"])
                 if event_config and event_config.daily_quests:
-                    event_quest_types = {q.get("type") for q in event_config.daily_quests}
+                    event_quest_types = {q.type for q in event_config.daily_quests}
                     for event_type, server_type in EVENT_TO_SERVER_QUEST_MAP.items():
                         if event_type in event_quest_types and server_type in available_types:
-                            available_types.remove(server_type)
-                            logger.info(f"Excluded {server_type.value} from daily quests (overlaps with event quest {event_type})")
+                            overlapping_types.add(server_type)
+                            logger.info(f"Marked {server_type.value} as overlapping with event quest {event_type}")
         except ImportError:
             logger.warning("Could not import seasonal event services - skipping overlap filter")
         except Exception as e:
             logger.warning(f"Error checking active event for overlap filter: {e}")
         
-        selected_types = random.sample(available_types, min(DAILY_QUEST_COUNT, len(available_types)))
+        # Prioritize non-overlapping types, fill remaining with overlapping if needed
+        non_overlapping = [qt for qt in available_types if qt not in overlapping_types]
+        
+        if len(non_overlapping) >= DAILY_QUEST_COUNT:
+            selected_types = random.sample(non_overlapping, DAILY_QUEST_COUNT)
+        else:
+            selected_types = non_overlapping.copy()
+            remaining_needed = DAILY_QUEST_COUNT - len(selected_types)
+            overlapping_list = [qt for qt in available_types if qt in overlapping_types]
+            selected_types.extend(random.sample(overlapping_list, min(remaining_needed, len(overlapping_list))))
+            logger.info(f"Using {len(non_overlapping)} non-overlapping + {len(selected_types) - len(non_overlapping)} overlapping quest types")
         
         quests = []
         for qt in selected_types:
