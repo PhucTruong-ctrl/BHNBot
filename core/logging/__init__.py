@@ -6,6 +6,7 @@ from core.logging.discord import (
     get_log_config_from_db,
 )
 from core.logging.canonical import log_command_complete, CommandTimer
+from core.logging.handlers import AsyncFileHandler, cleanup_old_logs
 
 __all__ = [
     "configure_logging",
@@ -20,4 +21,6 @@ __all__ = [
     "get_log_config_from_db",
     "log_command_complete",
     "CommandTimer",
+    "AsyncFileHandler",
+    "cleanup_old_logs",
 ]

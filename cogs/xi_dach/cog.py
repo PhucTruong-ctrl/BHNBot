@@ -9,7 +9,7 @@ from discord.ext import commands
 import asyncio
 import time
 
-from core.logger import setup_logger
+from core.logging import setup_logger
 from database_manager import db_manager, get_user_balance
 
 from .constants import MIN_BET, TURN_TIMEOUT

@@ -7,7 +7,7 @@ import asyncio
 from typing import Optional, Dict, List, Any, Tuple
 from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard, get_db_connection
 from configs.settings import DB_PATH
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("DBManager", "core/database.log")
 

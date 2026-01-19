@@ -8,7 +8,7 @@ from typing import Optional
 from dataclasses import dataclass
 
 from core.database import db_manager
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("BuddyService", "cogs/relationship.log")
 

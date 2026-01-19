@@ -10,7 +10,7 @@ from .views import GiveawayJoinView, GiveawayResultView
 from .models import Giveaway
 from .constants import *
 from .helpers import end_giveaway
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("GiveawayCog", "cogs/giveaway.log")
 

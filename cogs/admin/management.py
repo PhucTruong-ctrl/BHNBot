@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import os
 
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("AdminCog", "cogs/admin.log")
 

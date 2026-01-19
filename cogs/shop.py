@@ -11,7 +11,7 @@ from .fishing.mechanics.legendary_quest_helper import is_legendary_caught
 from .fishing.utils.consumables import CONSUMABLE_ITEMS
 from core.item_system import item_system
 from configs.item_constants import ItemKeys
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("ShopCog", "cogs/shop.log")
 

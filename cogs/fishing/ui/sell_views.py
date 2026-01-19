@@ -7,7 +7,7 @@ from typing import Dict, Any
 from discord.ui import View, Button
 
 from database_manager import add_seeds, db_manager, increment_stat, get_stat
-from core.logger import setup_logger
+from core.logging import setup_logger
 from ..constants import ALL_FISH, TRASH_ITEMS
 
 logger = setup_logger("FishingSellViews", "cogs/fishing/fishing.log")

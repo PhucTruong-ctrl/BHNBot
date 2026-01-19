@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 import aiosqlite
 from datetime import datetime, timezone
 from typing import Optional
-from core.logger import setup_logger
+from core.logging import setup_logger
 # Use DB Manager singleton instead of direct connection
 from core.database import db_manager
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from cogs.fishing.constants import ALL_ITEMS_DATA
 from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
 from .services.buddy_service import BuddyService
-from core.logger import setup_logger
+from core.logging import setup_logger
 from core.database import db_manager
 
 logger = setup_logger("RelationshipCog", "cogs/relationship.log")

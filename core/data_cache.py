@@ -25,7 +25,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("DataCache", "core/data_cache.log")
 

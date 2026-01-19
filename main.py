@@ -74,7 +74,7 @@ signal.signal(signal.SIGINT, _signal_handler)
 from core.achievement_system import AchievementManager
 
 # 1. SETUP LOGGING
-from core.logger import setup_logger
+from core.logging import setup_logger
 from core.timeout_monitor import get_monitor as get_timeout_monitor
 from core.database import db_manager
 from core.inventory_cache import InventoryCache
@@ -185,7 +185,7 @@ async def on_ready():
     
     # Attach Discord logging handler (reads config from database)
     try:
-        from core.logger import attach_discord_handler, get_log_config_from_db
+        from core.logging import attach_discord_handler, get_log_config_from_db
         log_channel_id, ping_user_id, log_level = await get_log_config_from_db()
         if log_channel_id:
             attach_discord_handler(bot, log_channel_id, ping_user_id, log_level)

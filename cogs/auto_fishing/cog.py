@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from typing import Optional
 
-from core.logger import setup_logger
+from core.logging import setup_logger
 from .services.fishing_service import AutoFishingService, AutoFishData
 from .ui.views import (
     create_status_embed,

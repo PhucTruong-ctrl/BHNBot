@@ -5,7 +5,7 @@ import random
 from database_manager import add_seeds
 from .constants import ALL_FISH, DB_PATH, LEGENDARY_FISH_KEYS
 from .mechanics.glitch import apply_display_glitch
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("FishingViews", "cogs/fishing/fishing.log")
 

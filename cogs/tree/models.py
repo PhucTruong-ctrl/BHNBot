@@ -6,7 +6,7 @@ Defines dataclasses for tree state, contributor tracking, and harvest buffs.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple, Dict
-from core.logger import setup_logger
+from core.logging import setup_logger
 from database_manager import db_manager
 
 from .constants import BASE_LEVEL_REQS, SEASON_SCALING, HARVEST_BUFF_HOURS

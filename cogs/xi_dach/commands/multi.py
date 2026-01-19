@@ -15,7 +15,7 @@ import time
 from typing import TYPE_CHECKING, Optional, List, Dict
 
 import discord
-from core.logger import setup_logger
+from core.logging import setup_logger
 from database_manager import get_user_balance, add_seeds, batch_update_seeds, get_or_create_user, db_manager
 
 from ..core.game_manager import game_manager

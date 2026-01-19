@@ -19,7 +19,7 @@ from ..roles import get_role_class, load_all_roles
 from ..roles.base import Alignment, Expansion, Role
 from .state import GameSettings, Phase, PlayerState
 from .voting import VoteSession
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 DB_PATH = "./data/database.db"
 CARD_BACK_URL = "https://file.garden/aTXEm7Ax-DfpgxEV/B%C3%AAn%20Hi%C3%AAn%20Nh%C3%A0%20-%20Discord%20Server/werewolf-game/banner.png"

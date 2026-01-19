@@ -9,7 +9,7 @@ import random
 import time
 import json
 from typing import Optional
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("FishingCog", "cogs/fishing/fishing.log")
 

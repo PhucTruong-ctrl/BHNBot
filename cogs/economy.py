@@ -12,7 +12,7 @@ from database_manager import (
     get_leaderboard,
     batch_update_seeds
 )
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("EconomyCog", "cogs/economy.log")
 

@@ -10,7 +10,7 @@ import os
 import traceback
 from datetime import datetime
 from database_manager import db_manager, get_stat, get_or_create_user, get_server_config
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("NoiTu", "cogs/noitu.log")
 

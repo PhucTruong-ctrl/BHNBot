@@ -3,7 +3,7 @@ import random
 import discord
 from database_manager import db_manager, get_rod_data, get_user_balance
 
-from core.logger import setup_logger
+from core.logging import setup_logger
 from .constants import COLOR_GIVEAWAY, EMOJI_WINNER
 from .models import Giveaway
 

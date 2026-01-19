@@ -5,7 +5,7 @@ import traceback
 import json
 
 from database_manager import db_manager  # Use singleton instead of direct connections
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("ConfigCog", "cogs/config.log")
 
@@ -351,7 +351,7 @@ class ConfigCog(commands.Cog):
             # Reload Discord Logger if any log setting changed
             if kenh_log_bot or log_ping_user or log_level:
                 try:
-                    from core.logger import attach_discord_handler, get_log_config_from_db
+                    from core.logging import attach_discord_handler, get_log_config_from_db
                     channel_id, ping_user_id, level = await get_log_config_from_db(guild_id)
                     if channel_id > 0:
                         attach_discord_handler(self.bot, channel_id, ping_user_id, level)

@@ -16,7 +16,7 @@ from .helpers import (
     create_summary_text
 )
 from .constants import BETTING_TIME_SECONDS
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("BauCuaCog", "logs/cogs/baucua.log")
 

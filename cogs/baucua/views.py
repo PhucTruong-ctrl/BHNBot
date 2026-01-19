@@ -4,7 +4,7 @@ Contains Modal and View classes for betting interface.
 """
 
 import discord
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 from .constants import ANIMALS
 

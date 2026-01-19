@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime, timedelta, time, timezone
 from database_manager import db_manager
 from core.services.vip_service import VIPEngine
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 from .tree_manager import TreeManager
 from .contributor_manager import ContributorManager

@@ -5,7 +5,7 @@ Contains pure functions for creating embeds, progress bars, and text formatting.
 
 import discord
 from typing import List, Tuple
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 from .constants import (
     TREE_IMAGES,

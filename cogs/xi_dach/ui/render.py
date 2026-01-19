@@ -7,7 +7,7 @@ import os
 from typing import List, Tuple, Dict, Union, Optional
 from PIL import Image
 
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("CardRenderer", "cogs/card_renderer.log")
 

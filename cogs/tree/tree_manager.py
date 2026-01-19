@@ -6,7 +6,7 @@ Manages core tree mechanics including contributions, level ups, and harvest even
 import discord
 import asyncio
 from typing import Optional
-from core.logger import setup_logger
+from core.logging import setup_logger
 from database_manager import (
     get_user_balance,
     add_seeds,

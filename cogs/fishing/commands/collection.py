@@ -4,7 +4,7 @@ from discord import ui
 from database_manager import get_stat
 from ..helpers import get_collection
 from ..constants import COMMON_FISH, RARE_FISH, LEGENDARY_FISH_KEYS, ALL_FISH
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("CollectionCMD", "cogs/fishing/fishing.log")
 

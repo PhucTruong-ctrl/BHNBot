@@ -12,7 +12,7 @@ import subprocess
 import os
 from pathlib import Path
 from datetime import datetime
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("BACKUP", "cogs/database.log")
 

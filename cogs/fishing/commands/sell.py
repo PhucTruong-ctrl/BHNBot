@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
-from core.logger import setup_logger
+from core.logging import setup_logger
 from database_manager import db_manager
 
 logger = setup_logger("SellCommand", "cogs/fishing/fishing.log")

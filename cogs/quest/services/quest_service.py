@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytz
 
 from core.database import db_manager
-from core.logger import setup_logger
+from core.logging import setup_logger
 from ..core.quest_types import (
     QuestType, QuestDefinition, QUEST_DEFINITIONS, 
     DAILY_QUEST_COUNT, STREAK_BONUSES, ALL_QUEST_BONUS,

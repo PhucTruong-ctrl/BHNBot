@@ -4,7 +4,7 @@ Coordinates the bump detection and reminder task systems.
 """
 
 from discord.ext import commands
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 from .detector import BumpDetector
 from .task import BumpReminderTask

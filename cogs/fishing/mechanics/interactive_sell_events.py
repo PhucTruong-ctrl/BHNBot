@@ -6,7 +6,7 @@ import random
 import discord
 from typing import Optional, Dict, Any
 from database_manager import get_stat, get_user_balance
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("InteractiveSellEvents", "cogs/fishing/fishing.log")
 

@@ -6,7 +6,7 @@ Uses db_manager singleton instead of direct connections.
 import discord
 from discord.ext import commands, tasks
 from pathlib import Path
-from core.logger import setup_logger
+from core.logging import setup_logger
 
 logger = setup_logger("Maintenance", "cogs/admin/maintenance.log")
 

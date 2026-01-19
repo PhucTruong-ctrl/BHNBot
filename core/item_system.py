@@ -2,7 +2,7 @@ import json
 import os
 import copy
 from typing import Dict, Optional, List
-from core.logger import setup_logger
+from core.logging import setup_logger
 from configs.item_constants import ItemKeys
 
 logger = setup_logger("ItemSystem", "core/item_system.log")
