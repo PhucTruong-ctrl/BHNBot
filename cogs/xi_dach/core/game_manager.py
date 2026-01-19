@@ -1,7 +1,7 @@
 """Game Manager Singleton."""
 
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 from .table import Table, TableStatus
 
 class GameManager:

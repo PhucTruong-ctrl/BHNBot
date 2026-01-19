@@ -265,8 +265,6 @@ async def _grant_community_goal_role(
     except Exception as e:
         logger.exception(f"Failed to grant community goal role: {e}")
 
-    return rewarded_users
-
 
 async def get_contribution_leaderboard(
     guild_id: int, event_id: str, limit: int = 10

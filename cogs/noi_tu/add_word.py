@@ -100,7 +100,7 @@ class QuickAddWordView(discord.ui.View):
                 await interaction.followup.send("Kênh admin chưa được cấu hình", ephemeral=True)
                 return
             
-            admin_channel = self.bot.get_channel(row[0])
+            admin_channel = self.bot.get_channel(logs_channel_id)
             if not admin_channel:
                 await interaction.followup.send("Kênh admin không tìm thấy", ephemeral=True)
                 return

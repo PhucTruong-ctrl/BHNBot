@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import discord
 

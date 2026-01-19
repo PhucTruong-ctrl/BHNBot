@@ -101,6 +101,7 @@ class BalloonPopMinigame(BaseMinigame):
         data["poppers"].append(user_id)
         position = len(data["poppers"])
 
+        event = self.event_manager.get_event(data["event_id"])
         config = self._get_config(event)
         reward_range = config.get("reward_range", [10, 30])
         reward = random.randint(reward_range[0], reward_range[1])
@@ -109,7 +110,6 @@ class BalloonPopMinigame(BaseMinigame):
         await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
         await update_community_progress(data["guild_id"], 1)
 
-        event = self.event_manager.get_event(data["event_id"])
         emoji = event.currency_emoji if event else "🎈"
 
         await interaction.response.send_message(

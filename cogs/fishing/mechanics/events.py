@@ -4,7 +4,7 @@ import random
 from ..constants import DB_PATH, RANDOM_EVENTS, RANDOM_EVENT_MESSAGES, CRYPTO_LOSS_CAP, AUDIT_TAX_CAP
 from configs.item_constants import ItemKeys
 
-from database_manager import increment_stat
+from database_manager import increment_stat, get_stat
 
 from core.logging import get_logger
 logger = get_logger("fishing_events")

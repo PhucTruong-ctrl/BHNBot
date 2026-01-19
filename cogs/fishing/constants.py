@@ -3,7 +3,10 @@
 import json
 import os
 import random
+from core.logging import get_logger
 from configs.item_constants import ItemKeys
+
+logger = get_logger("fishing_constants")
 from configs.settings import (
     DB_PATH, DB_TIMEOUT, FISHING_DATA_PATH, LEGENDARY_FISH_PATH,
     FISHING_EVENTS_PATH, SELL_EVENTS_PATH, NPC_EVENTS_PATH,
@@ -171,9 +174,6 @@ def load_json_config(path: str, default):
 
 # ==================== LOAD ALL ITEMS FROM JSON ====================
 from core.item_system import item_system
-
-from core.logging import get_logger
-logger = get_logger("fishing_constants")
 
 # ... existing code ...
 

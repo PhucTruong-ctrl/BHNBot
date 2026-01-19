@@ -12,6 +12,9 @@ import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from ..cog import FishingCog
+
 import discord
 
 from core.logging import get_logger
@@ -1191,7 +1194,6 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                 try:
                     event_fish_result = await try_catch_event_fish(cog.bot, user_id, guild_id)
                     if event_fish_result:
-                        total_catches += 1
                         logger.info(f"[EVENT_FISH] {username} caught event fish: {event_fish_result.fish.name}")
                 except Exception as e:
                     logger.error(f"[EVENT_FISH] Hook failed: {e}")
@@ -1310,7 +1312,7 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                             # Send progress update every 15 seconds (every 3 iterations)
                             if i % 3 == 0 and i > 0:  # Skip first iteration (0)
                                 remaining = 60 - (i * 5)
-                                progress_msg = f"⚔️ **Trận chiến với {legendary['name']} đang diễn ra...**\n⏱️ Còn {remaining}s"
+                                progress_msg = f"⚔️ **Trận chiến với {legendary_fish['name']} đang diễn ra...**\\n⏱️ Còn {remaining}s"
                                 try:
                                     await channel.send(progress_msg)
                                     logger.debug(f"[LEGENDARY] Battle progress: {60 - remaining}s/{60}s")

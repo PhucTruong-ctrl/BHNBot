@@ -152,6 +152,7 @@ class CountdownMinigame(BaseMinigame):
             await interaction.response.send_message("❌ Bạn đã nhận thưởng rồi!", ephemeral=True)
             return
 
+        event = self.event_manager.get_event(data["event_id"])
         config = self._get_config(event)
         base_reward = config.get("react_reward", 100)
         bonus = config.get("top_10_bonus", 50) if len(data["participants"]) < 10 else 0
@@ -163,7 +164,6 @@ class CountdownMinigame(BaseMinigame):
         await add_contribution(data["guild_id"], user_id, data["event_id"], total_reward)
         await update_community_progress(data["guild_id"], 1)
 
-        event = self.event_manager.get_event(data["event_id"])
         emoji = event.currency_emoji if event else "❄️"
 
         position = len(data["participants"])

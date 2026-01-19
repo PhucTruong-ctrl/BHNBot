@@ -2,15 +2,21 @@
 
 Extracted from fishing/cog.py to improve maintainability.
 """
-from core.logging import get_logger
+import random
 import time
 from typing import Optional, Dict, Any, Union
+
 import discord
 
-from database_manager import db_manager, get_server_config
+from core.logging import get_logger
+from database_manager import db_manager, get_server_config, get_stat, increment_stat
+from core.database import get_user_balance, add_seeds
 from configs.item_constants import ItemKeys
-from ..mechanics.rod_system import ROD_LEVELS
-from ..mechanics.glitch import apply_glitch_lite, apply_glitch_moderate, apply_glitch_aggressive, DISPLAY_GLITCH_ACTIVE
+from ..constants import DISASTER_EVENTS
+from ..mechanics.rod_system import ROD_LEVELS, get_rod_data, update_rod_data as update_rod_data_module
+from ..mechanics.legendary import add_legendary_fish_to_user as add_legendary_module
+from ..mechanics.glitch import apply_glitch_lite, apply_glitch_moderate, apply_glitch_aggressive, DISPLAY_GLITCH_ACTIVE, set_glitch_state
+from ..mechanics.legendary_quest_helper import increment_sacrifice_count
 
 logger = get_logger("fishing_utils_helpers")
 

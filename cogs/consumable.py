@@ -438,7 +438,7 @@ class ConsumableCog(commands.Cog):
             if is_slash:
                 await ctx_or_interaction.followup.send(embed=embed, view=view)
             else:
-                await ctx.send(embed=embed, view=view)
+                await ctx_or_interaction.send(embed=embed, view=view)
             return
 
         elif item_key == "long_vu_lua":
@@ -453,14 +453,14 @@ class ConsumableCog(commands.Cog):
              if is_slash:
                  await ctx_or_interaction.followup.send(embed=embed, view=view)
              else:
-                 await ctx.send(embed=embed, view=view)
+                 await ctx_or_interaction.send(embed=embed, view=view)
              return
 
         elif item_key == "ban_do_ham_am":
              # Activate Dark Map
              fishing_cog = self.bot.get_cog("FishingCog")
              if not fishing_cog:
-                 await ctx.send("❌ Fishing Module unavailable!")
+                 await ctx_or_interaction.send("❌ Fishing Module unavailable!")
                  return
                  
              fishing_cog.dark_map_active[user_id] = True
@@ -478,7 +478,7 @@ class ConsumableCog(commands.Cog):
              if is_slash:
                  await ctx_or_interaction.followup.send(embed=embed)
              else:
-                 await ctx.send(embed=embed)
+                 await ctx_or_interaction.send(embed=embed)
              return
 
         # ==================== PREMIUM CONSUMABLES (VIP Tier 2+) ====================
@@ -649,7 +649,7 @@ class ConsumableCog(commands.Cog):
         if is_slash:
             await ctx_or_interaction.followup.send(embed=embed, ephemeral=True)
         else:
-            await ctx.send(embed=embed)
+            await ctx_or_interaction.send(embed=embed)
 
 
 

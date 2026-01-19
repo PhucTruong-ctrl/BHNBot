@@ -177,12 +177,12 @@ class SecretSantaMinigame(BaseMinigame):
             (message, datetime.now().isoformat(), guild_id, active["event_id"], user_id),
         )
 
+        event = self.event_manager.get_event(active["event_id"])
         config = self._get_config(event)
         reward = config.get("participation_reward", 50)
         await add_currency(guild_id, user_id, active["event_id"], reward)
         await add_contribution(guild_id, user_id, active["event_id"], reward)
 
-        event = self.event_manager.get_event(active["event_id"])
         emoji = event.currency_emoji if event else "❄️"
 
         await interaction.response.send_message(
