@@ -13,11 +13,10 @@ load_dotenv()
 # =============================================================================
 # OBSERVABILITY INITIALIZATION (MUST BE FIRST)
 # =============================================================================
-from core.logging import configure_logging, get_logger, attach_loki_handler
+from core.logging import configure_logging, get_logger
 from core.telemetry import configure_telemetry
 
 configure_logging()
-attach_loki_handler()
 configure_telemetry()
 
 # =============================================================================

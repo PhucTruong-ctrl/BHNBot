@@ -1,4 +1,4 @@
-from core.logging.config import configure_logging, get_logger, setup_logger, shutdown_logging
+from core.logging.config import configure_logging, get_logger, setup_logger, shutdown_logging, get_loki_handler
 from core.logging.context import bind_context, clear_context, get_current_context
 from core.logging.discord import (
     DiscordLogHandler,
@@ -14,6 +14,7 @@ __all__ = [
     "get_logger",
     "setup_logger",
     "shutdown_logging",
+    "get_loki_handler",
     "bind_context",
     "clear_context",
     "get_current_context",

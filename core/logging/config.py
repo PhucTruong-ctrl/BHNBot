@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import threading
 import queue
@@ -18,12 +19,14 @@ _config_lock = threading.Lock()
 _listeners: list[QueueListener] = []
 _file_handlers: dict[str, TimedRotatingFileHandler] = {}
 _file_handler_lock = threading.Lock()
+_loki_handler: Optional[logging.Handler] = None
 
 
 def configure_logging(
     level: int = logging.INFO,
     log_file: str = "logs/app.log",
     enable_console: bool = True,
+    enable_loki: bool = True,
 ) -> None:
     global _configured
     
@@ -84,6 +87,17 @@ def configure_logging(
             console_handler.setFormatter(formatter)
             console_handler.setLevel(level)
             handlers_for_listener.append(console_handler)
+        
+        # Add Loki handler if LOKI_URL is configured
+        global _loki_handler
+        if enable_loki:
+            loki_url = os.getenv("LOKI_URL")
+            if loki_url:
+                from core.logging.loki import LokiHandler
+                _loki_handler = LokiHandler(url=loki_url)
+                _loki_handler.setFormatter(formatter)
+                _loki_handler.setLevel(level)
+                handlers_for_listener.append(_loki_handler)
         
         listener = QueueListener(
             log_queue,
@@ -149,6 +163,18 @@ def setup_logger(
 
 
 def shutdown_logging() -> None:
+    global _loki_handler
+    # Flush Loki handler before stopping
+    if _loki_handler is not None:
+        try:
+            _loki_handler._flush()
+        except Exception:
+            pass
     for listener in _listeners:
         listener.stop()
     _listeners.clear()
+
+
+def get_loki_handler() -> Optional[logging.Handler]:
+    """Return the Loki handler if configured."""
+    return _loki_handler
