@@ -91,29 +91,40 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
         
         # Try multiple possible paths (using relative paths for portability)
         _sell_file_dir = os.path.dirname(os.path.abspath(__file__))
-        possible_paths = [
-            os.path.join(_sell_file_dir, "..", "..", "..", "data", "fishing_data.json"),  # Relative to this file
-            "data/fishing_data.json",  # Relative to CWD
-        ]
+        from core.data_cache import data_cache
+        from ..constants import FISHING_DATA
         
         fish_data = {}
-        for path in possible_paths:
-            if os.path.exists(path):
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        raw_data = json.load(f)
-                        
-                    # Parse nested structure: {"fishing_data": {"fish": [...]}}
-                    if "fishing_data" in raw_data and "fish" in raw_data["fishing_data"]:
-                        fish_list = raw_data["fishing_data"]["fish"]
-                        # Convert array to dict keyed by fish 'key'
-                        fish_data = {fish['key']: fish for fish in fish_list if 'key' in fish}
-                        logger.info(f"[SELL] Loaded {len(fish_data)} fish from {path}")
-                    else:
-                        logger.error(f"[SELL] Invalid JSON structure in {path}")
-                    break
-                except Exception as json_err:
-                     logger.error(f"[SELL] JSON Parse error in {path}: {json_err}")
+        cached = data_cache.get_fish_data()
+        if cached and "fish" in cached:
+            fish_list = cached["fish"]
+            fish_data = {fish['key']: fish for fish in fish_list if 'key' in fish}
+            logger.info(f"[SELL] Loaded {len(fish_data)} fish from cache")
+        elif FISHING_DATA and "fish" in FISHING_DATA:
+            fish_list = FISHING_DATA["fish"]
+            fish_data = {fish['key']: fish for fish in fish_list if 'key' in fish}
+            logger.info(f"[SELL] Loaded {len(fish_data)} fish from constants")
+        else:
+            possible_paths = [
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "fishing_data.json"),
+                "data/fishing_data.json",
+            ]
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    try:
+                        with open(path, 'r', encoding='utf-8') as f:
+                            raw_data = json.load(f)
+                            
+                        if "fishing_data" in raw_data and "fish" in raw_data["fishing_data"]:
+                            fish_list = raw_data["fishing_data"]["fish"]
+                            fish_data = {fish['key']: fish for fish in fish_list if 'key' in fish}
+                            logger.info(f"[SELL] Loaded {len(fish_data)} fish from {path}")
+                        else:
+                            logger.error(f"[SELL] Invalid JSON structure in {path}")
+                        break
+                    except Exception as json_err:
+                         logger.error(f"[SELL] JSON Parse error in {path}: {json_err}")
 
         if not fish_data:
             raise FileNotFoundError("Could not find or parse fishing_data.json")

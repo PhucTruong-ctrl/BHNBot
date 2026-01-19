@@ -45,12 +45,15 @@ class ProfileCog(commands.Cog):
         return vip_data['tier'] if vip_data else 0
 
     async def _get_achievement_emojis(self, user_id: int) -> list[str]:
-        try:
-            achievements_file = "data/achievements.json"
-            with open(achievements_file, "r", encoding="utf-8") as f:
-                achievements_data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return []
+        from core.data_cache import data_cache
+        achievements_data = data_cache.get_achievements()
+        if not achievements_data:
+            try:
+                achievements_file = "data/achievements.json"
+                with open(achievements_file, "r", encoding="utf-8") as f:
+                    achievements_data = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                return []
 
         from .core.stats import get_top_achievements
         unlocked_keys = await get_top_achievements(user_id, limit=4)
@@ -233,9 +236,12 @@ class ProfileCog(commands.Cog):
         logger.debug(f"[thanhtuu] Target user: {target.id}")
         
         try:
-            with open("data/achievements.json", "r", encoding="utf-8") as f:
-                achievements_data = json.load(f)
-            logger.debug(f"[thanhtuu] Loaded achievements.json with {len(achievements_data)} categories")
+            from core.data_cache import data_cache
+            achievements_data = data_cache.get_achievements()
+            if not achievements_data:
+                with open("data/achievements.json", "r", encoding="utf-8") as f:
+                    achievements_data = json.load(f)
+            logger.debug(f"[thanhtuu] Loaded achievements with {len(achievements_data)} categories")
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.error(f"[thanhtuu] Failed to load achievements.json: {e}")
             await interaction.followup.send("❌ Không thể tải dữ liệu thành tựu!", ephemeral=True)
@@ -409,6 +415,7 @@ class ProfileCog(commands.Cog):
     def _load_seasonal_achievements(self) -> dict:
         import glob
         from pathlib import Path
+        from core.data_cache import data_cache
         
         seasonal_data = {}
         events_dir = Path("data/events")
@@ -417,8 +424,11 @@ class ProfileCog(commands.Cog):
             if event_file.name == "registry.json":
                 continue
             try:
-                with open(event_file, "r", encoding="utf-8") as f:
-                    event_data = json.load(f)
+                cache_key = f"event_{event_file.stem}"
+                event_data = data_cache.get(cache_key)
+                if not event_data:
+                    with open(event_file, "r", encoding="utf-8") as f:
+                        event_data = json.load(f)
                 
                 if "achievements" in event_data:
                     event_id = event_data.get("event_id", event_file.stem)

@@ -257,11 +257,18 @@ class EventConfig:
         config_path = EVENTS_DATA_PATH / registry_entry.config_file
 
         if not config_path.exists():
-            # Return config with just registry data if file doesn't exist
             return cls(registry=registry_entry)
 
-        with open(config_path, encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            from core.data_cache import data_cache
+            cache_key = f"event_{registry_entry.event_id.split('_')[0]}"
+            data = data_cache.get(cache_key)
+        except Exception:
+            data = None
+        
+        if not data:
+            with open(config_path, encoding="utf-8") as f:
+                data = json.load(f)
 
         return cls(
             registry=registry_entry,
@@ -358,8 +365,15 @@ def load_registry() -> dict[str, EventRegistryEntry]:
     if not registry_path.exists():
         return {}
 
-    with open(registry_path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        from core.data_cache import data_cache
+        data = data_cache.get("event_registry")
+    except Exception:
+        data = None
+    
+    if not data:
+        with open(registry_path, encoding="utf-8") as f:
+            data = json.load(f)
 
     events = {}
     for event_id, event_data in data.get("events", {}).items():
@@ -375,7 +389,14 @@ def get_registry_settings() -> dict[str, Any]:
     if not registry_path.exists():
         return {}
 
-    with open(registry_path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        from core.data_cache import data_cache
+        data = data_cache.get("event_registry")
+    except Exception:
+        data = None
+    
+    if not data:
+        with open(registry_path, encoding="utf-8") as f:
+            data = json.load(f)
 
     return data.get("settings", {})

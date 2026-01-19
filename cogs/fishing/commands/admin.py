@@ -50,72 +50,84 @@ async def trigger_event_action(cog, ctx_or_interaction, target_user_id: int,
     
     try:
         if event_type == "disaster":
-            with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                disasters = {d["key"]: d for d in data.get("disasters", [])}
-                if event_key in disasters:
-                    event_data = disasters[event_key]
-                    event_name = event_data["name"]
-                    event_emoji = event_data["emoji"]
+            from core.data_cache import data_cache
+            data = data_cache.get_disaster_events()
+            if not data:
+                with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            disasters = {d["key"]: d for d in data.get("disasters", [])}
+            if event_key in disasters:
+                event_data = disasters[event_key]
+                event_name = event_data["name"]
+                event_emoji = event_data["emoji"]
+            else:
+                disaster_list = ", ".join(disasters.keys())
+                msg = f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}"
+                if is_slash:
+                    await ctx_or_interaction.response.send_message(msg, ephemeral=True)
                 else:
-                    disaster_list = ", ".join(disasters.keys())
-                    msg = f"❌ Disaster key không tồn tại!\n\nDanh sách: {disaster_list}"
-                    if is_slash:
-                        await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-                    else:
-                        await ctx_or_interaction.reply(msg)
-                    return
+                    await ctx_or_interaction.reply(msg)
+                return
                     
         elif event_type == "fishing_event":
-            with open(FISHING_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                events = data.get("events", {})
-                if event_key in events:
-                    event_data = events[event_key]
-                    event_name = event_data.get("name", event_key)
-                    event_emoji = "🎣"
+            from core.data_cache import data_cache
+            data = data_cache.get("fishing_events")
+            if not data:
+                with open(FISHING_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            events = data.get("events", {})
+            if event_key in events:
+                event_data = events[event_key]
+                event_name = event_data.get("name", event_key)
+                event_emoji = "🎣"
+            else:
+                event_list = ", ".join(events.keys())
+                msg = f"❌ Fishing event key không tồn tại!\n\nDanh sách: {event_list}"
+                if is_slash:
+                    await ctx_or_interaction.response.send_message(msg, ephemeral=True)
                 else:
-                    event_list = ", ".join(events.keys())
-                    msg = f"❌ Fishing event key không tồn tại!\n\nDanh sách: {event_list}"
-                    if is_slash:
-                        await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-                    else:
-                        await ctx_or_interaction.reply(msg)
-                    return
+                    await ctx_or_interaction.reply(msg)
+                return
                     
         elif event_type == "sell_event":
-            with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                events = data.get("events", {})
-                if event_key in events:
-                    event_data = events[event_key]
-                    event_name = event_data.get("name", event_key)
-                    event_emoji = "💰"
+            from core.data_cache import data_cache
+            data = data_cache.get("sell_events")
+            if not data:
+                with open(SELL_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            events = data.get("events", {})
+            if event_key in events:
+                event_data = events[event_key]
+                event_name = event_data.get("name", event_key)
+                event_emoji = "💰"
+            else:
+                event_list = ", ".join(events.keys())
+                msg = f"❌ Sell event key không tồn tại!\n\nDanh sách: {event_list}"
+                if is_slash:
+                    await ctx_or_interaction.response.send_message(msg, ephemeral=True)
                 else:
-                    event_list = ", ".join(events.keys())
-                    msg = f"❌ Sell event key không tồn tại!\n\nDanh sách: {event_list}"
-                    if is_slash:
-                        await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-                    else:
-                        await ctx_or_interaction.reply(msg)
-                    return
+                    await ctx_or_interaction.reply(msg)
+                return
                     
         elif event_type == "npc_event":
-            with open(NPC_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                npcs = data
-                if event_key in npcs:
-                    event_data = npcs[event_key]
-                    event_name = event_data.get("name", event_key)
-                    event_emoji = event_name.split()[0]  # First emoji
+            from core.data_cache import data_cache
+            data = data_cache.get("npc_events")
+            if not data:
+                with open(NPC_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            npcs = data
+            if event_key in npcs:
+                event_data = npcs[event_key]
+                event_name = event_data.get("name", event_key)
+                event_emoji = event_name.split()[0]
+            else:
+                npc_list = ", ".join(npcs.keys())
+                msg = f"❌ NPC event key không tồn tại!\n\nDanh sách: {npc_list}"
+                if is_slash:
+                    await ctx_or_interaction.response.send_message(msg, ephemeral=True)
                 else:
-                    npc_list = ", ".join(npcs.keys())
-                    msg = f"❌ NPC event key không tồn tại!\n\nDanh sách: {npc_list}"
-                    if is_slash:
-                        await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-                    else:
-                        await ctx_or_interaction.reply(msg)
-                    return
+                    await ctx_or_interaction.reply(msg)
+                return
                     
         elif event_type == "meteor_shower":
             # Special case: force meteor shower tonight

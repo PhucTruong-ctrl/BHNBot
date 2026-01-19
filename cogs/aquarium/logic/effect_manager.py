@@ -30,6 +30,16 @@ class EffectManager:
         
     def load_sets(self) -> bool:
         """Load set definitions from JSON."""
+        try:
+            from core.data_cache import data_cache
+            cached = data_cache.get_feng_shui_sets()
+            if cached:
+                self.sets_data = cached.get("sets", {})
+                logger.info(f"Loaded {len(self.sets_data)} Feng Shui Sets from cache.")
+                return True
+        except Exception:
+            pass
+        
         if not os.path.exists(self.sets_path):
             logger.error(f"Sets config not found: {self.sets_path}")
             return False
@@ -38,7 +48,7 @@ class EffectManager:
             with open(self.sets_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 self.sets_data = data.get("sets", {})
-                logger.info(f"Loaded {len(self.sets_data)} Feng Shui Sets.")
+                logger.info(f"Loaded {len(self.sets_data)} Feng Shui Sets from file.")
                 return True
         except Exception as e:
             logger.error(f"Error loading sets: {e}")

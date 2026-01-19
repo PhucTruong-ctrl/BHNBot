@@ -69,9 +69,15 @@ class GlobalEventManager:
     def load_config(self):
         """Reloads configuration from JSON."""
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                self.config = json.load(f)
-            logger.info("Global Event Config loaded successfully.")
+            from core.data_cache import data_cache
+            cached = data_cache.get("fishing_global_events")
+            if cached:
+                self.config = cached
+                logger.info("Global Event Config loaded from cache.")
+            else:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    self.config = json.load(f)
+                logger.info("Global Event Config loaded from file.")
             
             # Update Loop Interval if changed
             if hasattr(self, "_loop_task"):

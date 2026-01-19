@@ -210,21 +210,22 @@ async def trigger_global_disaster(self, user_id: int, username: str, channel) ->
     """
     current_time = time.time()
     
-    # CHECK FOR FORCED PENDING DISASTER FIRST
     if user_id in self.pending_disaster:
         disaster_key = self.pending_disaster.pop(user_id)
-        # Load disaster data
-        import json
-        from .constants import DISASTER_EVENTS_PATH
+        from core.data_cache import data_cache
         try:
-            with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                disasters_by_key = {d["key"]: d for d in data.get("disasters", [])}
-                if disaster_key in disasters_by_key:
-                    disaster = disasters_by_key[disaster_key]
-                else:
-                    logger.info(f"[DISASTER] Pending disaster key {disaster_key} not found, skipping")
-                    return {"triggered": False, "reason": "pending_disaster_key_invalid"}
+            data = data_cache.get_disaster_events()
+            if not data:
+                import json
+                from .constants import DISASTER_EVENTS_PATH
+                with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            disasters_by_key = {d["key"]: d for d in data.get("disasters", [])}
+            if disaster_key in disasters_by_key:
+                disaster = disasters_by_key[disaster_key]
+            else:
+                logger.info(f"[DISASTER] Pending disaster key {disaster_key} not found, skipping")
+                return {"triggered": False, "reason": "pending_disaster_key_invalid"}
         except Exception as e:
             logger.error(f"[DISASTER] Error loading pending disaster: {e}")
             return {"triggered": False, "reason": "pending_disaster_load_error"}

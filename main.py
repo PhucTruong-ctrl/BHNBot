@@ -310,14 +310,38 @@ async def main():
         if should_rebuild:
             logger.info("\n[REBUILDING WORDS DICT]")
             try:
-                # Get the absolute path to the script
                 script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build_words_dict.py')
-                result = subprocess.run([os.sys.executable, script_path], capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+                cwd = os.path.dirname(os.path.abspath(__file__))
+                
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: subprocess.run(
+                        [os.sys.executable, script_path],
+                        capture_output=True,
+                        text=True,
+                        cwd=cwd
+                    )
+                )
+                
                 logger.info(result.stdout)
                 if result.returncode != 0:
                     logger.error(f"Error: {result.stderr}")
             except Exception as e:
                 logger.error(f"Error building words dict: {e}")
+        
+        # PHASE 2: Load static JSON data into cache (non-blocking)
+        logger.info("\n[LOADING DATA CACHE]")
+        try:
+            from core.data_cache import data_cache
+            cache_success = await data_cache.load_all()
+            if cache_success:
+                stats = data_cache.get_stats()
+                logger.info(f"Data cache loaded: {stats['total_loaded']} files cached")
+            else:
+                logger.warning("Data cache partially loaded - some files may be missing")
+        except Exception as e:
+            logger.error(f"Failed to initialize data cache: {e}")
         
         # Start bot (cogs will be loaded in on_ready)
         await bot.start(os.getenv('DISCORD_TOKEN'))

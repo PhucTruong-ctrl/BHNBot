@@ -110,12 +110,11 @@ def get_network_info() -> Dict[str, Any]:
         "download_speed": bytes_recv / time_delta  # Bytes/sec
     }
 
-def get_gpu_info() -> List[Dict[str, Any]]:
-    """Get GPU info via nvidia-smi (if available)."""
+def _get_gpu_info_sync() -> List[Dict[str, Any]]:
+    """Sync GPU info fetch (runs in executor)."""
     gpus = []
     try:
-        # Run nvidia-smi -x -q for XML output
-        result = subprocess.run(['nvidia-smi', '-x', '-q'], capture_output=True, text=True)
+        result = subprocess.run(['nvidia-smi', '-x', '-q'], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             root = ET.fromstring(result.stdout)
             for gpu in root.findall('gpu'):
@@ -133,8 +132,20 @@ def get_gpu_info() -> List[Dict[str, Any]]:
                     "temperature": int(temp)
                 })
     except Exception:
-        pass # GPU not found or error
+        pass
     return gpus
+
+
+def get_gpu_info() -> List[Dict[str, Any]]:
+    """Get GPU info (sync wrapper for backward compatibility)."""
+    return _get_gpu_info_sync()
+
+
+async def get_gpu_info_async() -> List[Dict[str, Any]]:
+    """Get GPU info asynchronously (non-blocking)."""
+    import asyncio
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _get_gpu_info_sync)
 
 def get_bot_status() -> Dict[str, Any]:
     """Get stats for the Bot process."""
@@ -219,7 +230,7 @@ async def get_system_stats() -> Dict[str, Any]:
             "upload_speed_mbps": network["upload_speed"] * 8 / (1024**2),
             "download_speed_mbps": network["download_speed"] * 8 / (1024**2)
         },
-        "gpu": get_gpu_info(),
+        "gpu": await get_gpu_info_async(),
         "bot": {
             "online": bot["status"] == "online",
             "status": bot["status"],

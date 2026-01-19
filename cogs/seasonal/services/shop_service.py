@@ -65,8 +65,12 @@ def _load_shop_items(event_type: str) -> list[ShopItem]:
         return []
 
     try:
-        with open(json_path, encoding="utf-8") as f:
-            data = json.load(f)
+        from core.data_cache import data_cache
+        cache_key = f"event_{base_type}"
+        data = data_cache.get(cache_key)
+        if not data:
+            with open(json_path, encoding="utf-8") as f:
+                data = json.load(f)
 
         shop_data = data.get("shop", [])
         items = []

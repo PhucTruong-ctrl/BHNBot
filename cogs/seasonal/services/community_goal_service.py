@@ -56,8 +56,12 @@ def _load_event_milestones(event_type: str) -> tuple[dict[str, Any], list[Milest
         return {}, []
 
     try:
-        with open(json_path, encoding="utf-8") as f:
-            data = json.load(f)
+        from core.data_cache import data_cache
+        cache_key = f"event_{base_type}"
+        data = data_cache.get(cache_key)
+        if not data:
+            with open(json_path, encoding="utf-8") as f:
+                data = json.load(f)
 
         goal_data = data.get("community_goal", {})
         milestones_data = data.get("milestones", [])
