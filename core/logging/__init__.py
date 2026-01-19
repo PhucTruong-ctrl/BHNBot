@@ -5,6 +5,7 @@ from core.logging.discord import (
     attach_discord_handler,
     get_log_config_from_db,
 )
+from core.logging.canonical import log_command_complete, CommandTimer
 
 __all__ = [
     "configure_logging",
@@ -17,4 +18,6 @@ __all__ = [
     "DiscordLogHandler",
     "attach_discord_handler",
     "get_log_config_from_db",
+    "log_command_complete",
+    "CommandTimer",
 ]
