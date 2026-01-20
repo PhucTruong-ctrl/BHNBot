@@ -238,7 +238,7 @@ class TestMinigameConfigurations:
         "secret_santa", "snowman", "countdown",
         "trash_sort", "beach_cleanup",
         "lantern_parade", "quiz",
-        "wishes", "balloon_pop",
+        "wishes", "balloon_pop", "birthday_cake",
     ]
     
     @pytest.fixture
