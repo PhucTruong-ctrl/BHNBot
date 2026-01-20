@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -20,6 +21,47 @@ _listeners: list[QueueListener] = []
 _file_handlers: dict[str, TimedRotatingFileHandler] = {}
 _file_handler_lock = threading.Lock()
 _loki_handler: Optional[logging.Handler] = None
+
+
+class DualFormatFormatter(logging.Formatter):
+    """Format logs as pretty text for console, JSON for files/Loki."""
+    
+    def __init__(self, pretty: bool = False):
+        super().__init__()
+        self.pretty = pretty
+    
+    def format(self, record: logging.LogRecord) -> str:
+        msg = record.getMessage()
+        
+        if self.pretty:
+            try:
+                import json
+                data = json.loads(msg)
+                level = data.get("level", "INFO").upper()
+                logger_name = data.get("logger", "unknown")
+                event = data.get("event", msg)
+                timestamp = data.get("timestamp", "")[:19].replace("T", " ")
+                
+                level_colors = {
+                    "DEBUG": "\033[36m",
+                    "INFO": "\033[32m", 
+                    "WARNING": "\033[33m",
+                    "ERROR": "\033[31m",
+                    "CRITICAL": "\033[35m",
+                }
+                reset = "\033[0m"
+                color = level_colors.get(level, "")
+                
+                extra_keys = [k for k in data.keys() if k not in ("event", "logger", "level", "timestamp", "service")]
+                extra = ""
+                if extra_keys:
+                    extra = " " + " ".join(f"{k}={data[k]}" for k in extra_keys[:5])
+                
+                return f"{timestamp} {color}[{level:8}]{reset} {logger_name}: {event}{extra}"
+            except (json.JSONDecodeError, TypeError):
+                return msg
+        else:
+            return msg
 
 
 def configure_logging(
@@ -65,7 +107,8 @@ def configure_logging(
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
         
-        formatter = logging.Formatter("%(message)s")
+        json_formatter = DualFormatFormatter(pretty=False)
+        pretty_formatter = DualFormatFormatter(pretty=True)
         
         file_handler = TimedRotatingFileHandler(
             filename=log_path,
@@ -74,7 +117,7 @@ def configure_logging(
             backupCount=30,
             encoding="utf-8",
         )
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(json_formatter)
         file_handler.setLevel(level)
         
         log_queue: queue.Queue[Any] = queue.Queue(-1)
@@ -84,18 +127,17 @@ def configure_logging(
         
         if enable_console:
             console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(formatter)
+            console_handler.setFormatter(pretty_formatter)
             console_handler.setLevel(level)
             handlers_for_listener.append(console_handler)
         
-        # Add Loki handler if LOKI_URL is configured
         global _loki_handler
         if enable_loki:
             loki_url = os.getenv("LOKI_URL")
             if loki_url:
                 from core.logging.loki import LokiHandler
                 _loki_handler = LokiHandler(url=loki_url)
-                _loki_handler.setFormatter(formatter)
+                _loki_handler.setFormatter(json_formatter)
                 _loki_handler.setLevel(level)
                 handlers_for_listener.append(_loki_handler)
         

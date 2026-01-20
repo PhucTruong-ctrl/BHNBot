@@ -7,7 +7,7 @@ import os
 
 from core.logging import get_logger
 from .config import HOST, PORT, DEBUG, CORS_ORIGINS
-from .routers import stats, users, roles, config as config_router, export, system, modules, audit, auth, cog_config, websocket, bot_logs
+from .routers import stats, users, roles, config as config_router, export, system, modules, audit, auth, cog_config, websocket, bot_logs, loki
 import traceback
 from fastapi.responses import JSONResponse
 from fastapi import Request
@@ -56,6 +56,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(cog_config.router, prefix="/api/cogs", tags=["Cog Config"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(bot_logs.router, prefix="/api", tags=["Bot Logs"])
+app.include_router(loki.router, prefix="/api", tags=["Loki"])
 
 # Mount static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")

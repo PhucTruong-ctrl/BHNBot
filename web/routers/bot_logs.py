@@ -1,12 +1,12 @@
-"""
-Bot Logs API - View and search bot logs
-"""
-from fastapi import APIRouter, Query
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+"""Bot Logs API - View and search bot logs (supports JSON format)."""
+import json
 import os
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Query
 
 router = APIRouter(prefix="/logs", tags=["logs"])
 
@@ -14,15 +14,34 @@ LOGS_DIR = Path(__file__).parent.parent.parent / "logs"
 
 
 def parse_log_line(line: str) -> Optional[Dict[str, Any]]:
-    pattern = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(\w+)\] \[([^\]]+)\] (.+)'
-    match = re.match(pattern, line.strip())
+    line = line.strip()
+    if not line:
+        return None
+    
+    if line.startswith("{"):
+        try:
+            data = json.loads(line)
+            return {
+                "timestamp": data.get("timestamp", "")[:19].replace("T", " "),
+                "level": data.get("level", "info").upper(),
+                "module": data.get("logger", "unknown"),
+                "message": data.get("event", line),
+                "extra": {k: v for k, v in data.items() if k not in ("timestamp", "level", "logger", "event", "service")},
+            }
+        except json.JSONDecodeError:
+            pass
+    
+    old_pattern = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(\w+)\] \[([^\]]+)\] (.+)'
+    match = re.match(old_pattern, line)
     if match:
         return {
             "timestamp": match.group(1),
             "level": match.group(2),
             "module": match.group(3),
-            "message": match.group(4)
+            "message": match.group(4),
+            "extra": {},
         }
+    
     return None
 
 
@@ -50,7 +69,7 @@ async def list_log_files() -> Dict[str, Any]:
 
 @router.get("/")
 async def get_logs(
-    file: str = "main.log",
+    file: str = "app.log",
     level: Optional[str] = None,
     module: Optional[str] = None,
     search: Optional[str] = None,
@@ -91,7 +110,7 @@ async def get_logs(
             
             if from_date:
                 try:
-                    log_dt = datetime.strptime(parsed["timestamp"], "%Y-%m-%d %H:%M:%S")
+                    log_dt = datetime.strptime(parsed["timestamp"][:10], "%Y-%m-%d")
                     from_dt = datetime.strptime(from_date, "%Y-%m-%d")
                     if log_dt < from_dt:
                         continue
@@ -100,7 +119,7 @@ async def get_logs(
             
             if to_date:
                 try:
-                    log_dt = datetime.strptime(parsed["timestamp"], "%Y-%m-%d %H:%M:%S")
+                    log_dt = datetime.strptime(parsed["timestamp"][:10], "%Y-%m-%d")
                     to_dt = datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1)
                     if log_dt >= to_dt:
                         continue
@@ -139,13 +158,13 @@ async def get_log_stats() -> Dict[str, Any]:
     stats["files"] = files[:10]
     stats["total_size"] = sum(f["size"] for f in files)
     
-    main_log = LOGS_DIR / "main.log"
-    if main_log.exists():
+    app_log = LOGS_DIR / "app.log"
+    if app_log.exists():
         today = datetime.now().strftime("%Y-%m-%d")
         yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         
         try:
-            with open(main_log, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(app_log, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
                     parsed = parse_log_line(line)
                     if not parsed:
@@ -164,7 +183,7 @@ async def get_log_stats() -> Dict[str, Any]:
 
 
 @router.get("/tail")
-async def tail_logs(file: str = "main.log", lines: int = 100) -> Dict[str, Any]:
+async def tail_logs(file: str = "app.log", lines: int = 100) -> Dict[str, Any]:
     log_path = LOGS_DIR / file
     
     if not log_path.exists() or not str(log_path.resolve()).startswith(str(LOGS_DIR.resolve())):
