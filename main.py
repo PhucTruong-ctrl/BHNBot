@@ -120,8 +120,9 @@ def stop_web_server():
 atexit.register(stop_web_server)
 
 def _signal_handler(signum, frame):
+    # IMPORTANT: Do NOT call stop_docker_services() here - subprocess.run() blocks
+    # the event loop and causes heartbeat timeout. Let atexit handle Docker cleanup.
     stop_web_server()
-    stop_docker_services()
     raise SystemExit(0)
 
 signal.signal(signal.SIGTERM, _signal_handler)
