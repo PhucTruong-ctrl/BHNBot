@@ -2,7 +2,7 @@
 """
 BHNBot Admin Panel - Game Configuration Router
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import json
@@ -12,7 +12,9 @@ import time
 from ..database import fetchone, execute
 from ..config import ROOT_DIR
 
-router = APIRouter()
+from ..dependencies import require_admin
+
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 # Path to settings file
 SETTINGS_PATH = os.path.join(ROOT_DIR, "configs", "settings.py")

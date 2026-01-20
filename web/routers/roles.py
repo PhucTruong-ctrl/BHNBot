@@ -4,7 +4,7 @@ BHNBot Admin Panel - Roles Router
 Migrated from tools/role_manager/app.py.
 Provides Discord role management via API.
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import httpx
@@ -15,9 +15,10 @@ import json
 
 from core.logging import get_logger
 from ..config import DISCORD_TOKEN, DISCORD_API_BASE, DEFAULT_GUILD_ID
+from ..dependencies import require_admin
 from database_manager import get_server_config, db_manager
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 logger = get_logger("AdminPanel.Roles")
 
 # Headers for Discord API

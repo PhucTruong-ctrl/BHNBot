@@ -28,9 +28,10 @@ HOST = "0.0.0.0"
 PORT = int(os.getenv("ADMIN_PORT", 8000))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
-# CORS - Allow frontend dev server
-# CORS - Allow all for Tailscale/Remote access
-CORS_ORIGINS = ["*"]
+# CORS - Production: specify allowed origins; Development: allow all
+# Set CORS_ALLOWED_ORIGINS in .env for production (comma-separated)
+_cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+CORS_ORIGINS = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else ["*"]
 
 # Authentication
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))

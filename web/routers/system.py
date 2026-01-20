@@ -8,10 +8,12 @@ import time
 import os
 import subprocess
 import xml.etree.ElementTree as ET
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from typing import Dict, Any, List
 
-router = APIRouter()
+from ..dependencies import require_admin
+
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 # Global state for calculating network speed
 last_net_io = psutil.net_io_counters()
@@ -31,7 +33,7 @@ def get_cpu_info() -> Dict[str, Any]:
             if key in temps:
                 temp = temps[key][0].current
                 break
-    except:
+    except Exception:
         pass
 
     # Get CPU Model Name (Linux)
@@ -42,7 +44,7 @@ def get_cpu_info() -> Dict[str, Any]:
                 if "model name" in line:
                     model = line.split(":")[1].strip()
                     break
-    except:
+    except Exception:
         pass
 
     return {

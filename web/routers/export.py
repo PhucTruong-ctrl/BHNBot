@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 import pandas as pd
 import io
@@ -6,7 +6,9 @@ from datetime import datetime
 
 from ..database import fetchall
 
-router = APIRouter()
+from ..dependencies import require_admin
+
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 @router.get("/users")
 async def export_users_excel():

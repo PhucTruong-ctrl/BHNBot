@@ -3,13 +3,14 @@ BHNBot Admin Panel - Users Router
 
 Endpoints for user management.
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
 from ..database import fetchall, fetchone, execute
+from ..dependencies import require_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 class UserUpdate(BaseModel):

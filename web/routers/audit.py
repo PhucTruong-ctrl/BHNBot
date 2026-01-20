@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import Optional, List
 from datetime import datetime, timedelta
 from ..database import fetchall, fetchone, execute
 
-router = APIRouter()
+from ..dependencies import require_admin
+
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 async def ensure_audit_table():

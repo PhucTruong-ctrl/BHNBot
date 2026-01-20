@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 
 from ..database import fetchall, fetchone
 
-router = APIRouter()
+from ..dependencies import require_admin
+
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 def calculate_gini(balances: List[int]) -> float:
