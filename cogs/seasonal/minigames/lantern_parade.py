@@ -28,6 +28,14 @@ class LanternParadeMinigame(BaseMinigame):
     def name(self) -> str:
         return "Rước Đèn Trung Thu"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "voice_tracking",
+            "minutes_per_reward": 5,
+            "max_daily_minutes": 60,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
         if event and hasattr(event, "minigame_config"):

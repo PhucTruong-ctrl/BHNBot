@@ -37,6 +37,14 @@ class SecretSantaMinigame(BaseMinigame):
     def name(self) -> str:
         return "Secret Santa"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "scheduled",
+            "phases": ["registration", "pairing", "gifting", "reveal"],
+            "phase_duration_days": 2,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
         if event and hasattr(event, "minigame_config"):

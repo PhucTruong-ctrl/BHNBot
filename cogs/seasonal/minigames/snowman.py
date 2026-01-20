@@ -37,6 +37,14 @@ class SnowmanMinigame(BaseMinigame):
     def name(self) -> str:
         return "Người Tuyết Cộng Đồng"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "manual",
+            "daily_contributions": 10,
+            "snow_per_contribution": [1, 3],
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         if event and hasattr(event, "minigame_config"):
             return event.minigame_config.get("snowman", {})

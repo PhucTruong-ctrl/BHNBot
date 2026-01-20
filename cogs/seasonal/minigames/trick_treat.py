@@ -43,6 +43,14 @@ class TrickTreatMinigame(BaseMinigame):
     def name(self) -> str:
         return "Trick or Treat"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "manual",
+            "daily_limit": 5,
+            "cooldown_seconds": 300,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         if event and hasattr(event, "minigame_config"):
             return event.minigame_config.get("trick_treat", {})

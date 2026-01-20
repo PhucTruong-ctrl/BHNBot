@@ -29,6 +29,14 @@ class CountdownMinigame(BaseMinigame):
     def name(self) -> str:
         return "Đếm Ngược Năm Mới"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "scheduled",
+            "scheduled_times": ["23:55"],
+            "countdown_duration_seconds": 300,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
         if event and hasattr(event, "minigame_config"):

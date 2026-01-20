@@ -39,6 +39,16 @@ class BeachCleanupMinigame(BaseMinigame):
     def name(self) -> str:
         return "Dọn Bãi Biển"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "random",
+            "times_per_day": [4, 6],
+            "active_hours": [8, 18],
+            "timeout_seconds": 20,
+            "max_cleaners": 5,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         if event and hasattr(event, "minigame_config"):
             return event.minigame_config.get("beach_cleanup", {})

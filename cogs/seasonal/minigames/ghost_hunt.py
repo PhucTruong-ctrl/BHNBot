@@ -42,6 +42,16 @@ class GhostHuntMinigame(BaseMinigame):
     def name(self) -> str:
         return "Săn Ma"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "random",
+            "times_per_day": [4, 7],
+            "active_hours": [18, 23],
+            "timeout_seconds": 45,
+            "max_catches": 3,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         if event and hasattr(event, "minigame_config"):
             return event.minigame_config.get("ghost_hunt", {})

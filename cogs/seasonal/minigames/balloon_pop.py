@@ -32,6 +32,16 @@ class BalloonPopMinigame(BaseMinigame):
     def name(self) -> str:
         return "Bóng Bay Sinh Nhật"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "random",
+            "times_per_day": [4, 6],
+            "active_hours": [10, 22],
+            "timeout_seconds": 30,
+            "max_pops": 5,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
         if event and hasattr(event, "minigame_config"):

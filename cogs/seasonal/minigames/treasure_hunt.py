@@ -38,6 +38,16 @@ class TreasureHuntMinigame(BaseMinigame):
     def name(self) -> str:
         return "Săn Kho Báu"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "random",
+            "times_per_day": [3, 5],
+            "active_hours": [10, 21],
+            "timeout_seconds": 60,
+            "grid_size": 3,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
         if event and hasattr(event, "minigame_config"):

@@ -28,6 +28,16 @@ class LixiAutoMinigame(BaseMinigame):
     def name(self) -> str:
         return "Lì Xì Trời Cho"
 
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "random",
+            "times_per_day": [5, 8],
+            "active_hours": [8, 22],
+            "timeout_seconds": 60,
+            "max_claims": 5,
+        }
+
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
         if event and hasattr(event, "minigame_config"):
@@ -187,6 +197,14 @@ class LixiManualMinigame(BaseMinigame):
     @property
     def name(self) -> str:
         return "Lì Xì Tặng Bạn"
+
+    @property
+    def spawn_config(self) -> dict[str, Any]:
+        return {
+            "spawn_type": "manual",
+            "daily_limit": 5,
+            "cooldown_seconds": 60,
+        }
 
     def _get_config(self, event: Any) -> dict[str, Any]:
         """Get minigame config from event with fallbacks."""
