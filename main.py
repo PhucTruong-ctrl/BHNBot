@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 import signal
 import atexit
+import threading
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -72,7 +73,54 @@ def stop_docker_services():
 
 atexit.register(stop_docker_services)
 
+# =============================================================================
+# WEB SERVER LIFECYCLE MANAGEMENT
+# =============================================================================
+_web_server = None
+_web_thread = None
+_web_started = False
+
+def start_web_server():
+    global _web_server, _web_thread, _web_started
+    if _web_started:
+        return
+    
+    try:
+        import uvicorn
+        from web.main import app
+        from web.config import HOST, PORT
+        
+        config = uvicorn.Config(
+            app, 
+            host=HOST, 
+            port=PORT, 
+            log_level="warning",
+            access_log=False
+        )
+        _web_server = uvicorn.Server(config)
+        _web_thread = threading.Thread(target=_web_server.run, daemon=True)
+        _web_thread.start()
+        _web_started = True
+        print(f"[WEB] Admin panel started at http://{HOST}:{PORT}")
+    except ImportError as e:
+        print(f"[WEB] Failed to start (missing dependency): {e}")
+    except Exception as e:
+        print(f"[WEB] Failed to start: {e}")
+
+def stop_web_server():
+    global _web_server, _web_started
+    if not _web_started or _web_server is None:
+        return
+    
+    print("\n[WEB] Stopping admin panel...")
+    _web_server.should_exit = True
+    _web_started = False
+    print("[WEB] Admin panel stopped")
+
+atexit.register(stop_web_server)
+
 def _signal_handler(signum, frame):
+    stop_web_server()
     stop_docker_services()
     raise SystemExit(0)
 
@@ -353,6 +401,7 @@ async def main():
 
 if __name__ == '__main__':
     start_docker_services()
+    start_web_server()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
