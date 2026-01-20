@@ -1,12 +1,7 @@
-"""
-BHNBot Admin Panel - Configuration
-
-Configurable settings for the web admin interface.
-"""
 import os
+import secrets
 from dotenv import load_dotenv
 
-# Load .env from parent directory (BHNBot root)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT_DIR, '.env'))
 
@@ -36,3 +31,12 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 # CORS - Allow frontend dev server
 # CORS - Allow all for Tailscale/Remote access
 CORS_ORIGINS = ["*"]
+
+# Authentication
+JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
+ADMIN_USER_IDS = [int(id.strip()) for id in os.getenv("ADMIN_USER_IDS", "").split(",") if id.strip()]
+
+# Discord OAuth
+DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", f"http://localhost:{PORT}/api/auth/callback")

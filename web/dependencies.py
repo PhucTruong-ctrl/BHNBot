@@ -1,14 +1,8 @@
-"""
-Shared dependencies for FastAPI routers.
-"""
 from fastapi import Request, HTTPException, Depends
 from typing import Optional
 import jwt
-import os
-import secrets
 
-JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
-ADMIN_USER_IDS = [int(id.strip()) for id in os.getenv("ADMIN_USER_IDS", "").split(",") if id.strip()]
+from .config import JWT_SECRET, ADMIN_USER_IDS
 
 
 def get_current_user(request: Request) -> dict:

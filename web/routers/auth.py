@@ -1,25 +1,25 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 import aiohttp
-import os
-import secrets
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 from pydantic import BaseModel
+import secrets
+
+from ..config import (
+    JWT_SECRET,
+    ADMIN_USER_IDS,
+    DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET,
+    DISCORD_REDIRECT_URI,
+)
 
 router = APIRouter()
-
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "")
-DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "")
-DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "http://localhost:8080/api/auth/callback")
-JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
 
 DISCORD_API_ENDPOINT = "https://discord.com/api/v10"
 DISCORD_OAUTH_URL = "https://discord.com/api/oauth2/authorize"
 DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
-
-ADMIN_USER_IDS = [int(id.strip()) for id in os.getenv("ADMIN_USER_IDS", "").split(",") if id.strip()]
 
 sessions = {}
 
