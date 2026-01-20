@@ -4,9 +4,10 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 import aiohttp
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
+from ..dependencies import require_admin
 
-router = APIRouter(prefix="/loki", tags=["loki"])
+router = APIRouter(prefix="/loki", tags=["loki"], dependencies=[Depends(require_admin)])
 
 LOKI_URL = os.getenv("LOKI_URL", "http://localhost:3100")
 if not LOKI_URL.endswith("/loki/api/v1/push"):

@@ -1,10 +1,11 @@
 """
 WebSocket endpoint for real-time system updates
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 import asyncio
 import json
 from .system import get_cpu_info, get_memory_info, get_disk_info, get_network_info, get_bot_status, get_gpu_info
+from ..dependencies import require_admin
 
 router = APIRouter(tags=["WebSocket"])
 

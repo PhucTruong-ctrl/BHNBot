@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Query, Depends
+from ..dependencies import require_admin
 
-router = APIRouter(prefix="/logs", tags=["logs"])
+router = APIRouter(prefix="/logs", tags=["logs"], dependencies=[Depends(require_admin)])
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "logs"
 

@@ -1,12 +1,13 @@
 """
 Cog Configuration API - Per-module settings management
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
 from ..database import execute, fetchone, fetchall
+from ..dependencies import require_admin
 
-router = APIRouter(prefix="/cogs", tags=["cogs"])
+router = APIRouter(prefix="/cogs", tags=["cogs"], dependencies=[Depends(require_admin)])
 
 
 COG_CONFIGS = {

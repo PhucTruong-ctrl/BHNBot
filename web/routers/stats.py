@@ -4,7 +4,7 @@ BHNBot Admin Panel - Statistics Router
 Endpoints for economy and game statistics.
 Rewritten for PostgreSQL compatibility.
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Dict, Any, List, Optional
 import math
 from datetime import datetime, timedelta

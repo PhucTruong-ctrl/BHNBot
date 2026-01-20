@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from ..database import fetchall, fetchone, execute
+from ..dependencies import require_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 class ModuleToggle(BaseModel):
