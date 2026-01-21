@@ -28,7 +28,7 @@ class HomeSlot(models.Model):
     id = fields.IntField(pk=True)
     user = fields.ForeignKeyField('models.UserAquarium', related_name='slots', to_field='user_id')
     slot_index = fields.IntField() # 0-4 usually
-    item_id = fields.CharField(max_length=50, null=True) # Key from constants.DECOR_ITEMS
+    item_id = fields.CharField(max_length=50, null=True)
     placed_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
@@ -60,6 +60,28 @@ class HomeVisit(models.Model):
     class Meta:
         table = "home_visits"
         # index on (visitor_id, visited_at) created automatically or via manual SQL if needed
+
+class Loadout(models.Model):
+    """
+    Represents a saved loadout configuration for a specific activity.
+    Users can save multiple loadouts and switch between them.
+    """
+    id = fields.IntField(pk=True)
+    user = fields.ForeignKeyField('models.UserAquarium', related_name='loadouts', to_field='user_id')
+    name = fields.CharField(max_length=50)
+    activity = fields.CharField(max_length=20)  # fishing, harvest, sell, passive, global, quest, relationship, gambling
+    slot_0 = fields.CharField(max_length=50, null=True)
+    slot_1 = fields.CharField(max_length=50, null=True)
+    slot_2 = fields.CharField(max_length=50, null=True)
+    slot_3 = fields.CharField(max_length=50, null=True)
+    slot_4 = fields.CharField(max_length=50, null=True)
+    is_active = fields.BooleanField(default=False)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "loadouts"
+        unique_together = (("user", "name"),)
+
 
 class VIPSubscription(models.Model):
     """

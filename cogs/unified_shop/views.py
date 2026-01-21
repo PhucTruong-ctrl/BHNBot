@@ -196,7 +196,8 @@ class ShopCategoryView(ui.View):
 
         # SPECIAL LOGIC FOR DECOR: Group by Set
         if self.category == "decor":
-            from cogs.aquarium.constants import FENG_SHUI_SETS
+            from cogs.aquarium.logic.effect_manager import SetsDataLoader
+            sets_data = SetsDataLoader.get_sets()
             
             # 1. Group items by set
             items_by_set = {}
@@ -209,11 +210,11 @@ class ShopCategoryView(ui.View):
                 attrs = item.get("attributes", {})
                 if attrs and "decor_set" in attrs:
                     set_key = attrs["decor_set"]
-                # Fallback to old dict structure (if any)
-                elif item.get("set"):
-                     set_key = item.get("set")
+                # Fallback to set_id field from new JSON structure
+                elif item.get("set_id"):
+                     set_key = item.get("set_id")
                 
-                if set_key and set_key in FENG_SHUI_SETS:
+                if set_key and set_key in sets_data:
                     if set_key not in items_by_set: items_by_set[set_key] = []
                     items_by_set[set_key].append(item)
                 else:
@@ -223,9 +224,10 @@ class ShopCategoryView(ui.View):
             embed.description += "\n" # Spacing
             
             for set_key, set_items in items_by_set.items():
-                set_info = FENG_SHUI_SETS[set_key]
+                set_info = sets_data[set_key]
                 set_name = set_info.get("name", "Set Unknown")
-                bonus = set_info.get("bonus_desc", "")
+                bonus_dict = set_info.get("bonus", {})
+                bonus = ", ".join([f"+{v*100:.0f}% {k}" if isinstance(v, float) else f"+{v} {k}" for k, v in bonus_dict.items()])
                 
                 field_value = f"✨ **Bonus:** {bonus}\n"
                 for item in set_items:
@@ -234,7 +236,7 @@ class ShopCategoryView(ui.View):
                     status = "✅" if owned > 0 else "⬜"
                     field_value += f"{status} **{item['name']}** - `{price:,} Hạt`\n"
                 
-                embed.add_field(name=f"{set_info['icon']} {set_name}", value=field_value, inline=False)
+                embed.add_field(name=f"{set_info.get('icon', '🌟')} {set_name}", value=field_value, inline=False)
             
             # 3. Render Misc Items
             if misc_items:

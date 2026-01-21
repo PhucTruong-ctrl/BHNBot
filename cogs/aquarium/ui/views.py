@@ -4,8 +4,9 @@ from discord import ui
 from ..logic.market import MarketEngine
 from ..logic.housing import HousingEngine
 from ..logic.render import RenderEngine
+from ..logic.effect_manager import SetsDataLoader
 from core.services.vip_service import VIPEngine
-from ..constants import DECOR_ITEMS, FENG_SHUI_SETS, VIP_PRICES, VIP_NAMES, VIP_COLORS, VIP_PRICES
+from ..constants import VIP_PRICES, VIP_NAMES, VIP_COLORS
 
 # ==================== MAIN DASHBOARD VIEW ====================
 class AquariumDashboardView(ui.View):
@@ -83,17 +84,19 @@ class DecorSelect(ui.Select):
     def __init__(self, user_id: int):
         self.user_id = user_id
         options = []
-        for key, item in DECOR_ITEMS.items():
-            set_key = item.get('set')
+        items_data = SetsDataLoader.get_items()
+        sets_data = SetsDataLoader.get_sets()
+        
+        for key, item in items_data.items():
+            set_key = item.get('set_id')
             label = item['name']
-            if set_key and set_key in FENG_SHUI_SETS:
-                set_icon = FENG_SHUI_SETS[set_key]['icon']
+            if set_key and set_key in sets_data:
+                set_icon = sets_data[set_key].get('icon', '🌟')
                 label = f"{set_icon} {label}"
                 
             options.append(discord.SelectOption(
                 label=label,
                 value=key,
-                # Format: 5,000 S + 50 L
                 description=f"{item['price_seeds']:,} S + {item['price_leaf']} 🍃",
                 emoji=item['icon']
             ))
@@ -105,23 +108,27 @@ class DecorSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id: return
+        
+        items_data = SetsDataLoader.get_items()
+        sets_data = SetsDataLoader.get_sets()
             
         item_key = self.values[0]
-        item = DECOR_ITEMS[item_key]
+        item = items_data[item_key]
         
         embed = discord.Embed(
             title=f"{item['icon']} {item['name']}",
             description=f"**Mô tả:** {item['desc']}\n\n"
                         f"💰 **Giá:** {item['price_seeds']:,} Hạt\n"
                         f"🍃 **Xu Lá:** {item['price_leaf']}\n\n"
+                        f"✨ **Charm:** +{item.get('charm', 0)}\n"
                         f"Vị trí đặt: `{item['type']}`",
             color=0x2ecc71
         )
-        # Set Info
-        set_key = item.get('set')
-        if set_key and set_key in FENG_SHUI_SETS:
-             set_data = FENG_SHUI_SETS[set_key]
-             embed.add_field(name=f"🌟 Thuộc Set: {set_data['name']}", value=f"Bonus: {set_data['bonus_desc']}", inline=False)
+        set_key = item.get('set_id')
+        if set_key and set_key in sets_data:
+             set_data = sets_data[set_key]
+             bonus_text = ", ".join([f"+{v*100:.0f}% {k}" if isinstance(v, float) else f"+{v} {k}" for k, v in set_data.get('bonus', {}).items()])
+             embed.add_field(name=f"🌟 Thuộc Set: {set_data['name']}", value=f"Bonus (2 mảnh): {bonus_text}", inline=False)
         
         view = DecorConfirmView(self.user_id, item_key)
         await interaction.response.edit_message(embed=embed, view=view)
@@ -132,8 +139,10 @@ class DecorConfirmView(ui.View):
         self.user_id = user_id
         self.item_key = item_key
         
-        # Check Item Logic
-        item = DECOR_ITEMS.get(item_key)
+        items_data = SetsDataLoader.get_items()
+        item = items_data.get(item_key)
+        if not item:
+            return
         cost_magic = item.get('price_magic_fruit', 0)
         
         if cost_magic > 0:
@@ -295,9 +304,9 @@ class InventorySelect(ui.Select):
     def __init__(self, user_id: int, slot_idx: int, inventory: dict):
         options = [discord.SelectOption(label="❌ Gỡ Bỏ", value="EMPTY_SLOT", emoji="🗑️")]
         
-        # Inventory is already sliced by View
+        items_data = SetsDataLoader.get_items()
         for k, qty in inventory.items():
-            item = DECOR_ITEMS.get(k, {})
+            item = items_data.get(k, {})
             options.append(discord.SelectOption(
                 label=f"{item.get('name', k)} (x{qty})", value=k, emoji=item.get('icon', '📦')
             ))

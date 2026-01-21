@@ -3,9 +3,6 @@
 All constants used by the bump reminder system.
 """
 
-# Database path
-DB_PATH = "./data/database.db"
-
 # Timing constants
 BUMP_INTERVAL_HOURS = 3
 BUMP_INTERVAL_SECONDS = BUMP_INTERVAL_HOURS * 3600  # 10800 seconds

@@ -215,16 +215,17 @@ async def sell_fish_action(cog, ctx_or_interaction, fish_types: Optional[str] = 
     
     # ===== STEP 1.75: CHECK SET BONUSES (Phase 3) =====
     bonus_amount = 0
-    bonus_percent = 0
+    bonus_percent = 0.0
     try:
-        from cogs.aquarium.logic.housing import HousingEngine
-        active_sets = await HousingEngine.get_active_sets(user_id)
+        from cogs.aquarium.logic.effect_manager import get_effect_manager
+        effect_manager = get_effect_manager()
         
-        # Check 'hoang_gia' set (Tier 2) - +10% Sell Value
-        if any(s.get('tier') == 2 for s in active_sets):
-            bonus_percent = 0.10
+        # Get sell_price_bonus multiplier from any active sets
+        multiplier = await effect_manager.get_multiplier(user_id, "sell_price_bonus")
+        if multiplier > 1.0:
+            bonus_percent = multiplier - 1.0
             bonus_amount = int(total_value * bonus_percent)
-            logger.info(f"[SELL] User {user_id} has Royal Set bonus (+{bonus_amount})")
+            logger.info(f"[SELL] User {user_id} has Aquarium Set bonus +{bonus_percent*100:.0f}% (+{bonus_amount})")
             
     except Exception as e:
         logger.error(f"[SELL] Set Bonus check failed: {e}", exc_info=True)

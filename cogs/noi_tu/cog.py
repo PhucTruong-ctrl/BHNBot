@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import aiosqlite
 import asyncio
 import random
 import json
@@ -14,7 +13,6 @@ from core.logging import get_logger
 
 logger = get_logger("NoiTu")
 
-DB_PATH = os.path.abspath("./data/database.db")
 WORDS_DICT_PATH = os.path.abspath("./data/words_dict.json")
 
 class GameNoiTu(commands.Cog):

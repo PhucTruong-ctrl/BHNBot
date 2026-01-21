@@ -5,10 +5,10 @@ Data classes for managing bump reminder state.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, List
-import aiosqlite
+from typing import Optional, List, TYPE_CHECKING
 
-from .constants import DB_PATH
+if TYPE_CHECKING:
+    from database_manager import DatabaseManager
 
 
 @dataclass
@@ -54,62 +54,59 @@ class BumpConfig:
             for row in rows
         ]
     
-    async def update_bump_time(self, db: aiosqlite.Connection, bump_time: datetime) -> None:
+    async def update_bump_time(self, db: "DatabaseManager", bump_time: datetime) -> None:
         """Update bump_start_time and reset last_reminder_sent.
         
         Called when user successfully bumps the server.
         
         Args:
-            db: Active aiosqlite database connection
+            db: DatabaseManager instance
             bump_time: UTC datetime of bump
             
         Raises:
-            aiosqlite.Error: If database update fails
+            Exception: If database update fails
         """
         bump_time_iso = bump_time.isoformat()
         await db.modify(
-            "UPDATE server_config SET bump_start_time = ?, last_reminder_sent = NULL WHERE guild_id = ?",
+            "UPDATE server_config SET bump_start_time = $1, last_reminder_sent = NULL WHERE guild_id = $2",
             (bump_time_iso, self.guild_id)
         )
-        # PostgreSQL auto-commits, no manual commit needed
         self.bump_start_time = bump_time_iso
         self.last_reminder_sent = None
     
-    async def update_reminder_time(self, db: aiosqlite.Connection, reminder_time: datetime) -> None:
+    async def update_reminder_time(self, db: "DatabaseManager", reminder_time: datetime) -> None:
         """Update last_reminder_sent timestamp.
         
         Called after successfully sending a bump reminder.
         
         Args:
-            db: Active aiosqlite database connection
+            db: DatabaseManager instance
             reminder_time: UTC datetime of reminder sent
             
         Raises:
-            aiosqlite.Error: If database update fails
+            Exception: If database update fails
         """
         reminder_time_iso = reminder_time.isoformat()
         await db.modify(
-            "UPDATE server_config SET last_reminder_sent = ? WHERE guild_id = ?",
+            "UPDATE server_config SET last_reminder_sent = $1 WHERE guild_id = $2",
             (reminder_time_iso, self.guild_id)
         )
-        # PostgreSQL auto-commits, no manual commit needed
         self.last_reminder_sent = reminder_time_iso
     
-    async def initialize_bump_time(self, db: aiosqlite.Connection) -> None:
+    async def initialize_bump_time(self, db: "DatabaseManager") -> None:
         """Initialize bump_start_time to NOW if NULL.
         
         Called when config exists but bump_start_time is NULL (first-time setup).
         
         Args:
-            db: Active aiosqlite database connection
+            db: DatabaseManager instance
             
         Raises:
-            aiosqlite.Error: If database update fails
+            Exception: If database update fails
         """
         now_utc = datetime.now(timezone.utc).isoformat()
         await db.modify(
-            "UPDATE server_config SET bump_start_time = ? WHERE guild_id = ?",
+            "UPDATE server_config SET bump_start_time = $1 WHERE guild_id = $2",
             (now_utc, self.guild_id)
         )
-        # PostgreSQL auto-commits, no manual commit needed
         self.bump_start_time = now_utc

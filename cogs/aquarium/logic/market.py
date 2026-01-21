@@ -1,7 +1,8 @@
 from typing import Tuple, Dict
 from core.database import db_manager, get_user_balance
 from ..models import UserAquarium, UserDecor
-from ..constants import LEAF_COIN_RATE, DECOR_ITEMS, TRASH_ITEM_IDS
+from ..constants import LEAF_COIN_RATE, TRASH_ITEM_IDS
+from .effect_manager import SetsDataLoader
 from core.logging import get_logger
 import random
 

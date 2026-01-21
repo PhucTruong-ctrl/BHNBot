@@ -203,6 +203,15 @@ async def claim_quest_reward(
     reward_value = quest_data.get("reward_value") or quest_data.get("reward", 0)
 
     if reward_type == "currency" and isinstance(reward_value, int):
+        # HOOK: Aquarium quest_reward_bonus
+        try:
+            from cogs.aquarium.logic.effect_manager import get_effect_manager
+            effect_manager = get_effect_manager()
+            quest_bonus_mul = await effect_manager.get_multiplier(user_id, "quest_reward_bonus")
+            if quest_bonus_mul > 1.0:
+                reward_value = int(reward_value * quest_bonus_mul)
+        except Exception:
+            pass
         await add_currency(guild_id, user_id, event_id, reward_value)
 
     await execute_write(

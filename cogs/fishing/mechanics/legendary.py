@@ -288,6 +288,17 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
     logger.debug("spawn_check_start", user_id=user_id, hour=current_hour)
     import random
 
+    # HOOK: Aquarium legendary_chance_bonus
+    legendary_chance_mul = 1.0
+    try:
+        from cogs.aquarium.logic.effect_manager import get_effect_manager
+        effect_manager = get_effect_manager()
+        legendary_chance_mul = await effect_manager.get_multiplier(user_id, "legendary_chance_bonus")
+        if legendary_chance_mul > 1.0:
+            logger.debug(f"[AQUARIUM] User {user_id} legendary_chance_bonus x{legendary_chance_mul:.2f}")
+    except Exception as e:
+        logger.warning(f"[AQUARIUM] Failed to get legendary_chance_bonus for {user_id}: {e}")
+
     try:
         fish_collection = await get_fish_collection(user_id)
         legendary_list = list(fish_collection.keys())
@@ -304,7 +315,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                 start_hour, end_hour = time_restriction
                 if not (start_hour <= current_hour < end_hour):
                     continue
-            if random.random() < legendary["spawn_chance"]:
+            if random.random() < legendary["spawn_chance"] * legendary_chance_mul:
                 return legendary
         return None
     
@@ -422,7 +433,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
             has_buff = cog.phoenix_buff_active.get(user_id, False)
             
             if has_buff or inventory.get("long_vu_lua", 0) > 0:
-                if random.random() < legendary["spawn_chance"]:
+                if random.random() < legendary["spawn_chance"] * legendary_chance_mul:
                     # Use item if not in active buff
                     if not has_buff and inventory.get("long_vu_lua", 0) > 0:
                         # [CACHE] Use bot.inventory.modify
@@ -452,7 +463,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
                     return legendary
                 elif current_cast < 10:
                     # Casts 1-9: Random spawn chance
-                    if random.random() < legendary["spawn_chance"]:
+                    if random.random() < legendary["spawn_chance"] * legendary_chance_mul:
                         # Spawn success - cleanup and return
                         cog.dark_map_active[user_id] = False
                         cog.dark_map_casts[user_id] = 0
@@ -474,7 +485,7 @@ async def check_legendary_spawn_conditions(user_id: int, guild_id: int, current_
             if not (start_hour <= current_hour < end_hour):
                 continue
         
-        if random.random() < legendary["spawn_chance"]:
+        if random.random() < legendary["spawn_chance"] * legendary_chance_mul:
             return legendary
     
     return None

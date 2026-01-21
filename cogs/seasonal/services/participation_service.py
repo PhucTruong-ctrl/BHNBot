@@ -31,6 +31,18 @@ async def ensure_participation(guild_id: int, user_id: int, event_id: str) -> di
 
 
 async def add_currency(guild_id: int, user_id: int, event_id: str, amount: int) -> int:
+    # Apply aquarium minigame_bonus if available
+    if amount > 0:
+        try:
+            from cogs.aquarium.logic.effect_manager import get_effect_manager
+            effect_manager = get_effect_manager()
+            bonus_mul = await effect_manager.get_multiplier(user_id, "minigame_bonus", "seasonal")
+            if bonus_mul > 1.0:
+                amount = int(amount * bonus_mul)
+                logger.debug(f"[AQUARIUM] User {user_id} minigame_bonus x{bonus_mul:.2f} -> {amount}")
+        except Exception:
+            pass
+    
     await ensure_participation(guild_id, user_id, event_id)
     await execute_write(
         "UPDATE event_participation SET currency = currency + ? WHERE guild_id = ? AND user_id = ? AND event_id = ?",

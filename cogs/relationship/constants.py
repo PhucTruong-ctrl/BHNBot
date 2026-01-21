@@ -79,3 +79,12 @@ GIFT_MESSAGES = {
         "💌 **{sender}** gửi **{receiver}**. 'Check mail... à nhầm, check thiệp đi bạn hiền.'"
     ]
 }
+# Gift XP Values - Relationship XP awarded to receivers
+GIFT_XP_VALUES = {
+    "cafe": 5,
+    "flower": 10,
+    "ring": 20,
+    "gift": 15,
+    "chocolate": 8,
+    "card": 12
+}

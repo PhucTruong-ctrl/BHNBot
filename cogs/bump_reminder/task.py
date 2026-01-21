@@ -5,15 +5,16 @@ Runs periodic checks (every 30 minutes) to send bump reminders to configured gui
 
 import discord
 from discord.ext import commands, tasks
-import aiosqlite
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from core.logging import get_logger
 # Use DB Manager singleton instead of direct connection
 from core.database import db_manager
 
+if TYPE_CHECKING:
+    from database_manager import DatabaseManager
+
 from .constants import (
-    DB_PATH,
     BUMP_INTERVAL_SECONDS,
     REMINDER_COOLDOWN_SECONDS
 )
@@ -131,13 +132,13 @@ class BumpReminderTask:
     
     async def _check_and_send_bump(
         self,
-        db: aiosqlite.Connection,
+        db: "DatabaseManager",
         config: BumpConfig
     ) -> bool:
         """Check single guild and send reminder if conditions met.
         
         Args:
-            db: Active aiosqlite database connection
+            db: DatabaseManager instance
             config: Guild bump configuration
             
         Returns:

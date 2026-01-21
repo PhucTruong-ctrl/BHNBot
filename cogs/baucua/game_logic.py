@@ -381,7 +381,7 @@ class GameManager:
     ) -> Dict[int, int]:
         """Calculate payouts for all bets based on results.
         
-        Formula: payout = bet_amount * (matches + 1)
+        Formula: payout = bet_amount * (matches + 1) * gambling_luck_multiplier
         - 0 matches = 0 payout (loss)
         - 1 match = bet_amount * 2
         - 2 matches = bet_amount * 3
@@ -401,10 +401,25 @@ class GameManager:
         for user_id, bet_list in game_state.bets.items():
             total_payout = 0
             
+            # HOOK: Aquarium gambling_luck bonus
+            gambling_luck_mul = 1.0
+            try:
+                from cogs.aquarium.logic.effect_manager import get_effect_manager
+                effect_manager = get_effect_manager()
+                gambling_luck_mul = await effect_manager.get_multiplier(user_id, "gambling_luck")
+                if gambling_luck_mul > 1.0:
+                    logger.debug(f"[AQUARIUM] User {user_id} gambling_luck x{gambling_luck_mul:.2f}")
+            except Exception as e:
+                logger.warning(f"[AQUARIUM] Failed to get gambling_luck for {user_id}: {e}")
+            
             for animal_key, bet_amount in bet_list:
                 matches = sum(1 for r in final_result if r == animal_key)
                 payout = calculate_payout(bet_amount, matches)
                 total_payout += payout
+            
+            # Apply gambling_luck multiplier to winnings only
+            if total_payout > 0 and gambling_luck_mul > 1.0:
+                total_payout = int(total_payout * gambling_luck_mul)
             
             if total_payout > 0:
                 payouts[user_id] = total_payout

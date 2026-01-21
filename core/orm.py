@@ -5,7 +5,7 @@ logger = get_logger("orm")
 
 TORTOISE_ORM = {
     "connections": {
-        "default": os.getenv("DATABASE_URL", "sqlite://db.sqlite3")
+        "default": os.getenv("DATABASE_URL")  # PostgreSQL only - no sqlite fallback
     },
     "apps": {
         "models": {

@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bhnbot-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-bhnbot_db}
+      POSTGRES_USER: ${DB_USER:-bhnbot_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-bhnbot_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bhnbot_user} -d ${DB_NAME:-bhnbot_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4
     container_name: bhnbot-lavalink
@@ -66,6 +84,7 @@ services:
       - tempo
 
 volumes:
+  postgres_data:
   loki_data:
   tempo_data:
   grafana_data:

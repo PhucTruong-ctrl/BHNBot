@@ -1,9 +1,16 @@
+"""
+Housing Engine - Aquarium Home System Logic
+
+Manages user home slots, decoration placement, and set bonuses.
+Uses new SetsDataLoader for item/set data (single source of truth).
+"""
 
 from typing import List, Optional, Dict
 from tortoise.transactions import in_transaction
 from ..models import UserAquarium, HomeSlot, UserDecor, HomeVisit
-from ..constants import DECOR_ITEMS, FENG_SHUI_SETS
+from .effect_manager import SetsDataLoader, get_effect_manager
 from core.logging import get_logger
+
 logger = get_logger("aquarium_logic_housing")
 
 class HousingEngine:
@@ -146,16 +153,15 @@ class HousingEngine:
 
     @staticmethod
     async def get_active_sets(user_id: int) -> List[Dict]:
-        """Check which Feng Shui sets are active (Delegated to EffectManager)."""
-        from cogs.aquarium.logic.effect_manager import effect_manager
-        return await effect_manager.get_active_sets(user_id)
+        """Check which sets are active (Delegated to EffectManager)."""
+        manager = get_effect_manager()
+        return await manager.get_active_sets(user_id)
 
     @staticmethod
     async def calculate_home_stats(user_id: int) -> Dict:
-        """Calculate total value and charm using DECOR_ITEMS constant."""
-        # Note: We rely on DECOR_ITEMS from constants because item_system might be out of sync for decor.
-        from ..constants import DECOR_ITEMS
-        from cogs.aquarium.logic.effect_manager import effect_manager
+        """Calculate total value and charm using SetsDataLoader (new JSON source)."""
+        manager = get_effect_manager()
+        items_data = SetsDataLoader.get_items()
         
         current_slots = await HousingEngine.get_slots(user_id)
         active_sets = await HousingEngine.get_active_sets(user_id)
@@ -165,20 +171,13 @@ class HousingEngine:
         
         for item_id in current_slots:
             if item_id:
-                item = DECOR_ITEMS.get(item_id)
-                if not item: continue
+                item = items_data.get(item_id)
+                if not item:
+                    continue
                 
-                # Logic: Parse Charm from description 
-                # Format: "Description (+X Charm)"
-                desc = item.get('desc', '')
-                # Try simple parse first
-                if "(+" in desc and "Charm)" in desc:
-                    try:
-                        charm_part = desc.split("(+")[1].split(" Charm)")[0]
-                        total_charm += int(charm_part)
-                    except Exception:
-                        pass
-                            
+                # Use direct charm field (no more parsing from description)
+                total_charm += item.get('charm', 0)
+                             
                 # Price Value
                 total_value += item.get('price_seeds', 0)
 
@@ -255,30 +254,30 @@ class HousingEngine:
         return user.theme_url if user else None
 
     @staticmethod
-    async def get_theme(user_id: int) -> Optional[str]:
-        """Get the custom theme URL for the user's aquarium."""
-        user = await UserAquarium.get_or_none(user_id=user_id)
-        return user.theme_url if user else None
-
-    @staticmethod
-    async def is_set_active(user_id: int, set_key: str, min_items: int = 3) -> bool:
+    async def is_set_active(user_id: int, set_id: str, min_items: int = 2) -> bool:
         """
-        Check if user has a Decor Set active.
-        Condition: At least `min_items` from the set are currently placed in slots.
+        Check if user has a specific set active.
+        
+        DEPRECATED: Use EffectManager.get_active_sets() instead.
+        This method is kept for backwards compatibility.
+        
+        Args:
+            user_id: The user ID
+            set_id: The set ID to check (e.g., 'hai_duong_cung')
+            min_items: Minimum items required (default 2)
+            
+        Returns:
+            bool: True if set is active
         """
         try:
-            # Get current slots (cache friendly?)
-            slots = await HousingEngine.get_slots(user_id)
-            placed_ids = [s for s in slots if s]
+            manager = get_effect_manager()
+            active_sets = await manager.get_active_sets(user_id)
             
-            count = 0
-            for item_id in placed_ids:
-                item = DECOR_ITEMS.get(item_id)
-                # Check directly in DECOR_ITEMS
-                if item and item.get("set") == set_key:
-                    count += 1
+            for set_data in active_sets:
+                if set_data.get("id") == set_id:
+                    return set_data.get("active_pieces", 0) >= min_items
             
-            return count >= min_items
+            return False
         except Exception as e:
-            logger.error(f"[SET_CHECK] Error checking set {set_key} for {user_id}: {e}")
+            logger.error(f"[SET_CHECK] Error checking set {set_id} for {user_id}: {e}")
             return False

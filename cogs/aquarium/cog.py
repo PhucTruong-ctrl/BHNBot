@@ -9,6 +9,7 @@ from core.database import db_manager
 from .logic.housing import HousingEngine
 from .logic.market import MarketEngine
 from .logic.render import RenderEngine
+from .models import UserAquarium
 from core.services.vip_service import VIPEngine
 from .ui.embeds import create_aquarium_dashboard
 from .ui.views import DecorShopView, AutoVisitView
@@ -20,15 +21,18 @@ class AquariumCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.daily_auto_visit_task.start()
+        self.passive_income_task.start()
         self.last_dashboard_refresh = {}
-        logger.info("[AQUARIUM_COG] Cog initialized + Auto-Visit Task Started")
+        logger.info("[AQUARIUM_COG] Cog initialized + Tasks Started")
     
     def cog_unload(self):
         self.daily_auto_visit_task.cancel()
+        self.passive_income_task.cancel()
     
     # Define Groups
     nha_group = app_commands.Group(name="nha", description="Quản lý Nhà Cửa & Hồ Cá")
     decor_group = app_commands.Group(name="trangtri", description="Mua sắm & Sắp xếp Nội thất")
+    loadout_group = app_commands.Group(name="loadout", description="Quản lý Bộ Trang Trí theo Hoạt Động")
 
     # ==================== CRON TASKS ====================
     @tasks.loop(time=time(hour=8, minute=0, second=0)) # 8 AM
@@ -69,6 +73,33 @@ class AquariumCog(commands.Cog):
                 logger.error(f"[AUTO_VISIT] Error for user {user_id}: {e}")
                 
         logger.info(f"[AUTO_VISIT] Completed. Processed {count} users, Total Rewards: {total_rewards}")
+
+    @tasks.loop(hours=24)
+    async def passive_income_task(self):
+        """Collect passive income from aquarium set bonuses."""
+        logger.info("[PASSIVE_INCOME] Starting daily collection...")
+        
+        from .logic.effect_manager import get_effect_manager
+        from database_manager import add_seeds
+        
+        effect_manager = get_effect_manager()
+        
+        users_with_income = await UserAquarium.all().values_list("user_id", flat=True)
+        
+        collected = 0
+        total_income = 0
+        
+        for user_id in users_with_income:
+            try:
+                income = await effect_manager.get_total_passive_income(user_id)
+                if income > 0:
+                    await add_seeds(user_id, income, "Aquarium Passive Income", "aquarium")
+                    collected += 1
+                    total_income += income
+            except Exception as e:
+                logger.error(f"[PASSIVE_INCOME] Error for user {user_id}: {e}")
+        
+        logger.info(f"[PASSIVE_INCOME] Completed. {collected} users collected {total_income} total seeds.")
 
     # ==================== ECONOMY COMMANDS ====================
     @app_commands.command(name="taiche", description="♻️ Tái chế rác thành Xu Lá & Phân Bón")
@@ -371,6 +402,134 @@ class AquariumCog(commands.Cog):
         success = await MarketEngine.add_leaf_coins(user.id, amount, reason=f"admin_grant_by_{interaction.user.id}")
         if success: await interaction.followup.send(f"✅ Đã thêm **{amount} Xu Lá** cho **{user.name}**.", ephemeral=True)
         else: await interaction.followup.send("❌ Lỗi.", ephemeral=True)
+
+    # ==================== LOADOUT COMMANDS ====================
+    
+    @loadout_group.command(name="list", description="📋 Xem danh sách các bộ trang trí đã lưu")
+    async def loadout_list(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        
+        from .logic.loadout_service import get_loadout_service
+        service = get_loadout_service()
+        
+        loadouts = await service.get_loadouts(interaction.user.id)
+        
+        if not loadouts:
+            embed = discord.Embed(
+                title="📋 Bộ Trang Trí",
+                description="Bạn chưa lưu bộ trang trí nào.\n\nDùng `/loadout save` để lưu cấu hình hiện tại.",
+                color=0x3498db
+            )
+            return await interaction.followup.send(embed=embed)
+        
+        embed = discord.Embed(
+            title="📋 Danh Sách Bộ Trang Trí",
+            color=0x3498db
+        )
+        
+        for loadout in loadouts:
+            status = "✅ Đang dùng" if loadout.is_active else "⬜ Tắt"
+            activity_icons = {"fishing": "🎣", "harvest": "🌾", "sell": "💰", "passive": "💤", "global": "🌐"}
+            icon = activity_icons.get(loadout.activity, "📦")
+            embed.add_field(
+                name=f"{icon} {loadout.name}",
+                value=f"Hoạt động: `{loadout.activity}`\nTrạng thái: {status}",
+                inline=True
+            )
+        
+        embed.set_footer(text=f"Tổng: {len(loadouts)} bộ • /loadout apply <tên> để áp dụng")
+        await interaction.followup.send(embed=embed)
+    
+    @loadout_group.command(name="save", description="💾 Lưu cấu hình nhà hiện tại thành bộ mới")
+    @app_commands.describe(
+        name="Tên bộ trang trí (VD: 'Câu Cá Pro')",
+        activity="Loại hoạt động để kích hoạt bonus"
+    )
+    @app_commands.choices(activity=[
+        app_commands.Choice(name="🎣 Câu Cá", value="fishing"),
+        app_commands.Choice(name="🌾 Thu Hoạch", value="harvest"),
+        app_commands.Choice(name="💰 Bán Cá", value="sell"),
+        app_commands.Choice(name="💤 Thu Nhập Thụ Động", value="passive"),
+        app_commands.Choice(name="🌐 Toàn Bộ (XP)", value="global"),
+    ])
+    async def loadout_save(self, interaction: discord.Interaction, name: str, activity: str):
+        await interaction.response.defer()
+        
+        from .logic.loadout_service import get_loadout_service
+        service = get_loadout_service()
+        
+        try:
+            loadout = await service.save_current_home_as_loadout(
+                interaction.user.id, name, activity
+            )
+            
+            preview = await service.get_loadout_preview(loadout)
+            active_sets = preview.get("active_sets", [])
+            
+            embed = discord.Embed(
+                title=f"✅ Đã Lưu: {name}",
+                description=f"Hoạt động: `{activity}`\nCharm: {preview['total_charm']}",
+                color=0x2ecc71
+            )
+            
+            if active_sets:
+                sets_text = "\n".join([f"• **{s['name']}** ({s['pieces']} mảnh)" for s in active_sets])
+                embed.add_field(name="🌟 Set Kích Hoạt", value=sets_text, inline=False)
+            
+            await interaction.followup.send(embed=embed)
+            
+        except ValueError as e:
+            await interaction.followup.send(f"❌ {str(e)}", ephemeral=True)
+    
+    @loadout_group.command(name="apply", description="🔄 Áp dụng bộ trang trí vào nhà")
+    @app_commands.describe(name="Tên bộ trang trí cần áp dụng")
+    async def loadout_apply(self, interaction: discord.Interaction, name: str):
+        await interaction.response.defer()
+        
+        from .logic.loadout_service import get_loadout_service
+        service = get_loadout_service()
+        
+        success = await service.apply_loadout_to_home(interaction.user.id, name)
+        
+        if success:
+            await service.activate_loadout(interaction.user.id, name)
+            
+            loadout = await service.get_loadout_by_name(interaction.user.id, name)
+            preview = await service.get_loadout_preview(loadout)
+            
+            embed = discord.Embed(
+                title=f"✅ Đã Áp Dụng: {name}",
+                description=f"Nội thất đã được thay đổi theo bộ `{name}`.",
+                color=0x2ecc71
+            )
+            
+            if preview.get("active_sets"):
+                bonuses = []
+                for s in preview["active_sets"]:
+                    for effect, value in s.get("bonus", {}).items():
+                        if isinstance(value, float):
+                            bonuses.append(f"+{value*100:.0f}% {effect}")
+                        else:
+                            bonuses.append(f"+{value} {effect}")
+                if bonuses:
+                    embed.add_field(name="🎁 Bonus Nhận Được", value="\n".join(bonuses), inline=False)
+            
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.followup.send(f"❌ Không tìm thấy bộ `{name}`.", ephemeral=True)
+    
+    @loadout_group.command(name="delete", description="🗑️ Xóa bộ trang trí")
+    @app_commands.describe(name="Tên bộ trang trí cần xóa")
+    async def loadout_delete(self, interaction: discord.Interaction, name: str):
+        from .logic.loadout_service import get_loadout_service
+        service = get_loadout_service()
+        
+        success = await service.delete_loadout(interaction.user.id, name)
+        
+        if success:
+            await interaction.response.send_message(f"✅ Đã xóa bộ `{name}`.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"❌ Không tìm thấy bộ `{name}`.", ephemeral=True)
 
     # ==================== LISTENERS ====================
     

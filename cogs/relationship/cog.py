@@ -4,10 +4,11 @@ from discord.ext import commands
 import random
 from datetime import datetime, timedelta
 from cogs.fishing.constants import ALL_ITEMS_DATA
-from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP
+from .constants import GIFT_MESSAGES, COLOR_RELATIONSHIP, GIFT_XP_VALUES
 from .services.buddy_service import BuddyService
 from core.logging import get_logger
 from core.database import db_manager
+from cogs.aquarium.logic.effect_manager import EffectManager
 
 logger = get_logger("RelationshipCog")
 
@@ -119,6 +120,22 @@ class RelationshipCog(commands.Cog):
             "INSERT INTO gift_history (sender_id, receiver_id, guild_id, item_key, item_name, is_anonymous, message) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             (interaction.user.id, user.id, interaction.guild_id, item_key, item_name, an_danh, message)
         )
+        
+        # Award relationship XP to receiver with aquarium bonus
+        try:
+            multiplier = await EffectManager.get_multiplier(sender_id, "gift_value_bonus", "relationship")
+            base_xp = GIFT_XP_VALUES.get(item_key, 0)
+            xp_gained = int(base_xp * multiplier)
+            if xp_gained > 0:
+                await db_manager.modify(
+                    "INSERT INTO user_stats (user_id, game_id, stat_key, value) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, game_id, stat_key) DO UPDATE SET value = user_stats.value + $4",
+                    (user.id, "relationship", "xp", xp_gained)
+                )
+                logger.info(f"Gift XP: {user.id} gained {xp_gained} XP from {item_key} gift (multiplier: {multiplier})")
+        except Exception as e:
+            logger.warning(f"Failed to award gift XP: {e}")
+        
+
         
         sender_name = "Một người giấu tên" if an_danh else interaction.user.display_name
         sender_avatar = "https://cdn.discordapp.com/embed/avatars/0.png" if an_danh else interaction.user.display_avatar.url

@@ -606,16 +606,18 @@ class TreeManager:
                 # Calculate rewards
                 seed_rewards = self.contributor_manager.calculate_harvest_rewards(all_contributors)
                 
-                # <<< HOOK: Phase 3.1 Coral Reef Set Bonus (+5% Yield) >>>
-                from cogs.aquarium.logic.housing import HousingEngine
+                # <<< HOOK: Phase 3.1 Aquarium Set Bonuses (+seed_bonus) >>>
+                from cogs.aquarium.logic.effect_manager import get_effect_manager
+                effect_manager = get_effect_manager()
                 for uid in list(seed_rewards.keys()):
                     try:
-                        # Check "dai_duong" set (Coral Reef)
-                        if await HousingEngine.is_set_active(uid, "dai_duong"):
-                            bonus = int(seed_rewards[uid] * 0.05)
+                        # Get seed_bonus multiplier from any active sets
+                        multiplier = await effect_manager.get_multiplier(uid, "seed_bonus")
+                        if multiplier > 1.0:
+                            bonus = int(seed_rewards[uid] * (multiplier - 1.0))
                             if bonus > 0:
                                 seed_rewards[uid] += bonus
-                                logger.info(f"[HARVEST_BONUS] User {uid} (Coral Reef Set) +{bonus} seeds")
+                                logger.info(f"[HARVEST_BONUS] User {uid} (Aquarium Set) +{bonus} seeds (x{multiplier:.2f})")
                     except Exception as e:
                         logger.warning(f"[HARVEST_BONUS] Check failed for {uid}: {e}")
                 

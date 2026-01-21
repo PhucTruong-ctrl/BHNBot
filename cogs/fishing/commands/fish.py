@@ -825,6 +825,28 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                             # adding raw probability is often more "feel good".
                             # Let's use the multiplier as direct boost if ratio is small, or multiplier if ratio is meaningful.
                             pass # rare_ratio is modified directly
+                        
+                        # HOOK: Aquarium Set Bonuses (rare_chance_bonus, catch_rate_bonus)
+                        try:
+                            from cogs.aquarium.logic.effect_manager import get_effect_manager
+                            effect_manager = get_effect_manager()
+                            
+                            # Apply rare_chance_bonus (percentage bonus to rare fish chance)
+                            rare_chance_mul = await effect_manager.get_multiplier(user_id, "rare_chance_bonus")
+                            if rare_chance_mul > 1.0:
+                                rare_ratio *= rare_chance_mul
+                                logger.debug(f"[AQUARIUM] User {user_id} rare_chance_bonus x{rare_chance_mul:.2f}")
+                            
+                            # Apply catch_rate_bonus (increases overall fish catch vs trash)
+                            catch_rate_mul = await effect_manager.get_multiplier(user_id, "catch_rate_bonus")
+                            if catch_rate_mul > 1.0:
+                                # Boost both common and rare proportionally, reduce trash chance
+                                boost_factor = catch_rate_mul - 1.0  # e.g. 0.05 for 5% bonus
+                                common_ratio = min(0.95, common_ratio * (1 + boost_factor))
+                                rare_ratio = min(0.90, rare_ratio * (1 + boost_factor * 0.5))  # Half effect on rare
+                                logger.debug(f"[AQUARIUM] User {user_id} catch_rate_bonus x{catch_rate_mul:.2f}")
+                        except Exception as e:
+                            logger.warning(f"[AQUARIUM] Failed to apply fishing bonuses for {user_id}: {e}")
         
                     # *** APPLY TOTAL USER LUCK (Centralized) ***
                     rare_ratio = min(0.9, rare_ratio + user_luck)  # Cap at 90% max
