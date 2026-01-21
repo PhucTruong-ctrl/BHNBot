@@ -20,6 +20,10 @@ from core.logging import get_logger
 
 logger = get_logger("BauCuaCog")
 
+# Cooldown constants for gambling commands
+BAUCUA_COOLDOWN_RATE = 1  # 1 use
+BAUCUA_COOLDOWN_PER = 10  # per 10 seconds
+
 
 class BauCuaCog(commands.Cog):
     """Cog for Bầu Cua (Vietnamese dice game).
@@ -134,11 +138,13 @@ class BauCuaCog(commands.Cog):
         return count, total_refunded
 
     @app_commands.command(name="baucua", description="Chơi game Bầu Cua Tôm Cá Gà Nai")
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
     async def play_baucua_slash(self, interaction: discord.Interaction):
         """Start Bầu Cua game via slash command."""
         await self._start_new_game(interaction)
     
     @commands.command(name="baucua", description="Chơi game Bầu Cua Tôm Cá Gà Nai")
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def play_baucua_prefix(self, ctx, *args):
         """Start Bầu Cua game via prefix command.
         

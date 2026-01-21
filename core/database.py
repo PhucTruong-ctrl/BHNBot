@@ -38,7 +38,7 @@ class DatabaseManager:
         self.user = os.getenv("DB_USER", "discord_bot")
         self.password = os.getenv("DB_PASS", "discord_bot_password")
         
-    async def connect(self):
+    async def connect(self) -> None:
         """Initialize Connection Pool."""
         if self.pool:
             return
@@ -64,7 +64,7 @@ class DatabaseManager:
             logger.critical(f"Failed to connect to PostgreSQL: {e}")
             raise e
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the connection pool."""
         if self.pool:
             await self.pool.close()
@@ -176,7 +176,7 @@ class DatabaseManager:
                 raise e
 
 
-    async def fetchrow(self, sql: str, *args):
+    async def fetchrow(self, sql: str, *args) -> Optional[asyncpg.Record]:
         """Fetch a single row as a Record object (asyncpg native)."""
         if not self.pool:
             await self.connect()
@@ -195,7 +195,7 @@ class DatabaseManager:
                 raise e
 
 
-    async def fetch(self, sql: str, *args):
+    async def fetch(self, sql: str, *args) -> list[asyncpg.Record]:
         """Fetch all rows as Record objects (asyncpg native)."""
         if not self.pool:
             await self.connect()

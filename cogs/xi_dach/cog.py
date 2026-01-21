@@ -61,6 +61,7 @@ class XiDachCog(commands.Cog):
     # ==================== PUBLIC COMMANDS ====================
 
     @commands.hybrid_command(name="xidach", description="Chơi Xì Dách (Tạo phòng hoặc tham gia)")
+    @commands.cooldown(1, 15, commands.BucketType.user)
     @app_commands.describe(bet="Số hạt muốn cược")
     async def xidach(self, ctx: commands.Context, bet: int = 50):
         """Start or Join Xi Dach Lobby."""

@@ -496,6 +496,7 @@ class FishingCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
         
     @commands.command(name="cauca")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def fish_prefix(self, ctx):
         await self._fish_action(ctx)
     
