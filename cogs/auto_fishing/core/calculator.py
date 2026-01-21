@@ -12,8 +12,7 @@ class UpgradeConfig:
     costs: dict[str, list[int]] = None
 
     def __post_init__(self):
-        # TODO: TESTING MODE - revert to [5, 10, 20, 40, 100] after testing
-        self.efficiency = [5, 10, 20, 40, 100]  # 60x faster for testing
+        self.efficiency = [5, 10, 20, 40, 100]
         self.duration = [4, 8, 12, 18, 24]
         self.quality = [5, 10, 20, 35, 50]
         self.costs = {

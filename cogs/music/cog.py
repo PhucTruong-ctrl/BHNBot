@@ -13,8 +13,9 @@ from .services import PlaylistService
 
 logger = get_logger("music_cog")
 
-LAVALINK_URI = "http://localhost:2333"
-LAVALINK_PASSWORD = "bhnbot_lavalink_2026"
+import os
+LAVALINK_URI = os.getenv("LAVALINK_URI", "http://localhost:2333")
+LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD", "youshallnotpass")
 
 YOUTUBE_URL_PATTERN = re.compile(r'(youtube\.com|youtu\.be)')
 SPOTIFY_TRACK_PATTERN = re.compile(r'spotify\.com/track/([a-zA-Z0-9]+)')
