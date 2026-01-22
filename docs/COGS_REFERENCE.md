@@ -1,5 +1,9 @@
 # BHNBot - Tài Liệu Tham Chiếu Cogs (Complete Technical Reference)
 
+**Last Updated**: January 22, 2026  
+**Total Cogs**: 31 | **Slash Commands**: 82 | **Prefix Commands**: ~40  
+**Command Groups**: /giaidau, /giveaway, /banthan, /masoi, /nha, /trangtri, /loadout, /playlist, /sukien, /danhhieu, /sukien-test, /tuoi
+
 ## MỤC ĐÍCH TÀI LIỆU
 Tài liệu này được tạo ra để AI assistant có thể:
 1. Hiểu rõ TOÀN BỘ tính năng của mỗi module
@@ -27,6 +31,20 @@ Tài liệu này được tạo ra để AI assistant có thể:
 | `/bonphan` | Không | Bón phân cho cây | Không |
 | `/moruong` | Không | Mở rương kho báu | Không |
 | `/nangcap` | Không | Nâng cấp cần câu | Không |
+
+### Tournament Commands (Command Group `/giaidau`)
+| Lệnh | Tham số | Chức năng | VIP Tier |
+|------|---------|-----------|----------|
+| `/giaidau create` | fee | Tổ chức giải đấu (trả phí tạo) | Tier 1+ |
+| `/giaidau join` | tournament_id | Tham gia giải đấu đang mở | Any |
+| `/giaidau rank` | Không | Xem bảng xếp hạng giải đấu hiện tại | Any |
+
+**Tournament Flow:**
+1. Host tạo giải bằng `/giaidau create [fee]` → Trả phí, tạo prize pool
+2. Người chơi tham gia bằng `/giaidau join [id]` → Trả phí, prize pool tăng
+3. Auto-start sau 15 phút hoặc khi đủ người (min 2)
+4. Trong thời gian thi đấu: Điểm = tổng giá trị cá câu được
+5. Kết thúc: Top 1 nhận 50%, Top 2 nhận 30%, Top 3 nhận 20%
 
 ### Core Features
 - Fishing mechanics với catch rates theo Loot Table
@@ -167,6 +185,31 @@ Tài liệu này được tạo ra để AI assistant có thể:
 - Kho Báu Cổ Đại: +giá bán cá
 - Công Nghệ Tương Lai: Passive income
 
+### Feng Shui Set System (18 Sets, 72 Items)
+**Data File**: `data/aquarium/sets.json`
+
+**Effect Types (11 Total):**
+| Effect Key | Description | Consumer |
+|------------|-------------|----------|
+| `catch_rate_bonus` | +% tỉ lệ câu được cá | `cogs/fishing/commands/fish.py` |
+| `rare_chance_bonus` | +% tỉ lệ cá hiếm | `cogs/fishing/commands/fish.py` |
+| `legendary_chance_bonus` | +% tỉ lệ cá huyền thoại | `cogs/fishing/commands/fish.py` |
+| `sell_price_bonus` | +% giá bán cá | `cogs/fishing/commands/sell.py` |
+| `seed_bonus` | +% hạt từ cây | `cogs/tree/cog.py` |
+| `passive_income` | Thu nhập tự động/giờ | `cogs/aquarium/logic/passive_income.py` |
+| `minigame_bonus` | +% điểm minigame seasonal | `cogs/seasonal/services/participation.py` |
+| `quest_reward_bonus` | +% thưởng nhiệm vụ | `cogs/quest/services/quest_service.py` |
+| `baucua_luck_bonus` | +% may mắn bầu cua | `cogs/baucua/game_logic.py` |
+| `gift_value_bonus` | +% giá trị quà tặng | `cogs/relationship/services/gift_service.py` |
+| `buddy_xp_bonus` | +% XP bạn thân | `cogs/relationship/services/buddy_service.py` |
+
+**Set Tiers:**
+| Tier | Sets | Required Pieces | Effect Multiplier |
+|------|------|-----------------|-------------------|
+| 1 | 6 sets | 2 pieces | 1.0x |
+| 2 | 6 sets | 2 pieces | 1.5x-2.0x |
+| 3 | 6 sets | 2 pieces | 2.0x-3.0x |
+
 ### VIP Features
 - Tier 2: Đổi theme hình nền
 - Tier 3: Auto-Visit (tự động thăm 5 nhà/ngày)
@@ -288,6 +331,11 @@ Tài liệu này được tạo ra để AI assistant có thể:
 | `/gophat [amount]` | Góp hạt cho cây |
 | `/huyhieu` | Xem huy hiệu đóng góp |
 | `/thuhoach` | (Admin) Thu hoạch |
+
+### Watering Commands (Command Group `/tuoi`)
+| Lệnh | Chức năng |
+|------|-----------|
+| `/tuoi` | Tưới cây miễn phí (1 lần/ngày, nhận XP + random reward) |
 
 ### Mechanics
 - 6 giai đoạn: Hạt mầm → Nảy mầm → Cây non → Trưởng thành → Ra hoa → Kết trái
@@ -522,6 +570,15 @@ earned_count / total_guild_members * 100
 ---
 
 ## CRITICAL DEVELOPMENT RULES
+
+### COOLDOWNS REFERENCE TABLE
+| Command | Cooldown | Type | File |
+|---------|----------|------|------|
+| `/baucua` | 10 seconds | Per user per guild | `cogs/baucua/cog.py` |
+| `/xidach` | 15 seconds | Per user | `cogs/xi_dach/cog.py` |
+| `/chao` | 1 hour (3600s) | Per user per guild | `cogs/economy/cog.py` |
+| `/tuido` | 5 seconds | Per user per guild | `cogs/economy/cog.py` |
+| `!cauca` | 5 seconds | Per user | `cogs/fishing/cog.py` |
 
 ### MUST DO
 1. Sử dụng `async with db_manager.transaction()` cho mọi thay đổi tài sản
