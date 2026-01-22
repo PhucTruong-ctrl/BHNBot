@@ -94,6 +94,7 @@ class EconomyCog(commands.Cog):
         legendary_caught = []
         try:
             from cogs.fishing.constants import LEGENDARY_FISH_KEYS
+            from database_manager import get_stat
             for fish_key in LEGENDARY_FISH_KEYS:
                 caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
                 if caught and caught > 0:
@@ -105,6 +106,27 @@ class EconomyCog(commands.Cog):
         from core.services.vip_service import VIPEngine
         vip_data = await VIPEngine.get_vip_data(target_user.id)
         
+        currency_data = {}
+        try:
+            from cogs.aquarium.models import UserAquarium
+            aquarium = await UserAquarium.get_or_none(user_id=target_user.id)
+            if aquarium:
+                currency_data['leaf_coin'] = aquarium.leaf_coin
+        except Exception as e:
+            logger.error(f"Could not fetch leaf_coin: {e}")
+        
+        try:
+            from cogs.seasonal.services import get_active_event, get_currency
+            active = await get_active_event(interaction.guild.id)
+            if active:
+                event_currency = await get_currency(interaction.guild.id, target_user.id, active["event_id"])
+                if event_currency > 0:
+                    currency_data['event_currency'] = event_currency
+                    currency_data['event_emoji'] = active.get('currency_emoji', '🎫')
+                    currency_data['event_name'] = active.get('currency_name', 'Token')
+        except Exception as e:
+            logger.error(f"Could not fetch event currency: {e}")
+        
         # Create embed using fishing module
         from cogs.fishing.commands.inventory_display import create_inventory_embed
         embed = await create_inventory_embed(
@@ -113,7 +135,8 @@ class EconomyCog(commands.Cog):
             inventory=inventory,
             rod_data=rod_data,
             legendary_fish_caught=legendary_caught,
-            vip_data=vip_data
+            vip_data=vip_data,
+            currency_data=currency_data
         )
         
         await interaction.followup.send(embed=embed, ephemeral=False)
@@ -126,8 +149,55 @@ class EconomyCog(commands.Cog):
         seeds = await self.service.get_user_balance(target_user.id)
         inventory = await self.bot.inventory.get_all(target_user.id)
         
-        # Similar logic as above...
-        # (Omitted for brevity - same as slash command)
+        rod_data = None
+        try:
+            from cogs.fishing.mechanics.rod_system import get_rod_data
+            fishing_rod = await get_rod_data(target_user.id)
+            if fishing_rod:
+                rod_level, rod_durability = fishing_rod
+                rod_data = {
+                    'name': f"Cần Cấp {rod_level}",
+                    'level': rod_level,
+                    'durability': rod_durability,
+                    'max_durability': 120
+                }
+        except Exception as e:
+            logger.error(f"Could not fetch rod data: {e}")
+        
+        legendary_caught = []
+        try:
+            from cogs.fishing.constants import LEGENDARY_FISH_KEYS
+            from database_manager import get_stat
+            for fish_key in LEGENDARY_FISH_KEYS:
+                caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
+                if caught and caught > 0:
+                    legendary_caught.append(fish_key)
+        except Exception as e:
+            logger.error(f"Could not fetch legendary fish data: {e}")
+        
+        from core.services.vip_service import VIPEngine
+        vip_data = await VIPEngine.get_vip_data(target_user.id)
+        
+        currency_data = {}
+        try:
+            from cogs.aquarium.models import UserAquarium
+            aquarium = await UserAquarium.get_or_none(user_id=target_user.id)
+            if aquarium:
+                currency_data['leaf_coin'] = aquarium.leaf_coin
+        except Exception as e:
+            logger.error(f"Could not fetch leaf_coin: {e}")
+        
+        try:
+            from cogs.seasonal.services import get_active_event, get_currency
+            active = await get_active_event(ctx.guild.id)
+            if active:
+                event_currency = await get_currency(ctx.guild.id, target_user.id, active["event_id"])
+                if event_currency > 0:
+                    currency_data['event_currency'] = event_currency
+                    currency_data['event_emoji'] = active.get('currency_emoji', '🎫')
+                    currency_data['event_name'] = active.get('currency_name', 'Token')
+        except Exception as e:
+            logger.error(f"Could not fetch event currency: {e}")
         
         from cogs.fishing.commands.inventory_display import create_inventory_embed
         embed = await create_inventory_embed(
@@ -136,7 +206,8 @@ class EconomyCog(commands.Cog):
             inventory=inventory,
             rod_data=rod_data,
             legendary_fish_caught=legendary_caught,
-            vip_data=vip_data
+            vip_data=vip_data,
+            currency_data=currency_data
         )
         
         await ctx.send(embed=embed)

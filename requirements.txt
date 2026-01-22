@@ -15,6 +15,7 @@ tortoise-orm[asyncpg]>=0.21.0
 aerich>=0.7.2
 
 # Web/API
+fastapi>=0.115.0
 uvicorn>=0.30.0
 requests>=2.32.0
 
