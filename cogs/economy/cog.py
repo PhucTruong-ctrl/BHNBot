@@ -90,14 +90,14 @@ class EconomyCog(commands.Cog):
         except Exception as e:
             logger.error(f"Could not fetch rod data: {e}")
         
-        # Get legendary fish caught
+        # Get legendary fish caught (batch query instead of N+1)
         legendary_caught = []
         try:
             from cogs.fishing.constants import LEGENDARY_FISH_KEYS
-            from database_manager import get_stat
+            from database_manager import get_all_stats
+            all_fishing_stats = await get_all_stats(target_user.id, "fishing")
             for fish_key in LEGENDARY_FISH_KEYS:
-                caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
-                if caught and caught > 0:
+                if all_fishing_stats.get(f"{fish_key}_caught", 0) > 0:
                     legendary_caught.append(fish_key)
         except Exception as e:
             logger.error(f"Could not fetch legendary fish data: {e}")
@@ -170,10 +170,10 @@ class EconomyCog(commands.Cog):
         legendary_caught = []
         try:
             from cogs.fishing.constants import LEGENDARY_FISH_KEYS
-            from database_manager import get_stat
+            from database_manager import get_all_stats
+            all_fishing_stats = await get_all_stats(target_user.id, "fishing")
             for fish_key in LEGENDARY_FISH_KEYS:
-                caught = await get_stat(target_user.id, "fishing", f"{fish_key}_caught")
-                if caught and caught > 0:
+                if all_fishing_stats.get(f"{fish_key}_caught", 0) > 0:
                     legendary_caught.append(fish_key)
         except Exception as e:
             logger.error(f"Could not fetch legendary fish data: {e}")
