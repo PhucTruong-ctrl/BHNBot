@@ -20,7 +20,9 @@ services:
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4
     container_name: bhnbot-lavalink
-    restart: unless-stopped
+    restart: "no"
+    profiles:
+      - music
     ports:
       - "2333:2333"
     environment:

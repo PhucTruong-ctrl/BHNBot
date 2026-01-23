@@ -665,6 +665,19 @@ class ConfigCog(commands.Cog):
                 if tree_row:
                     channels_text += f"🌳 **Cây:** {fmt_channel(tree_row.get('tree_channel_id'))}\n"
                 
+                # Get quest channel from quest_config table
+                quest_channel_id = None
+                try:
+                    quest_row = await db_manager.fetchrow(
+                        "SELECT announcement_channel_id FROM quest_config WHERE guild_id = $1",
+                        interaction.guild.id
+                    )
+                    if quest_row:
+                        quest_channel_id = quest_row.get('announcement_channel_id')
+                except Exception as e:
+                    logger.warning(f"Failed to fetch quest channel config for guild {interaction.guild.id}: {e}")
+                channels_text += f"📜 **Nhiệm Vụ:** {fmt_channel(quest_channel_id)}\n"
+                
                 embed.add_field(name="📺 Kênh", value=channels_text, inline=False)
                 
                 event_text = ""
