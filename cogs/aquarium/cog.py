@@ -25,7 +25,7 @@ class AquariumCog(commands.Cog):
         self.last_dashboard_refresh = {}
         logger.info("[AQUARIUM_COG] Cog initialized + Tasks Started")
     
-    def cog_unload(self):
+    async def cog_unload(self) -> None:
         self.daily_auto_visit_task.cancel()
         self.passive_income_task.cancel()
     
@@ -89,7 +89,8 @@ class AquariumCog(commands.Cog):
         collected = 0
         total_income = 0
         
-        for user_id in users_with_income:
+        for user_id_val in users_with_income:
+            user_id: int = user_id_val  # type: ignore[assignment]
             try:
                 income = await effect_manager.get_total_passive_income(user_id)
                 if income > 0:
@@ -253,7 +254,7 @@ class AquariumCog(commands.Cog):
                 return await interaction.followup.send(f"❌ Lỗi Config: Không tìm thấy kênh Làng Chài (ID: {forum_id}).", ephemeral=True)
         
         # Create Embed
-        initial_slots = [None] * 5
+        initial_slots: list[str | None] = [None] * 5
         initial_visuals = RenderEngine.generate_view(initial_slots)
         initial_stats = {"charm": 0, "value": 0, "sets": []}
 
@@ -372,7 +373,7 @@ class AquariumCog(commands.Cog):
             # Call with correct signature: user_name, user_avatar, view_visuals, stats, inventory_count, theme_url
             dashboard_embed = create_aquarium_dashboard(
                 user_name=interaction.user.name,
-                user_avatar=interaction.user.avatar.url if interaction.user.avatar else None,
+                user_avatar=interaction.user.avatar.url if interaction.user.avatar else "",
                 view_visuals=visuals,
                 stats=stats,
                 inventory_count=inventory_count,
@@ -495,6 +496,9 @@ class AquariumCog(commands.Cog):
             await service.activate_loadout(interaction.user.id, name)
             
             loadout = await service.get_loadout_by_name(interaction.user.id, name)
+            if not loadout:
+                await interaction.followup.send("❌ Lỗi: Không tìm thấy loadout.", ephemeral=True)
+                return
             preview = await service.get_loadout_preview(loadout)
             
             embed = discord.Embed(

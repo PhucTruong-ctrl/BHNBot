@@ -107,8 +107,8 @@ class GenericActionView(discord.ui.View):
                 await interaction.response.send_message(f"❌ Lỗi: {error}", ephemeral=True)
             else:
                 await interaction.followup.send(f"❌ Lỗi: {error}", ephemeral=True)
-        except Exception:
-            pass
+        except Exception as send_error:
+            logger.debug(f"[EVENT_VIEW] Could not send error message: {send_error}")
     
     def _get_item_name(self, key):
         if key in ALL_FISH: 

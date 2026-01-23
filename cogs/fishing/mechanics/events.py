@@ -461,7 +461,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                 if event_data.get("effect") == "global_reset":
                     await increment_stat(user_id, "fishing", "global_reset_triggered", 1)
             except Exception as e:
-                pass
+                logger.warning(f"[EVENTS] Failed to track bad_events stat for user {user_id}: {e}")
             
             # If protection active and bad event, avoid it
             if has_protection and event_data.get("type") == "bad":
@@ -486,7 +486,7 @@ async def trigger_random_event(cog, user_id: int, guild_id: int, rod_level: int 
                     if hasattr(cog, 'bot') and hasattr(cog.bot, 'achievement_manager'):
                         await cog.bot.achievement_manager.check_unlock(user_id, "fishing", stat_key, current_value, channel)
                 except Exception as e:
-                    pass
+                    logger.warning(f"[EVENTS] Failed to track achievement stat {stat_key} for user {user_id}: {e}")
             
             # Skip bad events if user has no seeds
             from database_manager import get_user_balance

@@ -382,8 +382,8 @@ class TreeManager:
                         f"❌ Có lỗi xảy ra: {str(e)}",
                         ephemeral=True
                     )
-                except Exception:
-                    pass
+                except Exception as followup_error:
+                    logger.debug(f"[TREE] Could not send error followup: {followup_error}")
     
     @log_performance
     async def update_tree_message(

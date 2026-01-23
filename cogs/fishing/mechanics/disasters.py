@@ -42,8 +42,8 @@ async def clear_expired_disaster(cog) -> bool:
         cog.disaster_channel = None
         try:
             set_glitch_state(False, 0)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[DISASTER] Failed to reset glitch state: {e}")
         
         # Send disaster end notification
         if current_disaster_copy and disaster_channel:
@@ -111,8 +111,8 @@ async def check_server_freeze(cog, user_id: int, username: str, is_slash: bool, 
         cog.disaster_channel = None
         try:
             set_glitch_state(False, 0)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[DISASTER] Failed to reset glitch state: {e}")
         
         # Send disaster end notification
         try:

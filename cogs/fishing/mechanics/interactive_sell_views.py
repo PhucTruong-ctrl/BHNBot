@@ -246,8 +246,8 @@ class InteractiveSellEventView(discord.ui.View):
             try:
                  if hasattr(self.cog.bot, 'inventory'):
                      await self.cog.bot.inventory.invalidate(self.user_id)
-            except Exception:
-                 pass
+            except Exception as e:
+                 logger.warning(f"[INTERACTIVE_SELL] Failed to invalidate inventory cache for user {self.user_id}: {e}")
 
             # --- RAID BOSS CONTRIBUTION ---
             # Any money earned from sell events damages the boss
@@ -620,8 +620,8 @@ class InteractiveSellEventView(discord.ui.View):
             try:
                  if hasattr(self.cog.bot, 'inventory'):
                      await self.cog.bot.inventory.invalidate(self.user_id)
-            except Exception:
-                 pass
+            except Exception as e:
+                 logger.warning(f"[INTERACTIVE_SELL] Failed to invalidate inventory cache for user {self.user_id}: {e}")
             
             # Track timeout stat
             event_key = self.event_data.get('key', 'unknown')

@@ -242,8 +242,8 @@ class TreeContributeView(discord.ui.View):
                 from cogs.quest.services.quest_service import QuestService
                 from cogs.quest.core.quest_types import QuestType
                 await QuestService.add_contribution(guild_id, user_id, QuestType.TREE_WATER, 1)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[TREE] Failed to track TREE_WATER quest contribution for user {user_id}: {e}")
             
             await interaction.followup.send(
                 f"💧 **Tưới cây thành công!** Cây nhận +10 XP.{level_up_msg}\n"

@@ -34,8 +34,8 @@ class WerewolfCog(commands.Cog):
         self.bot = bot
         self.manager = WerewolfManager(bot)
 
-    def cog_unload(self) -> None:
-        asyncio.create_task(self.manager.stop_all())
+    async def cog_unload(self) -> None:
+        await self.manager.stop_all()
     @commands.Cog.listener()
     async def on_ready(self) -> None:
         """Auto-restore saved Werewolf games on bot startup and cleanup orphaned permissions"""
@@ -66,6 +66,9 @@ class WerewolfCog(commands.Cog):
             !masoi create newmoon character
         """
         # Check if current channel is set as NoiTu channel
+        if not ctx.guild:
+            await ctx.send("Lệnh này chỉ dùng trong server!", delete_after=8)
+            return
         try:
             noitu_channel_id = await get_server_config(ctx.guild.id, "noitu_channel_id")
             if noitu_channel_id == ctx.channel.id:
@@ -98,6 +101,9 @@ class WerewolfCog(commands.Cog):
             )
         
         # Create game with new architecture
+        if not isinstance(ctx.author, discord.Member):
+            await ctx.send("Lệnh này chỉ dùng trong server!", delete_after=8)
+            return
         try:
             game = await self.manager.create_game(
                 guild=ctx.guild,  # type: ignore[arg-type]
@@ -125,8 +131,8 @@ class WerewolfCog(commands.Cog):
             await ctx.send("Guide cog không được load!", delete_after=6)
             return
 
-        embed = guide_cog.get_guide_embed()
-        view = guide_cog.get_guide_view(ctx.author.id)
+        embed = guide_cog.get_guide_embed()  # type: ignore[attr-defined]
+        view = guide_cog.get_guide_view(ctx.author.id)  # type: ignore[attr-defined]
         await ctx.send(embed=embed, view=view)
 
     werewolf_group_app = app_commands.Group(name="masoi", description="Werewolf game commands")
@@ -143,9 +149,12 @@ class WerewolfCog(commands.Cog):
             /masoi create newmoon
         """
         # Check if current channel is set as NoiTu channel
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
         try:
             noitu_channel_id = await get_server_config(interaction.guild.id, "noitu_channel_id")
-            if noitu_channel_id == interaction.channel.id:
+            if noitu_channel_id == (interaction.channel.id if interaction.channel else None):
                 await interaction.response.send_message("Kênh này đang được dùng cho Nối Từ. Ko thể tạo Ma Sói ở đây!", ephemeral=True)
                 return
         except Exception as e:
@@ -167,6 +176,9 @@ class WerewolfCog(commands.Cog):
                 await interaction.followup.send(f"⚠️ Expansion '{expansion}' không hợp lệ. Dùng: {', '.join(EXPANSION_ALIASES.keys())}")
         
         try:
+            if not isinstance(interaction.user, discord.Member):
+                await interaction.followup.send("Lỗi: Không thể xác định người dùng.")
+                return
             game = await self.manager.create_game(
                 guild=interaction.guild,  # type: ignore[arg-type]
                 host=interaction.user,
@@ -193,8 +205,8 @@ class WerewolfCog(commands.Cog):
             await interaction.response.send_message("Guide cog không được load!", ephemeral=True)
             return
 
-        embed = guide_cog.get_guide_embed()
-        view = guide_cog.get_guide_view(interaction.user.id)
+        embed = guide_cog.get_guide_embed()  # type: ignore[attr-defined]
+        view = guide_cog.get_guide_view(interaction.user.id)  # type: ignore[attr-defined]
         await interaction.response.send_message(embed=embed, view=view)
 
 

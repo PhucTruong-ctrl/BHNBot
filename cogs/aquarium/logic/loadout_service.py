@@ -240,7 +240,7 @@ class LoadoutService:
         """
         # Get current home slots
         slots = await HomeSlot.filter(user_id=user_id).order_by("slot_index").all()
-        items = [None] * 5
+        items: list[str | None] = [None] * 5
         for slot in slots:
             if 0 <= slot.slot_index < 5:
                 items[slot.slot_index] = slot.item_id
