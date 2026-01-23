@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import io
 import json
 from core.logging import get_logger
@@ -15,6 +17,11 @@ from .ui.renderer import render_profile
 from core.services.vip_service import VIPEngine
 
 logger = get_logger("profile_cog")
+
+
+def _load_achievements_sync(filepath: str) -> dict:
+    with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 async def _get_active_title(user_id: int) -> str | None:
@@ -50,8 +57,10 @@ class ProfileCog(commands.Cog):
         if not achievements_data:
             try:
                 achievements_file = "data/achievements.json"
-                with open(achievements_file, "r", encoding="utf-8") as f:
-                    achievements_data = json.load(f)
+                loop = asyncio.get_event_loop()
+                achievements_data = await loop.run_in_executor(
+                    None, functools.partial(_load_achievements_sync, achievements_file)
+                )
             except (FileNotFoundError, json.JSONDecodeError):
                 return []
 

@@ -13,16 +13,12 @@ from core.logging import get_logger
 from database_manager import db_manager, get_user_balance
 
 from .constants import MIN_BET, TURN_TIMEOUT
-# from .models import game_manager, Table, Player # REMOVED
-# Should be:
 from .core.game_manager import game_manager
 from .core.table import Table
 from database_manager import batch_update_seeds
 from .core.player import Player
 from .statistics import StatisticsTracker
 
-# Import Implementations
-# from .commands import solo as solo_cmd  # REMOVED
 from .commands import multi as multi_cmd
 
 logger = get_logger("XiDachCog")

@@ -238,6 +238,11 @@ class AutoFishingService:
         if not data:
             return False, "Chưa có hệ thống auto-fish"
 
+        # SECURITY: Whitelist validation to prevent SQL injection
+        VALID_UPGRADE_TYPES = {"efficiency", "duration", "quality"}
+        if upgrade_type not in VALID_UPGRADE_TYPES:
+            return False, "Loại nâng cấp không hợp lệ"
+
         level_map = {
             "efficiency": data.efficiency_level,
             "duration": data.duration_level,
@@ -255,6 +260,7 @@ class AutoFishingService:
         if data.total_essence < cost:
             return False, f"Thiếu tinh chất. Cần {cost}, có {data.total_essence}"
 
+        # Safe to use f-string after whitelist validation
         await db_manager.modify(
             f"UPDATE auto_fishing SET {upgrade_type}_level = {upgrade_type}_level + 1, total_essence = total_essence - $1 WHERE user_id = $2",
             (cost, user_id)

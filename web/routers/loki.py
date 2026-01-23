@@ -22,7 +22,7 @@ async def query_logs(
     limit: int = Query(default=100, ge=1, le=1000),
     start: Optional[str] = None,
     end: Optional[str] = None,
-    direction: str = Query(default="backward", regex="^(forward|backward)$"),
+    direction: str = Query(default="backward", pattern="^(forward|backward)$"),
 ):
     if not start:
         start_time = datetime.utcnow() - timedelta(hours=1)
