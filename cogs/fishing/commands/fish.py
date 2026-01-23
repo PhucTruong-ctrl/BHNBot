@@ -1088,22 +1088,25 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                     vip_tier = vip_data['tier'] if vip_data else 0
                     
                     if vip_tier >= 3:
-                        # Auto-Recycle Logic
-                        # 1 Trash = 1 Leaf Coin (Standard Rate)
                         recycle_reward = trash_count * 1
-                        # FIX: Use MarketEngine to add leaf coins to aquarium currency, not inventory
-                        await MarketEngine.add_leaf_coins(user_id, recycle_reward, reason="vip_auto_recycle_trash")
+                        success = await MarketEngine.add_leaf_coins(user_id, recycle_reward, reason="vip_auto_recycle_trash")
                         
-                        logger.info(f"[FISHING] [VIP] {username} (Tier {vip_tier}) auto-recycled {trash_count} trash -> {recycle_reward} Leaf Coin")
-                        fish_display.append(f"♻️ **Đã tự động tái chế {trash_count} Rác** (+{recycle_reward} 🍃)")
-
-                        # Track achievement stats for VIP auto-recycle
-                        try:
-                            await increment_stat(user_id, "fishing", "trash_recycled", trash_count)
-                            current_trash = await get_stat(user_id, "fishing", "trash_recycled")
-                            await cog.bot.achievement_manager.check_unlock(user_id, "fishing", "trash_recycled", current_trash, channel)
-                        except Exception as e:
-                            logger.error(f"[ACHIEVEMENT] Error tracking trash_recycled for {user_id}: {e}")
+                        if success:
+                            logger.info(f"[FISHING] [VIP] {username} (Tier {vip_tier}) auto-recycled {trash_count} trash -> {recycle_reward} Leaf Coin")
+                            fish_display.append(f"♻️ **Đã tự động tái chế {trash_count} Rác** (+{recycle_reward} 🍃)")
+                            
+                            try:
+                                await increment_stat(user_id, "fishing", "trash_recycled", trash_count)
+                                current_trash = await get_stat(user_id, "fishing", "trash_recycled")
+                                await cog.bot.achievement_manager.check_unlock(user_id, "fishing", "trash_recycled", current_trash, channel)
+                            except Exception as e:
+                                logger.error(f"[ACHIEVEMENT] Error tracking trash_recycled for {user_id}: {e}")
+                        else:
+                            logger.error(f"[FISHING] [VIP] Failed to add leaf coins for {username} - falling back to trash")
+                            for _ in range(trash_count):
+                                trash = random.choice(TRASH_ITEMS)
+                                item_key = trash.get("key", f"trash_{trash['name'].lower().replace(' ', '_')}")
+                                await cog.add_inventory_item(user_id, item_key, ItemType.TRASH)
                         
                     else:
                         # Standard Trash Logic

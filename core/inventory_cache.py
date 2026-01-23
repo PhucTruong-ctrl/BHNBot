@@ -105,7 +105,6 @@ class InventoryCache:
                     user_id, item_id, amount, item_type, amount
                 )
             else:
-                # UPDATE for subtraction
                 await self.db.execute(
                     """
                     UPDATE inventory 
@@ -113,6 +112,10 @@ class InventoryCache:
                     WHERE user_id = ? AND item_id = ?
                     """,
                     amount, user_id, item_id
+                )
+                await self.db.execute(
+                    "DELETE FROM inventory WHERE user_id = ? AND item_id = ? AND quantity <= 0",
+                    user_id, item_id
                 )
                 
             return True
