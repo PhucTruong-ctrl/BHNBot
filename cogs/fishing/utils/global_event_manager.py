@@ -491,7 +491,10 @@ class GlobalEventManager:
                              try:
                                  old_msg = await channel.fetch_message(old_id)
                                  await old_msg.delete()
-                             except Exception: pass
+                             except discord.NotFound:
+                                 pass
+                             except discord.Forbidden:
+                                 logger.debug(f"No permission to delete old bump message {old_id}")
 
                         new_msg = await channel.send(embed=embed, view=view)
                         
@@ -640,7 +643,8 @@ class GlobalEventManager:
                  # Achievement
                  try:
                      await self.bot.achievement_manager.check_unlock(user_id, "fishing", "god_slayer", 1, None)
-                 except Exception: pass
+                 except Exception as e:
+                     logger.warning(f"Failed to check god_slayer achievement for {user_id}: {e}")
                  
                  # Base + MVP Bonus
                  base_txt = await give_reward_items(user_id, base_items_cfg)

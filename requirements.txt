@@ -18,6 +18,11 @@ aerich>=0.7.2
 fastapi>=0.115.0
 uvicorn>=0.30.0
 requests>=2.32.0
+PyJWT>=2.8.0
+httpx>=0.25.0
+
+# Timezone
+pytz>=2024.1
 
 # Observability
 structlog>=25.0.0
