@@ -13,7 +13,7 @@ async def create_inventory_embed(
     vip_data: Optional[Dict] = None,
     currency_data: Optional[Dict] = None
 ) -> discord.Embed:
-    from cogs.fishing.constants import ALL_FISH, ALL_ITEMS_DATA, LEGENDARY_FISH_KEYS
+    from cogs.fishing.constants import ALL_FISH, LEGENDARY_FISH_KEYS
     from cogs.fishing.mechanics.glitch import is_glitch_active, apply_display_glitch
     from core.services.vip_service import VIPEngine
 
@@ -72,6 +72,7 @@ async def create_inventory_embed(
     embed.add_field(name="💎 Tiền Tệ", value="\n".join(currency_parts), inline=False)
     
     if inventory:
+        from core.item_system import item_system
         fish_items = {}
         gift_items = {}
         tool_items = {}
@@ -81,8 +82,8 @@ async def create_inventory_embed(
             if qty <= 0:
                 continue
             
-            if key in ALL_ITEMS_DATA:
-                item = ALL_ITEMS_DATA[key]
+            item = item_system.get_item(key)
+            if item:
                 itype = item.get("type", "misc")
                 
                 if itype == "trash":
@@ -121,8 +122,8 @@ async def create_inventory_embed(
         if gift_items:
             gift_parts = []
             for key, qty in sorted(gift_items.items()):
-                item = ALL_ITEMS_DATA[key]
-                gift_parts.append(f"{item.get('emoji','🎁')} {item['name']} x{qty}")
+                item = item_system.get_item(key) or {}
+                gift_parts.append(f"{item.get('emoji','🎁')} {item.get('name', key)} x{qty}")
             
             gift_text = " | ".join(gift_parts)
             embed.add_field(name=f"💝 Quà Tặng ({sum(gift_items.values())})", value=gift_text, inline=False)
@@ -131,8 +132,8 @@ async def create_inventory_embed(
         if tool_items:
             tool_parts = []
             for key, qty in sorted(tool_items.items()):
-                if key in ALL_ITEMS_DATA:
-                    item = ALL_ITEMS_DATA[key]
+                item = item_system.get_item(key)
+                if item:
                     name = item['name']
                     emoji = item.get('emoji', '📦')
                 elif key in ALL_FISH:
@@ -154,7 +155,7 @@ async def create_inventory_embed(
             trash_list = list(sorted(trash_items.items()))[:3]
             trash_parts = []
             for key, qty in trash_list:
-                item = ALL_ITEMS_DATA.get(key, {})
+                item = item_system.get_item(key) or {}
                 name = item.get('name', key.replace('trash_', '').title())
                 trash_parts.append(f"{name} x{qty}")
             

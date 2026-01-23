@@ -67,6 +67,9 @@ class InventoryCache:
         """Alias for get_inventory to match existing code usage."""
         return await self.get_inventory(user_id)
 
+    # Items that should NEVER be stored in inventory (they are currencies, not items)
+    FORBIDDEN_ITEM_IDS = frozenset(["leaf_coin", "seeds", "event_currency"])
+    
     async def modify(self, user_id: int, item_id: str, amount: int, item_type: str = "tool") -> bool:
         """
         Directly modify item quantity in Database.
@@ -80,6 +83,11 @@ class InventoryCache:
         Returns:
              bool: True if successful
         """
+        # Guard: Prevent currency items from being stored in inventory
+        if item_id in self.FORBIDDEN_ITEM_IDS:
+            logger.error(f"[INVENTORY] BLOCKED: Attempted to store currency '{item_id}' in inventory for user {user_id}. Use proper currency API instead.")
+            return False
+        
         try:
             if amount == 0:
                 return True

@@ -1083,6 +1083,7 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                     # CHECK VIP TIER 3 FOR AUTO-RECYCLE
                     # This avoids filling inventory with trash
                     from core.services.vip_service import VIPEngine
+                    from cogs.aquarium.logic.market import MarketEngine
                     vip_data = await VIPEngine.get_vip_data(user_id)
                     vip_tier = vip_data['tier'] if vip_data else 0
                     
@@ -1090,27 +1091,20 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                         # Auto-Recycle Logic
                         # 1 Trash = 1 Leaf Coin (Standard Rate)
                         recycle_reward = trash_count * 1
-                        await cog.bot.inventory.modify(user_id, "leaf_coin", recycle_reward)
-                        
-                # HOOK: Update Tournament Score if applicable
-                if tournament_score > 0:
-                    try:
-                        # Pass 'conn' to ensure ACID compliance within this transaction
-                        await TournamentManager.get_instance().on_fish_catch(user_id, tournament_score, conn=conn)
-                    except Exception as e:
-                        logger.error(f"[TOURNAMENT] Error updating score for {username}: {e}")
+                        # FIX: Use MarketEngine to add leaf coins to aquarium currency, not inventory
+                        await MarketEngine.add_leaf_coins(user_id, recycle_reward, reason="vip_auto_recycle_trash")
                         
                         logger.info(f"[FISHING] [VIP] {username} (Tier {vip_tier}) auto-recycled {trash_count} trash -> {recycle_reward} Leaf Coin")
                         fish_display.append(f"♻️ **Đã tự động tái chế {trash_count} Rác** (+{recycle_reward} 🍃)")
 
-                        # Still track achievement stats? Yes, technically they caught it.
+                        # Track achievement stats for VIP auto-recycle
                         try:
                             await increment_stat(user_id, "fishing", "trash_recycled", trash_count)
                             current_trash = await get_stat(user_id, "fishing", "trash_recycled")
                             await cog.bot.achievement_manager.check_unlock(user_id, "fishing", "trash_recycled", current_trash, channel)
                         except Exception as e:
                             logger.error(f"[ACHIEVEMENT] Error tracking trash_recycled for {user_id}: {e}")
-
+                        
                     else:
                         # Standard Trash Logic
                         for _ in range(trash_count):
@@ -1138,6 +1132,14 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                             logger.error(f"Unexpected error: {e}")
                         logger.info(f"[FISHING] {username} caught trash (independent): {trash_count}")
     
+                # HOOK: Update Tournament Score if applicable
+                if tournament_score > 0:
+                    try:
+                        # Pass 'conn' to ensure ACID compliance within this transaction
+                        await TournamentManager.get_instance().on_fish_catch(user_id, tournament_score, conn=conn)
+                    except Exception as e:
+                        logger.error(f"[TOURNAMENT] Error updating score for {username}: {e}")
+
                 # Process chest (độc lập)
                 if chest_count > 0:
                     for _ in range(chest_count):
