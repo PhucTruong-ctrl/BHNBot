@@ -296,6 +296,42 @@ class EventCommandsCog(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(name="convert", description="💱 Đổi currency sự kiện ra Hạt (tỷ lệ 1:3)")
+    @app_commands.describe(amount="Số lượng currency muốn đổi (bỏ trống = đổi hết)")
+    async def convert_currency(self, interaction: discord.Interaction, amount: int | None = None) -> None:
+        active = await self._check_event_active(interaction)
+        if not active:
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        if not event:
+            return
+
+        guild_id = interaction.guild.id  # type: ignore
+        user_id = interaction.user.id
+
+        from .services.lifecycle_service import EventLifecycleService
+        lifecycle = EventLifecycleService.get_instance(self.bot)
+        
+        success, seeds_earned, message = await lifecycle.manual_convert_to_seeds(
+            guild_id, user_id, active["event_id"], amount
+        )
+
+        if success:
+            embed = discord.Embed(
+                title="💱 Đổi Currency Thành Công!",
+                description=f"{message}\n\n*Tỷ lệ: 1 {event.currency_emoji} = 3 Hạt*",
+                color=discord.Color.green()
+            )
+        else:
+            embed = discord.Embed(
+                title="❌ Không Thể Đổi",
+                description=message,
+                color=discord.Color.red()
+            )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 async def setup(bot: BHNBot) -> None:
     await bot.add_cog(EventCommandsCog(bot))

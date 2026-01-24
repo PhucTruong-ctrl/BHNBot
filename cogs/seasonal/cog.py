@@ -70,6 +70,10 @@ class SeasonalEventsCog(commands.Cog):
 
     async def cog_load(self) -> None:
         await init_seasonal_tables()
+        
+        from .services.lifecycle_service import setup_lifecycle_service
+        await setup_lifecycle_service(self.bot)
+        
         self.restore_events_task.start()
         self.check_event_dates.start()
         self.update_announcement_task.start()
@@ -81,6 +85,13 @@ class SeasonalEventsCog(commands.Cog):
         self.check_event_dates.cancel()
         self.update_announcement_task.cancel()
         self.auto_spawn_minigames.cancel()
+        
+        from .services.lifecycle_service import EventLifecycleService
+        try:
+            lifecycle = EventLifecycleService.get_instance()
+            lifecycle.stop_scheduler()
+        except RuntimeError:
+            pass
 
     @tasks.loop(count=1)
     async def restore_events_task(self) -> None:
