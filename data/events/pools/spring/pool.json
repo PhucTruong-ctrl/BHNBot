@@ -1,0 +1,130 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "spring",
+  "description": "Tết Nguyên Đán / Spring Festival themed fish and cosmetics",
+  "meta": {
+    "tier_distribution": {
+      "major_event": {"common": 3, "rare": 3, "epic": 1}
+    },
+    "cooldown_years": 2,
+    "max_tier": "epic"
+  },
+  "fish": [
+    {
+      "key": "ca_mai_vang",
+      "name": "Cá Mai Vàng",
+      "emoji": "<:ca_mai_vang:1300000000000001001>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_dao_hong",
+      "name": "Cá Đào Hồng",
+      "emoji": "<:ca_dao_hong:1300000000000001002>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_bao_li_xi",
+      "name": "Cá Bao Lì Xì",
+      "emoji": "<:ca_bao_li_xi:1300000000000001003>",
+      "tier": "common",
+      "base_drop_rate": 0.25,
+      "currency_reward": {"min": 8, "max": 20},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_rong_vang",
+      "name": "Cá Rồng Vàng",
+      "emoji": "<:ca_rong_vang:1300000000000001004>",
+      "tier": "rare",
+      "base_drop_rate": 0.08,
+      "currency_reward": {"min": 25, "max": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_phao_hoa",
+      "name": "Cá Pháo Hoa",
+      "emoji": "<:ca_phao_hoa:1300000000000001005>",
+      "tier": "rare",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 30, "max": 60},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_than_tai",
+      "name": "Cá Thần Tài",
+      "emoji": "<:ca_than_tai:1300000000000001006>",
+      "tier": "rare",
+      "base_drop_rate": 0.04,
+      "currency_reward": {"min": 40, "max": 80},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_ong_do",
+      "name": "Cá Ông Đồ",
+      "emoji": "<:ca_ong_do:1300000000000001007>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_meo_than_tai",
+      "name": "Cá Mèo Thần Tài",
+      "emoji": "<:ca_meo_than_tai:1300000000000001008>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2026
+    }
+  ],
+  "shop_items": [
+    {
+      "key": "bao_li_xi_vang",
+      "name": "Bao Lì Xì Vàng",
+      "type": "currency_pack",
+      "price": 100,
+      "limit_per_user": 3,
+      "effect": {"bonus_currency": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "cau_doi_may_man",
+      "name": "Câu Đối May Mắn",
+      "type": "cosmetic_pattern",
+      "price": 200,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_spring",
+        "name": "Khung Xuân",
+        "asset_pattern": "frame_spring_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_spring",
+        "name": "Nền Xuân",
+        "asset_pattern": "bg_spring_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_spring_master",
+        "name_pattern": "Vua Câu Tết {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  }
+}

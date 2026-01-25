@@ -1,0 +1,130 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "summer",
+  "description": "Summer Beach themed fish and cosmetics",
+  "meta": {
+    "tier_distribution": {
+      "major_event": {"common": 3, "rare": 3, "epic": 1}
+    },
+    "cooldown_years": 2,
+    "max_tier": "epic"
+  },
+  "fish": [
+    {
+      "key": "ca_dua_hau",
+      "name": "Cá Dưa Hấu",
+      "emoji": "<:ca_dua_hau:1300000000000002001>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_kem",
+      "name": "Cá Kem",
+      "emoji": "<:ca_kem:1300000000000002002>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_phao_boi",
+      "name": "Cá Phao Bơi",
+      "emoji": "<:ca_phao_boi:1300000000000002003>",
+      "tier": "common",
+      "base_drop_rate": 0.25,
+      "currency_reward": {"min": 8, "max": 20},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_san_ho",
+      "name": "Cá San Hô",
+      "emoji": "<:ca_san_ho:1300000000000002004>",
+      "tier": "rare",
+      "base_drop_rate": 0.08,
+      "currency_reward": {"min": 25, "max": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_mat_troi",
+      "name": "Cá Mặt Trời",
+      "emoji": "<:ca_mat_troi:1300000000000002005>",
+      "tier": "rare",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 30, "max": 60},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_luot_song",
+      "name": "Cá Lướt Sóng",
+      "emoji": "<:ca_luot_song:1300000000000002006>",
+      "tier": "rare",
+      "base_drop_rate": 0.04,
+      "currency_reward": {"min": 40, "max": 80},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_than_bien",
+      "name": "Cá Thần Biển",
+      "emoji": "<:ca_than_bien:1300000000000002007>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_hoang_hon",
+      "name": "Cá Hoàng Hôn",
+      "emoji": "<:ca_hoang_hon:1300000000000002008>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2026
+    }
+  ],
+  "shop_items": [
+    {
+      "key": "kinh_mat_bai_bien",
+      "name": "Kính Mát Bãi Biển",
+      "type": "cosmetic_accessory",
+      "price": 150,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    },
+    {
+      "key": "kem_chong_nang",
+      "name": "Kem Chống Nắng",
+      "type": "booster",
+      "price": 50,
+      "limit_per_user": 5,
+      "effect": {"xp_bonus": 0.15, "duration_hours": 24},
+      "introduced_year": 2024
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_summer",
+        "name": "Khung Hè",
+        "asset_pattern": "frame_summer_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_summer",
+        "name": "Nền Hè",
+        "asset_pattern": "bg_summer_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_summer_master",
+        "name_pattern": "Vua Biển {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  }
+}

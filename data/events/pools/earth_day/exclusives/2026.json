@@ -1,0 +1,37 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "earth_day",
+  "exclusive_fish": {
+    "key": "ca_me_thien_nhien",
+    "name": "Cá Mẹ Thiên Nhiên",
+    "emoji": "<:ca_me_thien_nhien:1300000000000006007>",
+    "tier": "epic",
+    "drop_rate": 0.05,
+    "currency_reward": {"min": 60, "max": 120},
+    "description": "Cá hiện thân của Mẹ Thiên Nhiên, chỉ xuất hiện Earth Day 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_earthday_2026",
+      "name": "Khung Trái Đất 2026",
+      "asset": "assets/frames/frame_earthday_2026.png"
+    },
+    "background": {
+      "key": "bg_earthday_2026",
+      "name": "Nền Trái Đất 2026",
+      "asset": "assets/profile/bg_earthday_2026.png"
+    },
+    "title": {
+      "key": "title_earthday_master_2026",
+      "name": "Chiến Binh Xanh 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_la_xanh",
+    "ca_mam_non",
+    "ca_cay_co_thu",
+    "ca_trai_dat"
+  ],
+  "notes": "Mini event - 4 rotating fish (2c/1r/1e) + 1 exclusive epic. ca_tai_che and ca_bien_sach on cooldown."
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "autumn",
+  "exclusive_fish": {
+    "key": "ca_than_gio",
+    "name": "Cá Thần Gió",
+    "emoji": "<:ca_than_gio:1300000000000003008>",
+    "tier": "epic",
+    "drop_rate": 0.03,
+    "currency_reward": {"min": 80, "max": 150},
+    "description": "Cá mang theo cơn gió lạnh đầu thu, chỉ xuất hiện Thu 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_autumn_2026",
+      "name": "Khung Thu 2026",
+      "asset": "assets/frames/frame_autumn_2026.png"
+    },
+    "background": {
+      "key": "bg_autumn_2026",
+      "name": "Nền Thu 2026",
+      "asset": "assets/profile/bg_autumn_2026.png"
+    },
+    "title": {
+      "key": "title_autumn_master_2026",
+      "name": "Vua Mùa Gặt 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_la_vang",
+    "ca_bi_ngo_thu",
+    "ca_ngo",
+    "ca_hat_de",
+    "ca_suong_mu",
+    "ca_mua_gat"
+  ],
+  "notes": "Major event - 7 fish total. ca_nho on cooldown from 2024."
+}

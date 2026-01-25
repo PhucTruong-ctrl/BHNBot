@@ -64,12 +64,21 @@ from .community_goal_service import (
     get_contribution_leaderboard,
     reset_community_goal,
 )
+from .rotation_service import (
+    ContentRotationService,
+    FishDefinition,
+    YearlyContent,
+    rotation_service,
+)
 
 __all__ = [
     "CommunityGoalStatus",
+    "ContentRotationService",
+    "FishDefinition",
     "Milestone",
     "PurchaseResult",
     "ShopItem",
+    "YearlyContent",
     "add_community_contribution",
     "add_contribution",
     "add_currency",
@@ -112,6 +121,7 @@ __all__ = [
     "init_seasonal_tables",
     "purchase_item",
     "reset_community_goal",
+    "rotation_service",
     "set_active_title",
     "set_announcement_message",
     "spend_currency",

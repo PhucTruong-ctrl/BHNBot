@@ -13,6 +13,7 @@ from ..core.stats import ProfileStats
 
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "profile")
+FRAMES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "frames")
 FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 MAIN_FONT = "KK7-VCROSDMono.ttf"
 
@@ -53,6 +54,19 @@ def _create_circular_avatar(avatar_bytes: bytes, size: int) -> Image.Image:
     output.paste(avatar, (0, 0), mask)
     
     return output
+
+
+def _apply_frame_overlay(card: Image.Image, frame_file: str) -> Image.Image:
+    frame_path = os.path.join(FRAMES_DIR, frame_file)
+    if not os.path.exists(frame_path):
+        return card
+    
+    try:
+        frame = Image.open(frame_path).convert("RGBA")
+        frame = frame.resize((CARD_WIDTH, CARD_HEIGHT), Image.Resampling.LANCZOS)
+        return Image.alpha_composite(card, frame)
+    except Exception:
+        return card
 
 
 def _draw_glass_panel(
@@ -232,6 +246,9 @@ def _render_profile_sync(
                 fill=(255, 255, 255, 30),
                 width=1
             )
+
+    if theme.frame_file:
+        card = _apply_frame_overlay(card, theme.frame_file)
 
     output = io.BytesIO()
     card.save(output, format="PNG", optimize=True)

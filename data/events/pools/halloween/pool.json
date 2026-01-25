@@ -1,0 +1,130 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "halloween",
+  "description": "Halloween themed fish, shop items, and cosmetics pool",
+  "meta": {
+    "tier_distribution": {
+      "mini_event": {"common": 2, "rare": 2, "epic": 1}
+    },
+    "cooldown_years": 2,
+    "max_tier": "epic"
+  },
+  "fish": [
+    {
+      "key": "ca_ma",
+      "name": "Cá Ma",
+      "emoji": "<:ca_ma:1296852939645440001>",
+      "tier": "common",
+      "base_drop_rate": 0.35,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_bi_ngo",
+      "name": "Cá Bí Ngô",
+      "emoji": "<:ca_bi_ngo:1296852938458390528>",
+      "tier": "common",
+      "base_drop_rate": 0.35,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_xac_song",
+      "name": "Cá Xác Sống",
+      "emoji": "<:ca_xac_song:1296852941088276491>",
+      "tier": "rare",
+      "base_drop_rate": 0.15,
+      "currency_reward": {"min": 20, "max": 40},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_quai_vat_frankenstein",
+      "name": "Cá Quái Vật Frankenstein",
+      "emoji": "<:ca_quai_vat_frankenstein:1296852936952672347>",
+      "tier": "rare",
+      "base_drop_rate": 0.10,
+      "currency_reward": {"min": 30, "max": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_dracula",
+      "name": "Cá Dracula",
+      "emoji": "<:ca_dracula:1296852935430008852>",
+      "tier": "epic",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 50, "max": 100},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_oan_hon",
+      "name": "Cá Oan Hồn",
+      "emoji": "<:ca_oan_hon:1300000000000000001>",
+      "tier": "common",
+      "base_drop_rate": 0.35,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_mummy",
+      "name": "Cá Xác Ướp",
+      "emoji": "<:ca_mummy:1300000000000000002>",
+      "tier": "rare",
+      "base_drop_rate": 0.12,
+      "currency_reward": {"min": 25, "max": 45},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_jason",
+      "name": "Cá Jason",
+      "emoji": "<:ca_jason:1300000000000000003>",
+      "tier": "epic",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 50, "max": 100},
+      "introduced_year": 2026
+    }
+  ],
+  "shop_items": [
+    {
+      "key": "mau_vuong_mien_ma",
+      "name": "Mẫu Vương Miện Ma",
+      "type": "cosmetic_pattern",
+      "price": 150,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    },
+    {
+      "key": "bua_tang_drop",
+      "name": "Bùa Tăng Drop",
+      "type": "booster",
+      "price": 50,
+      "limit_per_user": 5,
+      "effect": {"drop_rate_bonus": 0.1, "duration_hours": 24},
+      "introduced_year": 2024
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_halloween",
+        "name": "Khung Halloween",
+        "asset_pattern": "frame_halloween_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_halloween",
+        "name": "Nền Halloween",
+        "asset_pattern": "bg_halloween_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_halloween_master",
+        "name_pattern": "Bậc Thầy Ma Quái {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  }
+}

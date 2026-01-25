@@ -1,0 +1,92 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "birthday",
+  "description": "Bot Birthday celebration - NO FISH, special rewards and cosmetics only",
+  "meta": {
+    "tier_distribution": {
+      "mini_event": {"common": 0, "rare": 0, "epic": 0}
+    },
+    "cooldown_years": 2,
+    "max_tier": "epic",
+    "notes": "Birthday event has NO seasonal fish - rewards are currency, cosmetics, and special items"
+  },
+  "fish": [],
+  "shop_items": [
+    {
+      "key": "banh_sinh_nhat",
+      "name": "Bánh Sinh Nhật",
+      "type": "consumable",
+      "price": 50,
+      "limit_per_user": 5,
+      "effect": {"xp_bonus": 0.25, "duration_hours": 24},
+      "introduced_year": 2024
+    },
+    {
+      "key": "bong_bay",
+      "name": "Bóng Bay",
+      "type": "cosmetic_accessory",
+      "price": 100,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    },
+    {
+      "key": "qua_bi_an",
+      "name": "Quà Bí Ẩn",
+      "type": "mystery_box",
+      "price": 200,
+      "limit_per_user": 3,
+      "effect": {"random_reward": true},
+      "introduced_year": 2024
+    },
+    {
+      "key": "nen_sinh_nhat",
+      "name": "Nến Sinh Nhật",
+      "type": "collectible",
+      "price": 30,
+      "limit_per_user": 10,
+      "effect": {"wish_token": 1},
+      "introduced_year": 2025
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_birthday",
+        "name": "Khung Sinh Nhật",
+        "asset_pattern": "frame_birthday_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_birthday",
+        "name": "Nền Sinh Nhật",
+        "asset_pattern": "bg_birthday_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_birthday_og",
+        "name_pattern": "OG Fan {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  },
+  "special_rewards": {
+    "participation_bonus": {
+      "currency": 100,
+      "description": "Bonus cho tất cả người chơi tham gia"
+    },
+    "veteran_bonus": {
+      "requirement": "played_since_last_birthday",
+      "currency": 200,
+      "description": "Bonus cho người chơi trung thành"
+    },
+    "founder_bonus": {
+      "requirement": "played_since_launch",
+      "currency": 500,
+      "description": "Bonus cho những người chơi đầu tiên"
+    }
+  }
+}

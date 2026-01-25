@@ -1,0 +1,130 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "autumn",
+  "description": "Autumn Harvest themed fish and cosmetics",
+  "meta": {
+    "tier_distribution": {
+      "major_event": {"common": 3, "rare": 3, "epic": 1}
+    },
+    "cooldown_years": 2,
+    "max_tier": "epic"
+  },
+  "fish": [
+    {
+      "key": "ca_la_vang",
+      "name": "Cá Lá Vàng",
+      "emoji": "<:ca_la_vang:1300000000000003001>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_nho",
+      "name": "Cá Nho",
+      "emoji": "<:ca_nho:1300000000000003002>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_bi_ngo_thu",
+      "name": "Cá Bí Ngô Thu",
+      "emoji": "<:ca_bi_ngo_thu:1300000000000003003>",
+      "tier": "common",
+      "base_drop_rate": 0.25,
+      "currency_reward": {"min": 8, "max": 20},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_ngo",
+      "name": "Cá Ngô",
+      "emoji": "<:ca_ngo:1300000000000003004>",
+      "tier": "rare",
+      "base_drop_rate": 0.08,
+      "currency_reward": {"min": 25, "max": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_hat_de",
+      "name": "Cá Hạt Dẻ",
+      "emoji": "<:ca_hat_de:1300000000000003005>",
+      "tier": "rare",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 30, "max": 60},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_suong_mu",
+      "name": "Cá Sương Mù",
+      "emoji": "<:ca_suong_mu:1300000000000003006>",
+      "tier": "rare",
+      "base_drop_rate": 0.04,
+      "currency_reward": {"min": 40, "max": 80},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_mua_gat",
+      "name": "Cá Mùa Gặt",
+      "emoji": "<:ca_mua_gat:1300000000000003007>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_than_gio",
+      "name": "Cá Thần Gió",
+      "emoji": "<:ca_than_gio:1300000000000003008>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2026
+    }
+  ],
+  "shop_items": [
+    {
+      "key": "khan_choang_thu",
+      "name": "Khăn Choàng Thu",
+      "type": "cosmetic_accessory",
+      "price": 150,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    },
+    {
+      "key": "tra_nong",
+      "name": "Trà Nóng",
+      "type": "booster",
+      "price": 50,
+      "limit_per_user": 5,
+      "effect": {"currency_bonus": 0.1, "duration_hours": 24},
+      "introduced_year": 2024
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_autumn",
+        "name": "Khung Thu",
+        "asset_pattern": "frame_autumn_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_autumn",
+        "name": "Nền Thu",
+        "asset_pattern": "bg_autumn_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_autumn_master",
+        "name_pattern": "Vua Mùa Gặt {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "mid_autumn",
+  "exclusive_fish": {
+    "key": "ca_cung_trang",
+    "name": "Cá Cung Trăng",
+    "emoji": "<:ca_cung_trang:1300000000000005007>",
+    "tier": "epic",
+    "drop_rate": 0.05,
+    "currency_reward": {"min": 60, "max": 120},
+    "description": "Cá sống trong cung điện mặt trăng, chỉ xuất hiện Trung Thu 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_midautumn_2026",
+      "name": "Khung Trung Thu 2026",
+      "asset": "assets/frames/frame_midautumn_2026.png"
+    },
+    "background": {
+      "key": "bg_midautumn_2026",
+      "name": "Nền Trung Thu 2026",
+      "asset": "assets/profile/bg_midautumn_2026.png"
+    },
+    "title": {
+      "key": "title_midautumn_master_2026",
+      "name": "Vua Trăng Rằm 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_den_long",
+    "ca_tho_ngoc",
+    "ca_hang_nga",
+    "ca_trang_ram"
+  ],
+  "notes": "Mini event - 4 rotating fish (2c/2r) + 1 exclusive epic. ca_banh_trung_thu and ca_chu_cuoi on cooldown."
+}

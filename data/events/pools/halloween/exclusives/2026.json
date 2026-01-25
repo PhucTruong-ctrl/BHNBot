@@ -1,0 +1,37 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "halloween",
+  "exclusive_fish": {
+    "key": "ca_jason",
+    "name": "Cá Jason",
+    "emoji": "<:ca_jason:1300000000000000003>",
+    "tier": "epic",
+    "drop_rate": 0.05,
+    "currency_reward": {"min": 50, "max": 100},
+    "description": "Cá kinh điển từ Camp Crystal Lake, chỉ xuất hiện Halloween 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_halloween_2026",
+      "name": "Khung Halloween 2026",
+      "asset": "assets/frames/frame_halloween_2026.png"
+    },
+    "background": {
+      "key": "bg_halloween_2026",
+      "name": "Nền Halloween 2026",
+      "asset": "assets/profile/bg_halloween_2026.png"
+    },
+    "title": {
+      "key": "title_halloween_master_2026",
+      "name": "Bậc Thầy Ma Quái 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_ma",
+    "ca_xac_song",
+    "ca_dracula",
+    "ca_mummy"
+  ],
+  "notes": "2024 fish (ca_bi_ngo, ca_quai_vat_frankenstein) on cooldown. 2025 fish (ca_oan_hon) eligible."
+}

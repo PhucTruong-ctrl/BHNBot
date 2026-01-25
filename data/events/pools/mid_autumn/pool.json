@@ -1,0 +1,122 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "mid_autumn",
+  "description": "Mid-Autumn Festival / Tết Trung Thu themed fish and cosmetics",
+  "meta": {
+    "tier_distribution": {
+      "mini_event": {"common": 2, "rare": 2, "epic": 0}
+    },
+    "cooldown_years": 2,
+    "max_tier": "rare",
+    "notes": "Mini event - no epic fish in rotation, epic only as yearly exclusive"
+  },
+  "fish": [
+    {
+      "key": "ca_banh_trung_thu",
+      "name": "Cá Bánh Trung Thu",
+      "emoji": "<:ca_banh_trung_thu:1300000000000005001>",
+      "tier": "common",
+      "base_drop_rate": 0.40,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_den_long",
+      "name": "Cá Đèn Lồng",
+      "emoji": "<:ca_den_long:1300000000000005002>",
+      "tier": "common",
+      "base_drop_rate": 0.35,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_tho_ngoc",
+      "name": "Cá Thỏ Ngọc",
+      "emoji": "<:ca_tho_ngoc:1300000000000005003>",
+      "tier": "common",
+      "base_drop_rate": 0.35,
+      "currency_reward": {"min": 8, "max": 18},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_hang_nga",
+      "name": "Cá Hằng Nga",
+      "emoji": "<:ca_hang_nga:1300000000000005004>",
+      "tier": "rare",
+      "base_drop_rate": 0.12,
+      "currency_reward": {"min": 25, "max": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_chu_cuoi",
+      "name": "Cá Chú Cuội",
+      "emoji": "<:ca_chu_cuoi:1300000000000005005>",
+      "tier": "rare",
+      "base_drop_rate": 0.10,
+      "currency_reward": {"min": 30, "max": 60},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_trang_ram",
+      "name": "Cá Trăng Rằm",
+      "emoji": "<:ca_trang_ram:1300000000000005006>",
+      "tier": "rare",
+      "base_drop_rate": 0.08,
+      "currency_reward": {"min": 35, "max": 70},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_cung_trang",
+      "name": "Cá Cung Trăng",
+      "emoji": "<:ca_cung_trang:1300000000000005007>",
+      "tier": "epic",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 60, "max": 120},
+      "introduced_year": 2026
+    }
+  ],
+  "shop_items": [
+    {
+      "key": "den_ong_sao",
+      "name": "Đèn Ông Sao",
+      "type": "cosmetic_accessory",
+      "price": 100,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    },
+    {
+      "key": "banh_deo",
+      "name": "Bánh Dẻo",
+      "type": "consumable",
+      "price": 30,
+      "limit_per_user": 10,
+      "effect": {"stamina_restore": 20},
+      "introduced_year": 2024
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_midautumn",
+        "name": "Khung Trung Thu",
+        "asset_pattern": "frame_midautumn_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_midautumn",
+        "name": "Nền Trung Thu",
+        "asset_pattern": "bg_midautumn_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_midautumn_master",
+        "name_pattern": "Vua Trăng Rằm {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  }
+}

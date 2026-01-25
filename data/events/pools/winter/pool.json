@@ -1,0 +1,130 @@
+{
+  "$schema": "../../pool_schema.json",
+  "event_type": "winter",
+  "description": "Winter/Christmas themed fish and cosmetics",
+  "meta": {
+    "tier_distribution": {
+      "major_event": {"common": 3, "rare": 3, "epic": 1}
+    },
+    "cooldown_years": 2,
+    "max_tier": "epic"
+  },
+  "fish": [
+    {
+      "key": "ca_bong_tuyet",
+      "name": "Cá Bông Tuyết",
+      "emoji": "<:ca_bong_tuyet:1300000000000004001>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_nguoi_tuyet",
+      "name": "Cá Người Tuyết",
+      "emoji": "<:ca_nguoi_tuyet:1300000000000004002>",
+      "tier": "common",
+      "base_drop_rate": 0.30,
+      "currency_reward": {"min": 5, "max": 15},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_que_que",
+      "name": "Cá Quế Quế",
+      "emoji": "<:ca_que_que:1300000000000004003>",
+      "tier": "common",
+      "base_drop_rate": 0.25,
+      "currency_reward": {"min": 8, "max": 20},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_tuan_loc",
+      "name": "Cá Tuần Lộc",
+      "emoji": "<:ca_tuan_loc:1300000000000004004>",
+      "tier": "rare",
+      "base_drop_rate": 0.08,
+      "currency_reward": {"min": 25, "max": 50},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_cay_thong",
+      "name": "Cá Cây Thông",
+      "emoji": "<:ca_cay_thong:1300000000000004005>",
+      "tier": "rare",
+      "base_drop_rate": 0.05,
+      "currency_reward": {"min": 30, "max": 60},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_chuong_noel",
+      "name": "Cá Chuông Noel",
+      "emoji": "<:ca_chuong_noel:1300000000000004006>",
+      "tier": "rare",
+      "base_drop_rate": 0.04,
+      "currency_reward": {"min": 40, "max": 80},
+      "introduced_year": 2025
+    },
+    {
+      "key": "ca_ong_gia_noel",
+      "name": "Cá Ông Già Noel",
+      "emoji": "<:ca_ong_gia_noel:1300000000000004007>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2024
+    },
+    {
+      "key": "ca_cuc_quang",
+      "name": "Cá Cực Quang",
+      "emoji": "<:ca_cuc_quang:1300000000000004008>",
+      "tier": "epic",
+      "base_drop_rate": 0.03,
+      "currency_reward": {"min": 80, "max": 150},
+      "introduced_year": 2026
+    }
+  ],
+  "shop_items": [
+    {
+      "key": "mu_santa",
+      "name": "Mũ Santa",
+      "type": "cosmetic_accessory",
+      "price": 200,
+      "limit_per_user": 1,
+      "introduced_year": 2024
+    },
+    {
+      "key": "cacao_nong",
+      "name": "Cacao Nóng",
+      "type": "booster",
+      "price": 50,
+      "limit_per_user": 5,
+      "effect": {"drop_rate_bonus": 0.1, "duration_hours": 24},
+      "introduced_year": 2024
+    }
+  ],
+  "cosmetics": {
+    "frames": [
+      {
+        "key": "frame_winter",
+        "name": "Khung Đông",
+        "asset_pattern": "frame_winter_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "backgrounds": [
+      {
+        "key": "bg_winter",
+        "name": "Nền Đông",
+        "asset_pattern": "bg_winter_{year}.png",
+        "yearly_exclusive": true
+      }
+    ],
+    "titles": [
+      {
+        "key": "title_winter_master",
+        "name_pattern": "Vua Băng Giá {year}",
+        "yearly_exclusive": true
+      }
+    ]
+  }
+}

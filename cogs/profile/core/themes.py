@@ -13,6 +13,7 @@ class ThemeConfig:
     text_color: tuple[int, int, int]
     bg_file: str
     vip_tier: int
+    frame_file: Optional[str] = None
 
 
 THEMES: dict[str, ThemeConfig] = {

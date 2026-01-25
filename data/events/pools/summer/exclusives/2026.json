@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "summer",
+  "exclusive_fish": {
+    "key": "ca_hoang_hon",
+    "name": "Cá Hoàng Hôn",
+    "emoji": "<:ca_hoang_hon:1300000000000002008>",
+    "tier": "epic",
+    "drop_rate": 0.03,
+    "currency_reward": {"min": 80, "max": 150},
+    "description": "Cá lấp lánh dưới ánh hoàng hôn, chỉ xuất hiện Hè 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_summer_2026",
+      "name": "Khung Hè 2026",
+      "asset": "assets/frames/frame_summer_2026.png"
+    },
+    "background": {
+      "key": "bg_summer_2026",
+      "name": "Nền Hè 2026",
+      "asset": "assets/profile/bg_summer_2026.png"
+    },
+    "title": {
+      "key": "title_summer_master_2026",
+      "name": "Vua Biển 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_dua_hau",
+    "ca_phao_boi",
+    "ca_san_ho",
+    "ca_mat_troi",
+    "ca_luot_song",
+    "ca_than_bien"
+  ],
+  "notes": "Major event - 7 fish total. ca_kem on cooldown from 2024."
+}

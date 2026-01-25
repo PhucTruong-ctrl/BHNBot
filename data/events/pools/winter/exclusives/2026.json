@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "winter",
+  "exclusive_fish": {
+    "key": "ca_cuc_quang",
+    "name": "Cá Cực Quang",
+    "emoji": "<:ca_cuc_quang:1300000000000004008>",
+    "tier": "epic",
+    "drop_rate": 0.03,
+    "currency_reward": {"min": 80, "max": 150},
+    "description": "Cá mang màu sắc cực quang phương Bắc, chỉ xuất hiện Đông 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_winter_2026",
+      "name": "Khung Đông 2026",
+      "asset": "assets/frames/frame_winter_2026.png"
+    },
+    "background": {
+      "key": "bg_winter_2026",
+      "name": "Nền Đông 2026",
+      "asset": "assets/profile/bg_winter_2026.png"
+    },
+    "title": {
+      "key": "title_winter_master_2026",
+      "name": "Vua Băng Giá 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_bong_tuyet",
+    "ca_que_que",
+    "ca_tuan_loc",
+    "ca_cay_thong",
+    "ca_chuong_noel",
+    "ca_ong_gia_noel"
+  ],
+  "notes": "Major event - 7 fish total. ca_nguoi_tuyet on cooldown from 2024."
+}

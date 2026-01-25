@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "spring",
+  "exclusive_fish": {
+    "key": "ca_meo_than_tai",
+    "name": "Cá Mèo Thần Tài",
+    "emoji": "<:ca_meo_than_tai:1300000000000001008>",
+    "tier": "epic",
+    "drop_rate": 0.03,
+    "currency_reward": {"min": 80, "max": 150},
+    "description": "Năm Mèo mang đến vận may, chỉ xuất hiện Tết 2026"
+  },
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_spring_2026",
+      "name": "Khung Xuân 2026",
+      "asset": "assets/frames/frame_spring_2026.png"
+    },
+    "background": {
+      "key": "bg_spring_2026", 
+      "name": "Nền Xuân 2026",
+      "asset": "assets/profile/bg_spring_2026.png"
+    },
+    "title": {
+      "key": "title_spring_master_2026",
+      "name": "Vua Câu Tết 2026"
+    }
+  },
+  "selected_rotating_fish": [
+    "ca_mai_vang",
+    "ca_bao_li_xi",
+    "ca_rong_vang",
+    "ca_than_tai",
+    "ca_phao_hoa",
+    "ca_ong_do"
+  ],
+  "notes": "Major event - 7 fish total (3c/3r/1e). ca_dao_hong on cooldown from 2024."
+}

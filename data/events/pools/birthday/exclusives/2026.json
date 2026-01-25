@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../exclusive_schema.json",
+  "year": 2026,
+  "event_type": "birthday",
+  "exclusive_fish": null,
+  "exclusive_cosmetics": {
+    "frame": {
+      "key": "frame_birthday_2026",
+      "name": "Khung Sinh Nhật 2026",
+      "asset": "assets/frames/frame_birthday_2026.png"
+    },
+    "background": {
+      "key": "bg_birthday_2026",
+      "name": "Nền Sinh Nhật 2026",
+      "asset": "assets/profile/bg_birthday_2026.png"
+    },
+    "title": {
+      "key": "title_birthday_og_2026",
+      "name": "OG Fan 2026"
+    }
+  },
+  "selected_rotating_fish": [],
+  "special_theme": {
+    "year_count": 2,
+    "milestone": "2 Năm Mèo Lùn!",
+    "special_currency_multiplier": 2.0
+  },
+  "notes": "Birthday event has NO fish. Focus on cosmetics, titles, and loyalty rewards."
+}
