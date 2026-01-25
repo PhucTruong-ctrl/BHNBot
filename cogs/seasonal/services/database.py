@@ -50,12 +50,13 @@ CREATE TABLE IF NOT EXISTS event_quest_progress (
 );
 
 CREATE TABLE IF NOT EXISTS event_fish_collection (
+    guild_id BIGINT,
     user_id BIGINT,
-    fish_key TEXT,
     event_id TEXT,
+    fish_key TEXT,
     quantity INTEGER DEFAULT 1,
-    first_caught_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, fish_key)
+    caught_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (guild_id, user_id, event_id, fish_key)
 );
 
 CREATE TABLE IF NOT EXISTS user_titles (
@@ -110,6 +111,8 @@ CREATE TABLE IF NOT EXISTS event_shop_purchases (
     event_id TEXT,
     item_key TEXT,
     quantity INTEGER DEFAULT 0,
+    price_paid INTEGER DEFAULT 0,
+    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (guild_id, user_id, event_id, item_key)
 );
 
@@ -263,6 +266,13 @@ async def init_seasonal_tables() -> None:
         "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS completed INTEGER DEFAULT 0",
         "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS claimed INTEGER DEFAULT 0",
         "ALTER TABLE event_quests ADD COLUMN IF NOT EXISTS assigned_date TEXT",
+        # Fix event_fish_collection: add missing columns
+        "ALTER TABLE event_fish_collection ADD COLUMN IF NOT EXISTS guild_id BIGINT",
+        "ALTER TABLE event_fish_collection ADD COLUMN IF NOT EXISTS event_id TEXT",
+        "ALTER TABLE event_fish_collection ADD COLUMN IF NOT EXISTS caught_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        # Fix event_shop_purchases: add missing columns  
+        "ALTER TABLE event_shop_purchases ADD COLUMN IF NOT EXISTS price_paid INTEGER DEFAULT 0",
+        "ALTER TABLE event_shop_purchases ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
     ]
     for migration in migrations:
         try:

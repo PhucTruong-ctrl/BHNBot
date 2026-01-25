@@ -234,6 +234,11 @@ async def purchase_item(
         """
         INSERT INTO event_shop_purchases (guild_id, user_id, event_id, item_key, quantity, price_paid, purchased_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (guild_id, user_id, event_id, item_key)
+        DO UPDATE SET 
+            quantity = event_shop_purchases.quantity + EXCLUDED.quantity,
+            price_paid = event_shop_purchases.price_paid + EXCLUDED.price_paid,
+            purchased_at = EXCLUDED.purchased_at
         """,
         (guild_id, user_id, event_id, item_key, quantity, total_cost, datetime.utcnow()),
     )

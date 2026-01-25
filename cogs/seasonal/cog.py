@@ -771,12 +771,14 @@ class SeasonalEventsCog(commands.Cog):
 
         target_user = user or interaction.user
 
-        # Add fish directly to collection
+        # Add fish directly to collection (use ON CONFLICT for idempotent upsert)
         for _ in range(quantity):
             await execute_query(
                 """
                 INSERT INTO event_fish_collection (guild_id, user_id, event_id, fish_key, caught_at)
                 VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (guild_id, user_id, event_id, fish_key) 
+                DO UPDATE SET quantity = event_fish_collection.quantity + 1
                 """,
                 (interaction.guild.id, target_user.id, active["event_id"], fish_key),
             )

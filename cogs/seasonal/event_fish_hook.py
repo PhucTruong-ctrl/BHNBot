@@ -127,6 +127,8 @@ async def _add_to_collection(
         """
         INSERT INTO event_fish_collection (guild_id, user_id, event_id, fish_key, caught_at)
         VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (guild_id, user_id, event_id, fish_key) 
+        DO UPDATE SET quantity = event_fish_collection.quantity + 1
         """,
         (guild_id, user_id, event_id, fish_key),
     )
