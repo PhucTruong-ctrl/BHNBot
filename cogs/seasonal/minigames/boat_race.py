@@ -317,6 +317,13 @@ class BoatRaceMinigame(BaseMinigame):
 
         return embed
 
+    async def _get_user_streak(self, guild_id: int, user_id: int) -> int:
+        rows = await execute_query(
+            "SELECT current_streak FROM boat_race_streaks WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        return rows[0]["current_streak"] if rows else 0
+
     async def _finish_race(self, message_id: int, positions: dict) -> None:
         data = self._active_races.get(message_id)
         if not data:
@@ -347,30 +354,45 @@ class BoatRaceMinigame(BaseMinigame):
             color=event.color if event else 0x00CED1,
         )
 
-        top_3_users: dict[int, list[int]] = {0: [], 1: [], 2: []}
+        top_3_users: dict[int, list[tuple[int, int, int]]] = {0: [], 1: [], 2: []}
         other_users: list[tuple[int, int]] = []
+        streak_announcements: list[str] = []
         
         for user_id, boat_id in data["participants"].items():
             rank = next((i for i, (bid, _) in enumerate(sorted_results) if bid == boat_id), -1)
-            reward = rewards.get(rank, participation_reward)
+            base_reward = rewards.get(rank, participation_reward)
+            
+            current_streak = await self._get_user_streak(data["guild_id"], user_id)
+            won = (boat_id == winner_id)
+            
+            streak_bonus = 0
+            if won and current_streak >= 2:
+                streak_bonus = min(current_streak * 5, 50)
+                bonus_amount = int(base_reward * streak_bonus / 100)
+                streak_announcements.append(f"🔥 <@{user_id}> streak **{current_streak + 1}** → +{streak_bonus}% bonus!")
+            else:
+                bonus_amount = 0
+            
+            final_reward = base_reward + bonus_amount
 
-            await add_currency(data["guild_id"], user_id, data["event_id"], reward)
-            await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
-            await self._update_user_streak(data["guild_id"], user_id, boat_id == winner_id)
+            await add_currency(data["guild_id"], user_id, data["event_id"], final_reward)
+            await add_contribution(data["guild_id"], user_id, data["event_id"], final_reward)
+            await self._update_user_streak(data["guild_id"], user_id, won)
 
             if rank in top_3_users:
-                top_3_users[rank].append(user_id)
+                top_3_users[rank].append((user_id, final_reward, streak_bonus))
             else:
-                other_users.append((user_id, reward))
+                other_users.append((user_id, final_reward))
 
         winner_lines = []
         for rank, users in top_3_users.items():
             if users:
-                reward = rewards[rank]
-                mentions = " ".join([f"<@{uid}>" for uid in users[:5]])
+                reward_base = rewards[rank]
+                for user_id, final_reward, streak_bonus in users[:5]:
+                    bonus_text = f" (+{streak_bonus}%🔥)" if streak_bonus > 0 else ""
+                    winner_lines.append(f"{medals[rank]} <@{user_id}> → **+{final_reward}** {emoji}{bonus_text}")
                 if len(users) > 5:
-                    mentions += f" (+{len(users) - 5} người khác)"
-                winner_lines.append(f"{medals[rank]} {mentions} → **+{reward}** {emoji}")
+                    winner_lines.append(f"  (+{len(users) - 5} người khác)")
         
         if winner_lines:
             embed.add_field(
@@ -389,9 +411,16 @@ class BoatRaceMinigame(BaseMinigame):
 
         embed.add_field(
             name="💰 Bảng phần thưởng",
-            value=f"🥇 +100 {emoji} │ 🥈 +50 {emoji} │ 🥉 +25 {emoji} │ 🎖️ +10 {emoji}",
+            value=f"🥇 +100 {emoji} │ 🥈 +50 {emoji} │ 🥉 +25 {emoji} │ 🎖️ +10 {emoji}\n🔥 Streak 3+ → bonus lên đến 50%!",
             inline=False,
         )
+        
+        if streak_announcements:
+            embed.add_field(
+                name="🔥 Streak Bonus",
+                value="\n".join(streak_announcements[:3]),
+                inline=False,
+            )
         
         total_rewards = sum(rewards.get(next((i for i, (bid, _) in enumerate(sorted_results) if bid == bid_p), -1), participation_reward) for _, bid_p in data["participants"].items())
         logger.info(f"[BOAT_RACE] Race completed in guild {data['guild_id']}, {len(data['participants'])} participants, {total_rewards} total rewards distributed")

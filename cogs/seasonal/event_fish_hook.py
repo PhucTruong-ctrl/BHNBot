@@ -16,20 +16,20 @@ from .services import (
     update_quest_progress,
 )
 from .services.community_goal_service import add_community_contribution, distribute_milestone_rewards
-from .services.database import execute_write
+from .services.database import execute_write, execute_query
 from .core.event_manager import EventManager
 
 if TYPE_CHECKING:
     from .core.event_types import EventFishConfig
+    import discord
 
 
 @dataclass
 class EventFishCatch:
-    """Result of catching an event fish."""
-
     fish: EventFishConfig
     currency_earned: int
     is_new_collection: bool
+    remaining_uncaught: int = 0
 
 
 async def try_catch_event_fish(
@@ -78,6 +78,10 @@ async def try_catch_event_fish(
 
     existing = await _check_collection(guild_id, user_id, active["event_id"], chosen.key)
     is_new = not existing
+    
+    remaining = 0
+    if chosen.tier == "epic" and is_new:
+        remaining = await _count_users_without_fish(guild_id, active["event_id"], chosen.key)
 
     await _add_to_collection(guild_id, user_id, active["event_id"], chosen.key)
     await update_quest_progress(guild_id, user_id, active["event_id"], "catch_event_fish", 1)
@@ -100,6 +104,7 @@ async def try_catch_event_fish(
         fish=chosen,
         currency_earned=currency_reward,
         is_new_collection=is_new,
+        remaining_uncaught=remaining,
     )
 
 
@@ -131,6 +136,54 @@ async def _add_to_collection(
         """,
         (guild_id, user_id, event_id, fish_key),
     )
+
+
+async def _count_users_without_fish(guild_id: int, event_id: str, fish_key: str) -> int:
+    rows = await execute_query(
+        """
+        SELECT COUNT(DISTINCT ep.user_id) as total
+        FROM event_participation ep
+        WHERE ep.guild_id = $1 AND ep.event_id = $2
+        AND NOT EXISTS (
+            SELECT 1 FROM event_fish_collection efc
+            WHERE efc.guild_id = ep.guild_id 
+            AND efc.user_id = ep.user_id 
+            AND efc.event_id = ep.event_id
+            AND efc.fish_key = $3
+        )
+        """,
+        (guild_id, event_id, fish_key),
+    )
+    return rows[0]["total"] if rows else 0
+
+
+async def announce_epic_catch(
+    channel: discord.TextChannel,
+    user: discord.Member,
+    catch: EventFishCatch,
+    event_name: str,
+) -> None:
+    if catch.fish.tier != "epic":
+        return
+    
+    import discord as discord_lib
+    
+    embed = discord_lib.Embed(
+        title="🎣✨ CÁ EPIC ĐÃ XUẤT HIỆN!",
+        description=f"**{user.display_name}** vừa bắt được **{catch.fish.name}** {catch.fish.emoji}!",
+        color=0xFFD700,
+    )
+    
+    if catch.is_new_collection:
+        embed.add_field(
+            name="🆕 Lần đầu bắt được!",
+            value=f"Còn **{catch.remaining_uncaught}** người chưa có con cá này!",
+            inline=False,
+        )
+    
+    embed.set_footer(text=f"Sự kiện {event_name}")
+    
+    await channel.send(embed=embed)
 
 
 async def get_event_fish_for_display(

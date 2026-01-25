@@ -17,6 +17,7 @@ from .event_service import (
 from .participation_service import (
     add_contribution,
     add_currency,
+    claim_daily_checkin,
     ensure_participation,
     get_currency,
     get_leaderboard,
@@ -83,6 +84,7 @@ __all__ = [
     "add_contribution",
     "add_currency",
     "add_milestone_reached",
+    "claim_daily_checkin",
     "claim_quest_reward",
     "clear_active_title",
     "distribute_milestone_rewards",

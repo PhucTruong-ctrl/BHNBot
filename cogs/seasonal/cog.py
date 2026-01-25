@@ -14,6 +14,7 @@ from .core.event_manager import get_event_manager
 from .minigames import get_minigame
 from .services import (
     add_currency,
+    claim_daily_checkin,
     claim_quest_reward,
     distribute_milestone_rewards,
     end_event,
@@ -312,6 +313,45 @@ class SeasonalEventsCog(commands.Cog):
         embed = create_leaderboard_embed(event, leaderboard, self.bot)
         await interaction.response.send_message(embed=embed)
 
+    @sukien_group.command(name="diemdanh", description="Điểm danh nhận thưởng hàng ngày")
+    async def sukien_checkin(self, interaction: discord.Interaction) -> None:
+        if not interaction.guild:
+            await interaction.response.send_message("Lệnh này chỉ dùng trong server!", ephemeral=True)
+            return
+
+        active = await get_active_event(interaction.guild.id)
+        if not active:
+            await interaction.response.send_message("❌ Hiện không có sự kiện nào đang diễn ra!", ephemeral=True)
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        if not event:
+            await interaction.response.send_message("❌ Không tìm thấy cấu hình sự kiện!", ephemeral=True)
+            return
+
+        success, bonus, streak = await claim_daily_checkin(
+            interaction.guild.id, interaction.user.id, active["event_id"]
+        )
+
+        if not success:
+            await interaction.response.send_message(
+                f"⏰ Bạn đã điểm danh hôm nay rồi! Quay lại ngày mai nhé.\n🔥 Streak hiện tại: **{streak}** ngày",
+                ephemeral=True,
+            )
+            return
+
+        streak_text = ""
+        if streak >= 3:
+            streak_text = f"\n🔥 **Streak {streak} ngày** → bonus thêm **+{min((streak - 1) * 5, 35)}**!"
+
+        embed = discord.Embed(
+            title="✅ Điểm Danh Thành Công!",
+            description=f"Bạn nhận được **+{bonus}** {event.currency_emoji}!{streak_text}",
+            color=0x00FF00,
+        )
+        embed.set_footer(text=f"Streak: {streak} ngày | Quay lại ngày mai!")
+        await interaction.response.send_message(embed=embed)
+
     @sukien_group.command(name="cuahang", description="Cửa hàng sự kiện")
     async def sukien_shop(self, interaction: discord.Interaction) -> None:
         if not interaction.guild:
@@ -440,8 +480,35 @@ class SeasonalEventsCog(commands.Cog):
                 fish_lines.append(f"{status} {emoji} **{name}** {rarity} x{count}")
 
             embed.description = "\n".join(fish_lines)
-            collected = len([f for f in all_fish if caught_fish.get(f.key, 0) > 0])
-            embed.set_footer(text=f"Tiến độ: {collected}/{len(all_fish)} loại cá")
+            
+            common = [f for f in all_fish if f.tier == "common"]
+            rare = [f for f in all_fish if f.tier == "rare"]
+            epic = [f for f in all_fish if f.tier == "epic"]
+            
+            common_caught = len([f for f in common if caught_fish.get(f.key, 0) > 0])
+            rare_caught = len([f for f in rare if caught_fish.get(f.key, 0) > 0])
+            epic_caught = len([f for f in epic if caught_fish.get(f.key, 0) > 0])
+            
+            progress_parts = []
+            if common:
+                progress_parts.append(f"🟢 {common_caught}/{len(common)}")
+            if rare:
+                progress_parts.append(f"🟡 {rare_caught}/{len(rare)}")
+            if epic:
+                progress_parts.append(f"🔴 {epic_caught}/{len(epic)}")
+            
+            collected = common_caught + rare_caught + epic_caught
+            total = len(common) + len(rare) + len(epic)
+            completion_pct = int((collected / total) * 100) if total > 0 else 0
+            
+            progress_bar = "█" * (completion_pct // 10) + "░" * (10 - completion_pct // 10)
+            
+            embed.add_field(
+                name="📊 Tiến độ bộ sưu tập",
+                value=f"{progress_bar} **{completion_pct}%**\n" + " │ ".join(progress_parts),
+                inline=False,
+            )
+            embed.set_footer(text=f"Đã sưu tập: {collected}/{total} loại cá")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

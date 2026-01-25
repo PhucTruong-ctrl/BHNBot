@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from core.logging import get_logger
 from typing import TYPE_CHECKING
 
@@ -140,3 +141,50 @@ async def add_milestone_reached(guild_id: int, event_id: str, percentage: int) -
         """,
         (guild_id, event_id, percentage),
     )
+
+
+DAILY_CHECKIN_BONUS = 20
+
+
+async def claim_daily_checkin(guild_id: int, user_id: int, event_id: str) -> tuple[bool, int, int]:
+    today = date.today()
+    
+    rows = await execute_query(
+        """
+        SELECT last_checkin_date, checkin_streak 
+        FROM event_participation 
+        WHERE guild_id = $1 AND user_id = $2 AND event_id = $3
+        """,
+        (guild_id, user_id, event_id),
+    )
+    
+    if not rows:
+        await ensure_participation(guild_id, user_id, event_id)
+        last_checkin = None
+        streak = 0
+    else:
+        last_checkin = rows[0].get("last_checkin_date")
+        streak = rows[0].get("checkin_streak") or 0
+    
+    if last_checkin and last_checkin == today:
+        return False, 0, streak
+    
+    yesterday = date.fromordinal(today.toordinal() - 1)
+    if last_checkin == yesterday:
+        new_streak = streak + 1
+    else:
+        new_streak = 1
+    
+    streak_bonus = min((new_streak - 1) * 5, 35)
+    total_bonus = DAILY_CHECKIN_BONUS + streak_bonus
+    
+    await execute_write(
+        """
+        UPDATE event_participation 
+        SET currency = currency + $1, last_checkin_date = $2, checkin_streak = $3
+        WHERE guild_id = $4 AND user_id = $5 AND event_id = $6
+        """,
+        (total_bonus, today, new_streak, guild_id, user_id, event_id),
+    )
+    
+    return True, total_bonus, new_streak

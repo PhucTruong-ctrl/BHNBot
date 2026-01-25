@@ -288,6 +288,9 @@ async def init_seasonal_tables() -> None:
         # Fix event_shop_purchases: add missing columns  
         "ALTER TABLE event_shop_purchases ADD COLUMN IF NOT EXISTS price_paid INTEGER DEFAULT 0",
         "ALTER TABLE event_shop_purchases ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        # Daily check-in columns
+        "ALTER TABLE event_participation ADD COLUMN IF NOT EXISTS last_checkin_date DATE",
+        "ALTER TABLE event_participation ADD COLUMN IF NOT EXISTS checkin_streak INTEGER DEFAULT 0",
     ]
     for migration in migrations:
         try:
