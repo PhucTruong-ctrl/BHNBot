@@ -37,7 +37,7 @@ class TournamentManager:
                 
             count = 0
             for (t_id,) in active_tourneys:
-                entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = ?", (t_id,))
+                entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = $1", (t_id,))
                 for (uid,) in entries:
                     self.active_participants[uid] = t_id
                     count += 1
@@ -51,7 +51,7 @@ class TournamentManager:
         try:
             # Check if host already has active/pending tournament
             existing = await db_manager.fetchone(
-                "SELECT id FROM vip_tournaments WHERE host_id = ? AND status IN ('pending', 'active')",
+                "SELECT id FROM vip_tournaments WHERE host_id = $1 AND status IN ('pending', 'active')",
                 (host_id,)
             )
             if existing:
@@ -68,24 +68,24 @@ class TournamentManager:
                 # 1. Deduct seed from host
                 # We reuse logic from market/others, or raw SQL.
                 # Assuming host must buy-in.
-                current_bal = (await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (host_id,)))['seeds']
+                current_bal = (await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (host_id,)))['seeds']
                 if current_bal < entry_fee:
                     return -1 # Insufficient funds
                 
-                await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (entry_fee, host_id))
-                await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, 'tournament_create', 'fishing', CURRENT_TIMESTAMP)", (host_id, -entry_fee))
+                await conn.execute("UPDATE users SET seeds = seeds - $1 WHERE user_id = $2", (entry_fee, host_id))
+                await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_create', 'fishing', CURRENT_TIMESTAMP)", (host_id, -entry_fee))
 
                 # 2. Create Tournament
                 # POSTGRES COMPATIBILITY: Use RETURNING id
                 row = await conn.fetchrow(
-                    "INSERT INTO vip_tournaments (host_id, entry_fee, prize_pool, status, channel_id) VALUES (?, ?, ?, 'pending', ?) RETURNING id",
+                    "INSERT INTO vip_tournaments (host_id, entry_fee, prize_pool, status, channel_id) VALUES ($1, $2, $3, 'pending', $4) RETURNING id",
                     (host_id, entry_fee, entry_fee, channel_id)
                 )
                 tournament_id = row['id']
                 
                 # 3. Add Host Entry
                 await conn.execute(
-                    "INSERT INTO tournament_entries (tournament_id, user_id) VALUES (?, ?)",
+                    "INSERT INTO tournament_entries (tournament_id, user_id) VALUES ($1, $2)",
                     (tournament_id, host_id)
                 )
                 
@@ -99,7 +99,7 @@ class TournamentManager:
         """User joins a pending tournament."""
         try:
             # 1. Fetch Entry Fee & Status
-            tourney = await db_manager.fetchrow("SELECT status, entry_fee FROM vip_tournaments WHERE id = ?", (tournament_id,))
+            tourney = await db_manager.fetchrow("SELECT status, entry_fee FROM vip_tournaments WHERE id = $1", (tournament_id,))
             if not tourney or tourney['status'] != 'pending':
                 return False, "Giải đấu không tồn tại hoặc đã bị khóa."
 
@@ -107,24 +107,24 @@ class TournamentManager:
 
             async with db_manager.transaction() as conn:
                  # 2. Check Exists
-                 check = await conn.fetchrow("SELECT 1 FROM tournament_entries WHERE tournament_id = ? AND user_id = ?", (tournament_id, user_id))
+                 check = await conn.fetchrow("SELECT 1 FROM tournament_entries WHERE tournament_id = $1 AND user_id = $2", (tournament_id, user_id))
                  if check:
                      return False, "Bạn đã tham gia giải này rồi."
 
                  # 3. Check Balance
-                 bal = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+                 bal = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
                  if not bal or bal['seeds'] < entry_fee:
                      return False, f"Không đủ Hạt (Cần {entry_fee:,} Hạt)."
 
                  # 4. Deduct Fee
-                 await conn.execute("UPDATE users SET seeds = seeds - ? WHERE user_id = ?", (entry_fee, user_id))
-                 await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, 'tournament_join', 'fishing', CURRENT_TIMESTAMP)", (user_id, -entry_fee))
+                 await conn.execute("UPDATE users SET seeds = seeds - $1 WHERE user_id = $2", (entry_fee, user_id))
+                 await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_join', 'fishing', CURRENT_TIMESTAMP)", (user_id, -entry_fee))
 
                  # 5. Add Entry
-                 await conn.execute("INSERT INTO tournament_entries (tournament_id, user_id) VALUES (?, ?)", (tournament_id, user_id))
+                 await conn.execute("INSERT INTO tournament_entries (tournament_id, user_id) VALUES ($1, $2)", (tournament_id, user_id))
 
                  # 6. Update Prize Pool
-                 await conn.execute("UPDATE vip_tournaments SET prize_pool = prize_pool + ? WHERE id = ?", (entry_fee, tournament_id))
+                 await conn.execute("UPDATE vip_tournaments SET prize_pool = prize_pool + $1 WHERE id = $2", (entry_fee, tournament_id))
 
             # 7. Update Cache
             self.active_participants[user_id] = tournament_id
@@ -169,7 +169,7 @@ class TournamentManager:
         try:
             # Atomic Update
             await db_manager.execute(
-                "UPDATE tournament_entries SET score = score + ? WHERE tournament_id = ? AND user_id = ?",
+                "UPDATE tournament_entries SET score = score + $1 WHERE tournament_id = $2 AND user_id = $3",
                 (points, tournament_id, user_id)
             )
             logger.info(f"[TOURNAMENT] Updated score for {user_id}: +{points}")
@@ -180,8 +180,8 @@ class TournamentManager:
         """Refunds everyone and marks cancelled."""
         try:
             # Get all entries
-            entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = ?", (tournament_id,))
-            tourney = await db_manager.fetchrow("SELECT entry_fee, status FROM vip_tournaments WHERE id = ?", (tournament_id,))
+            entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = $1", (tournament_id,))
+            tourney = await db_manager.fetchrow("SELECT entry_fee, status FROM vip_tournaments WHERE id = $1", (tournament_id,))
             
             if not tourney or tourney['status'] != 'pending':
                 return
@@ -189,12 +189,12 @@ class TournamentManager:
             fee = tourney['entry_fee']
             
             async with db_manager.transaction() as conn:
-                await conn.execute("UPDATE vip_tournaments SET status = 'cancelled' WHERE id = ?", (tournament_id,))
+                await conn.execute("UPDATE vip_tournaments SET status = 'cancelled' WHERE id = $1", (tournament_id,))
                 
                 for row in entries:
                     uid = row[0]
-                    await conn.execute("UPDATE users SET seeds = seeds + ? WHERE user_id = ?", (fee, uid))
-                    await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, 'tournament_refund', 'fishing', CURRENT_TIMESTAMP)", (uid, fee))
+                    await conn.execute("UPDATE users SET seeds = seeds + $1 WHERE user_id = $2", (fee, uid))
+                    await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_refund', 'fishing', CURRENT_TIMESTAMP)", (uid, fee))
                     
             logger.info(f"[TOURNAMENT] Cancelled {tournament_id}. Refunded {len(entries)} users.")
             return True
@@ -206,7 +206,7 @@ class TournamentManager:
         """Starts the game."""
         try:
             # Check player count
-            count_data = await db_manager.fetchrow("SELECT COUNT(*) as c FROM tournament_entries WHERE tournament_id = ?", (tournament_id,))
+            count_data = await db_manager.fetchrow("SELECT COUNT(*) as c FROM tournament_entries WHERE tournament_id = $1", (tournament_id,))
             if count_data['c'] < 2:
                 return False # Need min 2 players
                 
@@ -218,12 +218,12 @@ class TournamentManager:
             end_str = end_time.strftime("%Y-%m-%d %H:%M:%S")
             
             await db_manager.execute(
-                "UPDATE vip_tournaments SET status = 'active', start_time = ?, end_time = ? WHERE id = ?",
+                "UPDATE vip_tournaments SET status = 'active', start_time = $1, end_time = $2 WHERE id = $3",
                 (start_str, end_str, tournament_id)
             )
             
             # Cache active players
-            entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = ?", (tournament_id,))
+            entries = await db_manager.fetchall("SELECT user_id FROM tournament_entries WHERE tournament_id = $1", (tournament_id,))
             for row in entries:
                 self.active_participants[row[0]] = tournament_id
                 
@@ -248,13 +248,13 @@ class TournamentManager:
     async def distribute_prizes(self, tournament_id: int):
         """Ends game and distributes prizes."""
         try:
-            tourney = await db_manager.fetchrow("SELECT status, prize_pool, channel_id FROM vip_tournaments WHERE id = ?", (tournament_id,))
+            tourney = await db_manager.fetchrow("SELECT status, prize_pool, channel_id FROM vip_tournaments WHERE id = $1", (tournament_id,))
             if not tourney or tourney['status'] != 'active':
                 return # Already ended?
 
             # Calculate Ranking (Score = Fish Value)
             ranks = await db_manager.fetchall(
-                "SELECT user_id, score FROM tournament_entries WHERE tournament_id = ? ORDER BY score DESC",
+                "SELECT user_id, score FROM tournament_entries WHERE tournament_id = $1 ORDER BY score DESC",
                 (tournament_id,)
             )
             
@@ -279,12 +279,12 @@ class TournamentManager:
                 payouts[ranks[2][0]] = int(pool * 0.1)
             
             async with db_manager.transaction() as conn:
-                await conn.execute("UPDATE vip_tournaments SET status = 'ended' WHERE id = ?", (tournament_id,))
+                await conn.execute("UPDATE vip_tournaments SET status = 'ended' WHERE id = $1", (tournament_id,))
                 
                 # Distribute
                 for uid, amount in payouts.items():
-                    await conn.execute("UPDATE users SET seeds = seeds + ? WHERE user_id = ?", (amount, uid))
-                    await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES (?, ?, 'tournament_win', 'fishing', CURRENT_TIMESTAMP)", (uid, amount))
+                    await conn.execute("UPDATE users SET seeds = seeds + $1 WHERE user_id = $2", (amount, uid))
+                    await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_win', 'fishing', CURRENT_TIMESTAMP)", (uid, amount))
                 
             # Clear Cache
             for uid, _ in ranks:
@@ -336,12 +336,12 @@ class TournamentManager:
         try:
             if conn:
                 await conn.execute(
-                    "UPDATE tournament_entries SET score = score + ? WHERE tournament_id = ? AND user_id = ?",
+                    "UPDATE tournament_entries SET score = score + $1 WHERE tournament_id = $2 AND user_id = $3",
                     (fish_value, tournament_id, user_id)
                 )
             else:
                 await db_manager.execute(
-                    "UPDATE tournament_entries SET score = score + ? WHERE tournament_id = ? AND user_id = ?",
+                    "UPDATE tournament_entries SET score = score + $1 WHERE tournament_id = $2 AND user_id = $3",
                     (fish_value, tournament_id, user_id)
                 )
         except Exception as e:
@@ -401,14 +401,14 @@ class TournamentManager:
             cutoff = (datetime.utcnow() - timedelta(minutes=self.registration_timeout_minutes)).strftime("%Y-%m-%d %H:%M:%S")
             
             pending = await db_manager.fetchall(
-                "SELECT id FROM vip_tournaments WHERE status = 'pending' AND created_at < ?",
+                "SELECT id FROM vip_tournaments WHERE status = 'pending' AND created_at < $1",
                 (cutoff,)
             )
             
             for row in pending:
                 t_id = row[0]
                 # Check player count
-                count_data = await db_manager.fetchrow("SELECT COUNT(*) as c FROM tournament_entries WHERE tournament_id = ?", (t_id,))
+                count_data = await db_manager.fetchrow("SELECT COUNT(*) as c FROM tournament_entries WHERE tournament_id = $1", (t_id,))
                 
                 if count_data['c'] < 2:
                     await self.cancel_tournament(t_id, reason="Not enough players (Timeout)")

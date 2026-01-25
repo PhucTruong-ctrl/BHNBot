@@ -91,7 +91,7 @@ async def tournament_rank_action(interaction: discord.Interaction):
         (tournament_id,)
     )
     
-    tourney = await db_manager.fetchrow("SELECT prize_pool, end_time FROM vip_tournaments WHERE id = ?", (tournament_id,))
+    tourney = await db_manager.fetchrow("SELECT prize_pool, end_time FROM vip_tournaments WHERE id = $1", (tournament_id,))
     
     embed = discord.Embed(title=f"🏆 BẢNG XẾP HẠNG (ID: {tournament_id})", color=discord.Color.blue())
     

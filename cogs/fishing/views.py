@@ -163,7 +163,7 @@ class TournamentLobbyView(discord.ui.View):
         
         # Get count
         count_data = await db_manager.fetchrow(
-            "SELECT COUNT(*) as c FROM tournament_entries WHERE tournament_id = ?",
+            "SELECT COUNT(*) as c FROM tournament_entries WHERE tournament_id = $1",
             (self.tournament_id,)
         )
         count = count_data['c']

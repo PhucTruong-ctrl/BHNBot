@@ -554,19 +554,18 @@ class AquariumCog(commands.Cog):
             return
             
         try:
-            # Check if this thread/channel is a house
-            # Note: This runs on every message. Performance?
-            # Optimization: Only check if channel is Thread?
             if isinstance(message.channel, discord.Thread):
                 owner_id = await HousingEngine.get_house_owner(message.channel.id)
                 if owner_id:
-                    # Debounce needed?
-                    # refresh_aquarium_dashboard handles "don't update if latest message is dashboard".
-                    # But it will send a new dashboard if the last message is USER message.
-                    # This means every user chat message triggers a bot dashboard send.
-                    # This might be spammy.
-                    # Logic: If user chats, we want dashboard to be visible at bottom.
-                    # Yes, that's the "Always-on Dashboard" concept.
+                    import time
+                    now = time.time()
+                    last_refresh = self.last_dashboard_refresh.get(message.channel.id, 0)
+                    
+                    if now - last_refresh < 30:
+                        return
+                    
+                    self.last_dashboard_refresh[message.channel.id] = now
+                    
                     from .utils import refresh_aquarium_dashboard
                     await refresh_aquarium_dashboard(owner_id, self.bot)
         except Exception as e:

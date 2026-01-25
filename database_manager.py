@@ -26,14 +26,14 @@ async def get_or_create_user(user_id: int, username: str) -> Optional[tuple]:
     """
     try:
         user = await db_manager.fetchone(
-            "SELECT user_id, username, seeds FROM users WHERE user_id = ?",
+            "SELECT user_id, username, seeds FROM users WHERE user_id = $1",
             (user_id)
         )
         
         if not user:
             logger.info(f"Creating new user: {username} ({user_id})")
             await db_manager.modify(
-                "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0)",
+                "INSERT INTO users (user_id, username, seeds) VALUES ($1, $2, 0)",
                 (user_id, username)
             )
             user = (user_id, username, 0)
@@ -59,7 +59,7 @@ async def batch_update_seeds(updates: Dict[int, int]):
     if not updates:
         return
 
-    sql = "UPDATE users SET seeds = seeds + ? WHERE user_id = ?"
+    sql = "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2"
     # Params must be (amount, user_id) to match query order
     params = [(amount, user_id) for user_id, amount in updates.items()]
     
@@ -78,7 +78,7 @@ async def get_tree_data(guild_id: int) -> Optional[tuple]:
         Optional[tuple]: A tuple containing (current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id), or None if not found.
     """
     result = await db_manager.fetchone(
-        "SELECT current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = ?",
+        "SELECT current_level, current_progress, total_contributed, season, tree_channel_id, tree_message_id FROM server_tree WHERE guild_id = $1",
         (guild_id),
     )
     return result
@@ -87,7 +87,7 @@ async def get_tree_data(guild_id: int) -> Optional[tuple]:
 async def update_tree_progress(guild_id: int, level: int, progress: int, total: int):
     """Update tree and invalidate cache"""
     await db_manager.modify(
-        "UPDATE server_tree SET current_level = ?, current_progress = ?, total_contributed = ? WHERE guild_id = ?",
+        "UPDATE server_tree SET current_level = $1, current_progress = $2, total_contributed = $3 WHERE guild_id = $4",
         (level, progress, total, guild_id)
     )
 
@@ -95,7 +95,7 @@ async def update_tree_progress(guild_id: int, level: int, progress: int, total: 
 async def get_top_contributors(guild_id: int, limit: int = 3) -> List[tuple]:
     """Get top tree contributors with caching"""
     result = await db_manager.fetchall(
-        "SELECT user_id, amount FROM tree_contributors WHERE guild_id = ? ORDER BY amount DESC LIMIT ?",
+        "SELECT user_id, amount FROM tree_contributors WHERE guild_id = $1 ORDER BY amount DESC LIMIT $2",
         (guild_id, limit),
     )
     return result
@@ -126,7 +126,7 @@ async def _remove_item_unsafe(user_id: int, item_id: str, quantity: int = 1) -> 
     logger.warning(f"[UNSAFE] _remove_item_unsafe called for {user_id} item={item_id}. This bypasses cache!")
     
     existing = await db_manager.fetchone(
-        "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+        "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
         (user_id, item_id)
     )
     
@@ -136,12 +136,12 @@ async def _remove_item_unsafe(user_id: int, item_id: str, quantity: int = 1) -> 
     new_quantity = existing[0] - quantity
     if new_quantity <= 0:
         await db_manager.modify(
-            "DELETE FROM inventory WHERE user_id = ? AND item_id = ?",
+            "DELETE FROM inventory WHERE user_id = $1 AND item_id = $2",
             (user_id, item_id)
         )
     else:
         await db_manager.modify(
-            "UPDATE inventory SET quantity = ? WHERE user_id = ? AND item_id = ?",
+            "UPDATE inventory SET quantity = $1 WHERE user_id = $2 AND item_id = $3",
             (new_quantity, user_id, item_id)
         )
     
@@ -181,8 +181,8 @@ async def get_server_config(guild_id: int, field: str) -> Optional[Any]:
         raise ValueError(f"Invalid config field: {field}. Allowed fields: {ALLOWED_CONFIG_FIELDS}")
         
     result = await db_manager.fetchone(
-        f"SELECT {field} FROM server_config WHERE guild_id = ?",
-        (guild_id),
+        f"SELECT {field} FROM server_config WHERE guild_id = $1",
+        (guild_id,),
     )
     return result[0] if result else None
 
@@ -202,7 +202,7 @@ async def set_server_config(guild_id: int, field: str, value: Any):
         raise ValueError(f"Invalid config field: {field}. Allowed fields: {ALLOWED_CONFIG_FIELDS}")
         
     await db_manager.modify(
-        f"INSERT INTO server_config (guild_id, {field}) VALUES (?, ?) ON CONFLICT (guild_id) DO UPDATE SET {field} = EXCLUDED.{field}",
+        f"INSERT INTO server_config (guild_id, {field}) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET {field} = EXCLUDED.{field}",
         (guild_id, value)
     )
 
@@ -217,7 +217,7 @@ async def get_rod_data(user_id: int) -> tuple[int, int]:
         tuple[int, int]: A tuple containing (rod_level, rod_durability). Defaults to (1, 30) if not found.
     """
     result = await db_manager.fetchone(
-        "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = ?",
+        "SELECT rod_level, rod_durability FROM fishing_profiles WHERE user_id = $1",
         (user_id),
     )
     return result if result else (1, 30) # Default level 1, 30 durability
@@ -240,13 +240,13 @@ async def get_or_create_user_new(user_id: int, username: str) -> Optional[tuple]
         Optional[tuple]: User data record or None.
     """
     user = await db_manager.fetchone(
-        "SELECT * FROM users WHERE user_id = ?",
+        "SELECT * FROM users WHERE user_id = $1",
         (user_id),
     )
     
     if not user:
         await db_manager.modify(
-            "INSERT INTO users (user_id, username, seeds) VALUES (?, ?, 0) ON CONFLICT (user_id) DO NOTHING",
+            "INSERT INTO users (user_id, username, seeds) VALUES ($1, $2, 0) ON CONFLICT (user_id) DO NOTHING",
             (user_id, username)
         )
     
@@ -256,7 +256,7 @@ async def get_or_create_user_new(user_id: int, username: str) -> Optional[tuple]
 async def get_user_seeds_new(user_id: int) -> int:
     """Get user seeds from new 'users' table"""
     result = await db_manager.fetchone(
-        "SELECT seeds FROM users WHERE user_id = ?",
+        "SELECT seeds FROM users WHERE user_id = $1",
         (user_id),
     )
     return result[0] if result else 0
@@ -265,7 +265,7 @@ async def get_user_seeds_new(user_id: int) -> int:
 async def add_seeds_new(user_id: int, amount: int):
     """Add seeds to user in new schema"""
     await db_manager.modify(
-        "UPDATE users SET seeds = seeds + ?, last_active = CURRENT_TIMESTAMP WHERE user_id = ?",
+        "UPDATE users SET seeds = seeds + $1, last_active = CURRENT_TIMESTAMP WHERE user_id = $2",
         (amount, user_id)
     )
 
@@ -273,7 +273,7 @@ async def add_seeds_new(user_id: int, amount: int):
 async def get_leaderboard_new(limit: int = 10) -> List[tuple]:
     """Get top players by seeds (new schema)"""
     result = await db_manager.fetchall(
-        "SELECT user_id, username, seeds FROM users ORDER BY seeds DESC LIMIT ?",
+        "SELECT user_id, username, seeds FROM users ORDER BY seeds DESC LIMIT $1",
         (limit),
     )
     return result
@@ -315,7 +315,7 @@ async def get_stat(user_id: int, game_id: str, stat_key: str, default: int = 0) 
         int: The statistic value.
     """
     result = await db_manager.fetchone(
-        "SELECT value FROM user_stats WHERE user_id = ? AND game_id = ? AND stat_key = ?",
+        "SELECT value FROM user_stats WHERE user_id = $1 AND game_id = $2 AND stat_key = $3",
         (user_id, game_id, stat_key),
     )
     return result[0] if result else default
@@ -333,12 +333,12 @@ async def get_all_stats(user_id: int, game_id: str = None) -> Dict[str, int]:
     """
     if game_id:
         result = await db_manager.fetchall(
-            "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = ?",
+            "SELECT stat_key, value FROM user_stats WHERE user_id = $1 AND game_id = $2",
             (user_id, game_id),
         )
     else:
         result = await db_manager.fetchall(
-            "SELECT stat_key, value FROM user_stats WHERE user_id = ?",
+            "SELECT stat_key, value FROM user_stats WHERE user_id = $1",
             (user_id,),
         )
     return {row[0]: row[1] for row in result} if result else {}
@@ -359,7 +359,7 @@ async def get_global_state(event_key: str, default: dict = None) -> dict:
     if default is None: default = {}
     
     result = await db_manager.fetchone(
-        "SELECT state_data FROM global_event_state WHERE event_key = ?",
+        "SELECT state_data FROM global_event_state WHERE event_key = $1",
         (event_key)
     )
     
@@ -382,7 +382,7 @@ async def set_global_state(event_key: str, state_data: dict):
     try:
         json_str = json.dumps(state_data)
         await db_manager.modify(
-            "INSERT INTO global_event_state (event_key, state_data, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (event_key) DO UPDATE SET state_data = EXCLUDED.state_data, updated_at = CURRENT_TIMESTAMP",
+            "INSERT INTO global_event_state (event_key, state_data, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (event_key) DO UPDATE SET state_data = EXCLUDED.state_data, updated_at = CURRENT_TIMESTAMP",
             (event_key, json_str)
         )
     except Exception as e:
@@ -421,7 +421,7 @@ async def get_fishing_profile(user_id: int) -> Optional[tuple]:
         Optional[tuple]: A tuple containing (rod_level, rod_durability, exp).
     """
     result = await db_manager.fetchone(
-        "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
+        "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = $1",
         (user_id),
     )
     
@@ -440,7 +440,7 @@ async def get_fishing_profile(user_id: int) -> Optional[tuple]:
         # If creation failed, might mean profile already exists (race condition)
         # Try fetching again
         result = await db_manager.fetchone(
-            "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
+            "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = $1",
             (user_id)
         )
         return result if result else (1, 30, 0)
@@ -463,7 +463,7 @@ async def update_fishing_profile(user_id: int, rod_level: int = None, rod_durabi
     
     if updates:
         params.append(user_id)
-        query = f"UPDATE fishing_profiles SET {', '.join(updates)} WHERE user_id = ?"
+        query = f"UPDATE fishing_profiles SET {', '.join(updates)} WHERE user_id = $1"
         await db_manager.modify(query, tuple(params))
 
 
@@ -478,18 +478,18 @@ async def add_fish(user_id: int, fish_id: str, quantity: int = 1):
         quantity (int): The number of fish to add. Defaults to 1.
     """
     existing = await db_manager.fetchone(
-        "SELECT quantity FROM fish_collection WHERE user_id = ? AND fish_id = ?",
+        "SELECT quantity FROM fish_collection WHERE user_id = $1 AND fish_id = $2",
         (user_id, fish_id)
     )
     
     if existing:
         await db_manager.modify(
-            "UPDATE fish_collection SET quantity = quantity + ? WHERE user_id = ? AND fish_id = ?",
+            "UPDATE fish_collection SET quantity = quantity + $1 WHERE user_id = $2 AND fish_id = $3",
             (quantity, user_id, fish_id)
         )
     else:
         await db_manager.modify(
-            "INSERT INTO fish_collection (user_id, fish_id, quantity) VALUES (?, ?, ?)",
+            "INSERT INTO fish_collection (user_id, fish_id, quantity) VALUES ($1, $2, $3)",
             (user_id, fish_id, quantity)
         )
     
@@ -505,7 +505,7 @@ async def get_fish_collection(user_id: int) -> Dict[str, int]:
         Dict[str, int]: A dictionary mapping fish_id to quantity caught.
     """
     result = await db_manager.fetchall(
-        "SELECT fish_id, quantity FROM fish_collection WHERE user_id = ? AND quantity > 0",
+        "SELECT fish_id, quantity FROM fish_collection WHERE user_id = $1 AND quantity > 0",
         (user_id),
     )
     return {row[0]: row[1] for row in result}
@@ -523,7 +523,7 @@ async def remove_fish(user_id: int, fish_id: str, quantity: int = 1) -> bool:
         bool: True if the operation was successful, False if the user has insufficient quantity.
     """
     existing = await db_manager.fetchone(
-        "SELECT quantity FROM fish_collection WHERE user_id = ? AND fish_id = ?",
+        "SELECT quantity FROM fish_collection WHERE user_id = $1 AND fish_id = $2",
         (user_id, fish_id)
     )
     
@@ -533,12 +533,12 @@ async def remove_fish(user_id: int, fish_id: str, quantity: int = 1) -> bool:
     new_quantity = existing[0] - quantity
     if new_quantity <= 0:
         await db_manager.modify(
-            "DELETE FROM fish_collection WHERE user_id = ? AND fish_id = ?",
+            "DELETE FROM fish_collection WHERE user_id = $1 AND fish_id = $2",
             (user_id, fish_id)
         )
     else:
         await db_manager.modify(
-            "UPDATE fish_collection SET quantity = ? WHERE user_id = ? AND fish_id = ?",
+            "UPDATE fish_collection SET quantity = $1 WHERE user_id = $2 AND fish_id = $3",
             (new_quantity, user_id, fish_id)
         )
     
@@ -556,7 +556,7 @@ async def get_fish_count(user_id: int, fish_id: str) -> int:
         int: 1 if the user has the fish, 0 otherwise.
     """
     result = await db_manager.fetchone(
-        "SELECT 1 FROM fish_collection WHERE user_id = ? AND fish_id = ?",
+        "SELECT 1 FROM fish_collection WHERE user_id = $1 AND fish_id = $2",
         (user_id, fish_id),
     )
     return 1 if result else 0
@@ -590,7 +590,7 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
     Args:
         user_id (int): The Discord user ID.
         item_id (str): The item identifier.
-        cost (int): The cost per unit (or total cost? Logic implies total cost deducted is `cost`? No, check logic. `UPDATE users SET seeds = seeds - ?` uses `cost`. So `cost` argument is TOTAL cost).
+        cost (int): The cost per unit (or total cost$1 Logic implies total cost deducted is `cost`$2 No, check logic. `UPDATE users SET seeds = seeds - $3` uses `cost`. So `cost` argument is TOTAL cost).
         quantity (int): Quantity to buy. Defaults to 1.
         item_category (str): Category (e.g., 'consumable'). Defaults to "consumable".
 
@@ -599,7 +599,7 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
     """
     try:
         async with db_manager.transaction() as conn:
-            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
             
             if not row:
                 return False, "User không tồn tại!"
@@ -608,14 +608,14 @@ async def buy_shop_item(user_id: int, item_id: str, cost: int, quantity: int = 1
                 return False, f"Không đủ tiền! Cần {cost}, hiện có {row[0]}"
             
             await conn.execute(
-                "UPDATE users SET seeds = seeds - ?, last_active = CURRENT_TIMESTAMP WHERE user_id = ?",
+                "UPDATE users SET seeds = seeds - $1, last_active = CURRENT_TIMESTAMP WHERE user_id = $2",
                 (cost, user_id)
             )
             
             await conn.execute("""
                 INSERT INTO inventory (user_id, item_id, item_type, quantity)
-                VALUES (?, ?, 'item', ?)
-                ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + ?
+                VALUES ($1, $2, 'item', $3)
+                ON CONFLICT(user_id, item_id) DO UPDATE SET quantity = quantity + $1
             """, (user_id, item_id, quantity, quantity))
             
         return True, "Mua thành công!"
@@ -652,13 +652,13 @@ async def upgrade_fishing_rod(user_id: int, upgrade_cost: int) -> tuple[bool, st
     """
     try:
         async with db_manager.transaction() as conn:
-            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
             
             if not row or row[0] < upgrade_cost:
                 return False, f"Không đủ tiền để nâng cấp! Cần {upgrade_cost}"
             
             await conn.execute(
-                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
                 (upgrade_cost, user_id)
             )
             
@@ -690,7 +690,7 @@ async def create_fishing_profile(user_id: int) -> bool:
     """
     try:
         existing = await db_manager.fetchone(
-            "SELECT user_id FROM fishing_profiles WHERE user_id = ?",
+            "SELECT user_id FROM fishing_profiles WHERE user_id = $1",
             (user_id,)
         )
         
@@ -698,7 +698,7 @@ async def create_fishing_profile(user_id: int) -> bool:
             return False  # Already exists
         
         await db_manager.modify(
-            "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability, exp) VALUES (?, 1, 30, 0)",
+            "INSERT INTO fishing_profiles (user_id, rod_level, rod_durability, exp) VALUES ($1, 1, 30, 0)",
             (user_id,)
         )
         
@@ -720,7 +720,7 @@ async def get_or_create_fishing_profile(user_id: int) -> Optional[tuple]:
     """
     # Try to get existing profile
     result = await db_manager.fetchone(
-        "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
+        "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = $1",
         (user_id),
     )
     
@@ -750,18 +750,18 @@ async def repair_fishing_rod(user_id: int, repair_cost: int) -> tuple[bool, str]
     """
     try:
         async with db_manager.transaction() as conn:
-            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+            row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
             
             if not row or row[0] < repair_cost:
                 return False, f"Không đủ tiền để sửa cần! Cần {repair_cost}"
             
             await conn.execute(
-                "UPDATE users SET seeds = seeds - ? WHERE user_id = ?",
+                "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
                 (repair_cost, user_id)
             )
             
             await conn.execute(
-                "UPDATE fishing_profiles SET rod_durability = 30 WHERE user_id = ?",
+                "UPDATE fishing_profiles SET rod_durability = 30 WHERE user_id = $1",
                 (user_id,)
             )
             
@@ -789,7 +789,7 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
         async with db_manager.transaction() as conn:
             for item_id, quantity in items.items():
                 row = await conn.fetchrow(
-                    "SELECT quantity FROM inventory WHERE user_id = ? AND item_id = ?",
+                    "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
                     (user_id, item_id)
                 )
                 
@@ -797,14 +797,14 @@ async def sell_items_atomic(user_id: int, items: Dict[str, int], total_money: in
                     raise ValueError(f"Không đủ số lượng cho {item_id}! Cần {quantity}, có {row[0] if row else 0}")
                 
                 await conn.execute(
-                    "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND item_id = ?",
+                    "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
                     (quantity, user_id, item_id)
                 )
             
-            await conn.execute("DELETE FROM inventory WHERE user_id = ? AND quantity <= 0", (user_id,))
+            await conn.execute("DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0", (user_id,))
             
             await conn.execute(
-                "UPDATE users SET seeds = seeds + ? WHERE user_id = ?",
+                "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
                 (total_money, user_id)
             )
             
@@ -824,7 +824,7 @@ async def save_user_buff(user_id: int, buff_type: str, duration_type: str, end_t
     await db_manager.modify(
         """INSERT INTO user_buffs 
            (user_id, buff_type, duration_type, end_time, remaining_count) 
-           VALUES (?, ?, ?, ?, ?)
+           VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (user_id, buff_type) 
            DO UPDATE SET duration_type = EXCLUDED.duration_type, end_time = EXCLUDED.end_time, remaining_count = EXCLUDED.remaining_count""",
         (user_id, buff_type, duration_type, end_time, remaining_count)
@@ -837,7 +837,7 @@ async def get_user_buffs(user_id: int) -> Dict[str, dict]:
         Dict: {buff_type: {data}}
     """
     results = await db_manager.fetchall(
-        "SELECT buff_type, duration_type, end_time, remaining_count FROM user_buffs WHERE user_id = ?",
+        "SELECT buff_type, duration_type, end_time, remaining_count FROM user_buffs WHERE user_id = $1",
         (user_id),
     )
     
@@ -865,7 +865,7 @@ async def get_user_buffs(user_id: int) -> Dict[str, dict]:
 async def remove_user_buff(user_id: int, buff_type: str):
     """Remove a specific buff."""
     await db_manager.modify(
-        "DELETE FROM user_buffs WHERE user_id = ? AND buff_type = ?",
+        "DELETE FROM user_buffs WHERE user_id = $1 AND buff_type = $2",
         (user_id, buff_type)
     )
 
@@ -880,7 +880,7 @@ async def get_collection(user_id: int) -> Dict[str, int]:
         Dict[str, int]: A dictionary of {stat_key: value}.
     """
     rows = await db_manager.fetchall(
-        "SELECT stat_key, value FROM user_stats WHERE user_id = ? AND game_id = 'fishing'",
+        "SELECT stat_key, value FROM user_stats WHERE user_id = $1 AND game_id = 'fishing'",
         (user_id),
     )
     
