@@ -68,9 +68,8 @@ async def try_catch_event_fish(
 
     await ensure_participation(guild_id, user_id, active["event_id"])
 
-    weights = [1.0 / (i + 1) for i, _ in enumerate(event.fish)]
-    total = sum(weights)
-    weights = [w / total for w in weights]
+    # Use actual drop_rate from fish config (not index-based weights)
+    weights = [f.drop_rate for f in event.fish]
 
     chosen = random.choices(event.fish, weights=weights, k=1)[0]
     currency_reward = chosen.currency_reward
