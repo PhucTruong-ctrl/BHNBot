@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from ..core.event_manager import EventManager
 
-logger = get_logger("seasonal_minigames_secret_sant")
+logger = get_logger("seasonal_minigames_secret_santa")
 
 
 class SecretSantaPhase(Enum):
@@ -212,9 +212,250 @@ class SecretSantaMinigame(BaseMinigame):
         )
         return rows[0]["count"] if rows else 0
 
+    async def run_pairing(self, channel: TextChannel, guild_id: int) -> bool:
+        """Execute circular pairing algorithm for all participants."""
+        active = await get_active_event(guild_id)
+        if not active:
+            return False
+
+        event = self.event_manager.get_event(active["event_id"])
+        config = self._get_config(event)
+        min_participants = config.get("min_participants", 4)
+
+        participants = await execute_query(
+            "SELECT user_id FROM secret_santa_participants WHERE guild_id = ? AND event_id = ?",
+            (guild_id, active["event_id"]),
+        )
+        if not participants or len(participants) < min_participants:
+            await channel.send(
+                f"❌ Không đủ người tham gia! Cần tối thiểu **{min_participants}** người."
+            )
+            return False
+
+        user_ids = [p["user_id"] for p in participants]
+        random.shuffle(user_ids)
+
+        for i, giver_id in enumerate(user_ids):
+            receiver_id = user_ids[(i + 1) % len(user_ids)]
+            await execute_write(
+                """
+                UPDATE secret_santa_participants
+                SET receiver_id = ?
+                WHERE guild_id = ? AND event_id = ? AND user_id = ?
+                """,
+                (receiver_id, guild_id, active["event_id"], giver_id),
+            )
+
+        await execute_write(
+            "UPDATE secret_santa_sessions SET phase = ? WHERE guild_id = ? AND event_id = ?",
+            (SecretSantaPhase.GIFTING.value, guild_id, active["event_id"]),
+        )
+
+        embed = discord.Embed(
+            title="🎅 GHÉP CẶP HOÀN TẤT!",
+            description=(
+                f"**{len(user_ids)}** người đã được ghép cặp ngẫu nhiên!\n\n"
+                "Sử dụng `/sukien secretsanta tangqua` để gửi lời chúc cho người bạn được ghép.\n\n"
+                "**Lưu ý:** Quà của bạn sẽ được tiết lộ vào cuối sự kiện!"
+            ),
+            color=event.color if event else 0xC41E3A,
+        )
+        embed.set_footer(text="Hãy gửi những lời chúc tốt đẹp nhất!")
+        await channel.send(embed=embed)
+
+        for giver_id in user_ids:
+            await self._notify_pairing(giver_id, guild_id, active["event_id"])
+
+        return True
+
+    async def _notify_pairing(self, giver_id: int, guild_id: int, event_id: str) -> None:
+        """Send DM to giver about their receiver."""
+        pairing = await execute_query(
+            "SELECT receiver_id FROM secret_santa_participants WHERE guild_id = ? AND event_id = ? AND user_id = ?",
+            (guild_id, event_id, giver_id),
+        )
+        if not pairing:
+            return
+
+        receiver_id = pairing[0]["receiver_id"]
+        try:
+            giver = self.bot.get_user(giver_id) or await self.bot.fetch_user(giver_id)
+            receiver = self.bot.get_user(receiver_id) or await self.bot.fetch_user(receiver_id)
+
+            embed = discord.Embed(
+                title="🎅 Bạn Đã Được Ghép Cặp!",
+                description=(
+                    f"Người bạn cần tặng quà là: **{receiver.display_name}**\n\n"
+                    "Sử dụng `/sukien secretsanta tangqua` để gửi lời chúc!\n"
+                    "Họ sẽ không biết ai đã gửi cho đến lễ tiết lộ."
+                ),
+                color=0xC41E3A,
+            )
+            embed.set_thumbnail(url=receiver.display_avatar.url)
+            await giver.send(embed=embed)
+        except (discord.Forbidden, discord.NotFound):
+            logger.warning(f"Cannot DM user {giver_id} about Secret Santa pairing")
+
+    async def reveal_ceremony(self, channel: TextChannel, guild_id: int) -> None:
+        """Reveal all Secret Santa pairings and gifts."""
+        active = await get_active_event(guild_id)
+        if not active:
+            return
+
+        event = self.event_manager.get_event(active["event_id"])
+        config = self._get_config(event)
+
+        await execute_write(
+            "UPDATE secret_santa_sessions SET phase = ? WHERE guild_id = ? AND event_id = ?",
+            (SecretSantaPhase.REVEAL.value, guild_id, active["event_id"]),
+        )
+
+        participants = await execute_query(
+            """
+            SELECT user_id, receiver_id, gift_message, gifted_at
+            FROM secret_santa_participants
+            WHERE guild_id = ? AND event_id = ?
+            """,
+            (guild_id, active["event_id"]),
+        )
+
+        if not participants:
+            await channel.send("❌ Không có dữ liệu Secret Santa!")
+            return
+
+        embed = discord.Embed(
+            title="🎄 LỄ TIẾT LỘ SECRET SANTA!",
+            description="Tất cả những người tặng quà sẽ được tiết lộ!",
+            color=event.color if event else 0xC41E3A,
+        )
+
+        reveals = []
+        gifted_count = 0
+        for p in participants:
+            giver = self.bot.get_user(p["user_id"])
+            receiver = self.bot.get_user(p["receiver_id"])
+            giver_name = giver.display_name if giver else f"User {p['user_id']}"
+            receiver_name = receiver.display_name if receiver else f"User {p['receiver_id']}"
+
+            gift_msg = p.get("gift_message") or "*(Chưa gửi lời chúc)*"
+            if p.get("gifted_at"):
+                gifted_count += 1
+                reveals.append(f"🎁 **{giver_name}** → **{receiver_name}**\n> {gift_msg}")
+            else:
+                reveals.append(f"😢 **{giver_name}** → **{receiver_name}**\n> *(Quên tặng quà)*")
+
+        reveal_text = "\n\n".join(reveals)
+        if len(reveal_text) > 4000:
+            reveal_text = reveal_text[:4000] + "\n\n*...và nhiều hơn nữa!*"
+
+        embed.add_field(name="🎅 Các Cặp", value=reveal_text or "Không có", inline=False)
+        embed.add_field(name="📊 Thống Kê", value=f"Đã gửi quà: **{gifted_count}/{len(participants)}**", inline=True)
+
+        bonus_reward = config.get("completion_bonus", 100)
+        emoji = event.currency_emoji if event else "❄️"
+
+        for p in participants:
+            if p.get("gifted_at"):
+                await add_currency(guild_id, p["user_id"], active["event_id"], bonus_reward)
+                await add_contribution(guild_id, p["user_id"], active["event_id"], bonus_reward)
+
+        embed.add_field(
+            name="🎁 Phần Thưởng",
+            value=f"Những ai đã gửi quà nhận thêm **+{bonus_reward}** {emoji}!",
+            inline=True,
+        )
+        embed.set_footer(text="Cảm ơn mọi người đã tham gia Secret Santa!")
+
+        await channel.send(embed=embed)
+        await update_community_progress(guild_id, gifted_count)
+
+    async def check_my_santa(self, interaction: Interaction) -> None:
+        """Check who will give you a gift (without revealing)."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ Chỉ dùng được trong server!", ephemeral=True)
+            return
+
+        guild_id = interaction.guild.id
+        user_id = interaction.user.id
+
+        active = await get_active_event(guild_id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện!", ephemeral=True)
+            return
+
+        session = await self._get_session(guild_id, active["event_id"])
+        if not session or session["phase"] == SecretSantaPhase.REGISTRATION.value:
+            await interaction.response.send_message("❌ Chưa ghép cặp!", ephemeral=True)
+            return
+
+        santa = await execute_query(
+            """
+            SELECT user_id, gift_message, gifted_at
+            FROM secret_santa_participants
+            WHERE guild_id = ? AND event_id = ? AND receiver_id = ?
+            """,
+            (guild_id, active["event_id"], user_id),
+        )
+
+        if not santa:
+            await interaction.response.send_message("❌ Bạn chưa tham gia!", ephemeral=True)
+            return
+
+        if santa[0].get("gifted_at"):
+            await interaction.response.send_message(
+                "🎁 Người bí ẩn đã gửi quà cho bạn! Chờ lễ tiết lộ nhé!",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                "⏳ Người bí ẩn chưa gửi quà. Hãy kiên nhẫn!",
+                ephemeral=True,
+            )
+
+    async def check_my_giftee(self, interaction: Interaction) -> None:
+        """Check who you need to give a gift to."""
+        if not interaction.guild:
+            await interaction.response.send_message("❌ Chỉ dùng được trong server!", ephemeral=True)
+            return
+
+        guild_id = interaction.guild.id
+        user_id = interaction.user.id
+
+        active = await get_active_event(guild_id)
+        if not active:
+            await interaction.response.send_message("❌ Không có sự kiện!", ephemeral=True)
+            return
+
+        pairing = await execute_query(
+            "SELECT receiver_id, gifted_at FROM secret_santa_participants WHERE guild_id = ? AND event_id = ? AND user_id = ?",
+            (guild_id, active["event_id"], user_id),
+        )
+
+        if not pairing or not pairing[0].get("receiver_id"):
+            await interaction.response.send_message("❌ Bạn chưa được ghép cặp!", ephemeral=True)
+            return
+
+        receiver_id = pairing[0]["receiver_id"]
+        receiver = self.bot.get_user(receiver_id)
+        receiver_name = receiver.display_name if receiver else f"User {receiver_id}"
+
+        if pairing[0].get("gifted_at"):
+            await interaction.response.send_message(
+                f"✅ Bạn đã gửi quà cho **{receiver_name}** rồi!",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"🎅 Bạn cần tặng quà cho: **{receiver_name}**\n"
+                "Sử dụng `/sukien secretsanta tangqua` để gửi lời chúc!",
+                ephemeral=True,
+            )
+
 
 class SecretSantaRegistrationView(discord.ui.View):
-    def __init__(self, minigame: SecretSantaMinigame, guild_id: int, event_id: str) -> None:
+    minigame: "SecretSantaMinigame"
+
+    def __init__(self, minigame: "SecretSantaMinigame", guild_id: int, event_id: str) -> None:
         super().__init__(timeout=None)
         self.minigame = minigame
         self.guild_id = guild_id
