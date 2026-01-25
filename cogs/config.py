@@ -42,7 +42,7 @@ class ApprovalView(discord.ui.View):
         try:
             user = await self.bot.fetch_user(self.suggester_id)
             await user.send(f"🎉 Từ **{self.word}** bạn đóng góp đã được duyệt!")
-        except Exception:
+        except discord.HTTPException:
             pass
 
     @discord.ui.button(label="Từ chối", style=discord.ButtonStyle.danger, emoji="✖️")

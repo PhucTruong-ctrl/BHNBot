@@ -684,7 +684,7 @@ class TreeManager:
                         f"Lỗi: {str(e)}",
                         ephemeral=True
                     )
-                except Exception:
+                except discord.HTTPException:
                     pass
                 raise  # Re-raise to ensure lock is released
     

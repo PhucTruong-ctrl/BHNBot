@@ -105,14 +105,14 @@ class Music(commands.Cog):
                             return
                     await old_message.delete()
                 except discord.NotFound:
-                    pass
-                except Exception:
-                    pass
+                    pass  # Message already deleted, expected
+                except Exception as e:
+                    logger.warning(f"Failed to update now playing message: {e}")
 
             new_message = await text_channel.send(embed=embed, view=view)
             self._now_playing_messages[guild_id] = new_message
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception(f"Error in update_now_playing: {e}")
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
@@ -130,7 +130,8 @@ class Music(commands.Cog):
     async def _get_spotify_track_info(self, track_id: str) -> Optional[str]:
         try:
             embed_url = f"https://open.spotify.com/embed/track/{track_id}"
-            async with aiohttp.ClientSession() as session:
+            session = getattr(self.bot, 'session', None) or aiohttp.ClientSession()
+            try:
                 async with session.get(embed_url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                     if resp.status == 200:
                         html = await resp.text()
@@ -138,22 +139,29 @@ class Music(commands.Cog):
                         if title_match:
                             title = title_match.group(1).replace(' | Spotify', '').strip()
                             return title
-        except Exception:
-            pass
+            finally:
+                if not getattr(self.bot, 'session', None):
+                    await session.close()
+        except Exception as e:
+            logger.debug(f"Failed to get Spotify track info for {track_id}: {e}")
         return None
 
     async def _get_spotify_playlist_tracks(self, playlist_id: str) -> list[str]:
         tracks = []
         try:
             embed_url = f"https://open.spotify.com/embed/playlist/{playlist_id}"
-            async with aiohttp.ClientSession() as session:
+            session = getattr(self.bot, 'session', None) or aiohttp.ClientSession()
+            try:
                 async with session.get(embed_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     if resp.status == 200:
                         html = await resp.text()
                         track_matches = re.findall(r'"name":"([^"]+)".*?"artists":\[{"name":"([^"]+)"', html)
                         for name, artist in track_matches[:50]:
                             tracks.append(f"{name} {artist}")
-        except Exception:
+            finally:
+                if not getattr(self.bot, 'session', None):
+                    await session.close()
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             pass
         return tracks
 

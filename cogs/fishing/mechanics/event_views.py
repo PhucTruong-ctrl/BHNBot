@@ -153,8 +153,8 @@ class GenericActionView(discord.ui.View):
                 await interaction.response.send_message(f"❌ Lỗi: {error}", ephemeral=True)
             else:
                 await interaction.followup.send(f"❌ Lỗi: {error}", ephemeral=True)
-        except Exception:
-            pass
+        except discord.HTTPException:
+            pass  # Interaction expired or already responded
     
     def _get_item_name(self, key):
         """Resolve item name from constants."""

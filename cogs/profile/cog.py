@@ -109,6 +109,7 @@ class ProfileCog(commands.Cog):
                 stats=stats,
                 bio=profile.bio,
                 achievement_emojis=achievement_emojis,
+                session=getattr(self.bot, 'session', None),
             )
 
             active_title = await _get_active_title(target.id)

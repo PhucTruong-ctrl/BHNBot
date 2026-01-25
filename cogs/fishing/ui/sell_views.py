@@ -396,8 +396,8 @@ class InteractiveSellEventView(discord.ui.View):
             try:
                 if hasattr(self.cog.bot, 'inventory'):
                     await self.cog.bot.inventory.invalidate(self.user_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[SELL] Failed to invalidate inventory cache for {self.user_id}: {e}")
 
             if final_value > 0:
                 await self.cog.global_event_manager.process_raid_contribution(self.user_id, final_value)
@@ -440,8 +440,8 @@ class InteractiveSellEventView(discord.ui.View):
                     item.disabled = True
                 await interaction.message.edit(view=self)
                 self.stop()
-            except Exception:
-                pass
+            except discord.HTTPException:
+                pass  # Interaction may have expired
                 
             logger.warning(f"[INTERACTIVE_SELL_FAIL] Transaction blocked: {ve}")
             self.completed = True
@@ -643,8 +643,8 @@ class InteractiveSellEventView(discord.ui.View):
             try:
                 if hasattr(self.cog.bot, 'inventory'):
                     await self.cog.bot.inventory.invalidate(self.user_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[SELL] Failed to invalidate inventory cache for {self.user_id}: {e}")
             
             event_key = self.event_data.get('key', 'unknown')
             await increment_stat(self.user_id, "fishing", f"{event_key}_timeout", 1)

@@ -5,6 +5,7 @@ import subprocess
 import signal
 import atexit
 import threading
+import aiohttp
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -157,6 +158,7 @@ bot.inventory = InventoryCache(bot.db) # Singleton Injection
 bot.achievement_manager = None # Will be set in setup_hooks
 bot.owner_id = int(os.getenv("OWNER_ID", "0"))  # Load from .env
 bot.cogs_loaded = False  # Flag to track if cogs are already loaded
+bot.session = None  # Shared aiohttp session - created in on_ready
 
 # Command error handler with timeout monitoring
 @bot.event
@@ -177,6 +179,14 @@ async def on_command_error(ctx, error):
 async def on_ready():
     logger.info(f'Login successfully as: {bot.user} (ID: {bot.user.id})')
     logger.info('------')
+    
+    # Create shared aiohttp session (one connection pool for all HTTP requests)
+    if bot.session is None:
+        bot.session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=30),
+            connector=aiohttp.TCPConnector(limit=20, limit_per_host=5)
+        )
+        logger.info("✓ Shared aiohttp session created")
     
     # [PHASE 1] Initialize Postgres ORM
     await init_tortoise()
@@ -407,3 +417,6 @@ if __name__ == '__main__':
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+    finally:
+        if bot.session and not bot.session.closed:
+            asyncio.run(bot.session.close())

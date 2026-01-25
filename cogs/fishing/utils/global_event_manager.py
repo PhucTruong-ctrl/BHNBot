@@ -981,8 +981,8 @@ class GlobalEventManager:
                         try:
                             old_msg = await ch.fetch_message(old_msg_id)
                             await old_msg.delete()
-                        except Exception:
-                            pass
+                        except discord.NotFound:
+                            pass  # Message already deleted
                     
                     # Send new message
                     new_msg = await ch.send(embed=embed)

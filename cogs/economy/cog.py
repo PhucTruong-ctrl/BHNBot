@@ -8,6 +8,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, time
+import time as time_module
 from typing import Optional
 from cogs.economy.services.economy_service import EconomyService
 from cogs.economy.repositories.economy_repository import EconomyRepository
@@ -28,10 +29,29 @@ class EconomyCog(commands.Cog):
         self.reaction_cooldowns = {}  # {user_id: last_reaction_reward_time}
         self.voice_reward_task.start()
         self.weekly_welfare_task.start()
+        self.cleanup_cooldowns_task.start()
     
     def cog_unload(self):
         self.voice_reward_task.cancel()
         self.weekly_welfare_task.cancel()
+        self.cleanup_cooldowns_task.cancel()
+    
+    @tasks.loop(minutes=5)
+    async def cleanup_cooldowns_task(self):
+        now = time_module.time()
+        cooldown_ttl = 300  # 5 minutes
+        
+        expired_chat = [k for k, v in self.chat_cooldowns.items() if now - v > cooldown_ttl]
+        for k in expired_chat:
+            del self.chat_cooldowns[k]
+        
+        expired_reaction = [k for k, v in self.reaction_cooldowns.items() if now - v > cooldown_ttl]
+        for k in expired_reaction:
+            del self.reaction_cooldowns[k]
+        
+        total_cleaned = len(expired_chat) + len(expired_reaction)
+        if total_cleaned > 0:
+            logger.debug(f"Cleaned {total_cleaned} expired cooldown entries")
     
     # ==================== COMMANDS ====================
     

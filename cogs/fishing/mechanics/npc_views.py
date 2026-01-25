@@ -377,8 +377,8 @@ class InteractiveNPCView(discord.ui.View):
         try:
              await increment_stat(self.user_id, "npc_affinity", self.npc_key, -1)
              logger.info(f"[NPC_AFFINITY] User {self.user_id} decreased affinity with {self.npc_key} (-1)")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[NPC_AFFINITY] Failed to decrease affinity for {self.user_id}/{self.npc_key}: {e}")
 
     def _roll_outcome(self, pool: List[Dict]) -> Dict:
         """Weighted random choice."""

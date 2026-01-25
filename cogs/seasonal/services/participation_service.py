@@ -41,8 +41,8 @@ async def add_currency(guild_id: int, user_id: int, event_id: str, amount: int) 
             if bonus_mul > 1.0:
                 amount = int(amount * bonus_mul)
                 logger.debug(f"[AQUARIUM] User {user_id} minigame_bonus x{bonus_mul:.2f} -> {amount}")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[PARTICIPATION] Failed to get bonus multiplier for {user_id}: {e}")
     
     await ensure_participation(guild_id, user_id, event_id)
     await execute_write(

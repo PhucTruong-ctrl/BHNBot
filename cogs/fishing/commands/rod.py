@@ -147,8 +147,8 @@ async def nangcap_action(ctx_or_interaction):
         try:
              if hasattr(bot, 'inventory'):
                  await bot.inventory.invalidate(user_id)
-        except Exception:
-             pass
+        except Exception as e:
+             logger.warning(f"[ROD] Failed to invalidate inventory cache for {user_id}: {e}")
 
         # Update stats
         await increment_stat(user_id, "fishing", "rod_upgrades", 1)
@@ -206,5 +206,5 @@ async def nangcap_action(ctx_or_interaction):
                 await reply(error_msg, ephemeral=True)
             else:
                 await reply(error_msg)
-        except Exception:
-            pass
+        except Exception as send_err:
+            logger.debug(f"[ROD] Failed to send error message to user {user_id}: {send_err}")

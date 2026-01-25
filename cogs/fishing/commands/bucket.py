@@ -476,8 +476,8 @@ async def use_phan_bon_action(cog, ctx_or_interaction):
                 if not tree_channel:
                     try:
                         tree_channel = await cog.bot.fetch_channel(tree_channel_id)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch tree channel {tree_channel_id}: {e}")
                 
                 if tree_channel:
                     await tree_channel.send(embed=embed)

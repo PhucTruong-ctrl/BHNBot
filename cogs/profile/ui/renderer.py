@@ -256,15 +256,20 @@ def _render_profile_sync(
     return output.getvalue()
 
 
-async def fetch_avatar(url: str) -> bytes:
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    return await resp.read()
-                return b""
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+async def fetch_avatar(url: str, session: Optional[aiohttp.ClientSession] = None) -> bytes:
+    own_session = session is None
+    if own_session:
+        session = aiohttp.ClientSession()
+    try:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                return await resp.read()
             return b""
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        return b""
+    finally:
+        if own_session:
+            await session.close()
 
 
 async def render_profile(
@@ -274,12 +279,13 @@ async def render_profile(
     stats: ProfileStats,
     bio: str,
     achievement_emojis: list[str],
+    session: Optional[aiohttp.ClientSession] = None,
 ) -> bytes:
     """
     Render profile card with premium design.
     Run strict IO/CPU intensive tasks in executor.
     """
-    avatar_bytes = await fetch_avatar(avatar_url)
+    avatar_bytes = await fetch_avatar(avatar_url, session)
     theme = get_theme(theme_key)
 
     loop = asyncio.get_event_loop()

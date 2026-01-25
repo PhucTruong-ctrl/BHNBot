@@ -87,7 +87,7 @@ class WerewolfManager:
                                 if inactive_hours > 1:
                                     should_delete = True
                                     reason = f"Inactive: {inactive_hours:.1f}h"
-                        except Exception:
+                        except discord.HTTPException:
                             pass
                     
                     # Delete if criteria met

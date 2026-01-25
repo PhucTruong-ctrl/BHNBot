@@ -37,8 +37,8 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                     await interaction.followup.send(f"❌ Có lỗi xảy ra: {error.original}", ephemeral=True)
                 else:
                     await interaction.response.send_message(f"❌ Có lỗi xảy ra: {error.original}", ephemeral=True)
-            except Exception:
-                pass
+            except discord.HTTPException:
+                pass  # Interaction expired
         else:
             logger.error(f"Unhandled command error: {error}", exc_info=error)
             try:
@@ -46,8 +46,8 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                     await interaction.followup.send("❌ Có lỗi xảy ra!", ephemeral=True)
                 else:
                     await interaction.response.send_message("❌ Có lỗi xảy ra!", ephemeral=True)
-            except Exception:
-                pass
+            except discord.HTTPException:
+                pass  # Interaction expired
 
     def cog_unload(self):
         self.check_giveaways_task.cancel()
@@ -550,8 +550,8 @@ class GiveawayCog(commands.Cog, name="Giveaway"):
                             import re
                             found_ids = re.findall(r"<@!?(\d+)>", desc)
                             current_winners = [int(uid) for uid in found_ids]
-                    except Exception:
-                        pass
+                    except (discord.HTTPException, ValueError):
+                        pass  # Message not found or invalid format
             
             # Filter
             eligible_users = [uid for uid in user_ids if uid not in current_winners]
