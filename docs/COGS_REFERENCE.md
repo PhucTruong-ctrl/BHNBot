@@ -1,8 +1,8 @@
 # BHNBot - Tài Liệu Tham Chiếu Cogs (Complete Technical Reference)
 
-**Last Updated**: January 22, 2026  
-**Total Cogs**: 31 | **Slash Commands**: 82 | **Prefix Commands**: ~40  
-**Command Groups**: /giaidau, /giveaway, /banthan, /masoi, /nha, /trangtri, /loadout, /playlist, /sukien, /danhhieu, /sukien-test, /tuoi
+**Last Updated**: January 25, 2026  
+**Total Cogs**: 31 | **Slash Commands**: 126 | **Prefix Commands**: ~40  
+**Command Groups**: /giaidau, /giveaway, /banthan, /masoi, /nha, /trangtri, /loadout, /playlist, /sukien, /danhhieu, /sukien_test, /sukien_admin, /tuoi, /config, /cog
 
 ## MỤC ĐÍCH TÀI LIỆU
 Tài liệu này được tạo ra để AI assistant có thể:
@@ -618,7 +618,8 @@ earned_count / total_guild_members * 100
 - **Economy**: 10,000+ users (good scalability)
 
 ### Migration Status
-- ⚠️ **DB Layer Inconsistency**: Mix of SQLite `?` và Postgres `$n` placeholders
+-  **Seasonal SQL Fixed**: All `?` placeholders converted to `$1, $2` for asyncpg (Jan 2026)
+-  **DB Layer Inconsistency**: Some legacy modules may still use SQLite `?` placeholders
 - Migration strategy: Currently using `ensure_*_tables()` → should move to versioned migrations
 - Cross-DB transactions (VIP): Seeds (SQLite?) + VIP (Postgres) → needs unification
 
@@ -835,6 +836,7 @@ voice_rewards (user_id, guild_id, rewarded_seconds, total_rewards_today, last_re
 | `/hoso [@user]` | Xem profile card (image) |
 | `/theme` | Chọn theme hồ sơ (Select Menu) |
 | `/bio [text]` | Đặt bio cá nhân (max 200 ký tự) |
+| `/thanhtuu [@user]` | Xem thành tựu đã đạt được |
 
 ### Themes Available
 | Theme | Emoji | Font | VIP Tier |
@@ -872,6 +874,7 @@ user_profiles (user_id, theme, badges_display, bio)
 ### Slash Commands
 | Lệnh | Chức năng | Quyền |
 |------|-----------|-------|
+| `/nhiemvu` | Xem nhiệm vụ hàng ngày của server | User |
 | `/nv-test-sang` | Test trigger morning announcement | Admin |
 | `/nv-test-toi` | Test trigger evening summary | Admin |
 
@@ -923,24 +926,54 @@ quest_contributions (guild_id, quest_date, user_id, quest_type, contribution_amo
 
 ---
 
-## 25. SEASONAL MODULE (Sự Kiện Theo Mùa)
+## 25. SEASONAL MODULE (Sự Kiện Theo Mùa) - COMPLEX
 **Files**: `cogs/seasonal/` (cog.py, event_commands.py, event_fish_hook.py, minigames/, services/, ui/)
+**Total Commands**: 32 slash commands, 4 command groups
 
-### Slash Commands (Admin)
-| Lệnh | Chức năng | Quyền |
-|------|-----------|-------|
-| `/event-test start <event>` | Bắt đầu event test | Admin |
-| `/event-test stop` | Dừng event hiện tại | Admin |
-| `/event-test minigame <type>` | Spawn minigame thủ công | Admin |
-| `/event-test goal <type> <target>` | Tạo community goal test | Admin |
+### Command Groups
+
+#### `/sukien` - User Event Commands
+| Lệnh | Chức năng |
+|------|-----------|
+| `/sukien info` | Xem thông tin event đang diễn ra |
+| `/sukien thamgia` | Tham gia event hiện tại |
+| `/sukien tiendo` | Xem tiến độ cá nhân |
+| `/sukien cuahang` | Mở shop event |
+| `/sukien bangxephang` | Bảng xếp hạng event |
+| `/sukien nhiemvu` | Xem nhiệm vụ event |
+| `/sukien diemdanh` | Điểm danh nhận thưởng hàng ngày |
+
+#### `/danhhieu` - Title Commands  
+| Lệnh | Chức năng |
+|------|-----------|
+| `/danhhieu xem` | Xem danh hiệu đã mở khoá |
+| `/danhhieu trangbi` | Trang bị danh hiệu |
+| `/danhhieu bo` | Bỏ danh hiệu đang đeo |
+
+#### `/sukien_test` - Test Commands (Admin)
+| Lệnh | Chức năng |
+|------|-----------|
+| `/sukien_test start <event>` | Bắt đầu event test |
+| `/sukien_test stop` | Dừng event hiện tại |
+| `/sukien_test minigame <type>` | Spawn minigame thủ công |
+| `/sukien_test goal <type> <target>` | Tạo community goal test |
+| `/sukien_test currency <amount>` | Thêm event currency |
+
+#### `/sukien_admin` - Admin Management
+| Lệnh | Chức năng |
+|------|-----------|
+| `/sukien_admin create` | Tạo event mới |
+| `/sukien_admin end` | Kết thúc event sớm |
+| `/sukien_admin announce` | Gửi thông báo event |
+| `/sukien_admin reset_user <user>` | Reset dữ liệu user |
 
 ### Event Types (4 Mùa)
 | Event | Thời gian | Theme |
 |-------|-----------|-------|
-| `lunar_new_year` | Tháng 1-2 | 🧧 Tết Nguyên Đán |
-| `mid_autumn` | Tháng 8-9 | 🥮 Trung Thu |
-| `halloween` | Tháng 10 | 🎃 Halloween |
-| `christmas` | Tháng 12 | 🎄 Giáng Sinh |
+| `lunar_new_year` | Tháng 1-2 |  Tết Nguyên Đán |
+| `mid_autumn` | Tháng 8-9 |  Trung Thu |
+| `halloween` | Tháng 10 |  Halloween |
+| `christmas` | Tháng 12 |  Giáng Sinh |
 
 ### Minigame System (16 loại)
 | Minigame | Event | Mô tả |
@@ -949,93 +982,81 @@ quest_contributions (guild_id, quest_date, user_id, quest_type, contribution_amo
 | `tea_brewing` | Lunar New Year | Pha trà tết |
 | `wishes` | Lunar New Year | Viết lời chúc năm mới |
 | `thank_letter` | Lunar New Year | Viết thư cảm ơn |
+| `lixi` | Lunar New Year | Mở lì xì may mắn |
 | `lantern_parade` | Mid Autumn | Diễu hành đèn lồng |
 | `quiz` | Mid Autumn | Đố vui Trung Thu |
 | `countdown` | Mid Autumn | Đếm ngược trăng tròn |
-| `boat_race` | Mid Autumn | Đua thuyền rồng |
-| `ghost_hunt` | Halloween | Săn ma |
-| `trick_treat` | Halloween | Trick or Treat |
-| `treasure_hunt` | Halloween | Tìm kho báu |
+| `ghost_hunt` | Halloween | Săn ma (có asyncio.Lock) |
+| `treasure_hunt` | Halloween | Đào kho báu (grid-based) |
 | `trash_sort` | Halloween | Phân loại rác |
 | `snowman` | Christmas | Xây người tuyết |
-| `secret_santa` | Christmas | Tặng quà bí mật |
-| `leaf_collect` | Christmas | Thu thập lá |
+| `secret_santa` | Christmas | Tặng quà bí mật (matching system) |
+| `leaf_collect` | Christmas | Thu thập lá (grid-based) |
 | `beach_cleanup` | Christmas | Dọn dẹp bãi biển |
 
-### Event Lifecycle (Docker Pattern)
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   PENDING   │ ──► │   ACTIVE    │ ──► │  COMPLETED  │
-└─────────────┘     └─────────────┘     └─────────────┘
-      │                   │                   │
-      │ schedule_event    │ random spawn      │ distribute_rewards
-      │                   │ minigames         │ cleanup
-      └───────────────────┴───────────────────┘
-```
-
-### Services Architecture
+### Services Architecture (9 Services)
 | Service | Chức năng |
 |---------|-----------|
 | `EventService` | Quản lý lifecycle event (start/stop/status) |
-| `ParticipationService` | Track participation, rewards, stats |
-| `CommunityGoalService` | Server-wide goals với progress tracking |
-| `ShopService` | Event shop với seasonal items |
+| `ParticipationService` | Track participation, currency, contributions |
+| `CommunityGoalService` | Server-wide goals với milestone rewards |
+| `ShopService` | Event shop với stock management |
+| `QuestService` | Event-specific quests |
+| `TitleService` | Unlock và quản lý danh hiệu |
+| `LifecycleService` | Auto-start/end events theo schedule |
+| `RotationService` | Yearly content rotation (fish, items) |
+| `DatabaseService` | Low-level DB operations |
 
-### Community Goals
-Mục tiêu chung cho cả server, khi đạt được sẽ unlock rewards:
-- Progress tracking theo real-time
-- Tiered rewards (25%, 50%, 75%, 100%)
-- Bonus multipliers khi hoàn thành sớm
+### Community Goals System
+Mục tiêu chung cho cả server, khi đạt milestone sẽ unlock rewards:
+```
+┌─────────────────────────────────────────────────┐
+│  Progress: ████████░░░░░░░░░░░░  42%            │
+│  Milestones: ✅ 25%  ⏳ 50%  🔒 75%  🔒 100%     │
+└─────────────────────────────────────────────────┘
+```
+- Tiered rewards với title unlocks
+- Contributions từ minigames được track
+- **FIX Applied**: `update_community_progress(guild_id, event_id, progress)` 
 
-### Event Currency
+### Event Currency & Shop
 | Currency | Nguồn | Sử dụng |
 |----------|-------|---------|
-| Event Tokens | Minigames, goals | Event Shop |
-| Seasonal Essence | Rare drops | Craft items |
+| Event Tokens | Minigames, daily check-in | Event Shop items |
+| Contribution Points | Community goals | Leaderboard ranking |
 
 ### Fishing Hook Integration
 `event_fish_hook.py` tích hợp với Fishing module:
-- Seasonal fish spawns trong thời gian event
-- Event-specific loot drops
-- Bonus XP khi câu cá trong event
+- Seasonal fish spawns (từ `data/seasonal/pool.json`)
+- Event-specific loot drops với pool rotation
+- Yearly versioning (vd: `fish_2026_tet_*`)
 
 ### Database Tables
 ```sql
-seasonal_events (
-    guild_id BIGINT,
-    event_type VARCHAR(32),
-    status VARCHAR(16),  -- pending/active/completed
-    start_time TIMESTAMP,
-    end_time TIMESTAMP,
-    config JSONB
-)
-
-event_participation (
-    user_id BIGINT,
-    guild_id BIGINT,
-    event_type VARCHAR(32),
-    minigames_played INT DEFAULT 0,
-    tokens_earned INT DEFAULT 0,
-    goals_contributed INT DEFAULT 0
-)
-
-community_goals (
-    guild_id BIGINT,
-    event_type VARCHAR(32),
-    goal_type VARCHAR(32),
-    current_progress INT DEFAULT 0,
-    target INT,
-    completed BOOLEAN DEFAULT FALSE
-)
+seasonal_events (guild_id, event_id, event_type, status, start_time, end_time, config)
+event_participation (user_id, guild_id, event_id, currency, contribution, streak, last_checkin)
+event_community_progress (guild_id, event_id, current_progress, target)
+event_milestones_reached (guild_id, event_id, milestone_key, reached_at)
+event_purchases (user_id, guild_id, event_id, item_key, quantity, purchased_at)
+event_user_titles (user_id, title_key, title_name, event_id, unlocked_at)
+event_active_titles (user_id, guild_id, title_key)
 ```
 
 ### Background Tasks
-- `event_scheduler_loop`: Kiểm tra và auto-start events theo lịch
-- `minigame_spawn_loop`: Random spawn minigames mỗi 30-60 phút
-- `goal_progress_sync`: Sync progress lên embed mỗi 5 phút
+- `lifecycle_check_loop`: Auto-start/end events theo schedule (mỗi 1 phút)
+- `minigame_spawn_loop`: Random spawn minigames (30-60 phút)
+- `progress_sync_loop`: Sync community progress (mỗi 5 phút)
+
+### Recent Fixes (Jan 2026)
+-  SQL placeholders converted from `?` to `$1, $2` for asyncpg
+-  `update_community_progress` implemented (was no-op `pass`)
+-  `unlock_title` argument order fixed
+-  All minigame files updated to call 3-arg `update_community_progress`
+-  `asyncio.Lock` added to `ghost_hunt.py` for race condition prevention
+-  All Views have `on_timeout` for cleanup
 
 ### Critical Notes
-- Event config trong `data/seasonal/events.json`
-- Minigame spawn rate có thể config per-event
-- Rewards scale theo server size (anti-abuse)
-- Event shop items có expiry date sau event kết thúc
+- Event config trong `data/seasonal/events/` và `data/seasonal/pool.json`
+- Minigame Views có timeout cleanup để prevent memory leaks
+- Rewards scale theo participation, not server size
+- Title system persists across events
