@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from core.logging import get_logger
 import random
 from datetime import datetime, timedelta
@@ -23,6 +25,7 @@ class LixiAutoMinigame(BaseMinigame):
     def __init__(self, bot: Any, event_manager: EventManager) -> None:
         super().__init__(bot, event_manager)
         self._active_messages: dict[int, dict] = {}
+        self._locks: dict[int, asyncio.Lock] = {}
 
     @property
     def name(self) -> str:
@@ -83,42 +86,45 @@ class LixiAutoMinigame(BaseMinigame):
         pass
 
     async def claim_lixi(self, interaction: Interaction, message_id: int) -> None:
-        data = self._active_messages.get(message_id)
-        if not data:
-            await interaction.response.send_message("❌ Lì xì này đã hết hiệu lực!", ephemeral=True)
-            return
+        lock = self._locks.setdefault(message_id, asyncio.Lock())
+        async with lock:
+            data = self._active_messages.get(message_id)
+            if not data:
+                await interaction.response.send_message("❌ Lì xì này đã hết hiệu lực!", ephemeral=True)
+                return
 
-        if datetime.now() > data["expire_time"]:
-            await interaction.response.send_message("❌ Lì xì đã hết hạn!", ephemeral=True)
-            return
+            if datetime.now() > data["expire_time"]:
+                await interaction.response.send_message("❌ Lì xì đã hết hạn!", ephemeral=True)
+                return
 
-        if interaction.user.id in data["claims"]:
-            await interaction.response.send_message("❌ Bạn đã nhận lì xì này rồi!", ephemeral=True)
-            return
+            if interaction.user.id in data["claims"]:
+                await interaction.response.send_message("❌ Bạn đã nhận lì xì này rồi!", ephemeral=True)
+                return
 
-        if len(data["claims"]) >= data["max_claims"]:
-            await interaction.response.send_message("❌ Lì xì đã hết!", ephemeral=True)
-            return
+            if len(data["claims"]) >= data["max_claims"]:
+                await interaction.response.send_message("❌ Lì xì đã hết!", ephemeral=True)
+                return
 
-        event = self.event_manager.get_event(data["event_id"])
-        reward_range = self._get_config(event).get("reward_range", [20, 100])
-        reward = random.randint(reward_range[0], reward_range[1])
+            event = self.event_manager.get_event(data["event_id"])
+            reward_range = self._get_config(event).get("reward_range", [20, 100])
+            reward = random.randint(reward_range[0], reward_range[1])
 
-        data["claims"].append(interaction.user.id)
+            data["claims"].append(interaction.user.id)
 
-        await add_currency(data["guild_id"], interaction.user.id, data["event_id"], reward)
-        await add_contribution(data["guild_id"], interaction.user.id, data["event_id"], reward)
-        await update_community_progress(data["guild_id"], reward)
+            await add_currency(data["guild_id"], interaction.user.id, data["event_id"], reward)
+            await add_contribution(data["guild_id"], interaction.user.id, data["event_id"], reward)
+            await update_community_progress(data["guild_id"], reward)
 
-        emoji = event.currency_emoji if event else "🌸"
+            emoji = event.currency_emoji if event else "🌸"
 
-        await interaction.response.send_message(f"🧧 Bạn nhận được **+{reward} {emoji}**!", ephemeral=True)
+            await interaction.response.send_message(f"🧧 Bạn nhận được **+{reward} {emoji}**!", ephemeral=True)
 
-        remaining = data["max_claims"] - len(data["claims"])
-        if remaining <= 0:
-            await self._end_lixi(data)
-        else:
-            await self._update_embed(data, remaining)
+            remaining = data["max_claims"] - len(data["claims"])
+            if remaining <= 0:
+                await self._end_lixi(data)
+                self._locks.pop(message_id, None)
+            else:
+                await self._update_embed(data, remaining)
 
     async def _update_embed(self, data: dict, remaining: int) -> None:
         message = data["message"]
@@ -193,6 +199,7 @@ class LixiManualMinigame(BaseMinigame):
     def __init__(self, bot: Any, event_manager: EventManager) -> None:
         super().__init__(bot, event_manager)
         self._active_envelopes: dict[int, dict] = {}
+        self._locks: dict[int, asyncio.Lock] = {}
 
     @property
     def name(self) -> str:
@@ -355,46 +362,49 @@ class LixiManualMinigame(BaseMinigame):
 
     async def claim_envelope(self, interaction: Interaction, message_id: int) -> None:
         """Claim a lì xì envelope."""
-        data = self._active_envelopes.get(message_id)
-        if not data:
-            await interaction.response.send_message("❌ Lì xì này đã hết hiệu lực!", ephemeral=True)
-            return
+        lock = self._locks.setdefault(message_id, asyncio.Lock())
+        async with lock:
+            data = self._active_envelopes.get(message_id)
+            if not data:
+                await interaction.response.send_message("❌ Lì xì này đã hết hiệu lực!", ephemeral=True)
+                return
 
-        if datetime.now() > data["expire_time"]:
-            await self._expire_envelope(data)
-            await interaction.response.send_message("❌ Lì xì đã hết hạn!", ephemeral=True)
-            return
+            if datetime.now() > data["expire_time"]:
+                await self._expire_envelope(data)
+                await interaction.response.send_message("❌ Lì xì đã hết hạn!", ephemeral=True)
+                return
 
-        user_id = interaction.user.id
+            user_id = interaction.user.id
 
-        if user_id == data["creator_id"]:
-            await interaction.response.send_message("❌ Bạn không thể nhận lì xì của chính mình!", ephemeral=True)
-            return
+            if user_id == data["creator_id"]:
+                await interaction.response.send_message("❌ Bạn không thể nhận lì xì của chính mình!", ephemeral=True)
+                return
 
-        if user_id in data["claims"]:
-            await interaction.response.send_message("❌ Bạn đã nhận lì xì này rồi!", ephemeral=True)
-            return
+            if user_id in data["claims"]:
+                await interaction.response.send_message("❌ Bạn đã nhận lì xì này rồi!", ephemeral=True)
+                return
 
-        if not data["amounts"]:
-            await interaction.response.send_message("❌ Lì xì đã hết!", ephemeral=True)
-            return
+            if not data["amounts"]:
+                await interaction.response.send_message("❌ Lì xì đã hết!", ephemeral=True)
+                return
 
-        reward = data["amounts"].pop()
-        data["claims"][user_id] = reward
+            reward = data["amounts"].pop()
+            data["claims"][user_id] = reward
 
-        await add_currency(data["guild_id"], user_id, data["event_id"], reward)
-        await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
-        await update_community_progress(data["guild_id"], reward)
+            await add_currency(data["guild_id"], user_id, data["event_id"], reward)
+            await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
+            await update_community_progress(data["guild_id"], reward)
 
-        event = self.event_manager.get_event(data["event_id"])
-        emoji = event.currency_emoji if event else "🌸"
+            event = self.event_manager.get_event(data["event_id"])
+            emoji = event.currency_emoji if event else "🌸"
 
-        await interaction.response.send_message(f"🧧 Bạn nhận được **+{reward} {emoji}**!", ephemeral=True)
+            await interaction.response.send_message(f"🧧 Bạn nhận được **+{reward} {emoji}**!", ephemeral=True)
 
-        if not data["amounts"]:
-            await self._end_envelope(data)
-        else:
-            await self._update_envelope_embed(data)
+            if not data["amounts"]:
+                await self._end_envelope(data)
+                self._locks.pop(message_id, None)
+            else:
+                await self._update_envelope_embed(data)
 
     async def _update_envelope_embed(self, data: dict) -> None:
         """Update the envelope embed with remaining claims."""

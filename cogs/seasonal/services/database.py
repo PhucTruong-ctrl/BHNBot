@@ -245,6 +245,21 @@ CREATE TABLE IF NOT EXISTS event_milestones_reached (
     reached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (guild_id, event_id, milestone_percentage)
 );
+
+CREATE TABLE IF NOT EXISTS event_content_history (
+    event_type TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    content_type TEXT NOT NULL,
+    content_key TEXT NOT NULL,
+    tier TEXT,
+    is_exclusive BOOLEAN DEFAULT FALSE,
+    seed_used TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_type, year, content_type, content_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ech_lookup 
+ON event_content_history(event_type, content_type, content_key);
 """
 
 
@@ -288,12 +303,7 @@ async def execute_query(query: str, params: tuple = ()) -> list[dict[str, Any]]:
     rows = await db_manager.fetchall(query, *params)
     if not rows:
         return []
-    
-    query_converted = db_manager._convert_sql_params(query)
-    async with db_manager.pool.acquire() as conn:
-        records = await conn.fetch(query_converted, *params)
-        return [dict(record) for record in records]
-        return [dict(record) for record in records]
+    return [dict(row) for row in rows]
 
 
 async def execute_write(query: str, params: tuple = ()) -> int:

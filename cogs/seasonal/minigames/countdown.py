@@ -24,6 +24,7 @@ class CountdownMinigame(BaseMinigame):
     def __init__(self, bot: Any, event_manager: EventManager) -> None:
         super().__init__(bot, event_manager)
         self._active_countdowns: dict[int, dict] = {}
+        self._locks: dict[int, asyncio.Lock] = {}
 
     @property
     def name(self) -> str:
@@ -146,40 +147,42 @@ class CountdownMinigame(BaseMinigame):
             pass
 
     async def claim_reward(self, interaction: Interaction, message_id: int) -> None:
-        data = self._active_countdowns.get(message_id)
-        if not data:
-            await interaction.response.send_message("❌ Sự kiện đã kết thúc!", ephemeral=True)
-            return
+        lock = self._locks.setdefault(message_id, asyncio.Lock())
+        async with lock:
+            data = self._active_countdowns.get(message_id)
+            if not data:
+                await interaction.response.send_message("❌ Sự kiện đã kết thúc!", ephemeral=True)
+                return
 
-        if not data["triggered"]:
-            await interaction.response.send_message("❌ Chưa đến giờ đếm ngược!", ephemeral=True)
-            return
+            if not data["triggered"]:
+                await interaction.response.send_message("❌ Chưa đến giờ đếm ngược!", ephemeral=True)
+                return
 
-        user_id = interaction.user.id
-        if user_id in data["participants"]:
-            await interaction.response.send_message("❌ Bạn đã nhận thưởng rồi!", ephemeral=True)
-            return
+            user_id = interaction.user.id
+            if user_id in data["participants"]:
+                await interaction.response.send_message("❌ Bạn đã nhận thưởng rồi!", ephemeral=True)
+                return
 
-        event = self.event_manager.get_event(data["event_id"])
-        config = self._get_config(event)
-        base_reward = config.get("react_reward", 100)
-        bonus = config.get("top_10_bonus", 50) if len(data["participants"]) < 10 else 0
-        total_reward = base_reward + bonus
+            event = self.event_manager.get_event(data["event_id"])
+            config = self._get_config(event)
+            base_reward = config.get("react_reward", 100)
+            bonus = config.get("top_10_bonus", 50) if len(data["participants"]) < 10 else 0
+            total_reward = base_reward + bonus
 
-        data["participants"].append(user_id)
+            data["participants"].append(user_id)
 
-        await add_currency(data["guild_id"], user_id, data["event_id"], total_reward)
-        await add_contribution(data["guild_id"], user_id, data["event_id"], total_reward)
-        await update_community_progress(data["guild_id"], 1)
+            await add_currency(data["guild_id"], user_id, data["event_id"], total_reward)
+            await add_contribution(data["guild_id"], user_id, data["event_id"], total_reward)
+            await update_community_progress(data["guild_id"], 1)
 
-        emoji = event.currency_emoji if event else "❄️"
+            emoji = event.currency_emoji if event else "❄️"
 
-        position = len(data["participants"])
-        bonus_text = f" (Bonus Top 10: +{bonus})" if bonus > 0 else ""
-        await interaction.response.send_message(
-            f"🎆 Chúc mừng năm mới! Bạn là người thứ **{position}**! +**{total_reward}** {emoji}{bonus_text}",
-            ephemeral=True,
-        )
+            position = len(data["participants"])
+            bonus_text = f" (Bonus Top 10: +{bonus})" if bonus > 0 else ""
+            await interaction.response.send_message(
+                f"🎆 Chúc mừng năm mới! Bạn là người thứ **{position}**! +**{total_reward}** {emoji}{bonus_text}",
+                ephemeral=True,
+            )
 
     async def end_countdown(self, message_id: int) -> None:
         data = self._active_countdowns.get(message_id)

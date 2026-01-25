@@ -190,20 +190,24 @@ async def claim_quest_reward(
     if not quest["completed"]:
         return None
 
-    rows = await execute_query(
-        "SELECT claimed FROM event_quests WHERE guild_id = ? AND user_id = ? AND event_id = ? AND quest_id = ?",
+    claimed_rows = await execute_query(
+        """
+        UPDATE event_quests SET claimed = TRUE 
+        WHERE guild_id = $1 AND user_id = $2 AND event_id = $3 AND quest_id = $4 
+        AND claimed = FALSE
+        RETURNING quest_data
+        """,
         (guild_id, user_id, event_id, quest_id),
     )
-    if rows and rows[0].get("claimed"):
+    if not claimed_rows:
         return None
 
-    quest_data = json.loads(quest.get("quest_data", "{}"))
+    quest_data = json.loads(claimed_rows[0].get("quest_data", "{}"))
 
     reward_type = quest_data.get("reward_type", "currency")
     reward_value = quest_data.get("reward_value") or quest_data.get("reward", 0)
 
     if reward_type == "currency" and isinstance(reward_value, int):
-        # HOOK: Aquarium quest_reward_bonus
         try:
             from cogs.aquarium.logic.effect_manager import get_effect_manager
             effect_manager = get_effect_manager()
@@ -213,11 +217,6 @@ async def claim_quest_reward(
         except Exception:
             pass
         await add_currency(guild_id, user_id, event_id, reward_value)
-
-    await execute_write(
-        "UPDATE event_quests SET claimed = TRUE WHERE guild_id = ? AND user_id = ? AND event_id = ? AND quest_id = ?",
-        (guild_id, user_id, event_id, quest_id),
-    )
 
     return {
         "quest_id": quest_id,

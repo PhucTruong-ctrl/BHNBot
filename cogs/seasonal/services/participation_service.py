@@ -56,15 +56,16 @@ async def add_currency(guild_id: int, user_id: int, event_id: str, amount: int) 
 
 
 async def spend_currency(guild_id: int, user_id: int, event_id: str, amount: int) -> bool:
-    participation = await get_participation(guild_id, user_id, event_id)
-    if not participation or participation["currency"] < amount:
-        return False
-
-    await execute_write(
-        "UPDATE event_participation SET currency = currency - ? WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+    rows = await execute_query(
+        """
+        UPDATE event_participation 
+        SET currency = currency - $1 
+        WHERE guild_id = $2 AND user_id = $3 AND event_id = $4 AND currency >= $1
+        RETURNING currency
+        """,
         (amount, guild_id, user_id, event_id),
     )
-    return True
+    return len(rows) > 0
 
 
 async def get_currency(guild_id: int, user_id: int, event_id: str) -> int:

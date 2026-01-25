@@ -235,7 +235,8 @@ class EventLifecycleService:
         currency_emoji = event_info.get("currency", {}).get("emoji", "🎫")
         
         converted_count = 0
-        for participant in participants:
+        batch_size = 50
+        for i, participant in enumerate(participants):
             user_id = participant["user_id"]
             currency_amount = participant["currency"]
             
@@ -244,6 +245,9 @@ class EventLifecycleService:
             )
             if success:
                 converted_count += 1
+            
+            if (i + 1) % batch_size == 0:
+                await asyncio.sleep(0.1)
         
         await execute_write(
             "INSERT INTO event_notifications_sent (guild_id, event_id, notification_type) VALUES (?, ?, 'event_ended')",
