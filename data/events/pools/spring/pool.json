@@ -29,8 +29,8 @@
       "introduced_year": 2024
     },
     {
-      "key": "ca_bao_li_xi",
-      "name": "Cá Bao Lì Xì",
+      "key": "ca_hong_bao",
+      "name": "Cá Hồng Bao",
       "emoji": "<:ca_bao_li_xi:1300000000000001003>",
       "tier": "common",
       "base_drop_rate": 0.25,
@@ -74,8 +74,8 @@
       "introduced_year": 2024
     },
     {
-      "key": "ca_meo_than_tai",
-      "name": "Cá Mèo Thần Tài",
+      "key": "ca_chieu_tai",
+      "name": "Cá Chiêu Tài",
       "emoji": "<:ca_meo_than_tai:1300000000000001008>",
       "tier": "epic",
       "base_drop_rate": 0.03,
