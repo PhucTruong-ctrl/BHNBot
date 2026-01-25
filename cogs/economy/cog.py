@@ -238,6 +238,68 @@ class EconomyCog(commands.Cog):
         
         await ctx.send(embed=embed)
     
+    @app_commands.command(name="chuyen", description="Chuyển hạt cho người khác")
+    @app_commands.describe(nguoi_nhan="Người nhận hạt", so_hat="Số hạt muốn chuyển")
+    async def transfer_slash(
+        self, 
+        interaction: discord.Interaction, 
+        nguoi_nhan: discord.Member,
+        so_hat: app_commands.Range[int, 1, 1000000000]
+    ):
+        await interaction.response.defer()
+        
+        success, message, sender_bal, receiver_bal = await self.service.transfer_seeds(
+            from_user_id=interaction.user.id,
+            to_user_id=nguoi_nhan.id,
+            amount=so_hat,
+            from_username=interaction.user.name,
+            to_username=nguoi_nhan.name
+        )
+        
+        if success:
+            embed = discord.Embed(
+                title="✅ Chuyển hạt thành công",
+                description=f"Đã chuyển **{so_hat:,}** 🌾 cho {nguoi_nhan.mention}",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="Số dư của bạn", value=f"{sender_bal:,} 🌾", inline=True)
+            embed.add_field(name=f"Số dư của {nguoi_nhan.display_name}", value=f"{receiver_bal:,} 🌾", inline=True)
+        else:
+            embed = discord.Embed(
+                title="❌ Không thể chuyển hạt",
+                description=message,
+                color=discord.Color.red()
+            )
+        
+        await interaction.followup.send(embed=embed)
+    
+    @commands.command(name="chuyen", aliases=["give", "transfer"])
+    async def transfer_prefix(self, ctx, nguoi_nhan: discord.Member, so_hat: int):
+        success, message, sender_bal, receiver_bal = await self.service.transfer_seeds(
+            from_user_id=ctx.author.id,
+            to_user_id=nguoi_nhan.id,
+            amount=so_hat,
+            from_username=ctx.author.name,
+            to_username=nguoi_nhan.name
+        )
+        
+        if success:
+            embed = discord.Embed(
+                title="✅ Chuyển hạt thành công",
+                description=f"Đã chuyển **{so_hat:,}** 🌾 cho {nguoi_nhan.mention}",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="Số dư của bạn", value=f"{sender_bal:,} 🌾", inline=True)
+            embed.add_field(name=f"Số dư của {nguoi_nhan.display_name}", value=f"{receiver_bal:,} 🌾", inline=True)
+        else:
+            embed = discord.Embed(
+                title="❌ Không thể chuyển hạt",
+                description=message,
+                color=discord.Color.red()
+            )
+        
+        await ctx.send(embed=embed)
+    
     @app_commands.command(name="top", description="Xem bảng xếp hạng 10 người có nhiều hạt nhất")
     async def top_leaderboard_slash(self, interaction: discord.Interaction):
         """Show top 10 leaderboard (slash command)"""

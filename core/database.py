@@ -176,6 +176,25 @@ class DatabaseManager:
                 raise e
 
 
+    async def fetchall_dict(self, sql: str, *args) -> List[Dict[str, Any]]:
+        """Fetch all rows as list of dictionaries."""
+        if not self.pool:
+            await self.connect()
+
+        if len(args) == 1 and isinstance(args[0], (tuple, list)):
+            args = args[0]
+
+        sql = self._convert_sql_params(sql)
+
+        async with self.pool.acquire() as conn:
+            try:
+                rows = await conn.fetch(sql, *args)
+                return [dict(row) for row in rows]
+            except Exception as e:
+                logger.error(f"DB FetchAll Dict Error: {sql} | Params: {args} | Error: {e}")
+                raise e
+
+
     async def fetchrow(self, sql: str, *args) -> Optional[asyncpg.Record]:
         """Fetch a single row as a Record object (asyncpg native)."""
         if not self.pool:
@@ -288,7 +307,7 @@ class _TransactionProxy:
 
     async def modify(self, sql: str, parameters: Tuple = ()) -> str:
         """Alias for execute to maintain compatibility."""
-        return await self.execute(sql, *args)
+        return await self.execute(sql, *parameters)
 
 # Global Instance
 db_manager = DatabaseManager()
@@ -333,6 +352,76 @@ async def add_seeds(user_id: int, amount: int, reason: str = "unknown", category
         # Get new balance
         row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", user_id)
         return row['seeds'] if row else 0
+
+async def transfer_seeds(
+    from_user_id: int, 
+    to_user_id: int, 
+    amount: int, 
+    reason: str = "transfer"
+) -> Tuple[int, int]:
+    """Transfer seeds between users with row-level locking.
+    
+    Uses SELECT FOR UPDATE to prevent race conditions.
+    
+    Returns:
+        Tuple[int, int]: (sender_new_balance, receiver_new_balance)
+        
+    Raises:
+        ValueError: If sender has insufficient balance
+    """
+    if amount <= 0:
+        raise ValueError("Transfer amount must be positive")
+    
+    async with db_manager.transaction() as conn:
+        # Lock rows in consistent order to prevent deadlocks
+        user_ids = sorted([from_user_id, to_user_id])
+        
+        # Select FOR UPDATE to lock both rows
+        sender_row = await conn.fetchrow(
+            "SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE",
+            from_user_id
+        )
+        receiver_row = await conn.fetchrow(
+            "SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE",
+            to_user_id
+        )
+        
+        if not sender_row:
+            raise ValueError(f"Sender {from_user_id} not found")
+        if not receiver_row:
+            raise ValueError(f"Receiver {to_user_id} not found")
+            
+        sender_balance = sender_row['seeds']
+        if sender_balance < amount:
+            raise ValueError(f"Insufficient balance: {sender_balance} < {amount}")
+        
+        # Perform transfer
+        await conn.execute(
+            "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
+            amount, from_user_id
+        )
+        await conn.execute(
+            "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
+            amount, to_user_id
+        )
+        
+        # Log both transactions
+        await conn.execute(
+            "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) "
+            "VALUES ($1, $2, $3, 'transfer_out', NOW())",
+            from_user_id, -amount, reason
+        )
+        await conn.execute(
+            "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) "
+            "VALUES ($1, $2, $3, 'transfer_in', NOW())",
+            to_user_id, amount, reason
+        )
+        
+        # Return new balances
+        new_sender = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", from_user_id)
+        new_receiver = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", to_user_id)
+        
+        return (new_sender['seeds'], new_receiver['seeds'])
 
 async def get_leaderboard(limit: int = 10) -> List[Tuple]:
     """Get top rich users."""

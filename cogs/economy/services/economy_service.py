@@ -161,3 +161,42 @@ class EconomyService:
         )
         
         return True, f"Added {amount} seeds. New balance: {new_balance}"
+
+    async def transfer_seeds(
+        self, 
+        from_user_id: int, 
+        to_user_id: int, 
+        amount: int,
+        from_username: str = "",
+        to_username: str = ""
+    ) -> Tuple[bool, str, int, int]:
+        """Transfer seeds from one user to another with race-condition protection.
+        
+        Returns:
+            Tuple[success, message, sender_balance, receiver_balance]
+        """
+        if amount <= 0:
+            return False, "Số hạt phải lớn hơn 0", 0, 0
+        
+        if from_user_id == to_user_id:
+            return False, "Không thể chuyển cho chính mình", 0, 0
+        
+        await self.get_or_create_user(from_user_id, from_username)
+        await self.get_or_create_user(to_user_id, to_username)
+        
+        try:
+            from core.database import transfer_seeds as db_transfer
+            sender_bal, receiver_bal = await db_transfer(
+                from_user_id, to_user_id, amount, 
+                reason=f"transfer_to_{to_user_id}"
+            )
+            
+            logger.info(
+                f"[TRANSFER] from={from_user_id} to={to_user_id} "
+                f"amount={amount} sender_bal={sender_bal} receiver_bal={receiver_bal}"
+            )
+            
+            return True, f"Chuyển thành công {amount:,} hạt", sender_bal, receiver_bal
+            
+        except ValueError as e:
+            return False, str(e), 0, 0

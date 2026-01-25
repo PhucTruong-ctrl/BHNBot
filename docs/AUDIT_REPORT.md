@@ -6,6 +6,47 @@
 
 ---
 
+##  Completion Tracker (Updated: Jan 25, 2026)
+
+### Phase 1: Critical Fixes - MOSTLY COMPLETE 
+
+| Task | Status | Details |
+|------|--------|---------|
+| Fix all `except: pass` → logging |  DONE | 14 locations fixed across 12 files |
+| TTL cleanup for unbounded dicts |  EXISTS | economy/cog.py has cleanup_cooldowns_task |
+| Wrap PIL in `run_in_executor()` |  EXISTS | profile/ui/renderer.py, xi_dach/ui/render.py |
+| Fix `while True` loops |  SAFE | All have proper break conditions/handlers |
+| Create shared `bot.session` |  DONE | main.py, music/cog.py, profile/cog.py |
+| Add FOR UPDATE locks |  DONE | core/database.py transfer_seeds() |
+| SQL placeholder migration |  DONE | lifecycle_service.py (6 locations) |
+| Move fishing state to Redis |  PHASE 3 | Requires infrastructure |
+
+### Phase 2: Architecture Refactoring - DEFERRED
+
+| Task | Status | Details |
+|------|--------|---------|
+| Split werewolf god class |  DEFERRED | Too risky, needs dedicated sprint |
+| Refactor noi_tu to 4-layer |  DEFERRED | Too risky, needs dedicated sprint |
+| Add repositories layer to Fishing |  TODO | Medium effort |
+| Batch inventory operations |  TODO | fishing/commands/bucket.py |
+
+### Files Modified This Session
+
+| File | Changes |
+|------|---------|
+| `main.py` | Added bot.session (aiohttp ClientSession) |
+| `core/database.py` | Added fetchall_dict(), transfer_seeds() with FOR UPDATE |
+| `cogs/music/cog.py` | Uses bot.session |
+| `cogs/profile/cog.py` | Passes session to renderer |
+| `cogs/profile/ui/renderer.py` | Accepts session parameter |
+| `cogs/economy/cog.py` | Added /chuyen transfer command |
+| `cogs/economy/services/economy_service.py` | Added transfer_seeds() method |
+| `cogs/seasonal/services/database.py` | Uses fetchall_dict() |
+| `cogs/seasonal/services/lifecycle_service.py` | Fixed 6 SQL placeholders, type conversion |
+| 12 other files | Silent failure fixes (except → logging) |
+
+---
+
 ## Executive Summary
 
 | Metric | Current State |
@@ -93,9 +134,9 @@
 | Location | Issue | Fix |
 |----------|-------|-----|
 | `constants.py` | `json.load()` at import | `asyncio.to_thread()` |
-| `profile/ui/renderer.py:43,130` | PIL operations | `loop.run_in_executor()` |
-| `xi_dach/ui/render.py:88` | PIL operations | `loop.run_in_executor()` |
-| `noi_tu/cog.py:104` | `json.load()` | `asyncio.to_thread()` |
+| `profile/ui/renderer.py:43,130` | PIL operations |  ALREADY FIXED - uses executor |
+| `xi_dach/ui/render.py:88` | PIL operations |  ALREADY FIXED - uses executor |
+| `noi_tu/cog.py:104` | `json.load()` |  ALREADY FIXED - uses executor |
 
 ###  Scalability Blockers
 

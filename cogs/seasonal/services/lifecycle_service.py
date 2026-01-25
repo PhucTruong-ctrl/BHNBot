@@ -131,15 +131,18 @@ class EventLifecycleService:
         now = datetime.utcnow()
         
         for event in active_events:
-            guild_id = event["guild_id"]
+            guild_id = int(event["guild_id"])
             event_id = event["event_id"]
-            ends_at_str = event["ends_at"]
-            channel_id = event.get("announcement_channel_id")
+            ends_at_raw = event["ends_at"]
+            channel_id = int(event["announcement_channel_id"]) if event.get("announcement_channel_id") else None
             
             try:
-                ends_at = datetime.fromisoformat(ends_at_str.replace("Z", "+00:00").replace("+00:00", ""))
+                if isinstance(ends_at_raw, datetime):
+                    ends_at = ends_at_raw.replace(tzinfo=None)
+                else:
+                    ends_at = datetime.fromisoformat(str(ends_at_raw).replace("Z", "+00:00").replace("+00:00", ""))
             except (ValueError, AttributeError):
-                logger.warning(f"Invalid ends_at format for event {event_id}: {ends_at_str}")
+                logger.warning(f"Invalid ends_at format for event {event_id}: {ends_at_raw}")
                 continue
             
             time_remaining = ends_at - now
@@ -160,7 +163,7 @@ class EventLifecycleService:
         time_remaining: timedelta
     ) -> None:
         existing = await execute_query(
-            "SELECT 1 FROM event_notifications_sent WHERE guild_id = ? AND event_id = ? AND notification_type = ?",
+            "SELECT 1 FROM event_notifications_sent WHERE guild_id = $1 AND event_id = $2 AND notification_type = $3",
             (guild_id, event_id, notification_type)
         )
         
@@ -216,7 +219,7 @@ class EventLifecycleService:
     
     async def _handle_event_end(self, guild_id: int, event_id: str) -> None:
         already_converted = await execute_query(
-            "SELECT 1 FROM event_notifications_sent WHERE guild_id = ? AND event_id = ? AND notification_type = 'event_ended'",
+            "SELECT 1 FROM event_notifications_sent WHERE guild_id = $1 AND event_id = $2 AND notification_type = 'event_ended'",
             (guild_id, event_id)
         )
         
@@ -226,7 +229,7 @@ class EventLifecycleService:
         logger.info(f"Processing event end for {event_id} in guild {guild_id}")
         
         participants = await execute_query(
-            "SELECT user_id, currency FROM event_participation WHERE guild_id = ? AND event_id = ? AND currency > 0",
+            "SELECT user_id, currency FROM event_participation WHERE guild_id = $1 AND event_id = $2 AND currency > 0",
             (guild_id, event_id)
         )
         
@@ -278,7 +281,7 @@ class EventLifecycleService:
             )
             
             await execute_write(
-                "UPDATE event_participation SET currency = 0 WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+                "UPDATE event_participation SET currency = 0 WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
                 (guild_id, user_id, event_id)
             )
             
@@ -335,7 +338,7 @@ class EventLifecycleService:
         amount: int | None = None
     ) -> tuple[bool, int, str]:
         participation = await execute_query(
-            "SELECT currency FROM event_participation WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+            "SELECT currency FROM event_participation WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
             (guild_id, user_id, event_id)
         )
         
@@ -361,7 +364,7 @@ class EventLifecycleService:
             )
             
             await execute_write(
-                "UPDATE event_participation SET currency = currency - ? WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+                "UPDATE event_participation SET currency = currency - $1 WHERE guild_id = $2 AND user_id = $3 AND event_id = $4",
                 (convert_amount, guild_id, user_id, event_id)
             )
             

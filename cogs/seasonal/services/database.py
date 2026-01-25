@@ -303,10 +303,14 @@ async def init_seasonal_tables() -> None:
 
 
 async def execute_query(query: str, params: tuple = ()) -> list[dict[str, Any]]:
-    rows = await db_manager.fetchall(query, *params)
+    """Execute a query and return results as list of dicts.
+    
+    Uses fetchall_dict for proper dict conversion from asyncpg Records.
+    """
+    rows = await db_manager.fetchall_dict(query, *params)
     if not rows:
         return []
-    return [dict(row) for row in rows]
+    return rows
 
 
 async def execute_write(query: str, params: tuple = ()) -> int:
