@@ -189,19 +189,21 @@ async def distribute_milestone_rewards(
     from .title_service import unlock_title
 
     participants = await get_participants(guild_id, event_id)
-    rewarded_users = []
+    rewarded_users: list[int] = []
 
-    for user_id in participants:
+    for participant in participants:
+        user_id = participant["user_id"]
         if milestone.currency_bonus > 0:
             await add_currency(guild_id, user_id, event_id, milestone.currency_bonus)
 
         if milestone.title_key:
-            await unlock_title(guild_id, user_id, milestone.title_key, event_id)
+            title_name = f"Milestone {milestone.percentage}%"
+            await unlock_title(user_id, milestone.title_key, title_name, event_id)
 
         rewarded_users.append(user_id)
 
     if milestone.percentage == 100 and bot:
-        await _grant_community_goal_role(guild_id, event_id, participants, bot)
+        await _grant_community_goal_role(guild_id, event_id, rewarded_users, bot)
 
     logger.info(
         f"Distributed {milestone.percentage}% milestone rewards to "

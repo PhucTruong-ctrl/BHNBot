@@ -121,7 +121,7 @@ class LeafCollectMinigame(BaseMinigame):
 
         await add_currency(data["guild_id"], user_id, data["event_id"], leaf["reward"])
         await add_contribution(data["guild_id"], user_id, data["event_id"], leaf["reward"])
-        await update_community_progress(data["guild_id"], 1)
+        await update_community_progress(data["guild_id"], data["event_id"], 1)
 
         event = self.event_manager.get_event(data["event_id"])
         emoji = event.currency_emoji if event else "🍂"

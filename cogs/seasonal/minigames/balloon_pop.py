@@ -118,7 +118,7 @@ class BalloonPopMinigame(BaseMinigame):
 
         await add_currency(data["guild_id"], user_id, data["event_id"], reward)
         await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
-        await update_community_progress(data["guild_id"], 1)
+        await update_community_progress(data["guild_id"], data["event_id"], 1)
 
         emoji = event.currency_emoji if event else "🎈"
 

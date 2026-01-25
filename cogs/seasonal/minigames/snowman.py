@@ -87,7 +87,7 @@ class SnowmanMinigame(BaseMinigame):
         actual_amount = min(amount, daily_limit - today_contributions)
 
         await self._record_contribution(guild_id, user_id, active["event_id"], actual_amount)
-        await update_community_progress(guild_id, actual_amount)
+        await update_community_progress(guild_id, active["event_id"], actual_amount)
 
         reward_per = config.get("reward_per_contribution", 5)
         total_reward = actual_amount * reward_per

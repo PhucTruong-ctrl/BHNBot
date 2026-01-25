@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from core.logging import get_logger
 import random
 from datetime import datetime, timedelta
@@ -37,6 +39,7 @@ class GhostHuntMinigame(BaseMinigame):
     def __init__(self, bot: Any, event_manager: EventManager) -> None:
         super().__init__(bot, event_manager)
         self._active_ghosts: dict[int, dict] = {}
+        self._locks: dict[int, asyncio.Lock] = {}
 
     @property
     def name(self) -> str:
@@ -108,64 +111,68 @@ class GhostHuntMinigame(BaseMinigame):
         pass
 
     async def catch_ghost(self, interaction: Interaction, message_id: int) -> None:
-        data = self._active_ghosts.get(message_id)
-        if not data:
-            await interaction.response.send_message("❌ Con ma này đã biến mất!", ephemeral=True)
-            return
+        if message_id not in self._locks:
+            self._locks[message_id] = asyncio.Lock()
 
-        if datetime.now() > data["expire_time"]:
-            await interaction.response.send_message("❌ Con ma đã biến mất!", ephemeral=True)
-            return
+        async with self._locks[message_id]:
+            data = self._active_ghosts.get(message_id)
+            if not data:
+                await interaction.response.send_message("❌ Con ma này đã biến mất!", ephemeral=True)
+                return
 
-        user_id = interaction.user.id
+            if datetime.now() > data["expire_time"]:
+                await interaction.response.send_message("❌ Con ma đã biến mất!", ephemeral=True)
+                return
 
-        user_catches = await self._get_user_daily_catches(data["guild_id"], user_id, data["event_id"])
-        event = self.event_manager.get_event(data["event_id"])
-        config = self._get_config(event)
-        daily_limit = config.get("daily_limit", 10)
-        if user_catches >= daily_limit:
+            user_id = interaction.user.id
+
+            user_catches = await self._get_user_daily_catches(data["guild_id"], user_id, data["event_id"])
+            event = self.event_manager.get_event(data["event_id"])
+            config = self._get_config(event)
+            daily_limit = config.get("daily_limit", 10)
+            if user_catches >= daily_limit:
+                await interaction.response.send_message(
+                    f"❌ Bạn đã bắt đủ {daily_limit} con ma hôm nay! Quay lại ngày mai nhé.",
+                    ephemeral=True,
+                )
+                return
+
+            if user_id in data["catchers"]:
+                await interaction.response.send_message("❌ Bạn đã bắt con ma này rồi!", ephemeral=True)
+                return
+
+            if len(data["catchers"]) >= data["max_catches"]:
+                await interaction.response.send_message("❌ Con ma đã bị bắt hết!", ephemeral=True)
+                return
+
+            data["catchers"].append(user_id)
+
+            ghost = data["ghost"]
+            reward = random.randint(ghost["reward_range"][0], ghost["reward_range"][1])
+
+            await add_currency(data["guild_id"], user_id, data["event_id"], reward)
+            await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
+            await update_community_progress(data["guild_id"], data["event_id"], 1)
+            await self._record_catch(data["guild_id"], user_id, data["event_id"])
+
+            event = self.event_manager.get_event(data["event_id"])
+            emoji = event.currency_emoji if event else "🍬"
+
             await interaction.response.send_message(
-                f"❌ Bạn đã bắt đủ {daily_limit} con ma hôm nay! Quay lại ngày mai nhé.",
+                f"👻 Bạn bắt được **{ghost['name']}**! +**{reward}** {emoji}",
                 ephemeral=True,
             )
-            return
 
-        if user_id in data["catchers"]:
-            await interaction.response.send_message("❌ Bạn đã bắt con ma này rồi!", ephemeral=True)
-            return
-
-        if len(data["catchers"]) >= data["max_catches"]:
-            await interaction.response.send_message("❌ Con ma đã bị bắt hết!", ephemeral=True)
-            return
-
-        data["catchers"].append(user_id)
-
-        ghost = data["ghost"]
-        reward = random.randint(ghost["reward_range"][0], ghost["reward_range"][1])
-
-        await add_currency(data["guild_id"], user_id, data["event_id"], reward)
-        await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
-        await update_community_progress(data["guild_id"], 1)
-        await self._record_catch(data["guild_id"], user_id, data["event_id"])
-
-        event = self.event_manager.get_event(data["event_id"])
-        emoji = event.currency_emoji if event else "🍬"
-
-        await interaction.response.send_message(
-            f"👻 Bạn bắt được **{ghost['name']}**! +**{reward}** {emoji}",
-            ephemeral=True,
-        )
-
-        if len(data["catchers"]) >= data["max_catches"]:
-            await self._end_ghost(data)
-        else:
-            embed = self._create_ghost_embed(
-                event, ghost, data["max_catches"], len(data["catchers"]), data["expire_time"]
-            )
-            try:
-                await data["message"].edit(embed=embed)
-            except discord.NotFound:
-                pass
+            if len(data["catchers"]) >= data["max_catches"]:
+                await self._end_ghost(data)
+            else:
+                embed = self._create_ghost_embed(
+                    event, ghost, data["max_catches"], len(data["catchers"]), data["expire_time"]
+                )
+                try:
+                    await data["message"].edit(embed=embed)
+                except discord.NotFound:
+                    pass
 
     async def _get_user_daily_catches(self, guild_id: int, user_id: int, event_id: str) -> int:
         today = datetime.now().date().isoformat()

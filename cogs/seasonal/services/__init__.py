@@ -11,7 +11,6 @@ from .event_service import (
     get_milestones_reached,
     set_announcement_message,
     start_event,
-    update_community_progress,
     update_last_progress,
 )
 from .participation_service import (
@@ -25,6 +24,7 @@ from .participation_service import (
     get_participants,
     get_participation,
     spend_currency,
+    update_community_progress,
 )
 from .title_service import (
     clear_active_title,
@@ -71,10 +71,15 @@ from .rotation_service import (
     YearlyContent,
     rotation_service,
 )
+from .lifecycle_service import (
+    EventLifecycleService,
+    setup_lifecycle_service,
+)
 
 __all__ = [
     "CommunityGoalStatus",
     "ContentRotationService",
+    "EventLifecycleService",
     "FishDefinition",
     "Milestone",
     "PurchaseResult",
@@ -126,6 +131,7 @@ __all__ = [
     "rotation_service",
     "set_active_title",
     "set_announcement_message",
+    "setup_lifecycle_service",
     "spend_currency",
     "start_event",
     "unlock_title",

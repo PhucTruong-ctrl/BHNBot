@@ -143,7 +143,7 @@ class TreasureHuntMinigame(BaseMinigame):
 
             await add_currency(data["guild_id"], user_id, data["event_id"], reward)
             await add_contribution(data["guild_id"], user_id, data["event_id"], reward)
-            await update_community_progress(data["guild_id"], contribution)
+            await update_community_progress(data["guild_id"], data["event_id"], contribution)
 
             data["found_by"] = interaction.user.display_name
 

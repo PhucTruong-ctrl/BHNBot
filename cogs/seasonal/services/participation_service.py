@@ -14,7 +14,7 @@ logger = get_logger("seasonal_services_participatio")
 
 async def get_participation(guild_id: int, user_id: int, event_id: str) -> dict | None:
     rows = await execute_query(
-        "SELECT * FROM event_participation WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+        "SELECT * FROM event_participation WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
         (guild_id, user_id, event_id),
     )
     return rows[0] if rows else None
@@ -24,7 +24,7 @@ async def ensure_participation(guild_id: int, user_id: int, event_id: str) -> di
     participation = await get_participation(guild_id, user_id, event_id)
     if not participation:
         await execute_write(
-            "INSERT INTO event_participation (guild_id, user_id, event_id, currency, contributions) VALUES (?, ?, ?, 0, 0)",
+            "INSERT INTO event_participation (guild_id, user_id, event_id, currency, contributions) VALUES ($1, $2, $3, 0, 0)",
             (guild_id, user_id, event_id),
         )
         participation = {"guild_id": guild_id, "user_id": user_id, "event_id": event_id, "currency": 0, "contributions": 0}
@@ -46,11 +46,11 @@ async def add_currency(guild_id: int, user_id: int, event_id: str, amount: int) 
     
     await ensure_participation(guild_id, user_id, event_id)
     await execute_write(
-        "UPDATE event_participation SET currency = currency + ? WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+        "UPDATE event_participation SET currency = currency + $1 WHERE guild_id = $2 AND user_id = $3 AND event_id = $4",
         (amount, guild_id, user_id, event_id),
     )
     rows = await execute_query(
-        "SELECT currency FROM event_participation WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+        "SELECT currency FROM event_participation WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
         (guild_id, user_id, event_id),
     )
     return rows[0]["currency"] if rows else 0
@@ -71,7 +71,7 @@ async def spend_currency(guild_id: int, user_id: int, event_id: str, amount: int
 
 async def get_currency(guild_id: int, user_id: int, event_id: str) -> int:
     rows = await execute_query(
-        "SELECT currency FROM event_participation WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+        "SELECT currency FROM event_participation WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
         (guild_id, user_id, event_id),
     )
     return rows[0]["currency"] if rows else 0
@@ -80,11 +80,11 @@ async def get_currency(guild_id: int, user_id: int, event_id: str) -> int:
 async def add_contribution(guild_id: int, user_id: int, event_id: str, amount: int = 1) -> int:
     await ensure_participation(guild_id, user_id, event_id)
     await execute_write(
-        "UPDATE event_participation SET contributions = contributions + ? WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+        "UPDATE event_participation SET contributions = contributions + $1 WHERE guild_id = $2 AND user_id = $3 AND event_id = $4",
         (amount, guild_id, user_id, event_id),
     )
     rows = await execute_query(
-        "SELECT contributions FROM event_participation WHERE guild_id = ? AND user_id = ? AND event_id = ?",
+        "SELECT contributions FROM event_participation WHERE guild_id = $1 AND user_id = $2 AND event_id = $3",
         (guild_id, user_id, event_id),
     )
     return rows[0]["contributions"] if rows else 0
@@ -92,21 +92,21 @@ async def add_contribution(guild_id: int, user_id: int, event_id: str, amount: i
 
 async def get_participants(guild_id: int, event_id: str) -> list[dict]:
     return await execute_query(
-        "SELECT * FROM event_participation WHERE guild_id = ? AND event_id = ? ORDER BY currency DESC",
+        "SELECT * FROM event_participation WHERE guild_id = $1 AND event_id = $2 ORDER BY currency DESC",
         (guild_id, event_id),
     )
 
 
 async def get_leaderboard(guild_id: int, event_id: str, limit: int = 10) -> list[dict]:
     return await execute_query(
-        "SELECT * FROM event_participation WHERE guild_id = ? AND event_id = ? ORDER BY currency DESC LIMIT ?",
+        "SELECT * FROM event_participation WHERE guild_id = $1 AND event_id = $2 ORDER BY currency DESC LIMIT $3",
         (guild_id, event_id, limit),
     )
 
 
 async def get_participant_count(guild_id: int, event_id: str) -> int:
     rows = await execute_query(
-        "SELECT COUNT(*) as count FROM event_participation WHERE guild_id = ? AND event_id = ?",
+        "SELECT COUNT(*) as count FROM event_participation WHERE guild_id = $1 AND event_id = $2",
         (guild_id, event_id),
     )
     return rows[0]["count"] if rows else 0
@@ -121,7 +121,15 @@ async def get_community_progress(guild_id: int, event_id: str) -> int:
 
 
 async def update_community_progress(guild_id: int, event_id: str, progress: int) -> None:
-    pass
+    await execute_write(
+        """
+        INSERT INTO event_community_progress (guild_id, event_id, total_progress)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (guild_id, event_id) 
+        DO UPDATE SET total_progress = event_community_progress.total_progress + $3
+        """,
+        (guild_id, event_id, progress),
+    )
 
 
 async def get_milestones_reached(guild_id: int, event_id: str) -> list[int]:

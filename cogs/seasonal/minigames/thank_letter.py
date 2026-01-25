@@ -98,7 +98,7 @@ class ThankLetterMinigame(BaseMinigame):
         await add_currency(guild_id, user_id, active["event_id"], reward_sender)
         await add_currency(guild_id, target_user.id, active["event_id"], reward_receiver)
         await add_contribution(guild_id, user_id, active["event_id"], reward_sender)
-        await update_community_progress(guild_id, 1)
+        await update_community_progress(guild_id, active["event_id"], 1)
         await self._record_letter(guild_id, user_id, target_user.id, active["event_id"], message)
 
         emoji = event.currency_emoji if event else "🍂"

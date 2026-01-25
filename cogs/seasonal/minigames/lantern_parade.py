@@ -79,7 +79,7 @@ class LanternParadeMinigame(BaseMinigame):
 
         await add_currency(guild_id, user_id, active["event_id"], reward)
         await add_contribution(guild_id, user_id, active["event_id"], reward)
-        await update_community_progress(guild_id, lanterns)
+        await update_community_progress(guild_id, active["event_id"], lanterns)
         await self._record_minutes(guild_id, user_id, active["event_id"], eligible_minutes)
         await self._add_lanterns(guild_id, user_id, active["event_id"], lanterns)
 

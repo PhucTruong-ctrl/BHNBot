@@ -81,7 +81,7 @@ class WishesMinigame(BaseMinigame):
         reward = config.get("reward_per_wish", 20)
         await add_currency(guild_id, user_id, active["event_id"], reward)
         await add_contribution(guild_id, user_id, active["event_id"], reward)
-        await update_community_progress(guild_id, 1)
+        await update_community_progress(guild_id, active["event_id"], 1)
         await self._record_wish(guild_id, user_id, active["event_id"], message)
 
         emoji = event.currency_emoji if event else "🎈"

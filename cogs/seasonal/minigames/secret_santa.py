@@ -367,7 +367,7 @@ class SecretSantaMinigame(BaseMinigame):
         embed.set_footer(text="Cảm ơn mọi người đã tham gia Secret Santa!")
 
         await channel.send(embed=embed)
-        await update_community_progress(guild_id, gifted_count)
+        await update_community_progress(guild_id, active["event_id"], gifted_count)
 
     async def check_my_santa(self, interaction: Interaction) -> None:
         """Check who will give you a gift (without revealing)."""

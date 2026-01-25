@@ -14,14 +14,14 @@ logger = get_logger("seasonal_services_title_servic")
 
 async def unlock_title(user_id: int, title_key: str, title_name: str, source: str) -> bool:
     existing = await execute_query(
-        "SELECT 1 FROM user_titles WHERE user_id = ? AND title_key = ?",
+        "SELECT 1 FROM user_titles WHERE user_id = $1 AND title_key = $2",
         (user_id, title_key),
     )
     if existing:
         return False
 
     await execute_write(
-        "INSERT INTO user_titles (user_id, title_key, title_name, source, unlocked_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO user_titles (user_id, title_key, title_name, source, unlocked_at) VALUES ($1, $2, $3, $4, $5)",
         (user_id, title_key, title_name, source, datetime.now().isoformat()),
     )
     logger.info(f"Unlocked title {title_key} for user {user_id}")
