@@ -24,6 +24,12 @@ class GiveawayEndSelectView(discord.ui.View):
         )
         select.callback = self.end_giveaway_callback
         self.add_item(select)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
     
     async def end_giveaway_callback(self, interaction: discord.Interaction):
         """Handle giveaway selection and end it."""

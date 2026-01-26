@@ -36,6 +36,12 @@ class EventInfoView(discord.ui.View):
         self.current_page = "leaderboard"
         await interaction.response.defer()
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 
 class QuestView(discord.ui.View):
     def __init__(
@@ -72,6 +78,12 @@ class QuestView(discord.ui.View):
             await interaction.response.send_message("❌ Không phải của bạn!", ephemeral=True)
             return False
         return True
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
 
     def create_embed(self) -> discord.Embed:
         current_quests = self.quests.get(self.current_tab, [])
@@ -190,6 +202,12 @@ class ShopView(discord.ui.View):
             return False
         return True
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
     def create_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title=f"🛒 CỬA HÀNG SỰ KIỆN - {self.event.name}",
@@ -294,3 +312,9 @@ class ConfirmView(discord.ui.View):
         self.confirmed = False
         self.stop()
         await interaction.response.defer()
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

@@ -150,6 +150,12 @@ class MainMenuView(discord.ui.View):
     async def sell(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_sell_menu(interaction)
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 
 class UpgradeView(discord.ui.View):
 
@@ -180,6 +186,12 @@ class UpgradeView(discord.ui.View):
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_main_menu(interaction)
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 
 class SacrificeView(discord.ui.View):
 
@@ -209,6 +221,12 @@ class SacrificeView(discord.ui.View):
     @discord.ui.button(label="◀️ Quay lại", style=discord.ButtonStyle.secondary)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_main_menu(interaction)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
 
 
 class SellView(discord.ui.View):

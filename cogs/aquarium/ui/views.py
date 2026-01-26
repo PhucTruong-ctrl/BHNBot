@@ -80,6 +80,12 @@ class DecorShopView(ui.View):
         self.user_id = user_id
         self.add_item(DecorSelect(user_id))
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 class DecorSelect(ui.Select):
     def __init__(self, user_id: int):
         self.user_id = user_id
@@ -169,6 +175,12 @@ class DecorConfirmView(ui.View):
         btn_back = ui.Button(label="Quay lại", style=discord.ButtonStyle.secondary, emoji="↩️")
         btn_back.callback = self.back
         self.add_item(btn_back)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
 
     async def buy_seeds(self, interaction: discord.Interaction):
         await self._buy(interaction, 'seeds')
@@ -283,6 +295,12 @@ class DecorPlacementView(ui.View):
         
         await interaction.edit_original_response(embed=embed, view=self)
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 class SlotSelect(ui.Select):
     def __init__(self, user_id: int, current: int):
         options = []
@@ -350,6 +368,12 @@ class VIPSubscriptionView(ui.View):
         self.user_id = user_id
         self.add_item(VIPSelect(user_id))
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 class VIPSelect(ui.Select):
     def __init__(self, user_id: int):
         options = []
@@ -379,6 +403,12 @@ class VIPConfirmView(ui.View):
         self.user_id = user_id
         self.tier = tier
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
     @ui.button(label="Xác Nhận Đăng Ký", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: ui.Button):
         if interaction.user.id != self.user_id: return
@@ -396,6 +426,12 @@ class AutoVisitView(ui.View):
     def __init__(self, user_id: int):
         super().__init__(timeout=120)
         self.user_id = user_id
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
 
     @ui.button(label="Đăng Ký (50k/tháng)", style=discord.ButtonStyle.success, emoji="✅")
     async def subscribe(self, interaction: discord.Interaction, button: ui.Button):

@@ -328,6 +328,12 @@ class ShopCategoryView(ui.View):
         # Open Modal
         await interaction.response.send_modal(TransactionModal(item_key))
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 # ==================== TRANSACTION MODAL ====================
 class TransactionModal(ui.Modal):
     def __init__(self, item_key: str):
@@ -411,3 +417,9 @@ class PaymentMethodView(ui.View):
         color = 0x2ecc71 if success else 0xe74c3c
         embed = discord.Embed(description=msg, color=color)
         await interaction.edit_original_response(embed=embed, view=None)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

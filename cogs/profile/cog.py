@@ -485,3 +485,9 @@ class AchievementPaginationView(discord.ui.View):
         embed = self.pages[self.current_page]
         embed.set_footer(text=f"Trang {self.current_page + 1}/{len(self.pages)} • Dùng nút bên dưới để chuyển trang")
         await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

@@ -237,6 +237,12 @@ class PendingWordView(discord.ui.View):
         )
         await self.admin_channel.send(embed=embed)
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 class AddWordCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

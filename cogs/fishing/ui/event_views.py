@@ -63,6 +63,12 @@ class MeteorWishView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error editing meteor view: {e}")
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 
 class GenericActionView(discord.ui.View):
     
@@ -309,3 +315,9 @@ class GenericActionView(discord.ui.View):
         except Exception as e:
             logger.error(f"[GENERIC_VIEW] Error for user {user_id}: {e}", exc_info=True)
             await interaction.followup.send("❌ Lỗi hệ thống!", ephemeral=True)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

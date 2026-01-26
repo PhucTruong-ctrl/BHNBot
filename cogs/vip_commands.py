@@ -392,6 +392,12 @@ class VIPPurchaseView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(content="❌ Đã hủy mua VIP.", embed=None, view=None)
         self.stop()
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
     
     async def _show_confirmation(self, interaction: discord.Interaction, tier: int, cost: int):
         if interaction.user.id != self.user_id:

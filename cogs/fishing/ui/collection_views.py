@@ -126,3 +126,9 @@ class FishingCollectionView(ui.View):
         self.update_buttons()
         embed = await self.get_current_embed()
         await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

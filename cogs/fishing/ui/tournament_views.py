@@ -66,3 +66,9 @@ class TournamentLobbyView(discord.ui.View):
     @discord.ui.button(label="Cập Nhật", style=discord.ButtonStyle.gray, emoji="🔄")
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.update_embed(interaction)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

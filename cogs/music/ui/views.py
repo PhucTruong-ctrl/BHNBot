@@ -89,6 +89,12 @@ class VolumeSelectView(View):
         super().__init__(timeout=timeout)
         self.add_item(VolumeSelect(current_volume))
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 
 class MusicControlView(View):
 

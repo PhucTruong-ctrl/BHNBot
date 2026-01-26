@@ -56,6 +56,12 @@ class ApprovalView(discord.ui.View):
         for item in self.children: item.disabled = True
         await interaction.response.edit_message(embed=embed, view=self)
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 class ConfigCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

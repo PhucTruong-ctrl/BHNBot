@@ -210,3 +210,9 @@ class BauCuaBetView(discord.ui.View):
         """Handle Nai (Deer) bet button click."""
         modal = BauCuaBetModal(self.game_cog, self.game_id, "nai")
         await interaction.response.send_modal(modal)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

@@ -209,6 +209,12 @@ class LegendaryBossFightView(discord.ui.View):
             self.cog.dark_map_casts[self.user_id] = 0
             self.cog.dark_map_cast_count[self.user_id] = 0
 
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
+
 
 class LegendaryHallView(discord.ui.View):
     
@@ -301,3 +307,9 @@ class LegendaryHallView(discord.ui.View):
             "ca_voi_52hz": "📡 Phát hiện **tín hiệu 52Hz**\n🎵 Sử dụng Máy Phát Sóng"
         }
         return conditions_map.get(fish_key, "❓ Điều kiện bí ẩn...")
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()

@@ -320,3 +320,9 @@ class AutoWaterView(discord.ui.View):
         button.disabled = True
         
         await interaction.followup.edit_message(message_id=interaction.message.id, embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        for child in self.children:
+            if hasattr(child, 'disabled'):
+                child.disabled = True
+        self.stop()
