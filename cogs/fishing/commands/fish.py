@@ -533,7 +533,7 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
         
                     elif event_result.get("custom_effect") == "gain_money_percent":
                         # Crypto Pump: Gain 5% assets
-                        from .constants import GAIN_PERCENT_CAP
+                        from ..constants import GAIN_PERCENT_CAP
                         balance = await get_user_balance(user_id)
                         gain = max(100, int(balance * 0.05))
                         # Cap at 30k (defined in settings)
@@ -928,7 +928,7 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                             
                             rare_pool = RARE_FISH.copy()
                             if vip_tier > 0:
-                                from .constants import get_vip_fish_for_tier, VIP_FISH_DATA
+                                from ..constants import get_vip_fish_for_tier, VIP_FISH_DATA
                                 vip_fish_keys = get_vip_fish_for_tier(vip_tier)
                                 for vip_fish in VIP_FISH_DATA:
                                     if vip_fish['key'] in vip_fish_keys:
@@ -1232,7 +1232,7 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
 
                 # Check for Phoenix spawn RNG failure
                 if isinstance(legendary_fish, dict) and "spawn_failed" in legendary_fish:
-                    from .mechanics.legendary_quest_helper import consume_phoenix_buff
+                    from ..mechanics.legendary_quest_helper import consume_phoenix_buff
                 
                     legendary_key = legendary_fish["spawn_failed"]
                     energy = legendary_fish["energy"]
@@ -1604,7 +1604,7 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                         await increment_stat(user_id, "fishing", "total_fish_caught", num_fish)
                         current_total = await get_stat(user_id, "fishing", "total_fish_caught")
                         await cog.bot.achievement_manager.check_unlock(user_id, "fishing", "total_fish_caught", current_total, channel)
-                        from .mechanics.events import check_conditional_unlocks
+                        from ..mechanics.events import check_conditional_unlocks
                         await check_conditional_unlocks(user_id, "total_fish_caught", current_total, channel)
                     except Exception as e:
                         logger.error(f"[ACHIEVEMENT] Error updating total_fish_caught for {user_id}: {e}")

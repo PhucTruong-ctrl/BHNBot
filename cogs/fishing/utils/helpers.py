@@ -223,7 +223,7 @@ async def trigger_global_disaster(self, user_id: int, username: str, channel) ->
             data = data_cache.get_disaster_events()
             if not data:
                 import json
-                from .constants import DISASTER_EVENTS_PATH
+                from ..constants import DISASTER_EVENTS_PATH
                 with open(DISASTER_EVENTS_PATH, "r", encoding="utf-8") as f:
                     data = json.load(f)
             disasters_by_key = {d["key"]: d for d in data.get("disasters", [])}
@@ -293,7 +293,7 @@ async def trigger_global_disaster(self, user_id: int, username: str, channel) ->
         logger.info(f"[DISASTER] {disaster['key']} triggered by {username}. Duration: {disaster_duration}s")
         
         # Track achievement stats for disaster trigger
-        from .constants import DISASTER_STAT_MAPPING
+        from ..constants import DISASTER_STAT_MAPPING
         if disaster['key'] in DISASTER_STAT_MAPPING:
             stat_key = DISASTER_STAT_MAPPING[disaster['key']]
             try:
