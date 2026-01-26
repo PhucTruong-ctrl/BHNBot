@@ -329,4 +329,73 @@ BHNBot có **foundation rất tốt**: Modular, có transactions, có tests. Tuy
 
 ---
 
+##  BÁO CÁO KIỂM TRA (26/01/2026)
+
+### Phương pháp
+- 5 explore agents chạy song song để quét toàn bộ codebase
+- Kiểm tra: SQL injection, race conditions, error handling, N+1 queries, View timeouts
+
+### Kết quả SQL Injection Scan
+ **KHÔNG CÓ LỖ HỔNG SQL INJECTION** - Codebase sử dụng parameterized queries đúng cách.
+
+| Vị trí | Phát hiện | Trạng thái |
+|--------|-----------|------------|
+| `database_manager.py:466` | Logic bug: SET clause placeholder collision |  LOW |
+| `web/routers/users.py:56` | Dynamic ORDER BY với FastAPI regex validation |  SAFE |
+| `auto_fishing/services/fishing_service.py:265` | Dynamic column với whitelist check |  SAFE |
+| `web/routers/stats.py:418` | Dynamic WHERE với parameterized values |  SAFE |
+
+### Phát hiện mới
+
+#### CRITICAL - Phải sửa ngay
+| ID | Issue | File | Line | Mô tả |
+|----|-------|------|------|-------|
+| C1 | Race Condition | `fish.py` | 220-223, 269-271 | Check-then-act pattern không atomic |
+| C2 | Race Condition | `rod_system.py` | 101-105 | Check-then-act pattern không atomic |
+| C3 | Transaction Lock | `fish.py` | 154, 356 | asyncio.sleep 1-5s trong transaction |
+
+#### HIGH - Sửa sớm
+| ID | Issue | File | Line | Mô tả |
+|----|-------|------|------|-------|
+| H1 | Unhandled DM | `werewolf/engine/game.py` | 800, 962 | DM send không handle Forbidden |
+| H2 | Silent except | `werewolf/roles/villagers/wild_child.py` | 97-105 | `except: pass` không log |
+| H3 | Silent except | `baucua/cog.py` | 127-133 | `except: pass` không log |
+| H4 | Missing on_timeout | 17 files | - | 31 Views thiếu on_timeout handler |
+| H5 | Nested Transaction | `add_seeds()` | - | Transaction lồng không atomic |
+
+#### MEDIUM - Tối ưu hóa
+| ID | Issue | File | Line | Mô tả |
+|----|-------|------|------|-------|
+| M1 | N+1 Query | `tournament.py` | 196-197, 286-287 | Loop INSERT thay vì executemany |
+| M2 | N+1 Query | `rod.py` | 104-112 | Loop fetch materials |
+| M3 | N+1 Query | `sell_views.py` | 611-622 | Loop UPDATE fish |
+| M4 | N+1 Query | `quest_service.py` | 388-393 | Loop INSERT rewards |
+| M5 | Silent Timeout | `consumable.py`, `voting.py` | - | Timeout không notify user |
+
+#### LOW - Nice to have
+| ID | Issue | File | Line | Mô tả |
+|----|-------|------|------|-------|
+| L1 | Logic Bug | `database_manager.py` | 466 | SET clause $1 collision với WHERE $1 |
+
+### CHECKLIST HÀNH ĐỘNG (Jan 26, 2026)
+
+#### CRITICAL (Must Fix)
+- [ ] **C1-C2**: Race condition fishing - Wrap check+action trong `FOR UPDATE` transaction
+- [ ] **C3**: Transaction scope - Di chuyển asyncio.sleep ra ngoài transaction block
+
+#### HIGH (Should Fix)
+- [ ] **H1**: Tạo `safe_dm()` wrapper với try/except Forbidden
+- [ ] **H2-H3**: Thay `except: pass` bằng `except Exception as e: logger.exception(e)`
+- [ ] **H4**: Tạo base `BHNView` class với default `on_timeout` handler
+- [ ] **H5**: Refactor `add_seeds()` để không tạo transaction riêng
+
+#### MEDIUM (Performance)
+- [ ] **M1-M4**: Batch operations với `executemany()` hoặc `IN` clause
+- [ ] **M5**: Thêm timeout notification cho consumable/voting views
+
+#### LOW (Cleanup)
+- [ ] **L1**: Fix `update_fishing_profile` placeholder collision
+
+---
+
 **Tài liệu này nên được review lại mỗi 3 tháng khi bot phát triển.**
