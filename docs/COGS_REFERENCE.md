@@ -1,7 +1,7 @@
 # BHNBot - Tài Liệu Tham Chiếu Cogs (Complete Technical Reference)
 
-**Last Updated**: January 25, 2026  
-**Total Cogs**: 31 | **Slash Commands**: 126 | **Prefix Commands**: ~40  
+**Last Updated**: January 26, 2026  
+**Total Cogs**: 32 | **Slash Commands**: 126 | **Prefix Commands**: ~40  
 **Command Groups**: /giaidau, /giveaway, /banthan, /masoi, /nha, /trangtri, /loadout, /playlist, /sukien, /danhhieu, /sukien_test, /sukien_admin, /tuoi, /config, /cog
 
 ## MỤC ĐÍCH TÀI LIỆU
@@ -62,7 +62,7 @@ Tài liệu này được tạo ra để AI assistant có thể:
 
 ### Inventory Display
 - **FIXED**: Legendary fish (ca_isekai) now show in Fish category, not Tools
-- Categories: 🐟 Fish, 💝 Gifts, 🛠️ Tools, 🗑️ Trash
+- Categories:  Fish,  Gifts,  Tools,  Trash
 - Fish sorted by rarity with price calculations
 
 ### State Variables (FishingCog)
@@ -351,11 +351,11 @@ Tài liệu này được tạo ra để AI assistant có thể:
 
 | Tier | Badge | Tên | XP yêu cầu |
 |------|-------|-----|------------|
-| 1 | 🌱 | Người Trồng Cây | 1,000 |
-| 2 | 🌿 | Người Làm Vườn | 5,000 |
-| 3 | 🌳 | Người Bảo Vệ Rừng | 25,000 |
-| 4 | 🌸 | Thần Nông | 100,000 |
-| 5 | 🍎 | Tiên Nhân | 500,000 |
+| 1 |  | Người Trồng Cây | 1,000 |
+| 2 |  | Người Làm Vườn | 5,000 |
+| 3 |  | Người Bảo Vệ Rừng | 25,000 |
+| 4 |  | Thần Nông | 100,000 |
+| 5 |  | Tiên Nhân | 500,000 |
 
 **Commands:**
 - `/huyhieu` - Xem badge hiện tại, progress, và tất cả tiers
@@ -531,9 +531,9 @@ earned_count / total_guild_members * 100
 | Tier | Tên | Chi phí/30 ngày |
 |------|-----|-----------------|
 | 0 | Member | Miễn phí |
-| 1 | Bạc 🥈 | 50,000 Hạt |
-| 2 | Vàng 🥇 | 150,000 Hạt |
-| 3 | Kim Cương 💎 | 500,000 Hạt |
+| 1 | Bạc  | 50,000 Hạt |
+| 2 | Vàng  | 150,000 Hạt |
+| 3 | Kim Cương  | 500,000 Hạt |
 
 ### Commands
 | Lệnh | Chức năng |
@@ -607,8 +607,8 @@ earned_count / total_guild_members * 100
 - **Aquarium Dashboard Spam** (`cogs/aquarium/`): Refresh mỗi message → cần debounce 30s
 
 ### Security Issues
-- ⚠️ **Xi Dach Race Condition** (`cogs/xi_dach/commands/multi.py`): Double-spend possible → wrap trong transaction
-- ⚠️ **SQL Injection Risk** (`database_manager.py`): Dynamic column names → thêm whitelist
+-  **Xi Dach Race Condition** (`cogs/xi_dach/commands/multi.py`): Double-spend possible → wrap trong transaction
+-  **SQL Injection Risk** (`database_manager.py`): Dynamic column names → thêm whitelist
 - **Non-atomic Stats** (`increment_stat`): SELECT then UPDATE → dùng ON CONFLICT
 
 ### Scalability Limits
@@ -703,20 +703,20 @@ earned_count / total_guild_members * 100
 ### UI Buttons (MainMenuView)
 | Button | Chức năng |
 |--------|-----------|
-| 🔄 Refresh | Làm mới + thu hoạch cá mới |
-| 🟢 Bật/Tắt | Toggle auto-fishing on/off |
-| 🪣 Xem kho | Xem kho cá tự động |
-| ⬆️ Nâng cấp | Menu nâng cấp |
-| 📦 Chuyển → Xô | Chuyển cá vào inventory chính |
-| 🔮 Tinh luyện | Chuyển cá thành essence |
-| 💰 Bán cá | Bán cá lấy coins |
+|  Refresh | Làm mới + thu hoạch cá mới |
+|  Bật/Tắt | Toggle auto-fishing on/off |
+|  Xem kho | Xem kho cá tự động |
+|  Nâng cấp | Menu nâng cấp |
+|  Chuyển → Xô | Chuyển cá vào inventory chính |
+|  Tinh luyện | Chuyển cá thành essence |
+|  Bán cá | Bán cá lấy coins |
 
 ### Upgrade System
 | Upgrade | Levels | Effect |
 |---------|--------|--------|
-| ⚡ Efficiency | 1-5 | 5/10/20/40/100 cá/giờ |
-| ⏱️ Duration | 1-5 | 4/8/12/18/24 giờ max tích lũy |
-| ✨ Quality | 1-5 | +5/10/20/35/50% cá hiếm |
+|  Efficiency | 1-5 | 5/10/20/40/100 cá/giờ |
+|  Duration | 1-5 | 4/8/12/18/24 giờ max tích lũy |
+|  Quality | 1-5 | +5/10/20/35/50% cá hiếm |
 
 ### Essence System
 | Rarity | Essence/con |
@@ -752,7 +752,7 @@ auto_fish_storage (
 ### Critical Notes
 - **State Persistence**: `is_active` và `last_harvest` lưu trong DB → survive restart
 - **Separate Storage**: Cá auto-fish lưu riêng trong `auto_fish_storage`, KHÔNG phải `inventory`
-- **Ephemeral UI**: Dashboard chỉ user thấy, dùng nút 🔄 để refresh
+- **Ephemeral UI**: Dashboard chỉ user thấy, dùng nút  để refresh
 - **Minimum Harvest Time**: 0.005 giờ (~18 giây) để tránh spam
 
 ---
@@ -841,21 +841,21 @@ voice_rewards (user_id, guild_id, rewarded_seconds, total_rewards_today, last_re
 ### Themes Available
 | Theme | Emoji | Font | VIP Tier |
 |-------|-------|------|----------|
-| Forest Sanctuary | 🌲 | Quicksand | Free |
-| Ocean Depths | 🌊 | Comfortaa | Free |
-| Starry Night | 🌙 | Nunito | Free |
-| Cozy Cabin | 🏠 | Caveat | VIP 1 |
-| Sunrise Meadow | 🌅 | Outfit | VIP 2 |
+| Forest Sanctuary |  | Quicksand | Free |
+| Ocean Depths |  | Comfortaa | Free |
+| Starry Night |  | Nunito | Free |
+| Cozy Cabin |  | Caveat | VIP 1 |
+| Sunrise Meadow |  | Outfit | VIP 2 |
 
 ### Profile Card Stats
 | Icon | Stat | Source |
 |------|------|--------|
-| 🌾 | Seeds | `users.seeds` |
-| 🐟 | Fish | `COUNT(fish_collection)` |
-| 🎤 | Voice Hours | `voice_stats.total_seconds / 3600` |
-| 💝 | Kindness | Computed score từ kindness_stats |
-| 🔥 | Streak | `users.daily_streak` |
-| 🏆 | Badges | Top 4 achievements emojis |
+|  | Seeds | `users.seeds` |
+|  | Fish | `COUNT(fish_collection)` |
+|  | Voice Hours | `voice_stats.total_seconds / 3600` |
+|  | Kindness | Computed score từ kindness_stats |
+|  | Streak | `users.daily_streak` |
+|  | Badges | Top 4 achievements emojis |
 
 ### Database Table
 ```sql
@@ -881,12 +881,12 @@ user_profiles (user_id, theme, badges_display, bio)
 ### Quest Types
 | Type | Name | Icon | Target | Reward Pool |
 |------|------|------|--------|-------------|
-| `fish_total` | Câu cá | 🎣 | 50 cá | 100 Hạt |
-| `voice_total` | Voice chat | 🎤 | 120 phút | 100 Hạt |
-| `gift_total` | Tặng quà | 🎁 | 5 quà | 75 Hạt |
-| `react_total` | Thả tim | ❤️ | 30 reactions | 50 Hạt |
-| `tree_water` | Tưới cây | 🌳 | 10 lần | 50 Hạt |
-| `thank_total` | Cảm ơn | 🙏 | 10 lần | 50 Hạt |
+| `fish_total` | Câu cá |  | 50 cá | 100 Hạt |
+| `voice_total` | Voice chat |  | 120 phút | 100 Hạt |
+| `gift_total` | Tặng quà |  | 5 quà | 75 Hạt |
+| `react_total` | Thả tim |  | 30 reactions | 50 Hạt |
+| `tree_water` | Tưới cây |  | 10 lần | 50 Hạt |
+| `thank_total` | Cảm ơn |  | 10 lần | 50 Hạt |
 
 ### Daily Flow
 1. **7:00 AM** - Bot chọn random 3 quest và announce trong `kenh_nhiemvu`
@@ -1060,3 +1060,42 @@ event_active_titles (user_id, guild_id, title_key)
 - Minigame Views có timeout cleanup để prevent memory leaks
 - Rewards scale theo participation, not server size
 - Title system persists across events
+
+---
+
+## 26. ANALYTICS MODULE
+**Files**: `cogs/analytics.py`
+**Type**: Background Service (No User Commands)
+
+### Features
+- Tracks command usage (slash & prefix)
+- Tracks user activity (join/leave/voice)
+- Error tracking per command/user
+- Peak usage statistics
+
+### Database Tables
+```sql
+command_usage (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT,
+    guild_id BIGINT,
+    command_name TEXT,
+    is_slash BOOLEAN,
+    used_at TIMESTAMP DEFAULT NOW(),
+    error_message TEXT
+)
+
+user_activity (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT,
+    guild_id BIGINT,
+    activity_type TEXT, -- 'JOIN', 'LEAVE', 'VOICE_JOIN', 'VOICE_LEAVE'
+    created_at TIMESTAMP DEFAULT NOW(),
+    details JSONB
+)
+```
+
+### Critical Notes
+- All analytics calls must be non-blocking (fire-and-forget)
+- Usage data is critical for balancing and feature planning
+- Error messages are truncated to 1000 chars to save space
