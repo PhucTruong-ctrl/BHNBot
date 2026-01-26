@@ -13,7 +13,7 @@ Mỗi người chơi có thể sở hữu một "Căn Nhà" riêng. Thực chấ
 2.  Bot sẽ tạo một Thread riêng cho bạn. Đây là không gian riêng tư của bạn!
 
 ### Tương tác:
-*   **/thamnha @user**: Ghé thăm nhà hàng xóm. (Có thể nhận quà ngẫu nhiên khi thăm).
+*   **/thamnha @user**: Ghé thăm nhà hàng xóm.
 *   **Thả tim:** Bạn bè có thể thả tim bài viết nhà bạn để tăng điểm nổi tiếng.
 
 ---
@@ -35,30 +35,24 @@ Bạn có 5 vị trí (slot) trong nhà để đặt nội thất.
 ## 3. Hệ Thống Phong Thủy (Set Effects) 
 
 Đây là tính năng quan trọng! Khi bạn trang trí nhà theo cùng một chủ đề (Set), bạn sẽ kích hoạt các hiệu ứng ẩn.
+*(Yêu cầu tối thiểu 2 món cùng bộ để kích hoạt)*
 
-### Các Set tiêu biểu:
+### Các Set tiêu biểu & Tác dụng:
 
-| Tên Set | Hiệu Ứng | Tác Dụng |
-|:--------|:---------|:---------|
-| **Ngư Dân** | `catch_rate_bonus` | Tăng tỉ lệ câu dính cá. |
-| **Thương Gia**| `sell_price_bonus` | Bán cá được giá cao hơn (+%). |
-| **May Mắn** | `minigame_bonus` | Tăng tỉ lệ thắng/phần thưởng minigame. |
-| **Thiên Nhiên**| `seed_bonus` | Tăng lượng Hạt nhận được khi tưới cây. |
-| **Công Nghệ** | `passive_income` | Nhận Hạt tự động mỗi giờ (Passive Income). |
+| Tên Set | Tier | Hiệu Ứng | Tác Dụng |
+|:--------|:----:|:---------|:---------|
+| **Hải Dương Cung** | 1 | `catch_rate_bonus` | Tăng **5%** tỷ lệ câu dính cá. |
+| **Kim Ngân Khố** | 1 | `sell_price_bonus` | Bán cá giá cao hơn **5%**. |
+| **Long Cung Điện** | 2 | `rare_chance_bonus` | Tăng **10%** tỷ lệ cá hiếm. |
+| **Hoàng Kim Đài** | 2 | `sell_price_bonus` | Bán cá giá cao hơn **10%**. |
+| **Cửu Long Giang** | 3 | `legendary_chance` | Tăng **15%** tỷ lệ cá huyền thoại. |
+| **Âu Lạc Thành** | 3 | `all_bonus` | Tăng **5%** TẤT CẢ chỉ số. |
 
 *Mẹo: Hãy sưu tập đủ bộ để tối đa hóa hiệu quả cày cuốc!*
 
 ---
 
-## 4. Nuôi Cá
-
-Bạn có thể thả những con cá mình câu được vào hồ trong nhà để khoe với bạn bè.
-*   Dùng lệnh `/hoca tha [tên cá]` (Tính năng đang cập nhật chi tiết trong phiên bản tới).
-*   Cá nuôi trong hồ sẽ không bị bán đi khi dùng `/banca all`.
-
----
-
-## 5. Tái Chế (`/taiche`)
+## 4. Tái Chế (`/taiche`)
 
 Đừng vứt rác câu được!
 *   Gõ `/taiche` để biến Rác thành:

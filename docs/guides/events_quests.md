@@ -9,14 +9,15 @@ Luôn có điều gì đó mới mẻ diễn ra trong thế giới Mèo Lùn.
 Mỗi ngày server sẽ có một bộ nhiệm vụ chung cho tất cả mọi người. Đây là nỗ lực tập thể!
 
 *   **Thời gian:** Reset lúc 0:00 mỗi ngày.
-*   **Loại nhiệm vụ:**
-    *   *Fish Total:* Tổng số cá cả server câu được.
-    *   *Voice Total:* Tổng số phút mọi người voice.
-    *   *Gift/React:* Tổng số quà tặng/reaction trao đi.
-*   **Phần thưởng:**
-    *   10:00 PM mỗi tối, bot sẽ tổng kết.
-    *   Quỹ thưởng được chia cho những người có đóng góp.
-    *   Top đóng góp nhận thưởng thêm.
+*   **Nhiệm vụ & Phần thưởng (Pool):**
+    *   **FISH_TOTAL (50 cá):** Quỹ thưởng 100 Hạt.
+    *   **VOICE_TOTAL (120 phút):** Quỹ thưởng 100 Hạt.
+    *   **GIFT_TOTAL (5 quà):** Quỹ thưởng 75 Hạt.
+    *   **REACT_TOTAL (30 tim):** Quỹ thưởng 50 Hạt.
+    *   **TREE_WATER (10 lần):** Quỹ thưởng 50 Hạt.
+*   **Bonus:**
+    *   Hoàn thành tất cả nhiệm vụ: **+50 Hạt** vào quỹ.
+    *   Chuỗi thắng server (Streak): Tăng từ **10%** (3 ngày) đến **100%** (30 ngày).
 
 ---
 
@@ -24,12 +25,26 @@ Mỗi ngày server sẽ có một bộ nhiệm vụ chung cho tất cả mọi n
 
 Biểu tượng của sự đoàn kết. Cây Thần cần được chăm sóc bởi cả cộng đồng.
 
-*   **Tưới cây:** Gõ `/tuoi` mỗi ngày (Miễn phí 1 lần/ngày).
-*   **Góp Hạt:** Gõ `/gophat` để bón phân cho cây lớn nhanh hơn.
-*   **Thu hoạch:**
-    *   Khi cây đạt trạng thái "Kết Trái", Admin sẽ kích hoạt thu hoạch.
-    *   Cơn mưa Hạt sẽ rơi xuống cho tất cả những ai đã từng tưới cây!
-    *   Người đóng góp nhiều nhất nhận danh hiệu **"Thần Nông"**.
+### Các giai đoạn phát triển:
+1.  **Hạt mầm:** 0 XP
+2.  **Nảy mầm:** 1,000 XP
+3.  **Cây non:** 2,000 XP
+4.  **Trưởng thành:** 3,000 XP
+5.  **Ra hoa:** 4,000 XP
+6.  **Kết trái:** 5,000 XP (Sẵn sàng thu hoạch!)
+*(Yêu cầu XP tăng 1.25x mỗi mùa)*
+
+### Chăm sóc:
+*   **Tưới cây (`/tuoi`):** Miễn phí 1 lần/ngày. Cây nhận **+10 XP**, bạn nhận quà ngẫu nhiên (5-50 Hạt).
+*   **Góp Hạt (`/gophat`):** 1 Hạt = 1 XP.
+*   **Auto-Water:** Dành cho VIP Kim Cương (+100 XP/ngày tự động).
+
+### Thu hoạch (Harvest):
+Khi cây kết trái, Admin kích hoạt thu hoạch:
+*   **Top 1:** 13,000 Hạt + Role "Thần Nông".
+*   **Top 2:** 5,000 Hạt.
+*   **Top 3:** 3,000 Hạt.
+*   **Server Buff:** x2 Hạt từ Chat/Voice trong 24h.
 
 ---
 
@@ -37,23 +52,9 @@ Biểu tượng của sự đoàn kết. Cây Thần cần được chăm sóc b
 
 Bot thay đổi theo 4 mùa thực tế, mỗi mùa mang đến giao diện và minigame riêng.
 
-###  Mùa Xuân (Tết Nguyên Đán)
-*   **Hoạt động:** Săn lì xì, Pha trà mời khách, Viết câu đối.
-*   **Đặc biệt:** Boss "Niên Thú" xuất hiện.
+*   **Mùa Xuân (Tết):** Săn lì xì, Pha trà, Niên Thú.
+*   **Mùa Hè (Biển):** Đua thuyền, Lặn biển, Thủy Quái.
+*   **Mùa Thu (Trung Thu/Halloween):** Rước đèn, Săn ma, Bí Ngô.
+*   **Mùa Đông (Noel):** Ném tuyết, Secret Santa, Yeti.
 
-###  Mùa Hè (Lễ Hội Biển)
-*   **Hoạt động:** Đua thuyền, Lặn tìm kho báu, Dọn rác bãi biển.
-*   **Đặc biệt:** Cá Mập, Thủy Quái.
-
-###  Mùa Thu (Trung Thu & Halloween)
-*   **Hoạt động:** Rước đèn, Săn ma (Ghost Hunt), Cho kẹo hay bị ghẹo (Trick or Treat).
-*   **Đặc biệt:** Boss Bí Ngô.
-
-###  Mùa Đông (Giáng Sinh)
-*   **Hoạt động:** Ném tuyết, Xây người tuyết, Ông già Noel bí mật (Secret Santa).
-*   **Đặc biệt:** Yeti, Tuần Lộc.
-
-**Lệnh sự kiện:**
-*   `/sukien info`: Xem sự kiện đang diễn ra.
-*   `/sukien thamgia`: Tham gia minigame mùa này.
-*   `/sukien cuahang`: Shop đổi đồ giới hạn theo mùa.
+Gõ `/sukien info` để xem chi tiết sự kiện hiện tại.

@@ -19,23 +19,26 @@ Làm giàu không khó tại Mèo Lùn Bot. Dưới đây là cách quản lý t
 Gõ lệnh `/shop` hoặc `/mua` để xem danh sách vật phẩm.
 
 ### Các mặt hàng chính:
-1.  **Công cụ:** Cần câu, Mồi câu.
+1.  **Quà Tặng (Gift):**
+    *   *Thiệp (40 Hạt)*
+    *   *Cafe (50 Hạt)*
+    *   *Hoa Hồng (75 Hạt)*
+    *   *Nhẫn (150 Hạt)*
 2.  **Buff (Bùa):**
-    *   *Nước Tăng Lực:* Giảm thời gian chờ câu.
-    *   *Găng Tay May Mắn:* Tăng tỉ lệ cá hiếm.
+    *   *Nước Tăng Lực:* Tăng 75% tỉ lệ câu.
+    *   *Găng Tay Xịn:* Tăng 82% tỉ lệ câu.
 3.  **Vật phẩm đặc biệt:**
     *   *Máy Dò Sóng:* Tìm vị trí cá huyền thoại.
     *   *Bản Đồ Kho Báu:* Dùng để ghép bản đồ tìm kho báu.
-    *   *Thẻ Đổi Tên/Theme:* Tùy biến profile.
 
 ---
 
 ## 3. Cách Kiếm Hạt Hiệu Quả
 
 *   **Đầu tư cần câu:** Cần xịn -> Cá to -> Nhiều tiền.
-*   **Chuỗi ngày (Streak):** Điểm danh `/chao` liên tục mỗi ngày để nhận bonus cấp số nhân.
+*   **Bộ sưu tập Phong Thủy:** Set Kim Ngân Khố (+5% giá bán) hoặc Hoàng Kim Đài (+10% giá bán).
+*   **Chuỗi ngày (Streak):** Điểm danh `/chao` liên tục mỗi ngày.
 *   **Nhiệm vụ ngày:** Hoàn thành `/nhiemvu` để chia thưởng server.
-*   **Minigame:** Nếu bạn tin vào nhân phẩm, hãy thử vận may với Bầu Cua hoặc Xì Dách (nhưng coi chừng mất hết nhé!).
 *   **Voice chat:** Treo voice cùng bạn bè cũng có tiền (nhớ bật mic hoặc loa).
 
 ---
@@ -53,4 +56,4 @@ Gõ lệnh `/shop` hoặc `/mua` để xem danh sách vật phẩm.
 
 Mèo Lùn có cơ chế bảo hiểm xã hội:
 *   **Lương tuần:** Mỗi Chủ Nhật, người chơi có số dư thấp sẽ được nhận trợ cấp 500 Hạt.
-*   **Cashback (VIP):** Người chơi VIP được hoàn trả một phần tiền thua khi chơi minigame.
+*   **Cashback (VIP):** Người chơi VIP được hoàn trả 2-5% tiền thua khi chơi minigame.

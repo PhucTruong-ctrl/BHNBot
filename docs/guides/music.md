@@ -6,7 +6,7 @@ Chill cùng những giai điệu chất lượng cao với bạn bè.
 
 ## 1. Lệnh Cơ Bản
 
-*   **/play [tên bài hát / link]**: Phát nhạc. Hỗ trợ YouTube, Spotify, SoundCloud.
+*   **/play [tên bài hát / link]**: Phát nhạc. Hỗ trợ YouTube, Spotify (max 50 bài/playlist), SoundCloud.
 *   **/stop**: Dừng phát và bot rời kênh.
 *   **/skip**: Bỏ qua bài hiện tại.
 *   **/pause** / **/resume**: Tạm dừng / Tiếp tục.
@@ -32,10 +32,10 @@ Lưu lại những bài hát yêu thích của bạn.
 ## 4. Bộ Lọc Âm Thanh (Filters) 
 
 Thay đổi chất âm để hợp tâm trạng (Cần Vote hoặc VIP).
-*   `/filter lofi`: Chill, chậm, nhẹ nhàng.
-*   `/filter nightcore`: Nhanh, giọng cao (Anime style).
-*   `/filter bass`: Tăng Bass cực mạnh (Cẩn thận tai nghe!).
-*   `/filter vaporwave`: Chậm, hoài cổ.
+*   `/filter lofi`: Pitch 0.9 (Chill, trầm ấm).
+*   `/filter nightcore`: Speed 1.2, Pitch 1.2 (Nhanh, giọng cao).
+*   `/filter bass`: Bass Boost mạnh mẽ (+0.6 Low band).
+*   `/filter vaporwave`: Speed 0.8, Pitch 0.85 (Chậm, hoài cổ).
 *   `/filter reset`: Trở về bình thường.
 
 ## 5. Chế Độ 24/7

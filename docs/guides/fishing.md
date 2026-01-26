@@ -9,10 +9,15 @@ Câu cá là tính năng cốt lõi của Mèo Lùn Bot. Hãy trở thành ngư 
 ###  Lệnh Câu (`/cauca`)
 *   Gõ `/cauca` để quăng cần.
 *   Bot sẽ hiện thông báo "đang chờ cá cắn câu...".
-*   Kết quả sẽ hiện ra ngay sau đó: Bạn có thể câu được cá thường, cá hiếm, hoặc... rác (đừng lo, rác có thể tái chế!).
+*   **Tỉ lệ cơ bản:**
+    *   **Cá Thường (Common):** 60%
+    *   **Rác (Trash):** 30%
+    *   **Cá Hiếm (Rare):** 5%
+    *   **Rương Kho Báu:** 5%
+    *   *(Dùng Mồi câu hoặc Buff sẽ thay đổi tỉ lệ này!)*
 
 ###  Túi Đồ & Bán Cá
-*   **/tuido**: Kiểm tra xem bạn đã câu được gì.
+*   **/tuido**: Kiểm tra xem bạn đã câu được gì. Túi đồ chứa tối đa **15 món** (với người chơi thường).
 *   **/banca**: Bán cá để lấy Hạt.
     *   `/banca all`: Bán tất cả cá trong túi.
     *   `/banca common`: Chỉ bán cá thường.
@@ -25,18 +30,20 @@ Câu cá là tính năng cốt lõi của Mèo Lùn Bot. Hãy trở thành ngư 
 
 ## 2. Hệ Thống Cần Câu (Rod)
 
-Cần câu xịn hơn giúp bạn câu được cá hiếm hơn và giảm thời gian chờ.
+Cần câu xịn hơn giúp bạn câu được cá hiếm hơn và giảm thời gian chờ (Cooldown).
 Dùng lệnh `/nangcap` để nâng cấp cần câu.
 
-| Cấp | Tên Cần | Yêu Cầu | Tác Dụng |
-|:---:|:-------|:--------|:---------|
-| 1 | Cần Tre | Mặc định | Cần cơ bản cho người mới. |
-| 2 | Cần Gỗ | Hạt | Tăng nhẹ tỉ lệ cá hiếm. |
-| 3 | Cần Carbon| Hạt | Giảm thời gian chờ. |
-| 4 | Cần Hợp Kim| Hạt + Vật liệu | Tăng độ bền, câu cá to hơn. |
-| ... | ... | ... | ... |
+| Cấp | Tên Cần | Thời gian chờ | Tác Dụng Đặc Biệt |
+|:---:|:-------|:-------------:|:------------------|
+| 1 | Cần Tre | **30s** | Mặc định. |
+| 2 | Cần Thủy Tinh | **25s** | Giảm 5s chờ. |
+| 3 | Cần Carbon | **20s** | May mắn +2%. |
+| 4 | Cần Hợp Kim | **15s** | May mắn +5%. |
+| 5 | Cần Poseidon | **10s** | May mắn +10%. |
+| 6 | Cần Hư Không | **8s** | May mắn +15%, 5% câu đôi (Double Catch). |
+| 7 | Cần Thời Gian | **8s** | May mắn +20%, 10% không mất mồi. |
 
-*(Chi tiết giá và chỉ số xem trong lệnh `/nangcap`)*
+*Lưu ý: May mắn (Luck) giúp tăng tỉ lệ ra cá Hiếm và Huyền Thoại.*
 
 ---
 
@@ -53,6 +60,10 @@ Dành cho người bận rộn. Bạn có thể treo máy để bot tự câu c�
 *   **Kho chứa riêng:** Cá câu tự động sẽ vào "Kho Auto", KHÔNG vào túi đồ chính ngay.
 *   **Thu hoạch:** Bạn cần bấm **"Chuyển -> Túi"** để lấy cá về túi chính, hoặc **"Bán Cá"** ngay tại kho auto.
 *   **Essence (Tinh Hoa):** Bạn có thể "Tinh luyện" cá thừa thành Essence để nâng cấp máy Auto.
+    *   Common: 1 Essence
+    *   Rare: 5 Essence
+    *   Epic: 25 Essence
+    *   Legendary: 100 Essence
 
 ### Nâng cấp Auto-Fishing:
 Dùng Essence để nâng cấp 3 chỉ số:
@@ -72,6 +83,9 @@ Ngoài cá thường, bạn có thể gặp:
 ---
 
 ## 5. Mẹo Cho Ngư Dân
-*   Dùng **Bùa May Mắn** (mua trong Shop) để tăng tỉ lệ cá hiếm.
-*   Tham gia **Hội Bạn Thân** (`/banthan`) để nhận bonus XP khi câu cùng nhau.
-*   Trang trí nhà cửa theo **Set Ngư Dân** để tăng vĩnh viễn tỉ lệ câu cá!
+*   **Dùng Mồi (Worm):** Giảm tỉ lệ Rác xuống gần 0%, tăng tỉ lệ Cá Thường lên 99% (hoặc Rare). Giá **10 Hạt**/con.
+*   **Buff Hỗ Trợ:**
+    *   **Nước Tăng Lực:** Tăng 75% tỉ lệ thành công.
+    *   **Găng Tay Xịn:** Tăng 82% tỉ lệ thành công.
+*   **Hội Bạn Thân:** Câu cùng Buddy để nhận thêm XP.
+*   **Set Ngư Dân:** Trang trí nhà cửa để nhận buff +5% đến +15% tỉ lệ dính cá.

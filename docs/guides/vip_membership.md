@@ -14,27 +14,30 @@ Bạn có thể mua VIP bằng **Hạt** (cày cuốc) hoặc ủng hộ server.
 *   **Quyền lợi:**
     *   Huy hiệu Bạc trên hồ sơ.
     *   **Auto-bán cá:** Tự động bán cá khi túi đầy (không cần gõ lệnh).
-    *   Hoàn tiền (Cashback) 2% khi thua minigame.
+    *   Hoàn tiền (Cashback) **2%** khi thua minigame.
     *   Mở khóa Theme hồ sơ: *Cozy Cabin*.
+    *   +1 Slot trang trí nhà.
 
 ###  VIP Vàng (Gold)
 *   **Giá:** 150,000 Hạt / 30 ngày.
 *   **Quyền lợi:**
     *   Tất cả quyền lợi Bạc.
     *   Huy hiệu Vàng.
-    *   **Auto-Fishing nâng cao:** Tốc độ cày Essence nhanh hơn.
+    *   **Chấm Long Dịch:** Mua vật phẩm giúp câu 3-5 con/lần (Giá 200 Hạt).
     *   **Thêm slot trang trí nhà:** +2 slot nội thất.
-    *   Hoàn tiền 3% khi thua minigame.
+    *   Hoàn tiền **3%** khi thua minigame.
     *   Mở khóa Theme: *Sunrise Meadow*.
+    *   Nền hồ cá GIF động.
 
 ###  VIP Kim Cương (Diamond)
 *   **Giá:** 500,000 Hạt / 30 ngày.
 *   **Quyền lợi:**
     *   Tất cả quyền lợi Vàng.
     *   Huy hiệu Kim Cương lấp lánh.
-    *   **Auto-All:** Tự động tưới cây, tự động thăm nhà hàng xóm mỗi ngày.
+    *   **Lưới Thần Thánh:** Mua vật phẩm bắt 5-10 cá Rare (Giá 500 Hạt).
+    *   **Auto-All:** Tự động tưới cây (+100 XP/ngày), tự động thăm nhà hàng xóm.
     *   **Cashback 5%** (Tối đa 10k/ngày).
-    *   Quyền sử dụng bộ lọc nhạc cao cấp 24/7.
+    *   +3 Slot trang trí nhà.
     *   Ưu tiên hỗ trợ từ Admin.
 
 ---
@@ -56,4 +59,4 @@ A: Không. Bạn chỉ mất các quyền lợi tự động (auto). Slot nhà t
 A: Có! Dùng lệnh `/thuongluu gift @user [goi]`.
 
 **Q: VIP có tăng tỉ lệ câu cá không?**
-A: Không trực tiếp. Nhưng VIP có thể mua một số vật phẩm tiện ích trong Shop VIP (như Lưới Thần Thánh) giúp câu nhiều con một lúc, nhưng tỉ lệ ra cá hiếm vẫn dựa vào nhân phẩm và cần câu của bạn.
+A: Không trực tiếp. Nhưng VIP có thể mua **Lưới Thần Thánh** giúp bắt nhiều cá Rare hơn, tiết kiệm thời gian cày cuốc.
