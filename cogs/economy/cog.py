@@ -165,6 +165,7 @@ class EconomyCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=False)
     
     @commands.command(name="tuido", description="Xem số hạt và túi đồ")
+    @commands.cooldown(1, 5.0, commands.BucketType.member)
     async def balance_alias_prefix(self, ctx, user: discord.User = None):
         """Check balance and inventory via prefix"""
         target_user = user or ctx.author
