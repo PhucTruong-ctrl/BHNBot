@@ -433,7 +433,6 @@ class FishingCog(commands.Cog):
 
     @app_commands.command(name="cauca", description="🎣 Câu cá - Dùng /cauca để bắt đầu")
     async def fish_slash(self, interaction: discord.Interaction):
-        await interaction.response.defer()
         await self._fish_action(interaction)
     
 
@@ -654,7 +653,6 @@ class FishingCog(commands.Cog):
     # --- NANGCAP (Rod Upgrade) ---
     @app_commands.command(name="nangcap", description="Nâng cấp cần câu của bạn")
     async def nangcap_slash(self, interaction: discord.Interaction):
-        await interaction.response.defer()
         await self._nangcap_action(interaction)
 
     @commands.command(name="nangcap", aliases=["upgrade", "nc"])

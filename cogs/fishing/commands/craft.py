@@ -50,9 +50,6 @@ async def hiente_action(cog, ctx_or_interaction, fish_key: str, is_slash: bool):
         username = ctx_or_interaction.user.name if is_slash_cmd else ctx_or_interaction.author.name
         logger.info(f"[EVENT] {username} experienced lag delay (3s) - sacrifice fish")
     
-    if is_slash_cmd:
-        await ctx_or_interaction.response.defer()
-    
     # Check if user already has Thuồng Luồng
     try:
         count = await get_fish_count(user_id, 'thuong_luong')
@@ -166,7 +163,6 @@ async def chetao_action(cog, ctx_or_interaction, item_key: str, is_slash: bool):
     
     if is_slash_cmd:
         user_id = ctx_or_interaction.user.id
-        await ctx_or_interaction.response.defer()
     else:
         user_id = ctx_or_interaction.author.id
     
@@ -267,7 +263,6 @@ async def dosong_action(cog, ctx_or_interaction, is_slash: bool):
     
     if is_slash_cmd:
         user_id = ctx_or_interaction.user.id
-        await ctx_or_interaction.response.defer()
     else:
         user_id = ctx_or_interaction.author.id
     
@@ -321,7 +316,6 @@ async def ghepbando_action(cog, ctx_or_interaction, is_slash: bool):
     
     if is_slash_cmd:
         user_id = ctx_or_interaction.user.id
-        await ctx_or_interaction.response.defer()
     else:
         user_id = ctx_or_interaction.author.id
     
