@@ -1801,10 +1801,14 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                 description=f"Xảy ra lỗi không mong muốn: {str(e)[:100]}\n\nVui lòng thử lại sau.",
                 color=discord.Color.red()
             )
+            is_slash = isinstance(ctx_or_interaction, discord.Interaction)
             if is_slash:
-                await ctx.followup.send(embed=error_embed, ephemeral=True)
+                if ctx_or_interaction.response.is_done():
+                    await ctx_or_interaction.followup.send(embed=error_embed, ephemeral=True)
+                else:
+                    await ctx_or_interaction.response.send_message(embed=error_embed, ephemeral=True)
             else:
-                await ctx.reply(embed=error_embed)
+                await ctx_or_interaction.reply(embed=error_embed)
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
 
