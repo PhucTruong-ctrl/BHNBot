@@ -1,132 +1,59 @@
-# HƯỚNG DẪN NGƯỜI DÙNG MÈO LÙN BOT (v2.0)
+#  HƯỚNG DẪN NGƯỜI DÙNG MÈO LÙN BOT (v2.0)
 
 > **"Không chỉ là bot, đây là nơi để chill."**
 
-Chào mừng bạn đến với Mèo Lùn Bot - một hệ sinh thái giải trí, kết bạn và chữa lành trên Discord. Không giống các bot cày cuốc khác, Mèo Lùn tập trung vào sự thư giãn, kết nối cộng đồng và những niềm vui nhỏ bé mỗi ngày.
+Chào mừng bạn đến với tài liệu hướng dẫn chi tiết của **Mèo Lùn Bot**. Tại đây bạn sẽ tìm thấy mọi thông tin cần thiết để trở thành một ngư dân tài ba, một phú hộ giàu có hay một người bạn thân thiện trong cộng đồng.
 
 ---
 
-## 1. BẮT ĐẦU (QUICK START)
+##  Mục Lục
 
-Nếu bạn là người mới, hãy làm 3 việc này mỗi ngày để tích lũy tài nguyên:
+###  [1. Bắt Đầu (Getting Started)](guides/getting_started.md)
+*   3 việc cần làm ngay cho người mới.
+*   Cách kiếm những đồng Hạt đầu tiên.
+*   Giới thiệu giao diện cơ bản.
 
-1.  **/chao**: Chào buổi sáng (từ 5h - 10h sáng).
-    *   *Thưởng:* 10 Hạt + Streak Bonus.
-    *   *Tác dụng:* Duy trì chuỗi ngày liên tiếp để nhận thưởng lớn.
+###  [2. Câu Cá & Auto-Fishing](guides/fishing.md)
+*   Cách câu cá, bán cá, quản lý túi đồ.
+*   Hệ thống cần câu và nâng cấp.
+*   Hướng dẫn dùng Auto-Fishing cho người bận rộn.
 
-2.  **/tuoi**: Tưới cây Thần của server.
-    *   *Thưởng:* XP danh hiệu + Quà ngẫu nhiên.
-    *   *Tác dụng:* Giúp cây lớn nhanh để cả server cùng thu hoạch.
+###  [3. Kinh Tế & Cửa Hàng](guides/economy_shop.md)
+*   Các loại tiền tệ (Hạt, Xu Lá, Essence).
+*   Cách kiếm tiền hiệu quả.
+*   Mua sắm vật phẩm hỗ trợ.
 
-3.  **/nhiemvu**: Xem nhiệm vụ hàng ngày.
-    *   *Thưởng:* Chia sẻ quỹ thưởng server lúc 10h tối.
-    *   *Ví dụ:* Câu 50 con cá, Voice 2 tiếng, Tặng 5 món quà...
+###  [4. Hồ Cá & Nhà Cửa](guides/aquarium_housing.md)
+*   Tạo và trang trí nhà riêng.
+*   Hệ thống Phong Thủy (Set Effects) để kích hoạt buff.
+*   Tái chế rác thành nội thất.
 
----
+###  [5. Minigames](guides/minigames.md)
+*   Hướng dẫn chơi: Xì Dách, Bầu Cua, Nối Từ.
+*   Luật chơi Ma Sói (Werewolf) trên Discord.
 
-## 2. CÂU CÁ & HỆ THỐNG "HẠT"
+###  [6. Xã Hội & Kết Nối](guides/social.md)
+*   Hồ sơ cá nhân & Theme.
+*   Hệ thống Bạn Thân (Buddy) và lợi ích.
+*   Điểm Tử Tế và cách trở thành "người tốt".
 
-Hạt là đơn vị tiền tệ chính. Bạn kiếm Hạt chủ yếu qua việc câu cá.
+###  [7. Sự Kiện & Nhiệm Vụ](guides/events_quests.md)
+*   Nhiệm vụ hàng ngày (Daily Quests).
+*   Chăm sóc Cây Thần server.
+*   Sự kiện theo 4 mùa (Tết, Hè, Trung Thu, Giáng Sinh).
 
-### Cách câu cá
-*   Gõ **/cauca** để quăng cần.
-*   Chờ cá cắn câu và xem kết quả.
-*   Gõ **/tuido** để xem cá đã câu.
-*   Gõ **/banca** để bán cá lấy Hạt.
+###  [8. Âm Nhạc](guides/music.md)
+*   Lệnh phát nhạc cơ bản.
+*   Bộ lọc âm thanh (Lofi, Nightcore...).
+*   Tạo playlist riêng.
 
-### Auto-Fishing (Câu Tự Động)
-Dành cho người bận rộn. Bạn có thể "treo máy" để bot tự câu.
-*   Gõ **/autocauca** để mở bảng điều khiển.
-*   Bấm nút **Bật/Tắt** để bắt đầu.
-*   Nâng cấp các chỉ số (Tốc độ, Thời gian, Chất lượng) bằng Essence (tinh luyện từ cá thừa).
+###  [9. VIP Membership](guides/vip_membership.md)
+*   Quyền lợi các gói VIP (Bạc, Vàng, Kim Cương).
+*   Cách đăng ký và ủng hộ bot.
 
----
-
-## 3. AQUARIUM & NHÀ CỬA (HOUSING)
-
-Mỗi người chơi có một ngôi nhà riêng (Thread) để trang trí và nuôi cá.
-
-### Tạo nhà
-*   Gõ **/nha khoitao** để nhận nhà.
-*   Bot sẽ tạo một Thread riêng cho bạn trong kênh Forum Làng Chài.
-
-### Trang trí
-*   Gõ **/trangtri cuahang** để mua nội thất bằng Hạt hoặc Xu Lá.
-*   Gõ **/trangtri sapxep** để đặt đồ vào 5 vị trí trong nhà.
-
-### Hiệu ứng Set (Phong Thủy)
-Khi trang trí theo bộ (Set), bạn sẽ kích hoạt các chỉ số ẩn:
-*    **Set Ngư Dân:** Tăng tỷ lệ câu dính cá.
-*    **Set Thương Gia:** Bán cá được giá cao hơn.
-*    **Set May Mắn:** Tăng tỷ lệ thắng minigame.
-*    **Set Thiên Nhiên:** Tăng sản lượng Hạt từ cây.
+###  [10. Câu Hỏi Thường Gặp (F.A.Q)](guides/faq.md)
+*   Giải đáp các thắc mắc phổ biến.
+*   Xử lý lỗi cơ bản.
 
 ---
-
-## 4. TÍNH NĂNG XÃ HỘI (SOCIAL)
-
-Mèo Lùn khuyến khích sự tử tế và kết nối.
-
-### Điểm Tử Tế (Kindness)
-*   Bạn nhận điểm khi: Được người khác thả tim, được cảm ơn, hoặc tặng quà cho người khác.
-*   Gõ **/tute** để xem điểm tử tế của mình.
-*   Gõ **/tutetop** để xem ai là "thiên thần" của server.
-
-### Bạn Thân (Buddy)
-Kết đôi với người bạn hay chơi cùng để nhận bonus.
-*   Gõ **/banthan moi @user** để gửi lời mời.
-*   Lợi ích:
-    *   +20% Hạt khi voice cùng nhau.
-    *   +XP khi câu cá cùng lúc.
-    *   Thông báo khi bạn thân online.
-
-### Profile Cá Nhân
-*   Gõ **/hoso** để xem thẻ nhân vật của bạn.
-*   Gõ **/theme** để đổi giao diện thẻ (Cần VIP cho các theme xịn).
-*   Gõ **/bio** để viết vài dòng giới thiệu bản thân.
-
----
-
-## 5. SỰ KIỆN THEO MÙA (SEASONAL EVENTS)
-
-Bot thay đổi theo 4 mùa trong năm, mỗi mùa có minigame và tiền tệ riêng.
-
-*    **Xuân (Tết):** Săn lì xì, pha trà, chúc tết.
-*    **Hè:** Đua thuyền, săn kho báu đáy biển.
-*    **Thu (Halloween):** Săn ma, xin kẹo (Trick or Treat).
-*    **Đông (Giáng Sinh):** Ném tuyết, tặng quà bí mật (Secret Santa).
-
-Gõ **/sukien info** để xem sự kiện nào đang diễn ra.
-
----
-
-## 6. GIẢI TRÍ (MINIGAMES)
-
-Ngoài câu cá, bạn có thể chơi các game nhỏ để xả stress (hoặc "xả" Hạt):
-
-*    **Xì Dách:** `/xidach [cược]` - Chơi bài 21 điểm với nhà cái.
-*    **Bầu Cua:** `/baucua` - Đặt cược linh vật (Tôm, Cua, Cá...).
-*    **Nối Từ:** Tham gia kênh nối từ để kiếm Hạt mỗi lượt đúng.
-*    **Nghe Nhạc:** `/play [tên bài]` - Nghe nhạc chất lượng cao cùng bạn bè.
-
----
-
-## 7. HỆ THỐNG VIP
-
-Bạn có thể ủng hộ bot hoặc cày cuốc để mua VIP bằng Hạt. VIP không làm bạn thắng game, nhưng giúp trải nghiệm tiện lợi hơn.
-
-*   **VIP Bạc:** Auto-bán cá khi đầy túi.
-*   **VIP Vàng:** Thêm slot trang trí, đổi Theme profile.
-*   **VIP Kim Cương:** Auto-tưới cây, Auto-thăm nhà, Hoàn tiền khi thua bạc (Cashback).
-
-Gõ **/thuongluu b** (hoặc s, t) để xem chi tiết và mua.
-
----
-
-## LỜI KẾT
-
-Mèo Lùn là bot được phát triển bởi một người (Solo Dev) với mong muốn mang lại niềm vui cho mọi người.
-*   Nếu thấy lỗi: Gõ `/bug [nội dung]` báo giúp mình.
-*   Nếu thấy vui: Hãy chia sẻ bot với bạn bè nhé!
-
-**Chúc bạn có những giờ phút thật chill! **
+*Tài liệu được cập nhật lần cuối: Tháng 1/2026 cho phiên bản Aquarium 2.0*
