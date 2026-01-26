@@ -503,7 +503,7 @@ class InteractiveSellEventView(discord.ui.View):
         
         # Show fish sold
         fish_summary = ", ".join([
-            f"{ALL_FISH.get(k, {}).get('name', k)} x{v}" 
+            f"{v.get('name', k)} x{v.get('quantity', v) if isinstance(v, dict) else v}" 
             for k, v in list(self.fish_items.items())[:5]
         ])
         if len(self.fish_items) > 5:

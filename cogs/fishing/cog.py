@@ -433,6 +433,7 @@ class FishingCog(commands.Cog):
 
     @app_commands.command(name="cauca", description="🎣 Câu cá - Dùng /cauca để bắt đầu")
     async def fish_slash(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await self._fish_action(interaction)
     
 
