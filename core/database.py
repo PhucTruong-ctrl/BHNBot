@@ -353,6 +353,60 @@ async def add_seeds(user_id: int, amount: int, reason: str = "unknown", category
         row = await conn.fetchrow("SELECT seeds FROM users WHERE user_id = $1", user_id)
         return row['seeds'] if row else 0
 
+async def deduct_seeds_if_sufficient(
+    user_id: int,
+    amount: int,
+    reason: str = "deduction",
+    category: str = "general"
+) -> Tuple[bool, int]:
+    """Atomically check balance and deduct if sufficient.
+    
+    Uses SELECT FOR UPDATE to prevent race conditions.
+    This replaces the check-then-act pattern:
+        balance = await get_user_balance(user_id)
+        if balance >= amount:
+            await add_seeds(user_id, -amount, ...)
+    
+    Returns:
+        Tuple[bool, int]: (success, new_balance)
+        - success=True: deduction performed, new_balance is after deduction
+        - success=False: insufficient funds, new_balance is current balance
+    """
+    if amount <= 0:
+        raise ValueError("Deduction amount must be positive")
+    
+    async with db_manager.transaction() as conn:
+        # Lock row and get current balance
+        row = await conn.fetchrow(
+            "SELECT seeds FROM users WHERE user_id = $1 FOR UPDATE",
+            user_id
+        )
+        
+        if not row:
+            return (False, 0)
+        
+        current_balance = row['seeds']
+        
+        if current_balance < amount:
+            return (False, current_balance)
+        
+        # Perform deduction
+        await conn.execute(
+            "UPDATE users SET seeds = seeds - $1 WHERE user_id = $2",
+            amount, user_id
+        )
+        
+        # Log transaction
+        await conn.execute(
+            "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) "
+            "VALUES ($1, $2, $3, $4, NOW())",
+            user_id, -amount, reason, category
+        )
+        
+        new_balance = current_balance - amount
+        return (True, new_balance)
+
+
 async def transfer_seeds(
     from_user_id: int, 
     to_user_id: int, 

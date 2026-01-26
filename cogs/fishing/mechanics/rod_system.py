@@ -1,7 +1,7 @@
 """Rod upgrade and durability system."""
 
 from ..constants import DB_PATH, ROD_LEVELS
-from database_manager import db_manager, increment_stat, get_stat, add_seeds, get_user_balance
+from database_manager import db_manager, increment_stat, get_stat, add_seeds, get_user_balance, deduct_seeds_if_sufficient
 
 from core.logging import get_logger
 logger = get_logger("rod_system")
@@ -98,15 +98,14 @@ async def check_and_repair_rod(
     
     if rod_durability <= 0:
         repair_cost = rod_config["repair"]
-        balance = await get_user_balance(user_id)
-        logger.info(f"[FISHING] [ROD_BROKEN] {username} (user_id={user_id}) rod_level={rod_lvl} durability={rod_durability} repair_cost={repair_cost} balance={balance}")
+        logger.info(f"[FISHING] [ROD_BROKEN] {username} (user_id={user_id}) rod_level={rod_lvl} durability={rod_durability} repair_cost={repair_cost}")
         
-        if balance >= repair_cost:
-            await add_seeds(user_id, -repair_cost, 'rod_repair', 'fishing')
+        success, balance = await deduct_seeds_if_sufficient(user_id, repair_cost, 'rod_repair', 'fishing')
+        if success:
             rod_durability = rod_config["durability"]
             await update_rod_data(user_id, rod_durability, rod_lvl)
             repair_msg = f"\n🛠️ **Cần câu đã gãy!** Tự động sửa chữa: **-{repair_cost} Hạt** (Độ bền phục hồi: {rod_durability}/{rod_config['durability']})"
-            logger.info(f"[FISHING] [AUTO_REPAIR] {username} (user_id={user_id}) seed_change=-{repair_cost} action=rod_repaired new_durability={rod_durability}")
+            logger.info(f"[FISHING] [AUTO_REPAIR] {username} (user_id={user_id}) seed_change=-{repair_cost} action=rod_repaired new_durability={rod_durability} balance_after={balance}")
             
             try:
                 await increment_stat(user_id, "fishing", "rods_repaired", 1)
@@ -118,6 +117,6 @@ async def check_and_repair_rod(
         else:
             is_broken_rod = True
             repair_msg = f"\n⚠️ **Cần câu đã gãy!** Phí sửa là {repair_cost} Hạt. Bạn đang câu với cần gãy (chỉ 1% cá hiếm, 1 item/lần, không rương)."
-            logger.info(f"[FISHING] [BROKEN_ROD] {username} (user_id={user_id}) cannot_afford_repair cost={repair_cost}")
+            logger.info(f"[FISHING] [BROKEN_ROD] {username} (user_id={user_id}) cannot_afford_repair cost={repair_cost} balance={balance}")
     
     return rod_durability, repair_msg, is_broken_rod

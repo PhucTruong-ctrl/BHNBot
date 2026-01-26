@@ -6,6 +6,7 @@ import datetime
 import time
 from database_manager import batch_update_seeds, db_manager
 from core.services.vip_service import VIPEngine
+from core.ui import safe_dm
 
 from .game_logic import GameManager
 from .statistics import StatisticsTracker
@@ -121,15 +122,13 @@ class BauCuaCog(commands.Cog):
                 count += 1
                 
                 # Send DM
-                try:
-                    user = self.bot.get_user(user_id)
-                    if user:
-                        await user.send(
-                            f"💎 **VIP Cashback:** Bạn nhận được **{refund:,} Hạt** hoàn trả từ số tiền thua hôm qua ({net_loss:,}).\n"
-                            f"Tier {tier} Rate: {int(rate*100)}%."
-                        )
-                except Exception:
-                    pass # User blocked DM
+                user = self.bot.get_user(user_id)
+                if user:
+                    await safe_dm(
+                        user,
+                        f"💎 **VIP Cashback:** Bạn nhận được **{refund:,} Hạt** hoàn trả từ số tiền thua hôm qua ({net_loss:,}).\n"
+                        f"Tier {tier} Rate: {int(rate*100)}%."
+                    )
                     
             except Exception as e:
                 logger.error(f"Error refunding user {user_id}: {e}")

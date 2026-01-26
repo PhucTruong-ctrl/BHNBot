@@ -5,7 +5,7 @@ Handles connection pooling, query caching, and batch operations for better perfo
 import time
 import asyncio
 from typing import Optional, Dict, List, Any, Tuple
-from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard, get_db_connection
+from core.database import db_manager, get_user_balance, get_user_full, add_seeds, get_leaderboard, get_db_connection, deduct_seeds_if_sufficient
 from configs.settings import DB_PATH
 from core.logging import get_logger
 

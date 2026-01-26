@@ -47,7 +47,7 @@ from ..helpers import track_caught_fish, get_collection, check_collection_comple
 # Import database functions
 from database_manager import (
     add_seeds, get_user_balance, get_or_create_user, db_manager,
-    get_stat, increment_stat, get_server_config
+    get_stat, increment_stat, get_server_config, deduct_seeds_if_sufficient
 )
 
 # Import tournament
@@ -217,15 +217,14 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
     
                         # Nếu không có mồi, kiểm tra xem có đủ tiền mua không
                         if not has_worm:
-                            balance = await get_user_balance(user_id)
-                            if balance >= WORM_COST:
-                                # Tự động trừ tiền coi như mua mồi dùng ngay
-                                await add_seeds(user_id, -WORM_COST, 'auto_buy_worm', 'fishing')
+                            success, balance = await deduct_seeds_if_sufficient(
+                                user_id, WORM_COST, 'auto_buy_worm', 'fishing'
+                            )
+                            if success:
                                 has_worm = True
                                 auto_bought = True
-                                logger.info(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} balance_before={balance} balance_after={balance - WORM_COST}")
+                                logger.info(f"[FISHING] [AUTO_BUY_WORM] {username} (user_id={user_id}) seed_change=-{WORM_COST} balance_after={balance}")
                             else:
-                                # Không có mồi, cũng không đủ tiền -> Chấp nhận câu rác
                                 has_worm = False
                                 logger.info(f"[FISHING] [NO_WORM_NO_MONEY] {username} (user_id={user_id}) has_worm=False balance={balance} < {WORM_COST}")
                 except asyncio.TimeoutError:
@@ -266,11 +265,12 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                 # --- APPLY DISASTER FINE (Police Raid effect) ---
                 disaster_fine_msg = ""
                 if cog.disaster_fine_amount > 0 and time.time() < cog.disaster_effect_end_time:
-                    current_balance = await get_user_balance(user_id)
-                    if current_balance >= cog.disaster_fine_amount:
-                        await add_seeds(user_id, -cog.disaster_fine_amount, 'disaster_fine', 'fishing')
+                    success, current_balance = await deduct_seeds_if_sufficient(
+                        user_id, cog.disaster_fine_amount, 'disaster_fine', 'fishing'
+                    )
+                    if success:
                         disaster_fine_msg = f"\n💰 **PHẠT HÀNH CHÍNH:** -{ cog.disaster_fine_amount} Hạt do {cog.current_disaster.get('name', 'sự kiện')}"
-                        logger.info(f"[DISASTER_FINE] {username} fined {cog.disaster_fine_amount} seeds due to {cog.current_disaster.get('key')} balance_before={current_balance} balance_after={current_balance - cog.disaster_fine_amount}")
+                        logger.info(f"[DISASTER_FINE] {username} fined {cog.disaster_fine_amount} seeds due to {cog.current_disaster.get('key')} balance_after={current_balance}")
                     else:
                         disaster_fine_msg = f"\n⚠️ **PHẠT HÀNH CHÍNH:** Không đủ tiền phạt ({cog.disaster_fine_amount} Hạt)"
                         logger.info(f"[DISASTER_FINE] {username} insufficient balance for fine {cog.disaster_fine_amount} balance={current_balance}")

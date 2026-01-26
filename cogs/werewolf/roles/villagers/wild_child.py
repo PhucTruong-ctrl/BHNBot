@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from core.logging import get_logger
+from core.ui import safe_dm
 from typing import TYPE_CHECKING
 
 from .. import register_role
@@ -98,7 +99,4 @@ class WildChild(Role):
                 except Exception as e:
                     logger.error(f"Unexpected error: {e}")
 
-            try:
-                await player.member.send(f"Bố/mẹ của bạn đã chết. Bạn đã hoá thành Ma Sói!")
-            except Exception:
-                pass
+            await safe_dm(player.member, "Bố/mẹ của bạn đã chết. Bạn đã hoá thành Ma Sói!")
