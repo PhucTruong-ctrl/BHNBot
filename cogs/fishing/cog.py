@@ -566,6 +566,7 @@ class FishingCog(commands.Cog):
     ])
     async def sell_fish_slash(self, interaction: discord.Interaction, fish_types: str = None, mode: str = "all"):
         """Sell selected fish via slash command"""
+        await interaction.response.defer()
         await self._sell_fish_action(interaction, fish_types, mode)
     
     @commands.command(name="banca", description="Bán cá - Dùng !banca [fish_types]")
@@ -583,6 +584,7 @@ class FishingCog(commands.Cog):
     @app_commands.describe(amount="Số lượng rương muốn mở (mặc định 1)")
     async def open_chest_slash(self, interaction: discord.Interaction, amount: int = 1):
         """Open chest via slash command"""
+        await interaction.response.defer()
         await self._open_chest_action(interaction, amount)
     
     @commands.command(name="moruong", description="Mở Rương Kho Báu")
@@ -599,6 +601,7 @@ class FishingCog(commands.Cog):
     @app_commands.command(name="hiente", description="🌊 Hiến tế cá cho Thuồng Luồng")
     @app_commands.describe(fish_key="Fish key - chỉ cá có giá > 150 hạt (vd: ca_chep_vang, ca_chim)")
     async def hiente_slash(self, interaction: discord.Interaction, fish_key: str):
+        await interaction.response.defer()
         await self._hiente_action(interaction, fish_key, is_slash=True)
     
     @commands.command(name="hiente", description="🌊 Hiến Tế Cá - Dùng !hiente [fish_key] (cá > 150 hạt)")
@@ -620,6 +623,7 @@ class FishingCog(commands.Cog):
     @app_commands.command(name="chetao", description="🔧 Chế tạo Tinh Cầu Không Gian")
     @app_commands.describe(item_key="Item key: tinh_cau")
     async def chetao_slash(self, interaction: discord.Interaction, item_key: str):
+        await interaction.response.defer()
         await self._chetao_action(interaction, item_key, is_slash=True)
     
     @commands.command(name="chetao", description="🔧 Chế tạo Tinh Cầu Không Gian")
@@ -635,6 +639,7 @@ class FishingCog(commands.Cog):
 
     @app_commands.command(name="dosong", description="📡 Sử dụng Máy Dò Sóng tìm Cá Voi 52Hz")
     async def dosong_slash(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await self._dosong_action(interaction, is_slash=True)
     
     @commands.command(name="dosong", description="📡 Sử dụng Máy Dò Sóng")
@@ -648,6 +653,7 @@ class FishingCog(commands.Cog):
     # --- NANGCAP (Rod Upgrade) ---
     @app_commands.command(name="nangcap", description="Nâng cấp cần câu của bạn")
     async def nangcap_slash(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await self._nangcap_action(interaction)
 
     @commands.command(name="nangcap", aliases=["upgrade", "nc"])
@@ -660,6 +666,7 @@ class FishingCog(commands.Cog):
 
     @app_commands.command(name="ghepbando", description="🗺️ Ghép Bản Đồ Hầm Ám triệu hồi Cthulhu Non")
     async def ghepbando_slash(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await self._ghepbando_action(interaction, is_slash=True)
     
     @commands.command(name="ghepbando", description="🗺️ Ghép Bản Đồ Hầm Ám")
@@ -672,6 +679,7 @@ class FishingCog(commands.Cog):
 
     @app_commands.command(name="bonphan", description="🌾 Bón phân cho cây server")
     async def bonphan_slash(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await self._use_phan_bon_action(interaction)
     
     @commands.command(name="bonphan", description="🌾 Bón phân cho cây server")

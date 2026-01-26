@@ -233,10 +233,10 @@ class SeasonalEventsCog(commands.Cog):
                             break
 
                 if spawn_channel:
-                    minigame = get_minigame(minigame_type, self.bot, self.event_manager)
+                    minigame = get_minigame(minigame_type.id, self.bot, self.event_manager)
                     if minigame:
                         await minigame.spawn(spawn_channel, guild.id)
-                        logger.info(f"Auto-spawned {minigame_type} in {guild.name}#{spawn_channel.name}")
+                        logger.info(f"Auto-spawned {minigame_type.id} in {guild.name}#{spawn_channel.name}")
 
             except Exception as e:
                 logger.error(f"Error auto-spawning minigame for guild {guild.id}: {e}")

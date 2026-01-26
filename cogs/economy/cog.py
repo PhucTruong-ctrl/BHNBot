@@ -145,8 +145,8 @@ class EconomyCog(commands.Cog):
                         currency_data['event_currency'] = event_currency
                         from cogs.seasonal.core.event_manager import get_event_manager
                         event = get_event_manager().get_event(active["event_id"])
-                        currency_data['event_emoji'] = event.currency.emoji if event else '🎫'
-                        currency_data['event_name'] = event.currency.name if event else 'Token'
+                        currency_data['event_emoji'] = event.currency_emoji if event else '🎫'
+                        currency_data['event_name'] = event.currency_name if event else 'Token'
         except Exception as e:
             logger.error(f"Could not fetch event currency: {e}")
         
@@ -220,8 +220,8 @@ class EconomyCog(commands.Cog):
                         currency_data['event_currency'] = event_currency
                         from cogs.seasonal.core.event_manager import get_event_manager
                         event = get_event_manager().get_event(active["event_id"])
-                        currency_data['event_emoji'] = event.currency.emoji if event else '🎫'
-                        currency_data['event_name'] = event.currency.name if event else 'Token'
+                        currency_data['event_emoji'] = event.currency_emoji if event else '🎫'
+                        currency_data['event_name'] = event.currency_name if event else 'Token'
         except Exception as e:
             logger.error(f"Could not fetch event currency: {e}")
         
