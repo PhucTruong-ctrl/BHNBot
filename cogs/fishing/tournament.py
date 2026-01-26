@@ -191,10 +191,18 @@ class TournamentManager:
             async with db_manager.transaction() as conn:
                 await conn.execute("UPDATE vip_tournaments SET status = 'cancelled' WHERE id = $1", (tournament_id,))
                 
-                for row in entries:
-                    uid = row[0]
-                    await conn.execute("UPDATE users SET seeds = seeds + $1 WHERE user_id = $2", (fee, uid))
-                    await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_refund', 'fishing', CURRENT_TIMESTAMP)", (uid, fee))
+                # Batch refund - avoid N+1
+                refund_data = [(fee, row[0]) for row in entries]
+                log_data = [(row[0], fee) for row in entries]
+                
+                await conn.executemany(
+                    "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
+                    refund_data
+                )
+                await conn.executemany(
+                    "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_refund', 'fishing', CURRENT_TIMESTAMP)",
+                    log_data
+                )
                     
             logger.info(f"[TOURNAMENT] Cancelled {tournament_id}. Refunded {len(entries)} users.")
             return True
@@ -281,10 +289,18 @@ class TournamentManager:
             async with db_manager.transaction() as conn:
                 await conn.execute("UPDATE vip_tournaments SET status = 'ended' WHERE id = $1", (tournament_id,))
                 
-                # Distribute
-                for uid, amount in payouts.items():
-                    await conn.execute("UPDATE users SET seeds = seeds + $1 WHERE user_id = $2", (amount, uid))
-                    await conn.execute("INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_win', 'fishing', CURRENT_TIMESTAMP)", (uid, amount))
+                # Batch payouts - avoid N+1
+                payout_data = [(amount, uid) for uid, amount in payouts.items()]
+                log_data = [(uid, amount) for uid, amount in payouts.items()]
+                
+                await conn.executemany(
+                    "UPDATE users SET seeds = seeds + $1 WHERE user_id = $2",
+                    payout_data
+                )
+                await conn.executemany(
+                    "INSERT INTO transaction_logs (user_id, amount, reason, category, created_at) VALUES ($1, $2, 'tournament_win', 'fishing', CURRENT_TIMESTAMP)",
+                    log_data
+                )
                 
             # Clear Cache
             for uid, _ in ranks:

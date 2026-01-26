@@ -385,11 +385,12 @@ class QuestService:
     async def distribute_rewards(guild_id: int) -> dict[int, int]:
         rewards = await QuestService.calculate_rewards(guild_id)
         
-        for user_id, amount in rewards.items():
-            await db_manager.execute(
+        if rewards:
+            reward_data = [(amount, user_id, guild_id) for user_id, amount in rewards.items()]
+            await db_manager.executemany(
                 """UPDATE economy SET balance = balance + $1
                    WHERE user_id = $2 AND guild_id = $3""",
-                (amount, user_id, guild_id)
+                reward_data
             )
         
         quests = await QuestService.get_today_quests(guild_id)

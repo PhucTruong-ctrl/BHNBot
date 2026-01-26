@@ -607,19 +607,23 @@ class InteractiveSellEventView(discord.ui.View):
                             consume_items = self.event_data.get('interactive', {}).get('consume_items', True)
                         
                         if consume_items:
+                            fish_keys = list(self.fish_items.keys())
+                            rows = await conn.fetch(
+                                "SELECT item_id, quantity FROM inventory WHERE user_id = $1 AND item_id = ANY($2)",
+                                self.user_id, fish_keys
+                            )
+                            inventory_map = {row['item_id']: row['quantity'] for row in rows}
+                            
                             for fish_key, quantity in self.fish_items.items():
-                                row = await conn.fetchrow(
-                                    "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
-                                    self.user_id, fish_key
-                                )
-                                
-                                if not row or row['quantity'] < quantity:
+                                curr_qty = inventory_map.get(fish_key, 0)
+                                if curr_qty < quantity:
                                     raise ValueError(f"Timeout failed: Not enough {fish_key}")
-                                
-                                await conn.execute(
-                                    "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
-                                    quantity, self.user_id, fish_key
-                                )
+                            
+                            update_data = [(quantity, self.user_id, fish_key) for fish_key, quantity in self.fish_items.items()]
+                            await conn.executemany(
+                                "UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3",
+                                update_data
+                            )
                             
                             await conn.execute(
                                 "DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0",

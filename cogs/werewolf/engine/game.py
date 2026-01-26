@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from core.logging import get_logger
+from core.ui import safe_dm
 logger = get_logger("werewolf_engine_game")
 import random
 from collections import Counter
@@ -797,7 +798,8 @@ class WerewolfGame:
                     await self.thread_wolves.add_user(target.member)
                 
                 # Notify the cursed player
-                await target.member.send(
+                await safe_dm(
+                    target.member,
                     "Bạn đã bị Sói Quỷ nguyền rủa! Bạn sẽ trở thành Ma Sói từ đêm tiếp theo. Bạn vẫn giữ vai trò cũ."
                 )
                 
@@ -959,7 +961,8 @@ class WerewolfGame:
                         assassin_role.can_act_this_night = True  # type: ignore[attr-defined]
                         assassin_role.votes_day1 = assassin_votes_day1  # type: ignore[attr-defined]
                         assassin_role.votes_day2 = assassin_votes_day2  # type: ignore[attr-defined]
-                        await assassin.member.send(
+                        await safe_dm(
+                            assassin.member,
                             f"💀 **Bạn nhận được {total_assassin_votes} phiếu trong 2 ngày ({assassin_votes_day1}+{assassin_votes_day2})!** Bạn có thể lặng lẽ giết 1 người vào buổi tối."
                         )
                         logger.info("Assassin notified | guild=%s assassin=%s total_votes=%s day1=%s day2=%s night=%s", 

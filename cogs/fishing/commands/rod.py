@@ -98,15 +98,20 @@ async def nangcap_action(ctx_or_interaction):
                     await conn.execute("UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3", (material_cost, user_id, "vat_lieu_nang_cap"))
                     await conn.execute("DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0 AND item_id = $2", (user_id, "vat_lieu_nang_cap"))
 
-                # 3. Check & Deduct Special Materials
+                # 3. Check & Deduct Special Materials (batch fetch to avoid N+1)
                 if special_materials:
+                    mat_keys = list(special_materials.keys())
+                    sm_rows = await conn.fetch(
+                        "SELECT item_id, quantity FROM inventory WHERE user_id = $1 AND item_id = ANY($2)",
+                        user_id, mat_keys
+                    )
+                    inventory_map = {row['item_id']: row['quantity'] for row in sm_rows}
+                    
                     for mat_key, mat_req in special_materials.items():
-                        sm_row = await conn.fetchrow("SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2", (user_id, mat_key))
-                        curr_sm = sm_row['quantity'] if sm_row else 0
-                        
+                        curr_sm = inventory_map.get(mat_key, 0)
                         if curr_sm < mat_req:
-                             mat_name = {"manh_sao_bang": "Mảnh Sao Băng ✨"}.get(mat_key, mat_key)
-                             raise ValueError(f"Thiếu **{mat_name}**! Cần **{mat_req}**, có **{curr_sm}**")
+                            mat_name = {"manh_sao_bang": "Mảnh Sao Băng ✨"}.get(mat_key, mat_key)
+                            raise ValueError(f"Thiếu **{mat_name}**! Cần **{mat_req}**, có **{curr_sm}**")
                         
                         await conn.execute("UPDATE inventory SET quantity = quantity - $1 WHERE user_id = $2 AND item_id = $3", (mat_req, user_id, mat_key))
                         await conn.execute("DELETE FROM inventory WHERE user_id = $1 AND quantity <= 0 AND item_id = $2", (user_id, mat_key))
