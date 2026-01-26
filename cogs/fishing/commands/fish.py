@@ -351,7 +351,10 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                 if repair_msg:
                     embed.set_footer(text=repair_msg.replace("\n", " • "))
             
-                casting_msg = await channel.send(embed=embed)
+                if is_slash:
+                    casting_msg = await ctx.followup.send(embed=embed)
+                else:
+                    casting_msg = await channel.send(embed=embed)
 
                 await asyncio.sleep(wait_time)
     
