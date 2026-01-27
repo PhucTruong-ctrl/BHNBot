@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users as UsersIcon, Shield, Settings, Terminal, FileText, Gamepad2, Fish, Heart, Calendar, Package } from 'lucide-react';
+import { LayoutDashboard, Users as UsersIcon, Shield, Settings, Terminal, FileText, Gamepad2, Fish, Heart, Calendar, Package, LogOut } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Roles from './pages/Roles';
@@ -10,12 +10,33 @@ import Economy from './pages/Economy';
 import Community from './pages/Community';
 import Events from './pages/Events';
 import CogManager from './pages/CogManager';
+import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
 import { GuildProvider } from './contexts/GuildContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { GuildSelector } from './components/GuildSelector';
 
+function LoadingScreen() {
+  return (
+    <div className="loading-screen">
+      <Terminal size={48} className="loading-icon" />
+      <p>Initializing...</p>
+    </div>
+  );
+}
+
 function AppContent() {
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
   return (
     <div className="app-container">
       <aside className="sidebar">
@@ -83,6 +104,16 @@ function AppContent() {
             </NavLink>
           </div>
         </nav>
+        
+        <div className="sidebar-footer">
+          <div className="user-info">
+            {user?.avatar_url && <img src={user.avatar_url} alt="" className="user-avatar" />}
+            <span className="user-name">{user?.username}</span>
+          </div>
+          <button className="logout-btn" onClick={logout} title="Logout">
+            <LogOut size={18} />
+          </button>
+        </div>
       </aside>
       <main className="main-content">
         <ThemeToggle />
@@ -106,11 +137,13 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <GuildProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </GuildProvider>
+      <AuthProvider>
+        <GuildProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </GuildProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
