@@ -19,7 +19,7 @@ Chào mừng bạn đến với tài liệu hướng dẫn chi tiết của **M�
 *   Hướng dẫn dùng Auto-Fishing cho người bận rộn.
 
 ###  [3. Kinh Tế & Cửa Hàng](guides/economy_shop.md)
-*   Các loại tiền tệ (Hạt, Xu Lá, Essence).
+*   Các loại tiền tệ (Hạt, Xu Lá, Tinh Chất).
 *   Cách kiếm tiền hiệu quả.
 *   Mua sắm vật phẩm hỗ trợ.
 

@@ -10,7 +10,7 @@ Làm giàu không khó tại Mèo Lùn Bot. Dưới đây là cách quản lý t
 |:-------|:----------:|:----------|:--------|
 | **Hạt** |  | Câu cá, Minigame, Daily | Mua item, nâng cấp cần, chơi game |
 | **Xu Lá** |  | Tái chế rác, Event | Mua nội thất trang trí nhà cửa |
-| **Essence**|  | Tinh luyện cá (Auto-fishing)| Nâng cấp máy Auto-fishing |
+| **Tinh Chất**|  | Tinh luyện cá (Auto-fishing)| Nâng cấp máy Auto-fishing |
 
 ---
 

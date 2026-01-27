@@ -59,14 +59,14 @@ Dành cho người bận rộn. Bạn có thể treo máy để bot tự câu c�
 ### Cơ chế:
 *   **Kho chứa riêng:** Cá câu tự động sẽ vào "Kho Auto", KHÔNG vào túi đồ chính ngay.
 *   **Thu hoạch:** Bạn cần bấm **"Chuyển -> Túi"** để lấy cá về túi chính, hoặc **"Bán Cá"** ngay tại kho auto.
-*   **Essence (Tinh Hoa):** Bạn có thể "Tinh luyện" cá thừa thành Essence để nâng cấp máy Auto.
-    *   Common: 1 Essence
-    *   Rare: 5 Essence
-    *   Epic: 25 Essence
-    *   Legendary: 100 Essence
+*   **Tinh Chất (Tinh Hoa):** Bạn có thể "Tinh luyện" cá thừa thành Tinh Chất để nâng cấp máy Auto.
+    *   Common: 1 Tinh Chất
+    *   Rare: 5 Tinh Chất
+    *   Epic: 25 Tinh Chất
+    *   Legendary: 100 Tinh Chất
 
 ### Nâng cấp Auto-Fishing:
-Dùng Essence để nâng cấp 3 chỉ số:
+Dùng Tinh Chất để nâng cấp 3 chỉ số:
 1.  **Tốc độ (Efficiency):** Câu nhanh hơn (nhiều cá hơn mỗi giờ).
 2.  **Thời gian (Duration):** Treo máy được lâu hơn trước khi kho đầy.
 3.  **Chất lượng (Quality):** Tăng tỉ lệ câu được cá xịn khi treo máy.
