@@ -304,3 +304,665 @@ input:focus, select:focus {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* ============================================
+   LINUX RICE ADDITIONS - Terminal Aesthetic
+   ============================================ */
+
+/* Navigation Sections */
+.nav-section {
+  margin-bottom: 1.5rem;
+}
+
+.nav-section__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Guild Selector */
+.guild-selector {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.guild-selector--loading,
+.guild-selector--empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.guild-selector__trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-primary);
+}
+
+.guild-selector__trigger:hover {
+  border-color: var(--accent-primary);
+}
+
+.guild-selector__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.guild-selector__icon--default {
+  color: var(--text-dim);
+}
+
+.guild-selector__name {
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guild-selector__chevron {
+  color: var(--text-dim);
+  transition: transform 0.2s;
+}
+
+.guild-selector__chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.guild-selector__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.guild-selector__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.guild-selector__refresh {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.guild-selector__refresh:hover {
+  color: var(--accent-primary);
+}
+
+.guild-selector__option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  transition: background 0.15s;
+}
+
+.guild-selector__option:hover {
+  background: var(--bg-overlay);
+}
+
+.guild-selector__option.selected {
+  background: var(--bg-overlay);
+  border-left: 2px solid var(--accent-primary);
+}
+
+.guild-selector__option-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.guild-selector__option-icon--default {
+  color: var(--text-dim);
+}
+
+.guild-selector__option-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.guild-selector__option-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.guild-selector__option-members {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.guild-selector__badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  background: var(--accent-primary);
+  color: var(--bg-base);
+  border-radius: 2px;
+}
+
+/* Terminal Card */
+.terminal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.terminal-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.terminal-card__header .btn {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.terminal-card__desc {
+  padding: 0.75rem 1rem 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Page Layout */
+.page {
+  max-width: 1400px;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.page-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 50vh;
+  color: var(--text-secondary);
+}
+
+/* Grid Layouts with Tiling Gaps */
+.stat-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 2rem;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+  margin-bottom: 2rem;
+}
+
+/* Stat Cards */
+.stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+}
+
+.stat-card svg {
+  color: var(--accent-secondary);
+}
+
+.stat-card--coins svg { color: var(--accent-warning); }
+.stat-card--fish svg { color: var(--accent-secondary); }
+.stat-card--voice svg { color: var(--accent-success); }
+.stat-card--buddies svg { color: var(--accent-primary); }
+.stat-card--marriages svg { color: #f38ba8; }
+.stat-card--gifts svg { color: var(--accent-warning); }
+
+.stat-card__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card__value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-card__label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Settings */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.setting-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.settings-list {
+  padding: 1rem;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item__label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.setting-item__value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+/* Form Elements */
+.input-field {
+  background: var(--bg-base);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.input-field--number {
+  width: 80px;
+  text-align: right;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-overlay);
+  border-radius: 20px;
+  transition: 0.3s;
+}
+
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-secondary);
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--accent-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+  background-color: var(--bg-base);
+}
+
+/* Buttons */
+.btn--primary {
+  background: var(--accent-primary);
+  color: var(--bg-base);
+  border: none;
+}
+
+.btn--sm {
+  font-size: 0.7rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Empty States */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.empty-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-dim);
+}
+
+/* Charts */
+.chart-container {
+  padding: 1rem;
+}
+
+/* Progress Bar */
+.progress-bar {
+  height: 6px;
+  background: var(--bg-overlay);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* Sections */
+section {
+  margin-bottom: 2rem;
+}
+
+section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+}
+
+/* Config Tabs */
+.config-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.config-tab {
+  padding: 0.5rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.config-tab:hover {
+  border-color: var(--accent-primary);
+}
+
+.config-tab.active {
+  background: var(--accent-primary);
+  color: var(--bg-base);
+  border-color: var(--accent-primary);
+}
+
+/* Fishing Stats */
+.fishing-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.fishing-stat {
+  text-align: center;
+}
+
+.fishing-stat__label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fishing-stat__value {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.fishing-stat__value.legendary {
+  color: var(--accent-warning);
+}
+
+/* Quest Stats */
+.quest-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.quest-stat {
+  padding: 1rem;
+}
+
+.quest-stat__label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.quest-stat__progress {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.quest-stat__value {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.quest-stat__value.big {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* Event Cards */
+.event-card {
+  padding: 1.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+}
+
+.event-card--active {
+  border-color: var(--accent-success);
+  border-left: 3px solid var(--accent-success);
+}
+
+.event-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.event-card__name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.event-card__badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  background: var(--accent-success);
+  color: var(--bg-base);
+  border-radius: 2px;
+}
+
+.event-card__details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.event-card__details span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Text Helpers */
+.text-muted {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* Spinning Animation */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+

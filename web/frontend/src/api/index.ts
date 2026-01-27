@@ -77,4 +77,16 @@ export const configApi = {
   getEvents: () => api.get('/config/events').then(r => r.data),
 };
 
+
+export const cogsApi = {
+  categories: () => api.get("/cogs/categories").then(r => r.data),
+  list: (guildId?: string) => 
+    api.get("/cogs/", { params: { guild_id: guildId } }).then(r => r.data),
+  get: (cogName: string, guildId?: string) => 
+    api.get(`/cogs/${cogName}`, { params: { guild_id: guildId } }).then(r => r.data),
+  update: (cogName: string, settings: Record<string, unknown>, guildId?: string) =>
+    api.post(`/cogs/${cogName}`, { settings }, { params: { guild_id: guildId } }).then(r => r.data),
+  toggle: (cogName: string, enabled: boolean, guildId?: string) =>
+    api.post(`/cogs/${cogName}/toggle`, { enabled }, { params: { guild_id: guildId } }).then(r => r.data),
+};
 export default api;

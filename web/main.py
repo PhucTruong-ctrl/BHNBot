@@ -1,15 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
 import os
 
 from core.logging import get_logger
 from .config import HOST, PORT, DEBUG, CORS_ORIGINS
 from .routers import stats, users, roles, config as config_router, export, system, modules, audit, auth, cog_config, websocket, bot_logs, loki
 import traceback
-from fastapi.responses import JSONResponse
 from fastapi import Request
 
 # Setup structured logging
@@ -57,39 +55,31 @@ app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(bot_logs.router, prefix="/api", tags=["Bot Logs"])
 app.include_router(loki.router, prefix="/api", tags=["Loki"])
 
-# Mount static files
+# Mount legacy static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-
-@app.get("/")
-async def root(request: Request):
-    """Serve dashboard UI."""
-    templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-    templates = Jinja2Templates(directory=templates_dir)
-    
-    # Check authentication
-    token = request.cookies.get("auth_token")
-    if not token:
-        if os.path.exists(os.path.join(templates_dir, "login.html")):
-            return templates.TemplateResponse("login.html", {"request": request})
-    
-    if os.path.exists(os.path.join(templates_dir, "index.html")):
-        return templates.TemplateResponse("index.html", {"request": request})
-    return {
-        "status": "ok",
-        "service": "BHNBot Admin Panel",
-        "version": "1.0.0"
-    }
+# Mount React SPA assets
+react_assets_dir = os.path.join(os.path.dirname(__file__), "frontend", "dist", "assets")
+if os.path.exists(react_assets_dir):
+    app.mount("/assets", StaticFiles(directory=react_assets_dir), name="react-assets")
 
 
-@app.get("/login")
-async def login_page(request: Request):
-    """Login page."""
-    templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-    templates = Jinja2Templates(directory=templates_dir)
-    return templates.TemplateResponse("login.html", {"request": request})
+# React SPA configuration
+REACT_BUILD_DIR = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
+
+def serve_react_index():
+    """Read and return React index.html content."""
+    index_path = os.path.join(REACT_BUILD_DIR, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    return JSONResponse(
+        status_code=500,
+        content={"message": "React build not found. Run 'npm run build' in web/frontend/"}
+    )
 
 
 @app.get("/api/health")
@@ -127,6 +117,24 @@ async def favicon():
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     ])
     return Response(content=ico_data, media_type="image/x-icon")
+
+
+# SPA catch-all route - MUST be last (after all API routes)
+@app.get("/")
+async def root():
+    """Serve React SPA index."""
+    return serve_react_index()
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve React SPA for all non-API routes (client-side routing)."""
+    # Don't catch API routes (they should 404 naturally if not found)
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # Serve React app for all other routes
+    return serve_react_index()
 
 
 if __name__ == "__main__":
