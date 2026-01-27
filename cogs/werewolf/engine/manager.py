@@ -138,7 +138,9 @@ class WerewolfManager:
             
             for (guild_id, vc_id), game in games_to_check:
                 # Skip if game finished or not in this voice channel
-                if game.is_finished or vc_id != after.channel.id:
+                # Check game.voice_channel directly since dict key may still be (guild_id, None)
+                game_vc_id = game.voice_channel.id if game.voice_channel else vc_id
+                if game.is_finished or game_vc_id != after.channel.id:
                     continue
                 
                 # Check if member is a player in this game

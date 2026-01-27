@@ -73,10 +73,15 @@ class EconomyService:
         
         new_protection = new_streak >= 7 and not protection_used
         
-        # Update database
-        await self.add_seeds(user_id, total_reward, 'daily_reward', 'social')
-        await self.repository.update_last_daily(user_id)
-        await self.repository.update_streak(user_id, new_streak, new_protection)
+        new_balance = await self.repository.claim_daily_atomic(
+            user_id, total_reward, new_streak, new_protection,
+            reason='daily_reward', category='social'
+        )
+        
+        logger.info(
+            f"[ECONOMY] [DAILY_REWARD] user_id={user_id} reward={total_reward} "
+            f"streak={new_streak} protection={new_protection}"
+        )
         
         # Prepare response data
         reward_data = {

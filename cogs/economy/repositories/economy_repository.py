@@ -84,6 +84,32 @@ class EconomyRepository:
             (streak, protection, user_id)
         )
     
+    async def claim_daily_atomic(
+        self, 
+        user_id: int, 
+        reward_amount: int, 
+        new_streak: int, 
+        new_protection: bool,
+        reason: str = "daily_reward",
+        category: str = "social"
+    ) -> int:
+        """Atomically claim daily reward - updates seeds, last_daily, and streak in one transaction."""
+        async with db_manager.transaction() as conn:
+            await conn.execute(
+                "UPDATE users SET seeds = seeds + ?, last_daily = CURRENT_TIMESTAMP, "
+                "daily_streak = ?, streak_protection = ? WHERE user_id = ?",
+                reward_amount, new_streak, new_protection, user_id
+            )
+            result = await conn.fetchval("SELECT seeds FROM users WHERE user_id = ?", user_id)
+            await db_manager.log_transaction(
+                user_id, reward_amount, reason, category, 
+                balance_before=result - reward_amount if result else 0,
+                balance_after=result or 0,
+                conn=conn
+            )
+        db_manager.clear_cache_by_prefix(f"seeds_{user_id}")
+        return result or 0
+    
     async def update_last_chat_reward(self, user_id: int):
         """Update last chat reward timestamp."""
         await db_manager.execute(

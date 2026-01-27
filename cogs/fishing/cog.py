@@ -415,6 +415,7 @@ class FishingCog(commands.Cog):
         await _tournament_rank_impl(interaction)
     
     @app_commands.command(name="sukiencauca", description="⚡ Force trigger event câu cá (chỉ Admin)")
+    @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         user="Discord user sẽ bị trigger event",
         event_type="Loại event: disaster, fishing_event, sell_event, npc_event, meteor_shower",
@@ -424,6 +425,7 @@ class FishingCog(commands.Cog):
         await self._trigger_event_action(interaction, user.id, event_type, event_key, is_slash=True)
     
     @commands.command(name="sukiencauca", description="⚡ Force trigger event câu cá (chỉ Admin)")
+    @commands.has_permissions(administrator=True)
     async def trigger_event_prefix(self, ctx, user: discord.User, event_type: str, event_key: str):
         await self._trigger_event_action(ctx, user.id, event_type, event_key, is_slash=False)
     

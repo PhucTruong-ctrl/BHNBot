@@ -362,7 +362,7 @@ class InteractiveSellEventView(discord.ui.View):
                                     qty_to_deduct = item_data
                                 
                                 row = await conn.fetchrow(
-                                    "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2",
+                                    "SELECT quantity FROM inventory WHERE user_id = $1 AND item_id = $2 FOR UPDATE",
                                     self.user_id, fish_key
                                 )
                                 
