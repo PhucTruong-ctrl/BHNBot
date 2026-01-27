@@ -8,7 +8,7 @@ import json
 from ..database import execute, fetchone, fetchall
 from ..dependencies import require_admin
 
-router = APIRouter(prefix="/cogs", tags=["cogs"], dependencies=[Depends(require_admin)])
+router = APIRouter(tags=["cogs"], dependencies=[Depends(require_admin)])
 
 # =============================================================================
 # CATEGORY DEFINITIONS
