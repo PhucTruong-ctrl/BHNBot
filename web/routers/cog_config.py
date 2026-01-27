@@ -6,9 +6,9 @@ from pydantic import BaseModel
 from typing import Any, Dict, Optional
 import json
 from ..database import execute, fetchone, fetchall
-from ..dependencies import require_admin
+from ..dependencies import require_admin, get_current_user
 
-router = APIRouter(tags=["cogs"], dependencies=[Depends(require_admin)])
+router = APIRouter(tags=["cogs"])
 
 # =============================================================================
 # CATEGORY DEFINITIONS
@@ -371,13 +371,13 @@ class CogToggle(BaseModel):
 # ENDPOINTS
 # =============================================================================
 @router.get("/categories")
-async def get_categories():
+async def get_categories(user: dict = Depends(get_current_user)):
     """Return available cog categories."""
     return {"categories": COG_CATEGORIES}
 
 
 @router.get("/")
-async def get_cog_list(guild_id: Optional[int] = Query(default=0)):
+async def get_cog_list(guild_id: Optional[int] = Query(default=0), user: dict = Depends(get_current_user)):
     """List all cogs with their enabled status for a guild."""
     await ensure_cog_config_table()
     gid = guild_id or 0
@@ -403,7 +403,7 @@ async def get_cog_list(guild_id: Optional[int] = Query(default=0)):
 
 
 @router.get("/{cog_name}")
-async def get_cog_config(cog_name: str, guild_id: Optional[int] = Query(default=0)):
+async def get_cog_config(cog_name: str, guild_id: Optional[int] = Query(default=0), user: dict = Depends(get_current_user)):
     """Get detailed config for a specific cog."""
     if cog_name not in COG_CONFIGS:
         raise HTTPException(status_code=404, detail="Cog not found")
@@ -412,19 +412,40 @@ async def get_cog_config(cog_name: str, guild_id: Optional[int] = Query(default=
     gid = guild_id or 0
     config = COG_CONFIGS[cog_name]
     
-    row = await fetchone(
-        "SELECT settings, enabled FROM cog_config WHERE guild_id = $1 AND cog_name = $2",
+    rows = await fetchall(
+        "SELECT config_key, config_value, enabled FROM cog_config WHERE guild_id = $1 AND cog_name = $2",
         (gid, cog_name)
     )
     
-    saved_settings = row["settings"] if row else {}
-    enabled = row["enabled"] if row else True
+    saved_settings = {}
+    enabled = True
+    for row in rows:
+        if row["config_key"] == "_enabled":
+            enabled = row["config_value"].lower() == "true"
+        else:
+            saved_settings[row["config_key"]] = row["config_value"]
     
     settings_with_values = {}
     for key, schema in config["settings"].items():
+        raw_value = saved_settings.get(key)
+        if raw_value is not None:
+            if schema["type"] == "boolean":
+                value = raw_value.lower() == "true"
+            elif schema["type"] in ("integer", "number"):
+                value = int(raw_value) if raw_value.isdigit() else schema["default"]
+            elif schema["type"] == "float":
+                try:
+                    value = float(raw_value)
+                except ValueError:
+                    value = schema["default"]
+            else:
+                value = raw_value
+        else:
+            value = schema["default"]
+        
         settings_with_values[key] = {
             **schema,
-            "value": saved_settings.get(key, schema["default"])
+            "value": value
         }
     
     return {
@@ -443,7 +464,8 @@ async def update_cog_config(
     cog_name: str,
     data: CogSettingsUpdate,
     request: Request,
-    guild_id: Optional[int] = Query(default=0)
+    guild_id: Optional[int] = Query(default=0),
+    user: dict = Depends(require_admin)
 ):
     """Update cog settings for a guild."""
     if cog_name not in COG_CONFIGS:
@@ -481,7 +503,8 @@ async def toggle_cog(
     cog_name: str,
     data: CogToggle,
     request: Request,
-    guild_id: Optional[int] = Query(default=0)
+    guild_id: Optional[int] = Query(default=0),
+    user: dict = Depends(require_admin)
 ):
     """Enable or disable a cog for a guild."""
     if cog_name not in COG_CONFIGS:
