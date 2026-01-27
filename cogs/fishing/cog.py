@@ -937,7 +937,7 @@ class FishingCog(commands.Cog):
             return text
         
         # Import the aggressive glitch function
-        from .glitch import apply_glitch_aggressive
+        from .mechanics.glitch import apply_glitch_aggressive
         return apply_glitch_aggressive(text)
     
     async def add_inventory_item(self, user_id: int, item_id: str, item_type: str):

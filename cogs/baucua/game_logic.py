@@ -9,7 +9,6 @@ import asyncio
 import time
 from typing import Dict, Optional
 from core.logging import get_logger
-from core.logging import get_logger
 from database_manager import get_user_balance, add_seeds, get_or_create_user, batch_update_seeds
 
 from .constants import (

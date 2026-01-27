@@ -51,7 +51,7 @@ class BauCuaCog(commands.Cog):
         self.daily_cashback_task.start()
         logger.info("[BAUCUA_COG] Cog initialized + Cashback Task Started")
         
-    def cog_unload(self):
+    async def cog_unload(self) -> None:
         self.daily_cashback_task.cancel()
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0)) # UTC midnight
