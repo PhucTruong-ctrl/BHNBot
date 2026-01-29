@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import json
 from ..database import execute, fetchone, fetchall
 from ..dependencies import require_admin, get_current_user
+from ..config import ADMIN_USER_IDS
 
 router = APIRouter(tags=["cogs"])
 
@@ -379,6 +380,15 @@ async def get_categories(user: dict = Depends(get_current_user)):
 @router.get("/")
 async def get_cog_list(guild_id: Optional[int] = Query(default=0), user: dict = Depends(get_current_user)):
     """List all cogs with their enabled status for a guild."""
+    # Auth check
+    if guild_id != 0:
+        if str(guild_id) not in user.get("managed_guilds", []):
+            raise HTTPException(status_code=403, detail="You do not manage this guild")
+    else:
+        # Global config requires admin
+        if user["id"] not in ADMIN_USER_IDS:
+            raise HTTPException(status_code=403, detail="Admin access required for global config")
+
     await ensure_cog_config_table()
     gid = guild_id or 0
     
@@ -405,6 +415,15 @@ async def get_cog_list(guild_id: Optional[int] = Query(default=0), user: dict = 
 @router.get("/{cog_name}")
 async def get_cog_config(cog_name: str, guild_id: Optional[int] = Query(default=0), user: dict = Depends(get_current_user)):
     """Get detailed config for a specific cog."""
+    # Auth check
+    if guild_id != 0:
+        if str(guild_id) not in user.get("managed_guilds", []):
+            raise HTTPException(status_code=403, detail="You do not manage this guild")
+    else:
+        # Global config requires admin
+        if user["id"] not in ADMIN_USER_IDS:
+            raise HTTPException(status_code=403, detail="Admin access required for global config")
+
     if cog_name not in COG_CONFIGS:
         raise HTTPException(status_code=404, detail="Cog not found")
     
@@ -412,18 +431,22 @@ async def get_cog_config(cog_name: str, guild_id: Optional[int] = Query(default=
     gid = guild_id or 0
     config = COG_CONFIGS[cog_name]
     
-    rows = await fetchall(
-        "SELECT config_key, config_value, enabled FROM cog_config WHERE guild_id = $1 AND cog_name = $2",
+    row = await fetchone(
+        "SELECT settings, enabled FROM cog_config WHERE guild_id = $1 AND cog_name = $2",
         (gid, cog_name)
     )
     
     saved_settings = {}
     enabled = True
-    for row in rows:
-        if row["config_key"] == "_enabled":
-            enabled = row["config_value"].lower() == "true"
-        else:
-            saved_settings[row["config_key"]] = row["config_value"]
+    if row:
+        enabled = row.get("enabled", True)
+        settings_json = row.get("settings")
+        if settings_json:
+            if isinstance(settings_json, dict):
+                saved_settings = settings_json
+            elif isinstance(settings_json, str):
+                import json as json_module
+                saved_settings = json_module.loads(settings_json)
     
     settings_with_values = {}
     for key, schema in config["settings"].items():
@@ -492,7 +515,7 @@ async def update_cog_config(
         VALUES ($1, $2, $3::jsonb, NOW())
         ON CONFLICT (guild_id, cog_name)
         DO UPDATE SET settings = $3::jsonb, updated_at = NOW()
-    ''', gid, cog_name, json.dumps(validated))
+    ''', (gid, cog_name, json.dumps(validated)))
     
     await _log_audit(request, "cog_config_update", cog_name, {"guild_id": gid, "settings": validated})
     return {"success": True, "cog": cog_name, "settings": validated}
@@ -518,7 +541,7 @@ async def toggle_cog(
         VALUES ($1, $2, $3, NOW())
         ON CONFLICT (guild_id, cog_name)
         DO UPDATE SET enabled = $3, updated_at = NOW()
-    ''', gid, cog_name, data.enabled)
+    ''', (gid, cog_name, data.enabled))
     
     await _log_audit(request, "cog_toggle", cog_name, {"guild_id": gid, "enabled": data.enabled})
     return {"success": True, "cog": cog_name, "enabled": data.enabled}

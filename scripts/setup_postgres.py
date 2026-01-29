@@ -655,11 +655,13 @@ TABLES = {
     
     "cog_config": """
         CREATE TABLE IF NOT EXISTS cog_config (
-            guild_id BIGINT,
-            cog_name TEXT,
-            config_key TEXT,
-            config_value TEXT,
-            PRIMARY KEY (guild_id, cog_name, config_key)
+            id BIGSERIAL PRIMARY KEY,
+            guild_id BIGINT NOT NULL,
+            cog_name VARCHAR(50) NOT NULL,
+            settings JSONB DEFAULT '{}',
+            enabled BOOLEAN DEFAULT TRUE,
+            updated_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE (guild_id, cog_name)
         )
     """,
     

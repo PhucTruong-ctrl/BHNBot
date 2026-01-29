@@ -5,6 +5,7 @@ import json
 import tempfile
 import shutil
 import os
+import aiofiles
 from database_manager import get_server_config
 
 from core.logging import get_logger
@@ -15,11 +16,11 @@ DB_PATH = "./data/database.db"
 WORDS_DICT_PATH = "./data/words_dict.json"
 TU_DIEN_PATH = "./data/tu_dien.txt"
 
-def add_word_to_tu_dien(word: str):
+async def add_word_to_tu_dien(word: str):
     """Add word to tu_dien.txt file for persistence"""
     try:
-        with open(TU_DIEN_PATH, "a", encoding="utf-8") as f:
-            f.write(f'{{"text": "{word}", "source": ["user_added"]}}\n')
+        async with aiofiles.open(TU_DIEN_PATH, "a", encoding="utf-8") as f:
+            await f.write(f'{{"text": "{word}", "source": ["user_added"]}}\n')
         logger.debug("[add_word]_added_to_tu_dien.tx", word=word)
     except Exception as e:
         logger.debug("[add_word]_error_adding_to_tu_", e=e)
@@ -43,8 +44,9 @@ class QuickAddWordView(discord.ui.View):
         
         try:
             # Load words dictionary to check if word already exists
-            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
-                words_dict = json.load(f)
+            async with aiofiles.open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                content = await f.read()
+                words_dict = json.loads(content)
             
             first, second = self.word.split()
             
@@ -64,10 +66,15 @@ class QuickAddWordView(discord.ui.View):
                     
                     # Atomic write to words_dict.json
                     try:
-                        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=os.path.dirname(WORDS_DICT_PATH)) as tmp:
-                            json.dump(words_dict, tmp, ensure_ascii=False, indent=2)
-                            tmp_path = tmp.name
-                        shutil.move(tmp_path, WORDS_DICT_PATH)
+                        # Use a temporary file in the same directory
+                        dir_path = os.path.dirname(WORDS_DICT_PATH)
+                        tmp_path = os.path.join(dir_path, f"words_dict.tmp.{os.getpid()}")
+                        
+                        async with aiofiles.open(tmp_path, 'w', encoding='utf-8') as f:
+                            await f.write(json.dumps(words_dict, ensure_ascii=False, indent=2))
+                        
+                        # Rename is atomic on POSIX
+                        os.rename(tmp_path, WORDS_DICT_PATH)
                     except Exception as e:
                         logger.debug("[add_word]_error_writing_to_fi", e=e)
                         if os.path.exists(tmp_path):
@@ -75,11 +82,12 @@ class QuickAddWordView(discord.ui.View):
                         raise
                     
                     # Also add to tu_dien.txt for persistence
-                    add_word_to_tu_dien(self.word)
+                    await add_word_to_tu_dien(self.word)
                     
                     # Reload dictionary in NoiTu cog
                     try:
-                        from cogs.noitu import GameNoiTu
+                        # Note: We can't import GameNoiTu here due to circular import if not careful,
+                        # but getting cog by name is safe.
                         noitu_cog = interaction.client.get_cog("GameNoiTu")
                         if noitu_cog:
                             await noitu_cog.reload_words_dict()
@@ -147,8 +155,9 @@ class PendingWordView(discord.ui.View):
         
         # Add word to words_dict.json
         try:
-            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
-                words_dict = json.load(f)
+            async with aiofiles.open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                content = await f.read()
+                words_dict = json.loads(content)
             
             # Normalize to lowercase
             word_normalized = self.word.lower().strip()
@@ -162,9 +171,12 @@ class PendingWordView(discord.ui.View):
                 
                 # Atomic write: write to temp file first, then move
                 try:
-                    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=os.path.dirname(WORDS_DICT_PATH)) as tmp:
-                        json.dump(words_dict, tmp, ensure_ascii=False, indent=2)
-                        tmp_path = tmp.name
+                    dir_path = os.path.dirname(WORDS_DICT_PATH)
+                    tmp_path = os.path.join(dir_path, f"words_dict.tmp.approve.{os.getpid()}")
+                    
+                    async with aiofiles.open(tmp_path, 'w', encoding='utf-8') as f:
+                        await f.write(json.dumps(words_dict, ensure_ascii=False, indent=2))
+                    
                     shutil.move(tmp_path, WORDS_DICT_PATH)
                 except Exception as e:
                     logger.debug("[add_word]_error_writing_to_fi", e=e)
@@ -173,11 +185,10 @@ class PendingWordView(discord.ui.View):
                     raise
                 
                 # Also add to tu_dien.txt for persistence
-                add_word_to_tu_dien(word_normalized)
+                await add_word_to_tu_dien(word_normalized)
                 
                 # Reload dictionary in NoiTu cog
                 try:
-                    from cogs.noitu import GameNoiTu
                     noitu_cog = interaction.client.get_cog("GameNoiTu")
                     if noitu_cog:
                         await noitu_cog.reload_words_dict()
@@ -303,8 +314,9 @@ class AddWordCog(commands.Cog):
         """Process word addition and send to admin channel"""
         try:
             # Load words dictionary to check if word already exists
-            with open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
-                words_dict = json.load(f)
+            async with aiofiles.open(WORDS_DICT_PATH, "r", encoding="utf-8") as f:
+                content = await f.read()
+                words_dict = json.loads(content)
             
             first, second = word.split()
             

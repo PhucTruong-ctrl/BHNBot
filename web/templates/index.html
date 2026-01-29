@@ -1,117 +1,18 @@
 <!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BHNBot Dashboard</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-    <div class="app-container">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">🐱</div>
-                <span class="sidebar-title">BHNBot</span>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Tổng quan</div>
-                    <a href="#" class="nav-item active" data-page="dashboard">
-                        <i class="fas fa-chart-pie"></i>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="analytics">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Phân tích</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Quản lý</div>
-                    <a href="#" class="nav-item" data-page="users">
-                        <i class="fas fa-users"></i>
-                        <span>Người dùng</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="roles">
-                        <i class="fas fa-user-tag"></i>
-                        <span>Roles</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="modules">
-                        <i class="fas fa-puzzle-piece"></i>
-                        <span>Modules</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="config">
-                        <i class="fas fa-cog"></i>
-                        <span>Cấu hình</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Thống kê</div>
-                    <a href="#" class="nav-item" data-page="economy">
-                        <i class="fas fa-coins"></i>
-                        <span>Kinh tế</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="fishing">
-                        <i class="fas fa-fish"></i>
-                        <span>Câu cá</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="gambling">
-                        <i class="fas fa-dice"></i>
-                        <span>Cờ bạc</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="music">
-                        <i class="fas fa-music"></i>
-                        <span>Âm nhạc</span>
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Hệ thống</div>
-                    <a href="#" class="nav-item" data-page="system">
-                        <i class="fas fa-server"></i>
-                        <span>Hệ thống</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="botLogs">
-                        <i class="fas fa-terminal"></i>
-                        <span>Bot Logs</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="logs">
-                        <i class="fas fa-scroll"></i>
-                        <span>Audit Logs</span>
-                    </a>
-                </div>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <div class="user-info" id="userInfo">
-                    <div class="user-avatar" id="userAvatar">?</div>
-                    <div class="user-details">
-                        <div class="user-name" id="userName">Đang tải...</div>
-                        <div class="user-role" id="userRole">Admin</div>
-                    </div>
-                    <button class="btn btn-sm btn-secondary" onclick="logout()" title="Đăng xuất">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                </div>
-            </div>
-        </aside>
-        
-        <main class="main-content" id="mainContent">
-            <div class="loading" id="pageLoading">
-                <div class="spinner"></div>
-            </div>
-        </main>
-    </div>
-    
-    <div class="toast-container" id="toastContainer"></div>
-    
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/pages.js"></script>
-    <script src="/static/js/app.js"></script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BHNBot Admin Panel</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-BF88oX2r.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Ch8uUO4d.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>

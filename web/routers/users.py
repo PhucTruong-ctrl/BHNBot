@@ -50,11 +50,15 @@ async def list_users(
     total = await fetchone(count_query, tuple(params))
     
     # Get paginated results
+    # Params for limit/offset need to be appended with correct indices
+    limit_idx = len(params) + 1
+    offset_idx = len(params) + 2
+    
     query = f"""
         SELECT user_id, username, seeds, created_at, last_daily
         FROM users {where_clause}
         ORDER BY {sort_by} {sort_order.upper()}
-        LIMIT ? OFFSET ?
+        LIMIT ${limit_idx} OFFSET ${offset_idx}
     """
     users = await fetchall(query, tuple(params + [limit, offset]))
     
@@ -73,7 +77,7 @@ async def get_user(user_id: int) -> Dict[str, Any]:
     
     # Basic info
     user = await fetchone(
-        "SELECT * FROM users WHERE user_id = ?", (user_id,)
+        "SELECT * FROM users WHERE user_id = $1", (user_id,)
     )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -81,38 +85,38 @@ async def get_user(user_id: int) -> Dict[str, Any]:
     # Inventory
     inventory = await fetchall(
         """SELECT item_id, quantity, item_type 
-           FROM inventory WHERE user_id = ? ORDER BY quantity DESC""",
+           FROM inventory WHERE user_id = $1 ORDER BY quantity DESC""",
         (user_id,)
     )
     
     # Fishing profile
     fishing = await fetchone(
-        "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = ?",
+        "SELECT rod_level, rod_durability, exp FROM fishing_profiles WHERE user_id = $1",
         (user_id,)
     )
     
     # Fish collection
     fish_collection = await fetchall(
         """SELECT fish_id, quantity FROM fish_collection 
-           WHERE user_id = ? ORDER BY quantity DESC LIMIT 10""",
+           WHERE user_id = $1 ORDER BY quantity DESC LIMIT 10""",
         (user_id,)
     )
     
     # Stats
     stats = await fetchall(
-        "SELECT game_id, stat_key, value FROM user_stats WHERE user_id = ?",
+        "SELECT game_id, stat_key, value FROM user_stats WHERE user_id = $1",
         (user_id,)
     )
     
     # Achievements
     achievements = await fetchall(
-        "SELECT achievement_key, earned_at FROM user_achievements WHERE user_id = ?",
+        "SELECT achievement_key, earned_at FROM user_achievements WHERE user_id = $1",
         (user_id,)
     )
     
     # Buffs
     buffs = await fetchall(
-        "SELECT buff_type, duration_type, end_time, remaining_count FROM user_buffs WHERE user_id = ?",
+        "SELECT buff_type, duration_type, end_time, remaining_count FROM user_buffs WHERE user_id = $1",
         (user_id,)
     )
     
@@ -139,18 +143,22 @@ async def update_user(user_id: int, update: UserUpdate) -> Dict[str, Any]:
     # Build update
     updates = []
     params = []
+    param_idx = 1
+    
     if update.seeds is not None:
-        updates.append("seeds = ?")
+        updates.append(f"seeds = ${param_idx}")
         params.append(update.seeds)
+        param_idx += 1
     if update.username is not None:
-        updates.append("username = ?")
+        updates.append(f"username = ${param_idx}")
         params.append(update.username)
+        param_idx += 1
     
     if not updates:
         raise HTTPException(status_code=400, detail="No updates provided")
     
     params.append(user_id)
-    query = f"UPDATE users SET {', '.join(updates)} WHERE user_id = ?"
+    query = f"UPDATE users SET {', '.join(updates)} WHERE user_id = ${param_idx}"
     await execute(query, tuple(params))
     
     # Return updated user
@@ -162,7 +170,7 @@ async def adjust_seeds(user_id: int, adjustment: SeedAdjustment) -> Dict[str, An
     """Add or remove seeds from user (admin action)."""
     
     # Check user exists
-    user = await fetchone("SELECT seeds FROM users WHERE user_id = ?", (user_id,))
+    user = await fetchone("SELECT seeds FROM users WHERE user_id = $1", (user_id,))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -170,11 +178,12 @@ async def adjust_seeds(user_id: int, adjustment: SeedAdjustment) -> Dict[str, An
     new_balance = max(0, old_balance + adjustment.amount)  # Prevent negative
     
     await execute(
-        "UPDATE users SET seeds = ? WHERE user_id = ?",
+        "UPDATE users SET seeds = $1 WHERE user_id = $2",
         (new_balance, user_id)
     )
     
     # Log the adjustment
+    # Use logger inside to avoid module level import issues if circular
     from core.logging import get_logger
     logger = get_logger("AdminPanel")
     logger.info(

@@ -1,13 +1,39 @@
 """
 WebSocket endpoint for real-time system updates
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 import asyncio
 import json
+import jwt
 from .system import get_cpu_info, get_memory_info, get_disk_info, get_network_info, get_bot_status, get_gpu_info
-from ..dependencies import require_admin
+from ..config import JWT_SECRET, ADMIN_USER_IDS
 
 router = APIRouter(tags=["WebSocket"])
+
+
+async def verify_ws_access(websocket: WebSocket):
+    token = websocket.cookies.get("auth_token")
+    if not token:
+        # Try query param for flexible clients
+        token = websocket.query_params.get("token")
+    
+    if not token:
+        await websocket.close(code=4001, reason="Missing authentication")
+        return None
+
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        user_id = int(payload["sub"])
+        
+        # Admin check
+        if ADMIN_USER_IDS and user_id not in ADMIN_USER_IDS:
+             await websocket.close(code=4003, reason="Admin access required")
+             return None
+             
+        return user_id
+    except Exception:
+        await websocket.close(code=4001, reason="Invalid authentication")
+        return None
 
 
 class ConnectionManager:
@@ -107,6 +133,10 @@ def get_system_snapshot() -> dict:
 
 @router.websocket("/ws/system")
 async def websocket_system_stats(websocket: WebSocket):
+    user = await verify_ws_access(websocket)
+    if not user:
+        return
+
     await manager.connect(websocket)
     try:
         while True:

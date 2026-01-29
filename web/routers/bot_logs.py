@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import aiofiles
 
 from fastapi import APIRouter, Query, Depends
 from ..dependencies import require_admin
@@ -89,8 +90,8 @@ async def get_logs(
     modules_set = set()
     
     try:
-        with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
+        async with aiofiles.open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = await f.readlines()
         
         for line in reversed(lines):
             parsed = parse_log_line(line)
@@ -165,8 +166,8 @@ async def get_log_stats() -> Dict[str, Any]:
         yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         
         try:
-            with open(app_log, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f:
+            async with aiofiles.open(app_log, 'r', encoding='utf-8', errors='ignore') as f:
+                async for line in f:
                     parsed = parse_log_line(line)
                     if not parsed:
                         continue
@@ -192,8 +193,8 @@ async def tail_logs(file: str = "app.log", lines: int = 100) -> Dict[str, Any]:
     
     logs = []
     try:
-        with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
-            all_lines = f.readlines()
+        async with aiofiles.open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+            all_lines = await f.readlines()
             for line in all_lines[-lines:]:
                 parsed = parse_log_line(line)
                 if parsed:
