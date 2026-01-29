@@ -2027,7 +2027,7 @@ class WerewolfGame:
             
             if not options:
                 # No valid targets left (shouldn't happen, but safety check)
-                await guard.member.send("Không có người nào có thể bảo vệ.")
+                await safe_dm(guard.member, content="Không có người nào có thể bảo vệ.")
                 return None
             
             choice = await self._prompt_dm_choice(
@@ -2046,31 +2046,25 @@ class WerewolfGame:
             target = self.players.get(target_id)
             
             if not target:
-                await guard.member.send("Lựa chọn không hợp lệ. Vui lòng thử lại.")
+                await safe_dm(guard.member, content="Lựa chọn không hợp lệ. Vui lòng thử lại.")
                 continue
             
             # Validate choice
             if target_id == guard.user_id and not guard.role.can_self_target():
-                await guard.member.send(
-                    "❌ Bạn không thể tiếp tục tự bảo vệ đêm này.\n"
-                    "💡 Vui lòng chọn người khác."
-                )
+                await safe_dm(guard.member, content="❌ Bạn không thể tiếp tục tự bảo vệ đêm này.\n💡 Vui lòng chọn người khác.")
                 continue  # Ask again instead of returning None
             
             # All validations passed
             target.protected_last_night = True
             if target_id == guard.user_id:
                 guard.role.mark_self_target()
-                await guard.member.send(
-                    "✅ Bạn đã chọn bảo vệ chính mình đêm nay.\n"
-                    "⚠️ Bạn sẽ không thể tự bảo vệ nữa."
-                )
+                await safe_dm(guard.member, content="✅ Bạn đã chọn bảo vệ chính mình đêm nay.\n⚠️ Bạn sẽ không thể tự bảo vệ nữa.")
             guard.role.last_protected = target_id
             logger.info("Guard protected | guild=%s player=%s target=%s", self.guild.id, guard.user_id, target_id)
             return target_id
         
         # Max attempts reached
-        await guard.member.send("⏱️ Hết thời gian, bảo vệ bị bỏ qua.")
+        await safe_dm(guard.member, content="⏱️ Hết thời gian, bảo vệ bị bỏ qua.")
         logger.info("Guard timeout | guild=%s player=%s attempts=%s", self.guild.id, guard.user_id, attempt)
         return None
 
@@ -2271,7 +2265,7 @@ class WerewolfGame:
                 saved = True
                 role.heal_available = False  # type: ignore[attr-defined]
                 witch.witch_used_save = True  # Track for achievement
-                await witch.member.send("Bạn đã dùng bình hồi sinh.")
+                await safe_dm(witch.member, content="Bạn đã dùng bình hồi sinh.")
                 logger.info("Witch used heal potion | guild=%s witch=%s target=%s night=%s", 
                             self.guild.id, witch.user_id, killed_id, self.night_number)
             else:
@@ -2307,7 +2301,7 @@ class WerewolfGame:
                 witch.witch_used_kill = True  # Track for achievement
                 if kill_target == witch.user_id:
                     witch.role.mark_self_target()
-                    await witch.member.send("Bạn đã tự kết liễu chính mình.")
+                    await safe_dm(witch.member, content="Bạn đã tự kết liễu chính mình.")
                     logger.info("Witch self-targeted with poison | guild=%s witch=%s night=%s", 
                                 self.guild.id, witch.user_id, self.night_number)
                 logger.info("Witch poison target chosen | guild=%s witch=%s target=%s night=%s", 
