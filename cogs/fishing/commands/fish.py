@@ -147,12 +147,16 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
         await get_or_create_user(user_id, username)
 
         # ==================== FIX: COOLDOWN BYPASS & RACE CONDITIONS ====================
-        # Initialize lock if not exists - REMOVED
-
-        # START DATABASE TRANSACTION
-        # Replaces legacy asyncio.Lock to handle concurrency via DB serialization
-        async with db_manager.transaction() as conn:
-            logger.info(f"[FISHING] [DEBUG] Transaction started for {user_id}")
+        # Use per-user asyncio.Lock for serialization (prevents concurrent fishing)
+        # NOTE: Using asyncio.Lock instead of DB transaction to avoid holding DB lock during sleep
+        if not hasattr(cog, '_user_locks'):
+            cog._user_locks = {}
+        if user_id not in cog._user_locks:
+            cog._user_locks[user_id] = asyncio.Lock()
+        
+        # Per-user lock for serialization (prevents race conditions)
+        async with cog._user_locks[user_id]:
+            logger.info(f"[FISHING] [DEBUG] User lock acquired for {user_id}")
             
             try:
                 # --- CHECK COOLDOWN (Inside Lock) ---
@@ -1141,8 +1145,8 @@ async def fish_action_impl(cog: "FishingCog", ctx_or_interaction: Any) -> None:
                 # HOOK: Update Tournament Score if applicable
                 if tournament_score > 0:
                     try:
-                        # Pass 'conn' to ensure ACID compliance within this transaction
-                        await TournamentManager.get_instance().on_fish_catch(user_id, tournament_score, conn=conn)
+                        # Tournament manager handles its own transaction internally
+                        await TournamentManager.get_instance().on_fish_catch(user_id, tournament_score)
                     except Exception as e:
                         logger.error(f"[TOURNAMENT] Error updating score for {username}: {e}")
 
